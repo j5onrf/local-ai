@@ -4,7 +4,7 @@ import re
 import requests
 import os
 
-CONTEXT_FILE = os.path.expanduser("~/.config/hypr/scripts/ai/local-iq/ai-suggestion/ai-context.txt")
+CONTEXT_FILE = os.path.expanduser("~/.config/hypr/scripts/ai/local-ai/ai-suggestion/ai-context.txt")
 
 def main():
     if len(sys.argv) < 2:
