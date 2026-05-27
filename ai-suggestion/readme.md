@@ -57,15 +57,13 @@ Choose one of the following commands to install the core scripts directly into y
 **Option A: Universal Setup (No dependencies required)**
 
 ```bash
-mkdir -p ~/.config/local-ai/ai-suggestion && curl -sL [https://github.com/j5onrf/local-ai/tarball/main](https://github.com/j5onrf/local-ai/tarball/main) | tar -xzf - --strip-components=2 -C ~/.config/local-ai/ai-suggestion "*/ai-suggestion"
-
+mkdir -p ~/.config/local-ai/ai-suggestion && curl -sL https://github.com/j5onrf/local-ai/tarball/main | tar -xzf - --strip-components=2 -C ~/.config/local-ai/ai-suggestion "*/ai-suggestion"
 ```
 
 **Option B: Using Node.js/npx**
 
 ```bash
 mkdir -p ~/.config/local-ai && npx degit j5onrf/local-ai/ai-suggestion ~/.config/local-ai/ai-suggestion
-
 ```
 
 ### 2. Append to `.bashrc`
@@ -80,7 +78,6 @@ if [ -f "$HOME/.config/local-ai/ai-suggestion/ai-hook.sh" ]; then
     source "$HOME/.config/local-ai/ai-suggestion/ai-hook.sh"
 fi
 EOF
-
 ```
 
 ### 3. Build the AI Context Cache (`--bootstrap`)
@@ -89,7 +86,6 @@ To seed the agent with your current environment profile and baseline system know
 
 ```bash
 ai --bootstrap
-
 ```
 
 This parses your active shell aliases and generates your central `ai-context.txt` configuration master.
@@ -125,6 +121,8 @@ The `ai-context.txt` file is the master command center for the agent's knowledge
 * **Manual Control:** Because your context file belongs entirely to your system and your specific customizations, you can manually open and edit this file at any time to explicitly instruct the AI on workflows, scripts, or specific behaviors you want it to prioritize.
 * **Automated Training:** Any correction rules or adjustments you input via the `[t] Edit` loop are safely written to this file with zero formatting gaps or artifacts, ensuring the terminal environment adapts to your operational habits permanently.
 
+---
 
-<br><br>
-
+### References
+[1] Sørensen, T. J. (1948). "A method of establishing groups of equal amplitude in plant sociology based on similarity of species content." *Kongelige Danske Videnskabernes Selskab*, 5(4), 1–34.
+```
