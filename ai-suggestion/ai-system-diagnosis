@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# AI System Diagnosis v0.7.1
+# Active, real-time, non-bloated, and platform-agnostic system diagnostics.
+
+# Fast exit on any errors
+set -euo pipefail
+
+echo "=== AI ACTIVE SYSTEM DIAGNOSTICS ==="
+echo "[SYSTEM] OS/Kernel: $(uname -sr)"
+echo "[SYSTEM] Display Server: ${XDG_SESSION_TYPE:-Unknown}"
+
+# 1. Real-Time CPU Load Average (1m, 5m, 15m)
+if [ -f /proc/loadavg ]; then
+    loadavg=$(cat /proc/loadavg | awk '{print "1m: "$1", 5m: "$2", 15m: "$3}')
+    echo "[CPU] Load Average: $loadavg"
+fi
+
+# 2. Top 3 CPU-Hogging Processes (C-compiled sorting, robust comma-space join)
+top_cpu=$(ps -eo comm,%cpu --sort=-%cpu | head -n 4 | tail -n +2 | awk '{print $1" ("$2"%)"}' | awk '{printf "%s%s", (NR==1?"":", "), $0} END {print ""}' || echo "None")
+echo "[CPU_HOGS] Top CPU Processes: $top_cpu"
+
+# 3. RAM Info & Top 3 Memory-Hogging Processes
+if [ -f /proc/meminfo ]; then
+    ram_total=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+    ram_free=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
+    ram_used=$((ram_total - ram_free))
+    echo "[MEMORY] RAM Space: Total: $((ram_total / 1024))MB, Used: $((ram_used / 1024))MB, Free: $((ram_free / 1024))MB"
+fi
+top_mem=$(ps -eo comm,%mem --sort=-%mem | head -n 4 | tail -n +2 | awk '{print $1" ("$2"%)"}' | awk '{printf "%s%s", (NR==1?"":", "), $0} END {print ""}' || echo "None")
+echo "[MEM_HOGS] Top Memory Processes: $top_mem"
+
+# 4. Disk Space Information
+echo "[STORAGE] Root Disk Space: $(df -h / | awk 'NR==2{print "Total: "$2", Used: "$3", Free: "$4", Disk_Usage: "$5}')"
+
+# 5. Failed Systemd Services (Plain, no bullet points, no legends)
+if command -v systemctl >/dev/null 2>&1; then
+    failed_services=$(systemctl --failed --state=failed --plain --no-legend 2>/dev/null | awk '{print $1}' | grep "\." | awk '{printf "%s%s", (NR==1?"":", "), $0} END {print ""}' || echo "")
+    if [ -n "$failed_services" ]; then
+        echo "[SERVICES] Failed Units: $failed_services"
+    else
+        echo "[SERVICES] Failed Units: None"
+    fi
+fi

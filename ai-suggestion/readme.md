@@ -1,12 +1,18 @@
 # AI-Suggestion Agent (v0.6.6)
 
-
 <img alt="20260526_173110" src="https://github.com/user-attachments/assets/e322df2e-5711-47d1-a2f0-e23de19755af" />
 
-
-`Qwen3.5-2B-UD-Q4_K_XL.gguf+` `Python 3.10+` `Bash 4.0+`
+`Qwen3.5-2B-UD-Q4_K_XL+` `Python 3.10+` `Bash 4.0+` `Zsh 5.0+` `OpenAI-compatible`
 
 An adaptive, local AI shell agent designed to conform completely to your workflow. By analyzing your terminal environment and learning your custom aliases, it intercepts command typos, syntax errors, or forgotten flags to seamlessly suggest the exact command you meant to run.
+
+---
+
+## Prerequisites & Requirements
+
+* **Local LLM Server** providing an **OpenAI-compatible Chat Completions API** (e.g., `llama-server` [3], Ollama [2], LM Studio, or LocalAI [3]) running on `http://localhost:8080` (or your configured port [1]).
+* **Python 3.10+**
+* **Bash 4.0+** or **Zsh 5.0+**
 
 ---
 ## System Architecture Overview
@@ -79,6 +85,31 @@ if [ -f "$HOME/.config/local-ai/ai-suggestion/ai-hook.sh" ]; then
 fi
 EOF
 ```
+
+<details>
+<summary><b>Zsh Setup (Alternative Shell)</b></summary>
+
+If you are using **Zsh** instead of Bash, you can integrate the suggestion agent using your `.zshrc` file:
+
+### 1. Append the Zsh Hook to `.zshrc`
+Add the background hook process to your environment so the suggestion engine is loaded when your Zsh terminal initializes:
+
+```bash
+cat << 'EOF' >> ~/.bashrc
+
+# AI-Suggestion Hook
+[ -f "$HOME/.config/local-ai/ai-suggestion/ai-hook.sh" ] && source "$HOME/.config/local-ai/ai-suggestion/ai-hook.sh"
+EOF
+```
+
+### 2. Run the Bootstrap Step
+Reload your Zsh shell, and run the bootstrapper:
+```bash
+source ~/.zshrc
+ai --bootstrap
+```
+This automatically parses your `.zshrc` aliases and writes your baseline intents master.
+</details>
 
 ### 3. Build the AI Context Cache (`--bootstrap`)
 
