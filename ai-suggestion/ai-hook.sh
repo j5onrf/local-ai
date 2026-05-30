@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# AI Suggestion v1.3.2 [j5onrf] [05-26-26]
+# AI Suggestion v0.7.3 [j5onrf] [05-30-26]
 
 # 1. Early-exit if shell is not interactive
 [[ $- != *i* ]] && return
