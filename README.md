@@ -1,4 +1,4 @@
-## local-ai
+# local-ai
 <img alt="local-ai" src="https://github.com/user-attachments/assets/03673505-73da-49ba-b23a-cf726856229d" />
 <br><br>
 
