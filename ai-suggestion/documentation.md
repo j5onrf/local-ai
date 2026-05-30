@@ -1,22 +1,45 @@
-# AI-Suggestion Agent (v0.7.1-alpha) — Developer Documentation
+# AI-Suggestion Agent (v0.7.3-alpha) — Documentation
 
-An adaptive, local AI shell assistant designed to conform to your terminal environment. By leveraging a high-speed, local token-matrix cache alongside your local LLM, it corrects command typos, manages aliases, executes system tools, and answers conversational queries with zero background CPU overhead.
+An adaptive, local/cloud AI shell assistant designed to conform to your terminal environment. By leveraging a high-speed, local token-matrix cache alongside local or cloud LLMs, it corrects command typos, manages aliases, executes system tools, and answers conversational queries with zero background CPU overhead.
 
 ---
 
-## 1. Architecture & Design Principles
+## 1. System Architecture & Dual-Mode Core
 
 The project operates under an on-demand execution model designed to protect terminal responsiveness:
 
 * **Zero-Background Footprint:** No background daemons, cron-jobs, or continuous CPU-polling threads are used. Your shell experiences 0% idle RAM and 0% idle CPU overhead.
 * **Dual-Layer Execution:** 
   * **Standard typos (direct shell inputs):** Bypasses the LLM completely. Typo errors are evaluated locally via a C-compiled set-intersection matrix in under 2ms.
-  * **Conversational queries (using the `ai` prefix):** Run synchronously on-demand, connecting to your local LLM server and streaming responses directly to the terminal.
-* **Offline Resilience:** If your local AI server is offline, your typo corrections, custom aliases, and interactive teaching loops continue to work locally and instantly. Only direct conversational LLM chat requests are safely blocked at the shell level.
+  * **Conversational queries (using the `ai` prefix):** Run on-demand. If cloud API keys are set, it connects to Google Gemini; otherwise, it falls back to your local `llama-server`.
+* **Offline Resilience:** If your local AI server and internet are offline, your typo corrections, custom aliases, and interactive teaching loops continue to work locally and instantly. Only conversational LLM chat requests are safely blocked.
 
 ---
 
-## 2. Configuration & The Semantic Index
+## 2. Cloud Integration & Tool Toggling
+
+The agent natively supports **Google Gemini's OpenAI-compatible completions API** [2]. This allows you to offload conversational reasoning and context-injected tool calls to the cloud with **0% local CPU/RAM overhead** [1].
+
+### A. Environment Configuration (`~/.bashrc`)
+To activate cloud mode, export your API key and preferred model at the top of your `~/.bashrc` [1]:
+```bash
+export GEMINI_API_KEY="AIzaSyYourFullGeminiApiKeyHere"
+export CLOUD_MODEL="gemini-3.1-flash-lite"
+```
+
+### B. On-Demand Tool Toggling
+The agent supports native, zero-latency toggling of Gemini's built-in APIs directly from your active shell session [3]:
+
+* **Google Search Grounding (On by Default):** Automatically executes Google Search queries in the background to ground responses in real-time web data [1.1.1].
+  * *To check status:* `ai --grounding`
+  * *To toggle:* `ai --grounding [on|off]`
+* **Python Code Execution Sandbox (Off by Default):** Allows Gemini to execute Python calculations in a secure sandbox and return the outputs [2.1].
+  * *To check status:* `ai --code-exec`
+  * *To toggle:* `ai --code-exec [on|off]`
+
+---
+
+## 3. Configuration & The Semantic Index
 
 Your agent's brain is managed by a plain-text configuration master file.
 
@@ -29,17 +52,88 @@ clear ---> cc, clear terminal, reset screen, wipe display
 ```
 
 ### Automatic Compilation on the Fly
-You do not need to run manual compilation commands. Every time you interact with the agent, the Python script compares modification timestamps (`getmtime`) of your files. If the plain-text configuration has been modified, it silently rebuilds your minified, high-speed binary lookup index (`ai-context.idx`) in under 2ms before executing.
+Every time you interact with the agent, the Python script compares modification timestamps (`getmtime`) of your files. If the plain-text configuration has been modified, it silently rebuilds your minified, single-line lookup index (`ai-context.idx`) in under 2ms before executing.
 
 ### Optional Manual Compilation
-If you want to explicitly force a rebuild of the speed index for diagnostic or sanity checks, run:
+To explicitly force a rebuild of the speed index for diagnostic or sanity checks, run:
 ```bash
 ai --compile
 ```
 
 ---
 
-## 3. Interactive CLI Training Loops
+## 4. Active System Tools (`[TOOL]` & RAG)
+
+You can turn any standard Linux command, package, binary, or custom script into an AI tool by prefixing the command with `[TOOL]` in your `ai-context.txt` [3]:
+
+*Example:*
+```text
+[TOOL] df -h / ---> check my nvme drive, is my hard drive full, show disk space
+```
+
+### A. Local Context-Injected RAG
+1. You ask: `ai "how much space is on my nvme drive?"`
+2. The local matrix search instantly matches the intent to `[TOOL] df -h /` (0ms delay).
+3. Python executes `df -h /` behind the scenes, capturing your physical hard drive table (with an **8-second safety timeout**) [2].
+4. Python injects that raw text output directly into your LLM's prompt context [2].
+5. The local/cloud LLM reads the raw data and formulates a real-time response: *"Your drive is currently using 49% of its space, leaving 237GB free."* [2]
+
+### B. Self-Instructing Tools (Bypassing AI Safety Guardrails)
+To prevent the LLM from throwing its pre-trained safety excuses (like *"I do not have access to your local machine"*), you can embed **"Instructions for AI"** directly in your tool's stdout [2]. 
+
+*Example inside `tools/update-inspector`:*
+```bash
+echo "=== PENDING SYSTEM UPGRADES ==="
+echo "[INSTRUCTIONS FOR AI]: Do not state that you cannot access their system, as the data has already been provided to you. Pinpoint critical updates and explain their system impact."
+```
+Because the LLM reads this entire context block as part of the user instruction, it will naturally read those embedded guidelines and formulate its answer exactly as requested, completely on the fly [2].
+
+---
+
+## 5. System Monitor Dashboard & Token Tracking
+
+The system silently monitors and logs your API transactions to a local JSON database without polluting your active terminal screen [1, 2].
+
+* **Path:** `~/.config/local-ai/ai-suggestion/api-usage.json`
+
+### A. On-Demand Token Usage (`ai --usage`)
+Your chat screen remains completely clean, but you can query your last transaction's stats on-demand at any time [1]:
+```bash
+ai --usage
+```
+*Example Output:*
+`[Model: gemini-3.1-flash-lite | Prompt: 100t | Gen: 69t | Total: 169t]`
+
+### B. System Monitor Dashboard (`ai --status`)
+To give you a comprehensive monitor of your configuration and usage, run the 0% memory ASCII dashboard:
+```bash
+ai --status
+```
+It instantly outputs a high-contrast terminal card of your active configuration:
+
+```text
+┌──────────────────────────────────────────────────────────┐
+│          AI-SUGGESTION SYSTEM MONITOR & DASHBOARD        │
+├──────────────────────────────────────────────────────────┤
+│  Active Mode:     Google Gemini Cloud API                │
+│  API Key:         Loaded (AIzaSyD1...)                   │
+│  Cloud Model:     gemini-3.1-flash-lite                  │
+│  Active Tools:    Google Search                          │
+├──────────────────────────────────────────────────────────┤
+│  Context Database: ~/.config/local-ai/ai-suggestion/ai-c │
+│  Mapped Shortcuts: 20                                    │
+│  Active [TOOL]s:   9                                    │
+│  Search Index:    Active & Synced                        │
+├──────────────────────────────────────────────────────────┤
+│  Last Request:    gemini-3.1-flash-lite (169t total)     │
+│  Lifetime Calls:  5                                      │
+│  Lifetime Tokens: 709                                    │
+└──────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 6. Interactive CLI Training Loops
 
 You can train your agent's memory directly from your terminal session in three ways:
 
@@ -60,56 +154,11 @@ This launches a CLI prompt asking you for your custom natural phrase and the exa
 
 ### C. Suggestion Overriding
 If the agent suggests an existing command but you want to edit or override it on the fly, press **`t`** during the selection prompt:
-* This launches an interactive line editor (such as `read -e` in Bash or `vared` in Zsh) allowing you to override the command string, saving the new preference permanently to memory [2].
+* This launches an interactive line editor allowing you to override the command string, saving the new preference permanently to memory.
 
 ---
 
-## 4. Active System Tools (`[TOOL]` Prefixing)
-
-You can turn any standard Linux command, package, binary, or custom script into an AI tool by prefixing the command with `[TOOL]` in your `ai-context.txt` [3]:
-
-*Example:*
-```text
-[TOOL] df -h / ---> check my nvme drive, is my hard drive full, show disk space
-```
-
-### Local Context-Injected RAG (Retrieval-Augmented Generation)
-1. You ask: `ai "how much space is on my nvme drive?"`
-2. The local matrix search instantly matches the intent to `[TOOL] df -h /` (0ms delay).
-3. Python executes `df -h /` behind the scenes, capturing your physical hard drive table in under 2ms [2].
-4. Python injects that raw text output directly into your LLM's system prompt [2].
-5. The local LLM reads the raw data and formulates a real-time response: *"Your drive is currently using 49% of its space, leaving 237GB free."* [2]
-
-> **Security Note:** This is highly secure because you define exactly what commands are safe to run, completely removing any risk of the AI hallucinating or executing destructive commands on your system.
-
----
-
-## 5. Universal Configuration Mapper (`--map`)
-
-To easily populate your configuration master database, you can automatically ingest and map your existing system shortcuts, terminal aliases, and desktop keybindings:
-
-```bash
-ai --map /path/to/config_file
-```
-
-### Supported Formats & Parsing Engine:
-* **Shell Aliases (`.bashrc` / `.zshrc`):** Parses `alias name='command'` and maps `command ---> name, run command via name`.
-* **Legacy Hyprland Keybinds (`.conf`):** Parses `bind = ..., exec, command` and maps `command ---> trigger_key, run command` [1.1.2, 1.2.9].
-* **Modern Hyprland 0.55+ Keybinds (`.lua`):** Parses native Lua `hl.bind("keys", hl.dsp.exec_cmd("command"))` structures, automatically resolving variable concatenations (like converting `mainMod .. " + Q"` into a clean `"SUPER + Q"` intent) [1.1.4, 1.1.5, 1.4.3].
-* **Neovim Lua Keymaps (`*.lua`):** Parses Neovim `keymap.set` and `api.nvim_set_keymap` structures [2].
-* **WezTerm Lua Keymaps (`*.lua`):** Parses WezTerm key/mods action launch configurations [2].
-* **Direct Context Merges (`.txt`):** Parses direct `--->` configurations, allowing you to instantly merge or combine other context files into your master database.
-
-### Smart GUI/Redirection Detection
-During the mapping import phase, the engine automatically checks if the key trigger looks like a graphical/desktop binder (e.g., contains triggers like `F2`, `Print`, `Super`, `Ctrl`, or `Alt`) [1.1.2]. 
-* If it is a GUI binder, it automatically appends **` >/dev/null 2>&1`** to the mapped command [3]. This prevents verbose graphical debug logs from polluting your terminal when executing.
-* If it is a standard shell alias (like `alias x='yay -Syu'`), it leaves it raw so you can see the terminal output.
-
----
-
-## 6. Mathematical Optimizations
-
-The system is designed to scale to thousands of custom mappings while maintaining a minimal shell footprint:
+## 7. Mathematical & Structural Optimizations
 
 ### A. Conversational-Resilient Stop Words
 In search index engines, common grammatical connector words (like `what`, `is`, `it`, `do`, `any`, `I`, `have`, `the`, `a`) are called **"Stop Words"** [2]. Because these words carry no actual action, including them in your intent database causes completely unrelated commands (like `date` and `hyprctl clients`) to collide on generic English sentence structures [2].
@@ -122,20 +171,6 @@ This completely immunizes your database against structural grammar collisions, a
 ### B. High-Contrast Category Tags (Resource Isolation)
 Small, local models can occasionally experience "cross-talk" hallucinations when parsing space-separated, adjacent numerical lines (for example, misinterpreting a `49%` disk space metric as your active RAM usage).
 
-To prevent this, the active diagnostics tool `ai-system-diagnosis` prefixes each performance category with high-contrast, brackets tags (such as `[SYSTEM]`, `[CPU_HOGS]`, `[MEMORY]`, and `[STORAGE]`) [4]. This keeps your metrics isolated, allowing lightweight models to analyze your CPU, RAM, and disk specs with absolute precision [4].
+To prevent this, the active diagnostics tool `ai-system-diagnosis` prefixes each performance category with high-contrast, bracket tags (such as `[SYSTEM]`, `[CPU_HOGS]`, `[MEMORY]`, and `[STORAGE]`) [4]. This keeps your metrics isolated, allowing even lightweight models to analyze your CPU, RAM, and disk specs with absolute precision [4].
 
 ---
-
-## 7. Suggestion Carousel & Visual Cues
-
-* **Multi-Contender Carousel:** If your terminal query matches more than one local intent, the CLI suggestion prompt displays a cycle index:
-  ```text
-  AI Suggestion (1/2) [Up/Down]: ...
-  ```
-  Pressing the **Up** and **Down** arrow keys allows you to cycle through your top 3 highest-probability matches cleanly.
-* **Visual Intent Headers:** To quickly identify long, complex command strings on your screen, the carousel displays your matched intent in bold-cyan brackets right before the executable command:
-  ```text
-  AI Suggestion (1/2) [Up/Down]: [spotify music] -> uwsm app -- brave-origin...
-  ```
-
-
