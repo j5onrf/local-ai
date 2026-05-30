@@ -57,4 +57,4 @@ cd ~/Documents ---> go to documents, cd documents, open documents
 [TOOL] xdg-open ~/Documents ---> open my documents folder, show my documents, launch documents folder
 
 # --- System Update Inspector ---
-[TOOL] /home/j5/.config/local-ai/ai-suggestion/tools/update-inspector ---> update inspector, check for system updates, are there any important upgrades, look at pending packages, explain my updates, what is updating, do I need to update today
+[TOOL] ~/.config/local-ai/ai-suggestion/tools/update-inspector ---> update inspector, check for system updates, are there any important upgrades
