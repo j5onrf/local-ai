@@ -1,4 +1,4 @@
-# AI-Suggestion Agent (v0.7.3-alpha)
+# AI-Suggestion Agent (v0.7.3.1-alpha)
 
 <img alt="20260528_175036" src="https://github.com/user-attachments/assets/7f90513b-0b29-41e2-8471-055a00e8371c" />
 
