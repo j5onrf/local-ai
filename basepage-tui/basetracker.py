@@ -13,7 +13,10 @@ from datetime import datetime
 TRACK_TARGETS = {
     "1": {"name": "Hugging Face: HauhauCS", "type": "huggingface_user", "id": "HauhauCS"},
     "2": {"name": "Hugging Face: Unsloth", "type": "huggingface_org", "id": "unsloth"},
-    "3": {"name": "Hugging Face: Microsoft", "type": "huggingface_user", "id": "microsoft"},
+    "3": {"name": "Hugging Face: mradermacher", "type": "huggingface_user", "id": "mradermacher"},
+    "4": {"name": "Hugging Face: Bartowski", "type": "huggingface_user", "id": "bartowski"},
+    "5": {"name": "Hugging Face: MaziyarPanahi", "type": "huggingface_user", "id": "MaziyarPanahi"},
+    "6": {"name": "Hugging Face: Arcee AI", "type": "huggingface_org", "id": "arcee-ai"},
 }
 
 LIMIT = 10  # Number of items to show per category
