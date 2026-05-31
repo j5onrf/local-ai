@@ -16,28 +16,16 @@ The project operates under an on-demand execution model designed to protect term
 
 ---
 
-## 2. Cloud Integration & Tool Toggling
+## 2. Cloud Integration
 
 The agent natively supports **Google Gemini's OpenAI-compatible completions API** [2]. This allows you to offload conversational reasoning and context-injected tool calls to the cloud with **0% local CPU/RAM overhead** [1].
 
-### A. Environment Configuration (`~/.bashrc`)
+### Environment Configuration (`~/.bashrc`)
 To activate cloud mode, export your API key and preferred model at the top of your `~/.bashrc` [1]:
 ```bash
 export GEMINI_API_KEY="AIzaSyYourFullGeminiApiKeyHere"
 export CLOUD_MODEL="gemini-3.1-flash-lite"
 ```
-
-### B. On-Demand Tool Toggling
-The agent supports native, zero-latency toggling of Gemini's built-in APIs directly from your active shell session [3]:
-
-* **Google Search Grounding (On by Default):** Automatically executes Google Search queries in the background to ground responses in real-time web data [1.1.1].
-  * *To check status:* `ai --grounding`
-  * *To toggle:* `ai --grounding [on|off]`
-* **Python Code Execution Sandbox (Off by Default):** Allows Gemini to execute Python calculations in a secure sandbox and return the outputs [2.1].
-  * *To check status:* `ai --code-exec`
-  * *To toggle:* `ai --code-exec [on|off]`
-
----
 
 ## 3. Configuration & The Semantic Index
 
@@ -96,15 +84,7 @@ The system silently monitors and logs your API transactions to a local JSON data
 
 * **Path:** `~/.config/local-ai/ai-suggestion/api-usage.json`
 
-### A. On-Demand Token Usage (`ai --usage`)
-Your chat screen remains completely clean, but you can query your last transaction's stats on-demand at any time [1]:
-```bash
-ai --usage
-```
-*Example Output:*
-`[Model: gemini-3.1-flash-lite | Prompt: 100t | Gen: 69t | Total: 169t]`
-
-### B. System Monitor Dashboard (`ai --status`)
+### System Monitor Dashboard (`ai --status`)
 To give you a comprehensive monitor of your configuration and usage, run the 0% memory ASCII dashboard:
 ```bash
 ai --status
