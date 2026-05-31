@@ -21,7 +21,7 @@ When you type a command typo or unrecognized phrase, a high-speed C-compiled loc
 *   **Zero-Background Footprint:** No background processes, timers, or daemons. Sourced synchronously only for the millisecond you execute a typo or query.
 *   **Instant Typo Correction (Local):** Local set-matrix calculations match and correct command typos locally, completely bypassing the LLM.
 *   **Hybrid Local/Cloud Brains:** Runs privately on your local `llama-server`, or routes instantly to Google Gemini for rapid cloud execution with 0% local RAM/CPU overhead [1, 2].
-*   **On-Demand Google Search Grounding:** Fetch real-time web results using Google Search by passing your question through `ai --gs <your question>` (or by typing `--gs <your question>` after launching the conversation menu via `ai`).
+*   **On-Demand Google Search Grounding:** Fetch real-time web results using Google Search by passing your question through `ai --gs <your question>`.
 *   **CLI System Monitor Dashboard:** Run `ai --status` to view local index metrics, API connectivity status, and lifetime token usage in a compact terminal card.
 
 ---
