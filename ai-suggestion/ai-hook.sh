@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-
-# AI Suggestion v0.7.3 [j5onrf] [05-30-26]
+# AI Suggestion v0.7.3.1 [j5onrf] [05-30-26]
 
 # 1. Early-exit if shell is not interactive
 [[ $- != *i* ]] && return
@@ -217,51 +216,9 @@ ai() {
         fi
     fi
 
-    # Intercept manual compile, map, status, and usage parameters (passes all arguments correctly)
-    if [[ "$1" == "--compile" || "$1" == "--map" || "$1" == "--status" || "$1" == "--usage" ]]; then
+    # Intercept manual compile and status parameters (passes all arguments correctly)
+    if [[ "$1" == "--compile" || "$1" == "--status" ]]; then
         "$_AI_PYTHON_BIN" "$_AI_SCRIPT_PATH" "$@"
-        return 0
-    fi
-
-    # Intercept Google Search Grounding toggle (Sourced directly in active parent shell) [3]
-    if [[ "$1" == "--grounding" ]]; then
-        if [[ "$2" == "on" ]]; then
-            export GEMINI_GROUNDING="true"
-            echo -e "\e[1;32m✓ Google Search Grounding enabled for active session.\e[0m"
-        elif [[ "$2" == "off" ]]; then
-            export GEMINI_GROUNDING="false"
-            echo -e "\e[1;30m✓ Google Search Grounding disabled.\e[0m"
-        else
-            # Print current active status based on the default-to-true logic
-            local active_env="${GEMINI_GROUNDING:-true}"
-            if [[ "$active_env" == "true" ]]; then
-                echo -e "Google Search Grounding is currently \e[1;32mENABLED\e[0m (Default)."
-            else
-                echo -e "Google Search Grounding is currently \e[1;30mDISABLED\e[0m."
-            fi
-            echo "Usage: ai --grounding [on|off] to toggle."
-        fi
-        return 0
-    fi
-
-    # Intercept Python Code Execution toggle (Sourced directly in active parent shell) [3]
-    if [[ "$1" == "--code-exec" ]]; then
-        if [[ "$2" == "on" ]]; then
-            export GEMINI_CODE_EXEC="true"
-            echo -e "\e[1;32m✓ Python Code Execution sandbox enabled for active session.\e[0m"
-        elif [[ "$2" == "off" ]]; then
-            export GEMINI_CODE_EXEC="false"
-            echo -e "\e[1;30m✓ Python Code Execution sandbox disabled.\e[0m"
-        else
-            # Print current active status based on the default-to-false logic
-            local active_env="${GEMINI_CODE_EXEC:-false}"
-            if [[ "$active_env" == "true" ]]; then
-                echo -e "Python Code Execution is currently \e[1;32mENABLED\e[0m."
-            else
-                echo -e "Python Code Execution is currently \e[1;30mDISABLED\e[0m (Default)."
-            fi
-            echo "Usage: ai --code-exec [on|off] to toggle."
-        fi
         return 0
     fi
 
