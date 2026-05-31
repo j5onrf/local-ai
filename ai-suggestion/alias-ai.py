@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# AI Suggestion v0.7.3.1 [j5onrf] [05-30-26]
+# AI Suggestion v0.7.3.3 [j5onrf] [05-31-26]
 
 import sys
 import re
@@ -366,17 +366,9 @@ if len(sys.argv) > 1 and sys.argv[1] == "--status":
         key_show = os.environ.get("GEMINI_API_KEY", "")[:8] + "..."
         print(f"\033[1;36m│\033[0m  API Key:         \033[1;30mLoaded ({key_show})\033[0m                      \033[1;36m│\033[0m")
         print(f"\033[1;36m│\033[0m  Cloud Model:     \033[1;35m{model or 'gemini-1.5-flash'}\033[0m                 \033[1;36m│\033[0m")
-        grounding_active = os.environ.get("GEMINI_GROUNDING", "false").lower() == "true"
-        code_exec_active = os.environ.get("GEMINI_CODE_EXEC", "false").lower() == "true"
         
         # Tools Status strings
-        gr_status = "\033[1;32mGoogle Search\033[0m" if grounding_active else "\033[1;30mNone\033[0m"
-        if code_exec_active:
-            if grounding_active:
-                gr_status += " \033[1;30m+\033[0m \033[1;32mPython Code-Exec\033[0m"
-            else:
-                gr_status = "\033[1;32mPython Code-Exec\033[0m"
-            
+        gr_status = "\033[1;32mGoogle Search Grounding via --gs\033[0m"
         print(f"\033[1;36m│\033[0m  Active Tools:    {gr_status:<49}\033[1;36m│\033[0m")
     else:
         print(f"\033[1;36m│\033[0m  Active Mode:     \033[1;34mLocal Llama Server\033[0m                     \033[1;36m│\033[0m")
@@ -474,31 +466,49 @@ if len(sys.argv) > 1 and sys.argv[1] == "--talk":
     url, headers, model = get_api_config()
     
     if len(sys.argv) > 2:
-        query = " ".join(sys.argv[2:])
+        raw_query = " ".join(sys.argv[2:])
+        
+        # Check if the query explicitly requests Google Search grounding
+        use_google_search = False
+        if raw_query.startswith("--gs "):
+            use_google_search = True
+            query = raw_query[5:].strip()
+        elif raw_query == "--gs":
+            use_google_search = True
+            query = ""
+        else:
+            query = raw_query
+
+        # Safety validation
+        if use_google_search and not os.environ.get("GEMINI_API_KEY"):
+            print("\033[1;31mError: Google Search grounding (--gs) requires a valid GEMINI_API_KEY.\033[0m")
+            sys.exit(1)
         
         # 1. Run a local matrix check to see if query maps to a [TOOL]
         system_context = ""
-        tool_match = matrix_search(query)
-        if tool_match:
-            first_match = tool_match.split("\n")[0]
-            if "|||" in first_match:
-                intent, cmd = first_match.split("|||", 1)
-                if cmd.startswith("[TOOL]"):
-                    tool_cmd = cmd.replace("[TOOL]", "").strip()
-                    # Lazy-load subprocess only when executing a local tool
-                    import subprocess
-                    try:
-                        # Increased timeout safety from 8s to 15s to support slow package/mirror syncs
-                        output = subprocess.check_output(tool_cmd, shell=True, text=True, timeout=15).strip()
-                        # Clean confirmation for silent GUI tools
-                        if not output:
-                            output = "Action executed successfully."
-                        # Inject raw output only - no path or filename leaks to prevent LLM confusion
-                        system_context = f"{output}\n"
-                    except Exception as e:
-                        # Print explicit red warning directly to terminal stderr if tool crashes or times out (no "DEBUG" prefix)
-                        print(f"\033[1;31mTool execution failed: {str(e)}\033[0m", file=sys.stderr)
-                        system_context = f"[SYSTEM ERROR] Failed to run local tool: {str(e)}\n"
+        # Skip local tool check if explicitly requesting search grounding
+        if not use_google_search:
+            tool_match = matrix_search(query)
+            if tool_match:
+                first_match = tool_match.split("\n")[0]
+                if "|||" in first_match:
+                    intent, cmd = first_match.split("|||", 1)
+                    if cmd.startswith("[TOOL]"):
+                        tool_cmd = cmd.replace("[TOOL]", "").strip()
+                        # Lazy-load subprocess only when executing a local tool
+                        import subprocess
+                        try:
+                            # Increased timeout safety from 8s to 15s to support slow package/mirror syncs
+                            output = subprocess.check_output(tool_cmd, shell=True, text=True, timeout=15).strip()
+                            # Clean confirmation for silent GUI tools
+                            if not output:
+                                output = "Action executed successfully."
+                            # Inject raw output only - no path or filename leaks to prevent LLM confusion
+                            system_context = f"{output}\n"
+                        except Exception as e:
+                            # Print explicit red warning directly to terminal stderr if tool crashes or times out (no "DEBUG" prefix)
+                            print(f"\033[1;31mTool execution failed: {str(e)}\033[0m", file=sys.stderr)
+                            system_context = f"[SYSTEM ERROR] Failed to run local tool: {str(e)}\n"
 
         # 2. Compile conversational assistant system prompt
         system_prompt = (
@@ -515,8 +525,29 @@ if len(sys.argv) > 1 and sys.argv[1] == "--talk":
                 f"{system_context}"
             )
 
-        try:
-            # Build model-agnostic unified user prompt (RAG standard)
+        # 3. Generate correct REST request payload for requested route
+        gemini_key = os.environ.get("GEMINI_API_KEY")
+        if use_google_search and gemini_key:
+            # Route to native Google Developer streamGenerateContent endpoint
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model or 'gemini-1.5-flash'}:streamGenerateContent?alt=sse"
+            headers = {
+                "Content-Type": "application/json",
+                "x-goog-api-key": gemini_key
+            }
+            payload = {
+                "contents": [
+                    {
+                        "parts": [
+                            {"text": query}
+                        ]
+                    }
+                ],
+                "tools": [
+                    {"google_search": {}}
+                ]
+            }
+        else:
+            # Standard local / Cloud OpenAI-compatible endpoint payload route
             unified_prompt = ""
             if system_context:
                 unified_prompt += (
@@ -536,22 +567,8 @@ if len(sys.argv) > 1 and sys.argv[1] == "--talk":
             }
             if model:
                 payload["model"] = model
-                # If Google cloud-mode is active and grounding is enabled, append the tool!
-                if "generativelanguage" in url:
-                    tools_list = []
-                    
-                    # Robust default-to-true parsing for Search Grounding
-                    grounding_env = os.environ.get("GEMINI_GROUNDING", "true").lower()
-                    grounding_active = grounding_env != "false"
-                    code_exec_active = os.environ.get("GEMINI_CODE_EXEC", "false").lower() == "true"
-                    
-                    if grounding_active:
-                        tools_list.append({"google_search": {}})
-                    if code_exec_active:
-                        tools_list.append({"code_execution": {}})
-                    if tools_list:
-                        payload["tools"] = tools_list
-                
+
+        try:
             response = requests.post(url, json=payload, headers=headers, stream=True)
             # Raise an HTTPError if Google returns an API failure (like 401 Unauthorized) [1]
             response.raise_for_status()
@@ -566,7 +583,7 @@ if len(sys.argv) > 1 and sys.argv[1] == "--talk":
                 try:
                     data = json.loads(decoded)
                     
-                    # 1. Parse standard streaming text completions
+                    # 1. Parse standard streaming text completions (OpenAI format)
                     if "choices" in data and len(data["choices"]) > 0:
                         content = data["choices"][0]["delta"].get("content", "")
                         if content:
@@ -575,13 +592,31 @@ if len(sys.argv) > 1 and sys.argv[1] == "--talk":
                                 first_chunk = False
                             print(content, end="", flush=True)
                             
-                    # 2. Parse final stream usage chunk silently for local caching [1, 2]
+                    # 2. Parse native Google GenerateContentResponse stream chunks
+                    if "candidates" in data and len(data["candidates"]) > 0:
+                        candidate = data["candidates"][0]
+                        if "content" in candidate and "parts" in candidate["content"] and len(candidate["content"]["parts"]) > 0:
+                            content = candidate["content"]["parts"][0].get("text", "")
+                            if content:
+                                if first_chunk:
+                                    print("\033[1;32mAI: \033[0m", end="", flush=True)
+                                    first_chunk = False
+                                print(content, end="", flush=True)
+
+                    # 3. Parse standard stream usage chunk (OpenAI format)
                     if "usage" in data and data["usage"]:
                         usage = data["usage"]
                         p_tok = usage.get("prompt_tokens", 0)
                         c_tok = usage.get("completion_tokens", 0)
                         t_tok = usage.get("total_tokens", 0)
-                        # Silent local cache logging (no screen clutter!)
+                        log_usage(model, p_tok, c_tok, t_tok)
+
+                    # 4. Parse native Google GenerateContentResponse usage metadata
+                    if "usageMetadata" in data:
+                        metadata = data["usageMetadata"]
+                        p_tok = metadata.get("promptTokenCount", 0)
+                        c_tok = metadata.get("candidatesTokenCount", 0)
+                        t_tok = metadata.get("totalTokenCount", 0)
                         log_usage(model, p_tok, c_tok, t_tok)
                 except Exception:
                     pass
@@ -599,29 +634,46 @@ if len(sys.argv) > 1 and sys.argv[1] == "--talk":
         print("\033[1;34m💬 Local AI Conversation Mode. Ctrl+C to quit.\033[0m\n")
         try:
             while True:
-                query = input("❯ ")
-                if not query.strip():
+                raw_query = input("❯ ")
+                if not raw_query.strip():
+                    continue
+
+                # Parse optional grounding trigger inside conversational loop
+                use_google_search = False
+                if raw_query.strip().startswith("--gs "):
+                    use_google_search = True
+                    query = raw_query.strip()[5:].strip()
+                elif raw_query.strip() == "--gs":
+                    use_google_search = True
+                    query = ""
+                else:
+                    query = raw_query.strip()
+
+                # Safety validation
+                if use_google_search and not os.environ.get("GEMINI_API_KEY"):
+                    print("\033[1;31mError: Google Search grounding (--gs) requires a valid GEMINI_API_KEY.\033[0m")
                     continue
 
                 # 1. Run a local matrix check inside the interactive chat loop
                 system_context = ""
-                tool_match = matrix_search(query)
-                if tool_match and tool_match.startswith("[TOOL]"):
-                    tool_cmd = tool_match.replace("[TOOL]", "").strip()
-                    # Lazy-load subprocess only when executing a local tool
-                    import subprocess
-                    try:
-                        # Increased timeout safety from 8s to 15s to support slow package/mirror syncs
-                        output = subprocess.check_output(tool_cmd, shell=True, text=True, timeout=15).strip()
-                        # Clean confirmation for silent GUI tools
-                        if not output:
-                            output = "Action executed successfully."
-                        # Inject raw output only - no path or filename leaks to prevent LLM confusion
-                        system_context = f"{output}\n"
-                    except Exception as e:
-                        # Print explicit red warning directly to terminal stderr if tool crashes or times out (no "DEBUG" prefix)
-                        print(f"\033[1;31mTool execution failed: {str(e)}\033[0m", file=sys.stderr)
-                        system_context = f"[SYSTEM ERROR] Failed to run local tool: {str(e)}\n"
+                if not use_google_search:
+                    tool_match = matrix_search(query)
+                    if tool_match and tool_match.startswith("[TOOL]"):
+                        tool_cmd = tool_match.replace("[TOOL]", "").strip()
+                        # Lazy-load subprocess only when executing a local tool
+                        import subprocess
+                        try:
+                            # Increased timeout safety from 8s to 15s to support slow package/mirror syncs
+                            output = subprocess.check_output(tool_cmd, shell=True, text=True, timeout=15).strip()
+                            # Clean confirmation for silent GUI tools
+                            if not output:
+                                output = "Action executed successfully."
+                            # Inject raw output only - no path or filename leaks to prevent LLM confusion
+                            system_context = f"{output}\n"
+                        except Exception as e:
+                            # Print explicit red warning directly to terminal stderr if tool crashes or times out (no "DEBUG" prefix)
+                            print(f"\033[1;31mTool execution failed: {str(e)}\033[0m", file=sys.stderr)
+                            system_context = f"[SYSTEM ERROR] Failed to run local tool: {str(e)}\n"
 
                 # 2. Compile conversational assistant system prompt
                 system_prompt = (
@@ -638,41 +690,48 @@ if len(sys.argv) > 1 and sys.argv[1] == "--talk":
                         f"{system_context}"
                     )
 
-                # Build model-agnostic unified user prompt (RAG standard)
-                unified_prompt = ""
-                if system_context:
-                    unified_prompt += (
-                        f"[REAL-TIME SYSTEM CONTEXT]\n"
-                        f"You have read-only terminal access. The required system data has "
-                        f"already been successfully fetched and is provided below:\n{system_context}\n"
-                        f"Do not state that you cannot access their system, as the data has "
-                        f"already been successfully provided to you.\n\n"
-                    )
-                unified_prompt += f"User Question: {query}"
+                # 3. Generate correct REST request payload for requested route
+                gemini_key = os.environ.get("GEMINI_API_KEY")
+                if use_google_search and gemini_key:
+                    # Route to native Google Developer streamGenerateContent endpoint
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model or 'gemini-1.5-flash'}:streamGenerateContent?alt=sse"
+                    headers = {
+                        "Content-Type": "application/json",
+                        "x-goog-api-key": gemini_key
+                    }
+                    payload = {
+                        "contents": [
+                            {
+                                "parts": [
+                                    {"text": query}
+                                ]
+                            }
+                        ],
+                        "tools": [
+                            {"google_search": {}}
+                        ]
+                    }
+                else:
+                    # Standard local / Cloud OpenAI-compatible endpoint payload route
+                    unified_prompt = ""
+                    if system_context:
+                        unified_prompt += (
+                            f"[REAL-TIME SYSTEM CONTEXT]\n"
+                            f"You have read-only terminal access. The required system data has "
+                            f"already been successfully fetched and is provided below:\n{system_context}\n"
+                            f"Do not state that you cannot access their system, as the data has "
+                            f"already been successfully provided to you.\n\n"
+                        )
+                    unified_prompt += f"User Question: {query}"
 
-                payload = {
-                    "messages": [
-                        {"role": "user", "content": unified_prompt}
-                    ],
-                    "stream": True
-                }
-                if model:
-                    payload["model"] = model
-                    # If Google cloud-mode is active and grounding is enabled, append the tool!
-                    if "generativelanguage" in url:
-                        tools_list = []
-                        
-                        # Robust default-to-true parsing for Search Grounding
-                        grounding_env = os.environ.get("GEMINI_GROUNDING", "true").lower()
-                        grounding_active = grounding_env != "false"
-                        code_exec_active = os.environ.get("GEMINI_CODE_EXEC", "false").lower() == "true"
-                        
-                        if grounding_active:
-                            tools_list.append({"google_search": {}})
-                        if code_exec_active:
-                            tools_list.append({"code_execution": {}})
-                        if tools_list:
-                            payload["tools"] = tools_list
+                    payload = {
+                        "messages": [
+                            {"role": "user", "content": unified_prompt}
+                        ],
+                        "stream": True
+                    }
+                    if model:
+                        payload["model"] = model
                     
                 try:
                     response = requests.post(url, json=payload, headers=headers, stream=True)
@@ -689,7 +748,7 @@ if len(sys.argv) > 1 and sys.argv[1] == "--talk":
                         try:
                             data = json.loads(decoded)
                             
-                            # 1. Parse standard streaming text completions
+                            # 1. Parse standard streaming text completions (OpenAI format)
                             if "choices" in data and len(data["choices"]) > 0:
                                 content = data["choices"][0]["delta"].get("content", "")
                                 if content:
@@ -698,13 +757,31 @@ if len(sys.argv) > 1 and sys.argv[1] == "--talk":
                                         first_chunk = False
                                     print(content, end="", flush=True)
                                     
-                            # 2. Parse final stream usage chunk silently for local caching [1, 2]
+                            # 2. Parse native Google GenerateContentResponse stream chunks
+                            if "candidates" in data and len(data["candidates"]) > 0:
+                                candidate = data["candidates"][0]
+                                if "content" in candidate and "parts" in candidate["content"] and len(candidate["content"]["parts"]) > 0:
+                                    content = candidate["content"]["parts"][0].get("text", "")
+                                    if content:
+                                        if first_chunk:
+                                            print("\033[1;32mAI: \033[0m", end="", flush=True)
+                                            first_chunk = False
+                                        print(content, end="", flush=True)
+
+                            # 3. Parse standard stream usage chunk (OpenAI format)
                             if "usage" in data and data["usage"]:
                                 usage = data["usage"]
                                 p_tok = usage.get("prompt_tokens", 0)
                                 c_tok = usage.get("completion_tokens", 0)
                                 t_tok = usage.get("total_tokens", 0)
-                                # Silent local cache logging (no screen clutter!)
+                                log_usage(model, p_tok, c_tok, t_tok)
+
+                            # 4. Parse native Google GenerateContentResponse usage metadata
+                            if "usageMetadata" in data:
+                                metadata = data["usageMetadata"]
+                                p_tok = metadata.get("promptTokenCount", 0)
+                                c_tok = metadata.get("candidatesTokenCount", 0)
+                                t_tok = metadata.get("totalTokenCount", 0)
                                 log_usage(model, p_tok, c_tok, t_tok)
                         except Exception:
                             pass
