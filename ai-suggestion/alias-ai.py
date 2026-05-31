@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# AI Suggestion v0.7.3 [j5onrf] [05-30-26]
+# AI Suggestion v0.7.3.1 [j5onrf] [05-30-26]
 
 import sys
 import re
@@ -14,7 +14,7 @@ DESTRUCTIVE_KEYWORDS = ["rm ", "dd ", "mkfs", "shred", "chmod -R 777", "> /dev/s
 # Pre-compile regex patterns to save execution time
 TOKEN_RE = re.compile(r"[^\w\s]")
 
-# Standard English stop-words to prevent grammatical collisions (0ms memory overhead)
+# Standard English stop-words to prevent grammatical collisions (0ms overhead)
 STOP_WORDS = {
     "is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", 
     "for", "me", "you", "my", "your", "we", "us", "show", "get", "run", "check",
@@ -115,6 +115,144 @@ def matrix_search(query, threshold=0.50): # Lowered slightly to capture close al
                 
     return "\n".join(top_entries) if top_entries else None
 
+def parse_universal_file(file_path):
+    if not os.path.exists(file_path):
+        return []
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            lines = f.read().splitlines()
+    except Exception:
+        return []
+
+    new_mappings = []
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#") or line.startswith("--"):
+            continue
+        
+        # 1. Parse direct ---> context format (for merging external context files)
+        if "--->" in line and not line.startswith("----->"):
+            cmd_side, intents_side = line.split("--->", 1)
+            new_mappings.append((cmd_side.strip(), intents_side.strip(), True))
+            continue
+
+        # 2. Parse Bash/Zsh Aliases
+        alias_match = re.match(r"^alias\s+(\w+)\s*=\s*(.*)", line)
+        if alias_match:
+            trigger = alias_match.group(1).strip()
+            cmd_part = alias_match.group(2).strip().strip("'\"")
+            new_mappings.append((cmd_part, trigger, False))
+            continue
+
+        # 3. Parse Hyprland Legacy Binds (.conf)
+        if line.startswith("bind") and "exec," in line:
+            try:
+                left_side, cmd_part = line.split("exec,", 1)
+                cmd_part = cmd_part.strip().strip("'\"")
+                parts = [p.strip() for p in left_side.split(",")]
+                trigger_key = ""
+                for p in reversed(parts):
+                    clean_p = p.replace("bind", "").replace("=", "").strip()
+                    if clean_p:
+                        trigger_key = clean_p
+                        break
+                if cmd_part:
+                    new_mappings.append((cmd_part, trigger_key, False))
+            except Exception:
+                pass
+            continue
+
+        # 4. Parse Hyprland 0.55+ Modern Lua Binds (.lua)
+        # e.g., hl.bind("SUPER + SHIFT + Q", hl.dsp.exec_cmd("firefox"))
+        if "hl.bind" in line and "hl.dsp.exec_cmd" in line:
+            try:
+                cmd_match = re.search(
+                    r"hl\.dsp\.exec_cmd\(\s*\[*['\"]*(.*?)['\"]*\]*\s*\)", line
+                )
+                key_match = re.search(
+                    r"hl\.bind\(\s*\[*['\"]*(.*?)['\"]*\]*\s*,", line
+                )
+                if cmd_match and key_match:
+                    cmd_part = cmd_match.group(1).strip().strip("'\"")
+                    trigger_key = key_match.group(1).strip().strip("'\"")
+                    
+                    # Split into short, non-truncating lines to prevent clipboard bugs
+                    trigger_key = trigger_key.replace("mainMod ..", "SUPER")
+                    trigger_key = trigger_key.replace("mainMod", "SUPER")
+                    trigger_key = trigger_key.replace("..", "+")
+                    trigger_key = trigger_key.replace("\"", "").replace("'", "")
+                    trigger_key = trigger_key.strip()
+                    trigger_key = re.sub(r"\s+", " ", trigger_key)
+                    if cmd_part:
+                        new_mappings.append((cmd_part, trigger_key, False))
+            except Exception:
+                pass
+            continue
+
+        # 5. Parse Neovim Lua Keymaps
+        if "keymap.set" in line or "api.nvim_set_keymap" in line:
+            try:
+                quoted_strings = re.findall(r"['\"](.*?)['\"]", line)
+                if len(quoted_strings) >= 3:
+                    trigger = quoted_strings[1]
+                    cmd_part = quoted_strings[2]
+                    is_cmd_valid = trigger and cmd_part
+                    if is_cmd_valid and not cmd_part.startswith(":") and not cmd_part.startswith("<"):
+                        new_mappings.append((cmd_part, trigger, False))
+                    elif cmd_part.startswith(":"):
+                        new_mappings.append((f"nvim {cmd_part}", trigger, False))
+            except Exception:
+                pass
+            continue
+
+        # 6. Parse WezTerm / Lua config binds
+        if "SpawnCommand" in line and "args" in line:
+            try:
+                key_match = re.search(r"key\s*=\s*['\"](.*?)['\"]", line)
+                args_match = re.search(
+                    r"args\s*=\s*\{\s*['\"](.*?)['\"]", line
+                )
+                if key_match and args_match:
+                    trigger = key_match.group(1).strip()
+                    cmd_part = args_match.group(1).strip()
+                    new_mappings.append((cmd_part, trigger, False))
+            except Exception:
+                pass
+            continue
+            
+    return new_mappings
+
+def generate_intents_for_cmd(cmd, trigger):
+    # Safe fallback if LLM is offline
+    default_intents = f"launch {trigger}, run {cmd.split()[0]} via {trigger}" if trigger else f"run {cmd.split()[0]}"
+    url, headers, model = get_api_config()
+    import requests
+    try:
+        prompt = (
+            f"Generate 3 natural language intents (phrases) a user would type "
+            f"into a terminal to trigger this command: '{cmd}'. Output ONLY the "
+            f"phrases separated by commas. No explanations, no numbering, no formatting."
+        )
+        payload = {
+            "messages": [
+                {"role": "system", "content": "You are a strict terminal command to intent translator. Output only comma-separated phrases."},
+                {"role": "user", "content": prompt}
+            ],
+            "stream": False
+        }
+        if model:
+            payload["model"] = model
+            
+        response = requests.post(url, json=payload, headers=headers, timeout=5)
+        if response.status_code == 200:
+            ans = response.json()["choices"][0]["message"]["content"].strip()
+            ans = re.sub(r"^\d+\.\s*", "", ans)
+            if ans and len(ans) < 150:
+                return f"{ans}, {default_intents}"
+    except Exception:
+        pass
+    return default_intents
+
 def get_api_config():
     # Default to local llama-server on localhost:8080
     url = "http://localhost:8080/v1/chat/completions"
@@ -124,7 +262,6 @@ def get_api_config():
     # Check if Google Gemini API is configured
     gemini_key = os.environ.get("GEMINI_API_KEY")
     if gemini_key:
-        # Corrected: Swapped back to Google's official direct REST completions URL
         url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
         headers = {
             "Content-Type": "application/json",
@@ -229,10 +366,7 @@ if len(sys.argv) > 1 and sys.argv[1] == "--status":
         key_show = os.environ.get("GEMINI_API_KEY", "")[:8] + "..."
         print(f"\033[1;36m│\033[0m  API Key:         \033[1;30mLoaded ({key_show})\033[0m                      \033[1;36m│\033[0m")
         print(f"\033[1;36m│\033[0m  Cloud Model:     \033[1;35m{model or 'gemini-1.5-flash'}\033[0m                 \033[1;36m│\033[0m")
-        
-        # Robust default-to-true parsing for Search Grounding
-        grounding_env = os.environ.get("GEMINI_GROUNDING", "true").lower()
-        grounding_active = grounding_env != "false"
+        grounding_active = os.environ.get("GEMINI_GROUNDING", "false").lower() == "true"
         code_exec_active = os.environ.get("GEMINI_CODE_EXEC", "false").lower() == "true"
         
         # Tools Status strings
@@ -398,9 +532,7 @@ if len(sys.argv) > 1 and sys.argv[1] == "--talk":
                 "messages": [
                     {"role": "user", "content": unified_prompt}
                 ],
-                "stream": True,
-                # Enables full stream token tracking natively inside Google's completions [1]
-                "stream_options": {"include_usage": True}
+                "stream": True
             }
             if model:
                 payload["model"] = model
@@ -522,9 +654,7 @@ if len(sys.argv) > 1 and sys.argv[1] == "--talk":
                     "messages": [
                         {"role": "user", "content": unified_prompt}
                     ],
-                    "stream": True,
-                    # Enables full stream token tracking natively inside Google's completions [1]
-                    "stream_options": {"include_usage": True}
+                    "stream": True
                 }
                 if model:
                     payload["model"] = model
@@ -569,7 +699,7 @@ if len(sys.argv) > 1 and sys.argv[1] == "--talk":
                                     print(content, end="", flush=True)
                                     
                             # 2. Parse final stream usage chunk silently for local caching [1, 2]
-                            if "usage" in data["usage"]:
+                            if "usage" in data and data["usage"]:
                                 usage = data["usage"]
                                 p_tok = usage.get("prompt_tokens", 0)
                                 c_tok = usage.get("completion_tokens", 0)
