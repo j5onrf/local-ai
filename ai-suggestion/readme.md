@@ -2,7 +2,7 @@
 
 <img alt="20260528_175036" src="https://github.com/user-attachments/assets/7f90513b-0b29-41e2-8471-055a00e8371c" />
 
-`Qwen-3.5-2b/3.6-35B-A3B+` `Gemini-3.1-Flash-Lite` `Python 3.10+` `Bash 4.0+` `OpenAI-Compatible API`
+`LFM2.5-8B-A1B+` `Gemini-3.1-Flash-Lite` `Python 3.10+` `Bash 4.0+` `OpenAI-Compatible API`
 
 > ⚠️ **Alpha Release Notice:** This project is currently in active **Alpha** development and is subject to rapid, drastic changes. Our core design goals are to maintain an extremely lightweight, minimal shell footprint while empowering your command line with high-performance local/cloud AI tool workflows.
 
