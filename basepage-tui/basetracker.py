@@ -14,7 +14,6 @@ TRACK_TARGETS = {
     "1": {"name": "Hugging Face: HauhauCS", "type": "huggingface_user", "id": "HauhauCS"},
     "2": {"name": "Hugging Face: Unsloth", "type": "huggingface_org", "id": "unsloth"},
     "3": {"name": "Hugging Face: Microsoft", "type": "huggingface_user", "id": "microsoft"},
-    
 }
 
 LIMIT = 10  # Number of items to show per category
@@ -69,8 +68,8 @@ def render_target_view(target_config):
     sys.stdout.flush()
 
     username = target_config["id"]
+    now = datetime.now()
     
-    # Handles both 'huggingface_user' and 'huggingface_org' using the author query filter
     if target_config["type"] in ("huggingface_user", "huggingface_org"):
         modified_models = fetch_hf_data(username, "lastModified")
         created_models = fetch_hf_data(username, "createdAt")
@@ -80,39 +79,96 @@ def render_target_view(target_config):
             input("\n  Press [Enter] to return to menu...")
             return
 
+        # DYNAMIC ALIGNMENT ENGINE
+        # Find the longest model name across both lists to set the perfect column width
+        all_models = (modified_models[:LIMIT] if modified_models else []) + (created_models[:LIMIT] if created_models else [])
+        max_name_len = 30  # Default minimum floor width
+        for m in all_models:
+            name_len = len(m.get("id", "").split('/')[-1])
+            if name_len > max_name_len:
+                max_name_len = name_len
+                
+        # The badge column itself needs a fixed display block width (e.g., 12 chars wide)
+        # Printable badge text lengths: " [ UPDATED ]" = 12 chars, " [  NEW  ]" = 10 chars
+        # Since ANSI escapes break normal format padding, we construct it raw.
+        badge_col_width = 14
+
         while True:
             print_header(target_config["name"])
             print(f"  Target: huggingface.co/{username} | Snapshots (Max {LIMIT})\n")
             
             # --- SECTION 1: LAST 10 UPDATED ---
             print(" \033[1;34m󰚌  RECENTLY UPDATED / MODIFIED\033[0m")
-            print("\033[90m" + "─" * 70 + "\033[0m")
+            divider_len = max_name_len + badge_col_width + 25
+            print("\033[90m" + "─" * divider_len + "\033[0m")
+            
             if not modified_models:
                 print("  No public repositories found.")
             else:
                 for idx, model in enumerate(modified_models[:LIMIT], 1):
-                    model_id = model.get("id", "Unknown")
-                    short_name = model_id.split('/')[-1]
-                    formatted_time = parse_iso_time(model.get("lastModified", ""))
-                    color = "\033[0m" if idx % 2 == 0 else "\033[38;5;246m"
-                    print(f"  {idx:2d}. \033[1;32m{short_name:<30}\033[0m {color}Modified: {formatted_time}\033[0m")
+                    short_name = model.get("id", "Unknown").split('/')[-1]
+                    raw_mod_time = model.get("lastModified", "")
+                    formatted_time = parse_iso_time(raw_mod_time)
+                    
+                    # Compute badge state
+                    badge_str = ""
+                    is_new_update = False
+                    if raw_mod_time:
+                        try:
+                            clean_stamp = raw_mod_time.split('.')[0].replace('Z', '')
+                            days_old = (now - datetime.fromisoformat(clean_stamp)).days
+                            if days_old <= 7:
+                                is_new_update = True
+                        except Exception:
+                            pass
 
-            print("\n" + "\033[90m" + "─" * 70 + "\033[0m")
+                    # Build text segment lengths with manual spacing matrix
+                    name_padding = " " * (max_name_len - len(short_name))
+                    if is_new_update:
+                        badge_str = " \033[1;42;30m UPDATED \033[0m"
+                        badge_padding = " " * (badge_col_width - 12)
+                    else:
+                        badge_padding = " " * badge_col_width
+
+                    color = "\033[0m" if idx % 2 == 0 else "\033[38;5;246m"
+                    print(f"  {idx:2d}. \033[1;32m{short_name}\033[0m{name_padding}{badge_str}{badge_padding}{color}Modified: {formatted_time}\033[0m")
+
+            print("\n" + "\033[90m" + "─" * divider_len + "\033[0m")
             
             # --- SECTION 2: LAST 10 CREATED ---
             print(" \033[1;33m󰚌  NEWEST REPOSITORIES CREATED\033[0m")
-            print("\033[90m" + "─" * 70 + "\033[0m")
+            print("\033[90m" + "─" * divider_len + "\033[0m")
+            
             if not created_models:
                 print("  No public repositories found.")
             else:
                 for idx, model in enumerate(created_models[:LIMIT], 1):
-                    model_id = model.get("id", "Unknown")
-                    short_name = model_id.split('/')[-1]
-                    formatted_time = parse_iso_time(model.get("createdAt", ""))
-                    color = "\033[0m" if idx % 2 == 0 else "\033[38;5;246m"
-                    print(f"  {idx:2d}. \033[1;36m{short_name:<30}\033[0m {color}Created:  {formatted_time}\033[0m")
+                    short_name = model.get("id", "Unknown").split('/')[-1]
+                    raw_create_time = model.get("createdAt", "")
+                    formatted_time = parse_iso_time(raw_create_time)
+                    
+                    badge_str = ""
+                    is_brand_new = False
+                    if raw_create_time:
+                        try:
+                            clean_stamp = raw_create_time.split('.')[0].replace('Z', '')
+                            days_old = (now - datetime.fromisoformat(clean_stamp)).days
+                            if days_old <= 7:
+                                is_brand_new = True
+                        except Exception:
+                            pass
 
-            print("\033[90m" + "─" * 70 + "\033[0m")
+                    name_padding = " " * (max_name_len - len(short_name))
+                    if is_brand_new:
+                        badge_str = " \033[1;46;30m  NEW  \033[0m"
+                        badge_padding = " " * (badge_col_width - 10)
+                    else:
+                        badge_padding = " " * badge_col_width
+
+                    color = "\033[0m" if idx % 2 == 0 else "\033[38;5;246m"
+                    print(f"  {idx:2d}. \033[1;36m{short_name}\033[0m{name_padding}{badge_str}{badge_padding}{color}Created:  {formatted_time}\033[0m")
+
+            print("\033[90m" + "─" * divider_len + "\033[0m")
             print("  [q/Enter] Return to Target Selection")
             sys.stdout.flush()
 
@@ -124,8 +180,6 @@ def render_target_view(target_config):
 def main():
     keys = list(TRACK_TARGETS.keys())
     selected = 0
-    
-    # Hide cursor
     sys.stdout.write("\033[?25l")
     sys.stdout.flush()
     
@@ -144,17 +198,16 @@ def main():
             sys.stdout.flush()
             
             key = get_key()
-            if key == '\033[A':  # Up Arrow
+            if key == '\033[A':
                 selected = (selected - 1) % len(options)
-            elif key == '\033[B':  # Down Arrow
+            elif key == '\033[B':
                 selected = (selected + 1) % len(options)
-            elif key == '\r':  # Enter
-                if selected == len(keys):  # Selected Exit
+            elif key == '\r':
+                if selected == len(keys):
                     break
                 else:
                     render_target_view(TRACK_TARGETS[keys[selected]])
     finally:
-        # Restore cursor
         sys.stdout.write("\033[?25h")
         sys.stdout.flush()
 
