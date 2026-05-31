@@ -20,10 +20,8 @@ When you type a command typo or unrecognized phrase, a high-speed C-compiled loc
 
 * **Zero-Background Footprint:** No background processes, timers, or daemons. Sourced synchronously only for the millisecond you execute a typo or query.
 * **Instant Typo Correction (Local):** Local set-matrix calculations match and correct command typos locally, completely bypassing the LLM.
-* **Active System Tools (RAG):** Map standard CLI commands or custom scripts as `[TOOL]` configurations [3]. Your LLM dynamically executes them, reads their raw outputs, and answers conversational system questions in a single pass [2].
 * **Hybrid Local/Cloud Brains:** Runs privately on your local `llama-server`, or routes instantly to **Google Gemini** for rapid cloud execution with **0% local RAM/CPU overhead** [1, 2].
-* **On-Demand Toggles:** Sourced directly in your active shell. Toggle Google Search Grounding (`ai --grounding [on|off]`) or Python Code Execution (`ai --code-exec [on|off]`) in real-time [3].
-* **CLI System Monitor Dashboard:** Run `ai --status` or `ai --usage` to view real-time API transactions, prompt token costs, and local index metrics in a compact terminal card.
+* **CLI System Monitor Dashboard:** Run `ai --status` to view local index metrics in a compact terminal card.
 
 ---
 
