@@ -22,8 +22,8 @@ uwsm app -- brave-origin-beta --user-data-dir="/home/j5/.config/brave-spotify-bu
 ~/.config/local-ai/basepage-tui/basepage.py ---> base page, basepage, rss
 ~/.config/local-ai/basepage-tui/basetracker.py ---> base tracker, basetracker
 
-~/.config/local-ai/media-tui/media.py ---> media tui, cliamp
-~/.config/local-ai/media-tui/media.sh ---> media cli, cliamp
+~/.config/local-ai/media-tui/media.py ---> media cliamp, tui, py
+~/.config/local-ai/media-tui/media.sh ---> media sh, cliamp
 ~/.config/local-ai/media-tui/media.lua ---> media lua, cliamp
 
 # --- Agentic Tools ---
