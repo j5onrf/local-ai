@@ -1,4 +1,4 @@
-# AI-Suggestion Agent (v0.7.3.1-alpha)
+# AI-Suggestion Agent (ai-alias.py v0.7.3.3-alpha)
 
 <img alt="20260528_175036" src="https://github.com/user-attachments/assets/7f90513b-0b29-41e2-8471-055a00e8371c" />
 
@@ -16,12 +16,13 @@ When you type a command typo or unrecognized phrase, a high-speed C-compiled loc
 
 ---
 
-## Core Features
+### Core Features
 
-* **Zero-Background Footprint:** No background processes, timers, or daemons. Sourced synchronously only for the millisecond you execute a typo or query.
-* **Instant Typo Correction (Local):** Local set-matrix calculations match and correct command typos locally, completely bypassing the LLM.
-* **Hybrid Local/Cloud Brains:** Runs privately on your local `llama-server`, or routes instantly to **Google Gemini** for rapid cloud execution with **0% local RAM/CPU overhead** [1, 2].
-* **CLI System Monitor Dashboard:** Run `ai --status` to view local index metrics in a compact terminal card.
+*   **Zero-Background Footprint:** No background processes, timers, or daemons. Sourced synchronously only for the millisecond you execute a typo or query.
+*   **Instant Typo Correction (Local):** Local set-matrix calculations match and correct command typos locally, completely bypassing the LLM.
+*   **Hybrid Local/Cloud Brains:** Runs privately on your local `llama-server`, or routes instantly to Google Gemini for rapid cloud execution with 0% local RAM/CPU overhead [1, 2].
+*   **On-Demand Google Search Grounding:** Fetch real-time web results using Google Search by passing your question through `ai --gs <your question>` (or by typing `--gs <your question>` after launching the conversation menu via `ai`).
+*   **CLI System Monitor Dashboard:** Run `ai --status` to view local index metrics, API connectivity status, and lifetime token usage in a compact terminal card.
 
 ---
 
