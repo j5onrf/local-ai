@@ -16,7 +16,6 @@ btop ---> check system memory usage status
 
 # --- Apps ---
 omarchy-launch-webapp https://music.youtube.com/ ---> youtube music
-uwsm app -- brave-origin-beta --user-data-dir="/home/j5/.config/brave-spotify-bunker" --app=https://open.spotify.com/ >/dev/null 2>&1
 
 uwsm app -- brave-origin-beta --user-data-dir="/home/j5/.config/brave-spotify-bunker" --app=https://open.spotify.com/ >/dev/null 2>&1 ---> spotify music, spotify
 
