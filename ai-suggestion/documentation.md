@@ -1,4 +1,4 @@
-# AI-Suggestion Agent (v0.7.3-alpha) — Documentation
+# AI-Suggestion Agent (v0.7.3.1-alpha) — Documentation
 
 An adaptive, local/cloud AI shell assistant designed to conform to your terminal environment. By leveraging a high-speed, local token-matrix cache alongside local or cloud LLMs, it corrects command typos, manages aliases, executes system tools, and answers conversational queries with zero background CPU overhead.
 
