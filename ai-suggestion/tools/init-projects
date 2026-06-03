@@ -23,7 +23,7 @@ CONTEXT_DIR="/home/j5/.config/local-ai/ai-suggestion/projects"
 mkdir -p "$CONTEXT_DIR"
 
 SAFE_NAME="${TARGET_DIR//\//-}"
-SAFE_NAME="${SAFE_NAME#-}" # Remove leading dash
+SAFE_NAME="${SAFE_NAME#-}"
 CONTEXT_OUT="$CONTEXT_DIR/${SAFE_NAME}.txt"
 
 {
