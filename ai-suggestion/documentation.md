@@ -89,7 +89,7 @@ The agent natively supports **Google Gemini's OpenAI-compatible completions API*
 To activate cloud mode, export your API key and preferred model at the bottom of your `~/.bashrc`:
 ```bash
 export GEMINI_API_KEY="AIzaSyYourFullGeminiApiKeyHere"
-export CLOUD_MODEL="gemini-1.5-flash"
+export CLOUD_MODEL="gemini-3.1-flash-lite"
 ```
 
 ---
