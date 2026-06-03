@@ -25,7 +25,7 @@ Rules:
 [TOOL] hyprctl clients ---> hyprland clients, list open windows, show active apps, check running apps, browser windows open
 
 # --- Weather ---
-[TOOL] curl -s "wttr.in/Arnold?format=3" ---> weather simple, rain forcast simple
+[TOOL] curl -s "wttr.in/?format=3" ---> weather simple, rain forcast simple
 [TOOL] curl -s wttr.in ---> weather full, rain forcast full
 
 # --- GUI Navigation ---
