@@ -19,7 +19,7 @@ When working inside a codebase, the agent compiles a safe, path-specific map of 
 * **On-Demand Workspace Agents:** Indexes project directory trees, parses architectural files, and launches persistent codebase copilot sessions.
 * **Subprocess RAG Tool Injection:** Executes custom local scripts and pipes outputs directly into the conversational AI context.
 * **No Dependencies:** Written natively using Python's standard library—no `pip`, external dependencies, or heavy daemon environments required.
-* **Ultra-Lightweight & Auditable:** Built for complete transparency with under 40 lines of Bash and under 420 lines of highly readable, standard-library Python code.
+* **Ultra-Lightweight & Auditable:** Built for complete transparency with under ~50 lines of Bash and under ~500 lines of highly readable, standard-library Python code.
 
 ---
 
