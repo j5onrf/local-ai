@@ -57,9 +57,9 @@ uwsm app -- brave-origin-beta --user-data-dir="~/.config/brave-spotify-bunker" -
 ~/.config/local-ai/basepage-tui/basepage.py ---> base page, basepage tui, rss
 ~/.config/local-ai/basepage-tui/basetracker.py ---> base tracker, basetracker tui
 
-~/.config/local-ai/media-tui/media.py ---> media cliamp, media tui
-~/.config/local-ai/media-tui/media.sh ---> media sh, media cliamp
-~/.config/local-ai/media-tui/media.lua ---> media lua, media cliamp
+~/.config/local-ai/media-tui/media.py ---> media, cliamp
+# ~/.config/local-ai/media-tui/media.sh ---> media sh
+~/.config/local-ai/media-tui/media.lua ---> media lua
 
 ~/.config/local-ai/ai-summary/llmsum.py ---> llmsum, ytsum, summary
 
@@ -70,5 +70,3 @@ uwsm app -- brave-origin-beta --user-data-dir="~/.config/brave-spotify-bunker" -
 
 # --- Server Lifecycle Management ---
 ~/.config/local-ai/ai-suggestion/tools/kill-ai-servers ---> stop server, stop llama server, killserver
-
-
