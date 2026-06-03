@@ -74,10 +74,10 @@ source ~/.bashrc
 *(Optional)* Export your Gemini API key to activate cloud routing:
 ```bash
 export GEMINI_API_KEY="AIzaSyYourGeminiKey"
-
+```
 
 
 
 *For detailed system architecture diagrams, custom tool development guidelines, and advanced prompt engineering, refer to the full **[documentation.md](documentation.md)**.*
-```
+
 
