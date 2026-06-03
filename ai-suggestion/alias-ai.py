@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-# AI Suggestion v0.7.7.2 [j5onrf] [06-02-26]
+# AI Suggestion v0.7.7.4 [j5onrf] [06-03-26]
 
 import sys, re, os, json, threading, time
 import urllib.request as urlreq, urllib.error as urlerr
 
+# Enable standard terminal line editing and history features for input()
 try:
     import readline
 except ImportError:
@@ -172,8 +173,7 @@ def get_key():
     except termios.error:
         try:
             return os.read(fd, 1).decode("utf-8", errors="ignore")
-        except Exception:
-            return ""
+        except Exception: return ""
     try:
         tty.setraw(fd)
         r = os.read(fd, 1)
@@ -265,6 +265,20 @@ if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
                     query = raw_query.strip()
                     if query.lower() in ("exit", "quit", "q"):
                         print("\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
+                    
+                    # Compacted Markdown Session Backup Interceptor (11 Lines)
+                    if query.lower() in ("backup", "save"):
+                        try:
+                            fn = os.path.expanduser(f"~/ai-session-{time.strftime('%Y-%m-%d_%H%M%S')}.md")
+                            with open(fn, "w") as f:
+                                f.write(f"# Session Backup — {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n" + "".join(
+                                    f"### ❯ {m['content'].split('User Question: ', 1)[-1]}\n\n" if m["role"] == "user"
+                                    else f"**{'Agent' if is_agent else 'AI'}:** {m['content']}\n\n---\n\n" for m in chat_history
+                                ))
+                            print(f"\033[1;32mSession successfully backed up to: {fn}\033[0m\n")
+                        except Exception as e:
+                            print(f"\033[1;31mError writing backup: {str(e)}\033[0m\n")
+                        continue
 
                 system_context, tool_match = "", matrix_search(query)
                 if tool_match:
@@ -301,8 +315,7 @@ if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
                                 elif "candidates" in data and len(data["candidates"]) > 0:
                                     parts = data["candidates"][0].get("content", {}).get("parts", [])
                                     content = parts[0].get("text", "") if parts else ""
-                                else:
-                                    content = ""
+                                else: content = ""
                                 
                                 if content:
                                     if first_chunk:
@@ -367,8 +380,7 @@ if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
                         elif "candidates" in data and len(data["candidates"]) > 0:
                             parts = data["candidates"][0].get("content", {}).get("parts", [])
                             content = parts[0].get("text", "") if parts else ""
-                        else:
-                            content = ""
+                        else: content = ""
                         
                         if content:
                             if first_chunk:
