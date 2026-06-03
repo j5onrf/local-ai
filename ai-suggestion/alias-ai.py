@@ -350,15 +350,13 @@ if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
     # Standard single-turn conversation logic
     elif len(sys.argv) > 2:
         query = " ".join(sys.argv[2:])
-        system_context, tool_match = matrix_search(query, threshold=0.65)
+        system_context, tool_match = "", matrix_search(query, threshold=0.65)
         if tool_match:
             first_match = tool_match.split("\n")[0]
             if "|||" in first_match:
                 intent, cmd = first_match.split("|||", 1)
                 if cmd.startswith("[TOOL]"):
-                    tool_cmd = cmd.replace("[TOOL]", "").strip()
-                    print(f"\033[90m[sys] Executing: {tool_cmd}\033[0m")
-                    system_context = run_local_tool(tool_cmd)
+                    system_context = run_local_tool(cmd.replace("[TOOL]", "").strip())
 
         prompt = (
             "You are a helpful, conversational local AI shell assistant with read-only terminal access.\n"
