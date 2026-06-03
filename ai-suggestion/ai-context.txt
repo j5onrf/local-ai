@@ -10,51 +10,67 @@ Rules:
 # COMMAND MAPPING INDEX (Format: [cmd] ---> [intents])
 # ==============================================================================
 
-# --- ALIASES ---
-clear ---> cc, clear screen
-btop ---> check system memory usage status
+# ==============================================================================
+# 1: AGENTIC TOOLS
+# ==============================================================================
 
-# --- Apps ---
-omarchy-launch-webapp https://music.youtube.com/ ---> youtube music
-uwsm app -- brave-origin-beta --user-data-dir="/home/j5/.config/brave-spotify-bunker" --app=https://open.spotify.com/ >/dev/null 2>&1
+# --- System Info & Diagnostics ---
+# --- [time, date, calendar, system, diagnostics, health, storage, usage, updates]
+[TOOL] date ---> time date, show current date
+[TOOL] date; cal -s ---> calendar date, show calendar, what is today's date
+[TOOL] df -h / ---> disk usage, nvme drive usage, check storage space
+[TOOL] ~/.config/local-ai/ai-suggestion/tools/ai-system-diagnosis ---> system health, system diagnosis, why is my system slow
+[TOOL] ~/.config/local-ai/ai-suggestion/tools/update-inspector ---> update inspector
 
-uwsm app -- brave-origin-beta --user-data-dir="/home/j5/.config/brave-spotify-bunker" --app=https://open.spotify.com/ >/dev/null 2>&1 ---> spotify music, spotify
-
-~/.config/local-ai/basepage-tui/basepage.py ---> basepage, rss
-
-~/.config/local-ai/media-tui/media.py ---> media tui, cliamp
-
-# --- Agentic Tools ---
-[TOOL] date ---> time, date
-[TOOL] df -h / ---> show disk usage, nvme drive
-
-# --- Hyprland Commands ---
-[TOOL] hyprctl clients ---> hyprland clients, list open windows, show active apps, is brave open, what is running, brave windows open
-
-# --- Hyprland Workflow State Profiles ---
-~/.config/local-ai/ai-suggestion/tools/hyprstate/work ---> hyprstate work, setup my desk
-~/.config/local-ai/ai-suggestion/tools/hyprstate/clean ---> hyprstate clean, setup my desk
-~/.config/local-ai/ai-suggestion/tools/hyprstate/media ---> hyprstate media, setup my desk
-
-# --- Calendar ---
-[TOOL] date; cal -s ---> calendar, what is today's date
-
-# --- System Monitor & Diagnostics ---
-[TOOL] ~/.config/local-ai/ai-suggestion/tools/ai-system-diagnosis ---> why is my system slow, check system health, are any services failing, what is eating my cpu, show active processes, do I have enough RAM, system diagnostics, inspect systemd, check resource usage, show system status
-# --- System Maintenance & Server Controls ---
-~/.config/local-ai/ai-suggestion/tools/kill-ai-servers ---> stop server, -kill servers, stop llama server, stop llama.cpp, killserver
+# --- Hyprland Integration ---
+# --- [hyprland, clients, apps, windows, active, running, browser]
+[TOOL] hyprctl clients ---> hyprland clients, list open windows, show active apps, check running apps, browser windows open
 
 # --- Weather ---
-# 1. Simple One-Line Weather Tool (Quick/Short)
-[TOOL] curl -s wttr.in?format=3 ---> weather simple, simple weather, quick weather, short weather, get simple weather, rain, temperature, active weather, degrees
-# 2. Weather Tool (Full Forecast)
-[TOOL] curl -s wttr.in ---> weather, full weather, detailed weather, weather forecast, check local weather forecast, is it going to rain, rain forecast, precipitation, rain in the next few days, check if its going to rain, rain next few days
+# --- [weather, rain, simple, full, forecast]
+[TOOL] curl -s "wttr.in/Arnold?format=3" ---> weather simple, rain forcast simple
+[TOOL] curl -s wttr.in ---> weather full, rain forcast full
 
-# --- Shell Commands ---
-# 1. Shell Suggestion: Type this directly in your terminal to natively change directories
-cd ~/Documents ---> go to documents, cd documents, open documents
-# 2. Active AI Tool: Ask the AI conversationally to pop open your graphical file manager
-[TOOL] xdg-open ~/Documents ---> open my documents folder, show my documents, launch documents folder
+# --- GUI Navigation ---
+# --- [documents]
+[TOOL] xdg-open ~/Documents ---> open documents
 
-# --- System Update Inspector ---
-[TOOL] /home/j5/.config/local-ai/ai-suggestion/tools/update-inspector ---> update inspector, check for system updates, are there any important upgrades, look at pending packages, explain my updates, what is updating, do I need to update today
+
+# ==============================================================================
+# 2: COMMANDS & SCRIPTS
+# ==============================================================================
+
+# --- Interactive Shell Aliases & Directory Navigation ---
+# --- [cpu, memory, documents]
+btop ---> memory, cpu
+cd ~/Documents ---> cd documents, go to documents, open documents
+
+# --- Applications (GUI & Webapps) ---
+# --- [spotify, youtube, music]
+omarchy-launch-webapp https://music.youtube.com/ ---> youtube music, yt music, youtube webapp
+uwsm app -- brave-origin-beta --user-data-dir="~/.config/brave-spotify-bunker" --app=https://open.spotify.com/ >/dev/null 2>&1 ---> spotify music
+
+# --- TUI (Terminal User Interface) Scripts ---
+# --- [basepage, basetracker, rss, media, cliamp, tui]
+~/.config/local-ai/basepage-tui/basepage.py ---> base page, basepage tui, rss
+~/.config/local-ai/basepage-tui/basetracker.py ---> base tracker, basetracker tui
+
+~/.config/local-ai/media-tui/media.py ---> media cliamp, media tui
+~/.config/local-ai/media-tui/media.sh ---> media sh, media cliamp
+~/.config/local-ai/media-tui/media.lua ---> media lua, media cliamp
+
+~/.config/local-ai/ai-summary/llmsum.py ---> llmsum, ytsum, summary
+
+# --- Projects ---
+~/Projects/qwen-hypr ---> projects qwen, projects
+~/Projects/quickshell ---> projects quickshell, projects
+
+# --- State & Workflow Management ---
+# --- [hyprstate, workspace, work, clean, media]
+~/.config/local-ai/ai-suggestion/tools/hyprstate/work ---> hyprstate work, workspace work
+~/.config/local-ai/ai-suggestion/tools/hyprstate/clean ---> hyprstate clean, workspace clean
+~/.config/local-ai/ai-suggestion/tools/hyprstate/media ---> hyprstate media, workspace media
+
+# --- Server Lifecycle Management ---
+# --- [server, llama, killserver]
+~/.config/local-ai/ai-suggestion/tools/kill-ai-servers ---> stop server, stop llama server, killserver

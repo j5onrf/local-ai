@@ -1,41 +1,96 @@
-# AI-Suggestion Agent (v0.7.3-alpha) — Documentation
+# AI-Suggestion Agent (v0.7.7) — Documentation
 
-An adaptive, local/cloud AI shell assistant designed to conform to your terminal environment. By leveraging a high-speed, local token-matrix cache alongside local or cloud LLMs, it corrects command typos, manages aliases, executes system tools, and answers conversational queries with zero background CPU overhead.
+An adaptive, local/cloud AI shell assistant designed to conform to your terminal environment. By leveraging a high-speed, local token-matrix cache alongside local or cloud LLMs, it provides interactive command suggestions, manages aliases, executes system tools, and answers conversational queries with zero background CPU overhead.
 
 ---
 
-## 1. System Architecture & Dual-Mode Core
+## 1. System Architecture Overview
 
 The project operates under an on-demand execution model designed to protect terminal responsiveness:
 
 * **Zero-Background Footprint:** No background daemons, cron-jobs, or continuous CPU-polling threads are used. Your shell experiences 0% idle RAM and 0% idle CPU overhead.
 * **Dual-Layer Execution:** 
-  * **Standard typos (direct shell inputs):** Bypasses the LLM completely. Typo errors are evaluated locally via a C-compiled set-intersection matrix in under 2ms.
-  * **Conversational queries (using the `ai` prefix):** Run on-demand. If cloud API keys are set, it connects to Google Gemini; otherwise, it falls back to your local `llama-server`.
-* **Offline Resilience:** If your local AI server and internet are offline, your typo corrections, custom aliases, and interactive teaching loops continue to work locally and instantly. Only conversational LLM chat requests are safely blocked.
+  * **Standard suggestions (direct shell inputs):** Bypasses the LLM completely. Suggestion queries are evaluated locally via a pure Python Sørensen-Dice set-intersection matrix in under 2ms.
+  * **Conversational queries (using the `ai` prefix):** Run on-demand. If cloud API keys are set, it connects to Google Gemini; otherwise, it falls back to your local OpenAI-compatible completions API (such as `llama.cpp` or `Ollama` running on port 8080).
+* **On-Demand Workspace Agents (`ai init`):** A custom indexing routine that scans your project directories, generates structural file trees, and launches a persistent, multi-turn copilot session targeted specifically to your codebase.
+* **Offline Resilience:** If your local AI server and internet are offline, your command suggestions and custom aliases continue to work locally and instantly. Only conversational LLM chat requests are safely blocked.
+
+### A. The Suggestion Loop (0% Idle CPU / Offline-Safe)
+
+```text
+                         [ Direct Shell Input ]
+                                   │
+                                   ▼
+                        [ Token Matrix Search ]
+                       Sørensen-Dice Coefficient
+                                   │
+              ┌────────────────────┴────────────────────┐
+              ▼                                         ▼
+       ( Match Found )                           ( No Match Found )
+              │                                         │
+              ▼                                         ▼
+      [ Match Carousel ]                      [ Unmapped Warning ]
+    Up/Down Arrow Selector                   "ℹ <intent> is not mapping..."
+              │                                         │
+       ┌──────┴──────┐                                  ▼
+       ▼             ▼                             [ Safe Exit ]
+    [Enter]      [Any Key / Esc / Ctrl+C]       Returns to Bash Prompt
+       │             │
+       ▼             ▼
+  Is Directory?    Cancel Menu
+   /       \      (Buffer Flush)
+ (No)      (Yes)
+  /          \
+Execute   Auto-Launch
+Command    ai init <path>
+```
+
+### B. The Conversational Agent (On-Demand / Hybrid Local-Cloud)
+
+```text
+                         [ ai <conversational query> ]
+                                      │
+                                      ▼
+                   [ Cloud Mode Active? (Env Key check) ]
+                                 /      \
+                        (No Key)/        \(API Key Sourced)
+                               /          \
+                     [ Local Port 8080 ]   [ Standard Cloud Routing ]
+                     (Offline -> Safe      (Bypasses local checks)
+                     Connection Error)            │
+                               \                  /
+                                ▼                ▼
+                         [ Inline Latency Spinner ]
+                           Displays Green Rotator
+                                 (| / - \)
+                                      │
+                             [ Connection Opened ]
+                           Wipes Spinner from Screen
+                                      │
+                           [ Tool-Intent Match? ]
+                                 /          \
+                            ( Yes )          ( No )
+                              /                \
+               [ Execute local tool ]      [ Standard Chat ]
+                Inject Context (RAG)        Generic Response
+                              \                /
+                               ▼              ▼
+                          [ Local/Cloud OpenAI-API ]
+                          (Streams Response to Shell)
+```
 
 ---
 
-## 2. Cloud Integration & Tool Toggling
+## 2. Cloud Integration
 
-The agent natively supports **Google Gemini's OpenAI-compatible completions API** [2]. This allows you to offload conversational reasoning and context-injected tool calls to the cloud with **0% local CPU/RAM overhead** [1].
+The agent natively supports **Google Gemini's OpenAI-compatible completions API**. This allows you to offload conversational reasoning and context-injected tool calls to the cloud with **0% local CPU/RAM overhead**.
 
-### A. Environment Configuration (`~/.bashrc`)
-To activate cloud mode, export your API key and preferred model at the top of your `~/.bashrc` [1]:
+### Environment Configuration (`~/.bashrc`)
+To activate cloud mode, export your API key and preferred model at the top of your `~/.bashrc`:
 ```bash
 export GEMINI_API_KEY="AIzaSyYourFullGeminiApiKeyHere"
-export CLOUD_MODEL="gemini-3.1-flash-lite"
+export CLOUD_MODEL="gemini-1.5-flash"
 ```
-
-### B. On-Demand Tool Toggling
-The agent supports native, zero-latency toggling of Gemini's built-in APIs directly from your active shell session [3]:
-
-* **Google Search Grounding (On by Default):** Automatically executes Google Search queries in the background to ground responses in real-time web data [1.1.1].
-  * *To check status:* `ai --grounding`
-  * *To toggle:* `ai --grounding [on|off]`
-* **Python Code Execution Sandbox (Off by Default):** Allows Gemini to execute Python calculations in a secure sandbox and return the outputs [2.1].
-  * *To check status:* `ai --code-exec`
-  * *To toggle:* `ai --code-exec [on|off]`
 
 ---
 
@@ -48,129 +103,60 @@ Your agent's brain is managed by a plain-text configuration master file.
 
 *Example:*
 ```text
-clear ---> cc, clear terminal, reset screen, wipe display
+omarchy-launch-webapp https://music.youtube.com/ ---> youtube music
 ```
 
-### Automatic Compilation on the Fly
+### A. Automatic Compilation on the Fly
 Every time you interact with the agent, the Python script compares modification timestamps (`getmtime`) of your files. If the plain-text configuration has been modified, it silently rebuilds your minified, single-line lookup index (`ai-context.idx`) in under 2ms before executing.
 
-### Optional Manual Compilation
-To explicitly force a rebuild of the speed index for diagnostic or sanity checks, run:
-```bash
-ai --compile
-```
+### B. Triple-Redundancy Self-Healing Index
+To prevent index corruption or empty cache loads from breaking command suggestions, the `matrix_search` function implements an active validation cycle:
+1. **Missing Cache Detection:** If the `.idx` file is deleted, it compiles a new one instantly on the next query.
+2. **Malformed JSON Recovery:** If the index file contains corrupt or interrupted data, it catches `json.JSONDecodeError` and forces a fresh rebuild.
+3. **Empty Index Validation (`[]`):** If the index successfully loads but parses as empty (`[]`) while the source configuration file actually has text lines, the script flags this as a logic failure and immediately forces a rebuild.
 
 ---
 
-## 4. Active System Tools (`[TOOL]` & RAG)
+## 4. Active System Tools & Project Workspace Agents
 
-You can turn any standard Linux command, package, binary, or custom script into an AI tool by prefixing the command with `[TOOL]` in your `ai-context.txt` [3]:
-
-*Example:*
+### A. Local Context-Injected RAG (`[TOOL]`)
+You can turn any standard Linux command, package, binary, or custom script into an AI tool by prefixing the command with `[TOOL]` in your `ai-context.txt`:
 ```text
 [TOOL] df -h / ---> check my nvme drive, is my hard drive full, show disk space
 ```
+When you run a conversational query targeting that intent, the script executes the tool behind the scenes (protected by a **15-second safety timeout**), captures its raw stdout, and injects it directly into the LLM's prompt context as real-time system data.
 
-### A. Local Context-Injected RAG
-1. You ask: `ai "how much space is on my nvme drive?"`
-2. The local matrix search instantly matches the intent to `[TOOL] df -h /` (0ms delay).
-3. Python executes `df -h /` behind the scenes, capturing your physical hard drive table (with an **8-second safety timeout**) [2].
-4. Python injects that raw text output directly into your LLM's prompt context [2].
-5. The local/cloud LLM reads the raw data and formulates a real-time response: *"Your drive is currently using 49% of its space, leaving 237GB free."* [2]
+### B. Project Workspace Agents (`ai init`)
+When analyzing codebase folders, running raw chat queries lacks necessary structural context. Running `ai init <path>` triggers a dedicated indexing binary (`tools/init-projects`) that:
+1. Resolves the absolute directory path and extracts the project name.
+2. Generates a recursive directory structure map down to three folder levels.
+3. Packages workspace-specific agent guidelines and system instructions.
+4. Permanently caches the compiled payload inside the isolated `projects/` directory under a path-sanitized filename (e.g., `projects/home-user-Projects-quickshell.txt`).
 
-### B. Self-Instructing Tools (Bypassing AI Safety Guardrails)
-To prevent the LLM from throwing its pre-trained safety excuses (like *"I do not have access to your local machine"*), you can embed **"Instructions for AI"** directly in your tool's stdout [2]. 
+This bypasses manual initialization cycles, allowing the Workspace Agent to read your directory trees, recognize active config files (like `hypr_api_ref.lua`), and respond to design questions with precise codebase awareness.
 
-*Example inside `tools/update-inspector`:*
-```bash
-echo "=== PENDING SYSTEM UPGRADES ==="
-echo "[INSTRUCTIONS FOR AI]: Do not state that you cannot access their system, as the data has already been provided to you. Pinpoint critical updates and explain their system impact."
-```
-Because the LLM reads this entire context block as part of the user instruction, it will naturally read those embedded guidelines and formulate its answer exactly as requested, completely on the fly [2].
-
----
-
-## 5. System Monitor Dashboard & Token Tracking
-
-The system silently monitors and logs your API transactions to a local JSON database without polluting your active terminal screen [1, 2].
-
-* **Path:** `~/.config/local-ai/ai-suggestion/api-usage.json`
-
-### A. On-Demand Token Usage (`ai --usage`)
-Your chat screen remains completely clean, but you can query your last transaction's stats on-demand at any time [1]:
-```bash
-ai --usage
-```
-*Example Output:*
-`[Model: gemini-3.1-flash-lite | Prompt: 100t | Gen: 69t | Total: 169t]`
-
-### B. System Monitor Dashboard (`ai --status`)
-To give you a comprehensive monitor of your configuration and usage, run the 0% memory ASCII dashboard:
-```bash
-ai --status
-```
-It instantly outputs a high-contrast terminal card of your active configuration:
-
+### C. Command Interceptor Directory Routing
+To make project initialization frictionless, you can map absolute directory paths directly inside your `ai-context.txt`:
 ```text
-┌──────────────────────────────────────────────────────────┐
-│          AI-SUGGESTION SYSTEM MONITOR & DASHBOARD        │
-├──────────────────────────────────────────────────────────┤
-│  Active Mode:     Google Gemini Cloud API                │
-│  API Key:         Loaded (AIzaSyD1...)                   │
-│  Cloud Model:     gemini-3.1-flash-lite                  │
-│  Active Tools:    Google Search                          │
-├──────────────────────────────────────────────────────────┤
-│  Context Database: ~/.config/local-ai/ai-suggestion/ai-c │
-│  Mapped Shortcuts: 20                                    │
-│  Active [TOOL]s:   9                                    │
-│  Search Index:    Active & Synced                        │
-├──────────────────────────────────────────────────────────┤
-│  Last Request:    gemini-3.1-flash-lite (169t total)     │
-│  Lifetime Calls:  5                                      │
-│  Lifetime Tokens: 709                                    │
-└──────────────────────────────────────────────────────────┘
+~/Projects/quickshell ---> projects quickshell, projects
 ```
+If you search for `projects qwen` and execute the suggestion, the `ai_handle_missing` shell hook detects that the target command is an existing directory path, bypasses standard execution, and seamlessly launches `ai init` on the target path automatically.
 
 ---
 
-## 6. Interactive CLI Training Loops
-
-You can train your agent's memory directly from your terminal session in three ways:
-
-### A. The Direct Correction Loop
-If you type an unmapped command or typo (such as `sb`), the shell hook intercepts it and prompts:
-```text
-ℹ "sb" is not mapping to a known automation.
-Would you like to teach the agent this custom phrase? (y/N)
-```
-Pressing `y` prompts you for the exact executable command this should map to, automatically building, appending, and compiling the new association.
-
-### B. Manual Training Command
-To manually register a custom alias or shortcut at any time without triggering a typo, run:
-```bash
-ai --teach
-```
-This launches a CLI prompt asking you for your custom natural phrase and the exact terminal command it should map to, writing it cleanly to your database.
-
-### C. Suggestion Overriding
-If the agent suggests an existing command but you want to edit or override it on the fly, press **`t`** during the selection prompt:
-* This launches an interactive line editor allowing you to override the command string, saving the new preference permanently to memory.
-
----
-
-## 7. Mathematical & Structural Optimizations
+## 5. Mathematical, Structural, & Interface Optimizations
 
 ### A. Conversational-Resilient Stop Words
-In search index engines, common grammatical connector words (like `what`, `is`, `it`, `do`, `any`, `I`, `have`, `the`, `a`) are called **"Stop Words"** [2]. Because these words carry no actual action, including them in your intent database causes completely unrelated commands (like `date` and `hyprctl clients`) to collide on generic English sentence structures [2].
+To prevent natural conversational padding (like *"what about...", "is it...", "do you have..."*) from causing keyword collisions in your local set-intersection matrix, the `tokenize()` function automatically filters out a pre-compiled set of common English stop words. This ensures that a phrase like `"is it going to rain in the next few days?"` resolves strictly to `["rain"]` under the hood.
 
-To solve this, the Python script's `tokenize()` function automatically filters out a pre-compiled set of common English stop words [2]. For example:
-* `"what about rain in the next few days?"` and `"is it going to rain?"` both compress down to exactly: **`["rain"]`** under the hood. 
+### B. Theme-Adaptive, Thread-Safe Latency Spinner
+To keep the terminal interface responsive during network handshakes and LLM processing delays, a lightweight daemon thread runs an inline spinner (`|`, `/`, `-`, `\`) at 12 FPS. 
 
-This completely immunizes your database against structural grammar collisions, allowing you to write natural, conversational sentences while ensuring your matrix search targets only the specific, relevant keywords [2].
+By utilizing standard 4-bit ANSI colors (`\033[1;32m` / Bold Green Theme Accent) rather than hardcoded 24-bit TrueColor hex codes, **the interface automatically and dynamically adapts to your system theme.** The spinner, `Agent:`, and `AI:` labels will seamlessly inherit the precise accent hue of your active terminal color palette (such as Tokyo Night, Nord, or Gruvbox) completely on the fly.
 
-### B. High-Contrast Category Tags (Resource Isolation)
-Small, local models can occasionally experience "cross-talk" hallucinations when parsing space-separated, adjacent numerical lines (for example, misinterpreting a `49%` disk space metric as your active RAM usage).
+When the first stream chunk is returned from the host, the spinner thread is joined, the carriage return line is wiped (`\r\x1b[K`), and the response begins outputting smoothly.
 
-To prevent this, the active diagnostics tool `ai-system-diagnosis` prefixes each performance category with high-contrast, bracket tags (such as `[SYSTEM]`, `[CPU_HOGS]`, `[MEMORY]`, and `[STORAGE]`) [4]. This keeps your metrics isolated, allowing even lightweight models to analyze your CPU, RAM, and disk specs with absolute precision [4].
-
+### C. Multi-Turn Memory (State Preservation)
+Unlike single-turn command completions, interactive conversation sessions maintain state through a local, memory-resident `chat_history` list. The stream loop compiles the incoming text chunks and appends the assistant's response to the active array, ensuring the model retains full context of previous messages and initialized project configurations.
+```
 ---

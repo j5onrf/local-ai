@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# AI Summary TUI v1.1.4-local (KoKo Read-Aloud) [j5onrf] [05-23-26]
+# AI Summary TUI v0.7.6 (KoKo Read-Aloud & Responsive Highlight) (Gemini) [j5onrf] [06-02-26]
 
 import sys
 import os
@@ -12,13 +12,26 @@ import select
 import subprocess
 import shutil
 import re
+import time
 
-# --- Configuration ---
-# Llama.cpp server default OpenAI-compatible endpoint
 LOCAL_API_URL = "http://localhost:8080/v1/chat/completions"
 
-# Global state for the Text-to-Speech toggle
 TTS_ENABLED = True
+
+TTS_STYLE = os.environ.get("TTS_STYLE", "am_echo")
+try:
+    TTS_SPEED = float(os.environ.get("TTS_SPEED", "1.15"))
+except ValueError:
+    TTS_SPEED = 1.15
+
+RE_BOLD = re.compile(r'\*\*(.*?)\*\*')
+RE_ITALIC_STAR = re.compile(r'\*(.*?)\*')
+RE_ITALIC_UNDER = re.compile(r'_(.*?)_')
+RE_BACKTICK = re.compile(r'`(.*?)`')
+RE_BULLET_STRIP = re.compile(r'^\s*([\*\-]|(\d+[\.\)]))\s+')
+RE_NON_SPOKEN = re.compile(r'[^a-zA-Z0-9\s]')
+RE_WHITESPACE = re.compile(r'\s+')
+RE_LEADING_NUM = re.compile(r'^\s*\d+\.\s+')
 
 PROMPT_PROFILES = {
     "1": {
@@ -71,7 +84,6 @@ PROMPT_PROFILES = {
     }
 }
 
-# --- TUI & Display Logic ---
 def get_key():
     fd = sys.stdin.fileno()
     old = termios.tcgetattr(fd)
@@ -91,77 +103,62 @@ def flush_input_buffer():
         pass
 
 def get_input_with_back_button(profile_name):
-    """
-    Renders an interactive screen where the user can choose to 
-    either submit the clipboard content or select '< Back to Menu'.
-    """
     options = ["[ Submit Clipboard Text ]", "< Back to Profile Selection"]
     selected = 0
-    
-    sys.stdout.write("\033[?25l")  # Hide cursor
+    sys.stdout.write("\033[?25l")
     sys.stdout.flush()
-    
     try:
         while True:
             sys.stdout.write("\033[H\033[J")
-            
-            # Displays the smaller robot logo exclusively on this screen
             print_robot_header()
-            
             sys.stdout.write(f"\033[1;32m{profile_name} ❯\033[0m\n")
             sys.stdout.write("\033[90m[Copy your transcript, text, or PDF to clipboard before submitting]\033[0m\n\n")
-            
             for i, opt in enumerate(options):
                 if i == selected:
                     sys.stdout.write(f" > \033[1;36m{opt}\033[0m\n")
                 else:
                     sys.stdout.write(f"   {opt}\n")
             sys.stdout.flush()
-            
             key = get_key()
-            if key == '\033[A':  # Up Arrow
+            if key == '\033[A':
                 selected = (selected - 1) % len(options)
-            elif key == '\033[B':  # Down Arrow
+            elif key == '\033[B':
                 selected = (selected + 1) % len(options)
-            elif key == '\r':  # Enter
-                if selected == 1:  # Selected '< Back to Profile Selection'
+            elif key == '\r':
+                if selected == 1:
                     return None
                 break
     finally:
-        sys.stdout.write("\033[?25h")  # Restore cursor
+        sys.stdout.write("\033[?25h")
         sys.stdout.flush()
-
-    # If they hit submit, pull data from the clipboard
     user_text = ""
     try:
         if shutil.which("wl-paste"):
             user_text = subprocess.check_output(["wl-paste"], text=True)
         else:
             raise Exception("No clipboard utility found (install wl-clipboard).")
-            
     except Exception as e:
         sys.stdout.write(f"\033[91m[Clipboard Error: {str(e)}]\033[0m\n")
         sys.stdout.flush()
         input("\nPress Enter to return.")
         return ""
-
     return user_text.strip()
 
 def check_server_status():
-    """Quickly pings the local llama-server to see if it's accepting connections."""
+    gemini_key = os.environ.get("GEMINI_API_KEY")
+    if gemini_key:
+        return "\033[1;32m[● GEMINI CLOUD]\033[0m"
     url = "http://localhost:8080/v1/models"
     try:
         req = urllib.request.Request(url, method="GET")
         with urllib.request.urlopen(req, timeout=0.5) as _:
-            return "\033[1;32m[● ONLINE]\033[0m"
+            return "\033[1;32m[● LOCAL ONLINE]\033[0m"
     except Exception:
-        return "\033[1;31m[○ OFFLINE]\033[0m"
+        return "\033[1;31m[○ LOCAL OFFLINE]\033[0m"
             
 def print_header():
-    """Main start screen logo (Diamond)."""
     c = [f"\033[3{i}m" for i in range(1, 6)]
     reset = "\033[0m"
-    
     print(f"              {c[0]}╱╲{reset}\n"
           f"            {c[1]}╱  ╱╲{reset}\n"
           f"          {c[2]}╱  ╱  ╱╲{reset}\n"
@@ -170,10 +167,8 @@ def print_header():
           f"              {c[0]}╲╱{reset}\n")
 
 def print_robot_header():
-    """Submit clipboard screen and summary view logo (Compact Robot)."""
     c = [f"\033[3{i}m" for i in range(1, 6)]
     reset = "\033[0m"
-    
     print(f"             {c[0]}╭──────╮{reset}\n"
           f"         {c[1]}╭───╯      ╰───╮{reset}\n"
           f"         {c[2]}│   ╭─╮  ╭─╮   │{reset}\n"
@@ -181,29 +176,43 @@ def print_robot_header():
           f"         {c[4]}╰───╮      ╭───╯{reset}\n"
           f"             {c[0]}╰──────╯{reset}\n")
 
+def clean_markdown(text):
+    if not text:
+        return ""
+    text = RE_BOLD.sub(r'\1', text)
+    text = RE_ITALIC_STAR.sub(r'\1', text)
+    text = RE_ITALIC_UNDER.sub(r'\1', text)
+    text = RE_BACKTICK.sub(r'\1', text)
+    lines = []
+    bullet_counter = 1
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        cleaned_content = RE_BULLET_STRIP.sub('', line).strip()
+        if cleaned_content:
+            lines.append(f"{bullet_counter:2d}.  {cleaned_content}")
+            bullet_counter += 1
+    return "\n".join(lines)
+
 def run_menu():
     global TTS_ENABLED
     keys = list(PROMPT_PROFILES.keys())
     options = [PROMPT_PROFILES[k]["name"] for k in keys] + ["Exit"]
     selected = 0
-    
     sys.stdout.write("\033[?25l")
     sys.stdout.flush()
-    
     try:
         while True:
             sys.stdout.write("\033[H\033[J")
             print_header()
-            
             server_status = check_server_status()
             tts_status = "\033[1;32m[TTS: ON]\033[0m" if TTS_ENABLED else "\033[1;31m[TTS: OFF]\033[0m"
             print(f" Welcome to the AI Summary TUI.           Status: {server_status}  {tts_status}")
             print(" Use arrow keys to navigate, Enter to select, 't' to toggle speech\n")
-            
             for i, opt in enumerate(options):
                 print(f"{' >' if i == selected else '  '} {opt}")
             sys.stdout.flush()
-            
             key = get_key()
             if key == '\033[A': 
                 selected = (selected - 1) % len(options)
@@ -217,8 +226,19 @@ def run_menu():
         sys.stdout.write("\033[?25h")
         sys.stdout.flush()
 
-def call_local_llm(user_input, system_prompt):
-    """Sends the summary payload directly to llama.cpp's OpenAI endpoint."""
+def call_llm(user_input, system_prompt):
+    gemini_key = os.environ.get("GEMINI_API_KEY")
+    if gemini_key:
+        url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {gemini_key}"
+        }
+        model = os.environ.get("CLOUD_MODEL", "gemini-1.5-flash")
+    else:
+        url = LOCAL_API_URL
+        headers = {"Content-Type": "application/json"}
+        model = None
     data = {
         "messages": [
             {"role": "system", "content": system_prompt},
@@ -226,78 +246,102 @@ def call_local_llm(user_input, system_prompt):
         ],
         "temperature": 0.3
     }
-    
+    if model:
+        data["model"] = model
     req = urllib.request.Request(
-        LOCAL_API_URL, 
+        url, 
         data=json.dumps(data).encode(), 
-        headers={'Content-Type': 'application/json'}
+        headers=headers
     )
-    
     try:
         with urllib.request.urlopen(req) as res:
             response_json = json.loads(res.read().decode())
             return response_json['choices'][0]['message']['content']
     except urllib.error.URLError as e:
-        raise Exception(f"Connection to backend failed. (Is your server online? {e.reason})")
+        if gemini_key:
+            raise Exception(f"Cloud Gemini request failed: {e.reason}")
+        else:
+            raise Exception(f"Connection to local backend failed. (Is your server online? {e.reason})")
 
-def speak_text(text):
+def render_and_read_summary(raw_text):
+    text = clean_markdown(raw_text)
+    lines = [line for line in text.splitlines()]
+    sys.stdout.write("\033[H\033[J")
+    print_robot_header()
+    for line in lines:
+        sys.stdout.write(f"{line}\n")
+    sys.stdout.flush()
     if not TTS_ENABLED or not text:
         return
-        
-    print("\n\033[90m[Generating text-to-speech with KoKo...]\033[0m")
-    
-    # Sanitize markdown formatting characters (* and -) to prevent bash string expansion glitches
-    cleaned_text = text.replace("*", "").replace("-", "")
-    
-    # Flatten multiple consecutive whitespaces and newlines into standard spacing
-    cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
-    
+    cleaned_text = RE_WHITESPACE.sub(' ', text).strip()
     if not cleaned_text:
         return
-
+    sys.stdout.write("\n\033[90m[Generating text-to-speech with KoKo...]\033[0m\n")
+    sys.stdout.flush()
     try:
-        koko_cmd = ["koko", "--style", "am_echo", "--speed", "1.15", "text", cleaned_text, "-o", "/dev/shm/tts.wav"]
-        play_cmd = ["pw-play", "/dev/shm/tts.wav"]
-        
-        # Keep generation completely silent in the background
+        koko_cmd = ["koko", "--style", TTS_STYLE, "--speed", str(TTS_SPEED), "text", cleaned_text, "-o", "/dev/shm/tts.wav"]
         subprocess.run(koko_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
-        
-        # Play the file, but redirect stdout/stderr and smoothly pass on any kill signals
-        subprocess.run(play_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
-        
+        play_cmd = ["pw-play", "/dev/shm/tts.wav"]
+        player = subprocess.Popen(play_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        sys.stdout.write("\033[?25l")
+        sys.stdout.flush()
+        WPS = 2.48
+        for active_idx, line in enumerate(lines):
+            sys.stdout.write("\033[H\033[J")
+            print_robot_header()
+            for idx, print_line in enumerate(lines):
+                if abs(idx - active_idx) <= 1:
+                    sys.stdout.write(f"\033[1;36m{print_line}\033[0m\n")
+                else:
+                    sys.stdout.write(f"\033[90m{print_line}\033[0m\n")
+            sys.stdout.flush()
+            clean_line = RE_LEADING_NUM.sub('', line)
+            spoken_words = RE_NON_SPOKEN.sub(' ', clean_line)
+            words = len(spoken_words.split())
+            if words == 0:
+                time.sleep(0.1)
+                continue
+            duration = words / WPS
+            major_pauses = len(re.findall(r'[\.\!\?\;\:]', clean_line))
+            minor_pauses = len(re.findall(r'[\,\-]', clean_line))
+            duration += (major_pauses * 0.35)
+            duration += (minor_pauses * 0.18)
+            time.sleep(duration)
+        player.terminate()
+        player.wait()
     except Exception:
-        # Silently catch all interrupts, SIGKILL, and exit signals so the console remains perfectly clean
         pass
+    finally:
+        sys.stdout.write("\033[H\033[J")
+        print_robot_header()
+        for line in lines:
+            sys.stdout.write(f"{line}\n")
+        sys.stdout.write("\033[?25h")
+        sys.stdout.flush()
 
 def main():
     while True:
         idx, keys = run_menu()
         if idx == len(keys): break
-        
         choice = keys[idx]
-        
-        # Pulls up the clipboard action sub-menu with the compact robot logo
         user_input = get_input_with_back_button(PROMPT_PROFILES[choice]['name'])
-        
-        # If the user selected the '< Back' option, jump straight back to the main menu loop
         if user_input is None:
             continue
-            
         if user_input:
             sys.stdout.write("\033[H\033[J")
-            
-            # Keep the compact robot at the top of the viewport for processing/summary pages
             print_robot_header()
-            print("Processing request locally via llama.cpp...")
+            gemini_key = os.environ.get("GEMINI_API_KEY")
+            if gemini_key:
+                print("Processing request via Google Gemini Cloud...")
+            else:
+                print("Processing request locally via llama.cpp...")
             try:
-                summary = call_local_llm(user_input, PROMPT_PROFILES[choice]['prompt'])
-                print(f"\n{summary}")
-                speak_text(summary)
-                
+                summary = call_llm(user_input, PROMPT_PROFILES[choice]['prompt'])
+                render_and_read_summary(summary)
             except Exception as e:
-                print(f"\n❌ Local LLM Error: {e}")
-                print("\033[1;33mEnsure your llama.cpp server is running. Press F8 to launch it!\033[0m")
-            
+                print(f"\n❌ LLM Error: {e}")
+                if not gemini_key:
+                    print("\033[1;33mEnsure your llama.cpp server is running. Press F8 to launch it!\033[0m")
             flush_input_buffer()
             input("\nPress Enter to return to menu.")
 

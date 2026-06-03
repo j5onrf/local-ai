@@ -8,7 +8,9 @@ Designed to run completely sandboxed in your alternate screen buffer to keep you
 
 ## Features
 
-* **Universal Feed Parser**: Supports Reddit subreddits, standard Atom (like Arch Linux News), and RSS 2.0 (like Hacker News) out of the box.
+* **Universal Feed Parser**: Supports Reddit subreddits, standard Atom (like GitHub Releases), and RSS 2.0 (like Hacker News) out of the box.
+* **Interactive Scan Filter**: Real-time keyword scanner that dynamically highlights matches across feed titles, snippets, and deep text reader buffers with full backspace recovery.
+* **Global & Local Match Counters**: Instantly aggregates keyword frequency across cached datasets on the index page, and shifts to localized frequency maps while scrolling long documents.
 * **Auto-Discovery Private Redirects**: Automatically fetches, verifies, and routes Reddit links through active [Redlib](https://github.com/redlib-org/redlib) private front-end instances to prevent trackable redirects.
 * **Alternate Screen Sandboxing**: Runs inside the terminal's alternate screen buffer (`?1049h`), leaving your terminal exactly as it was when you exit.
 * **Hacker News Integration**: Intercepts HN selections to immediately open the native discussion thread in your default browser instead of blank self-text pages.
@@ -26,14 +28,18 @@ Clone this repository or download the script directly:
 
 ```bash
 mkdir -p ~/.config/local-ai/basepage-tui/
-wget -O ~/.config/local-ai/basepage-tui/basepage.py https://raw.githubusercontent.com/yourusername/basepage/main/basepage.py
+wget -O ~/.config/local-ai/basepage-tui/basepage.py [https://raw.githubusercontent.com/yourusername/basepage/main/basepage.py](https://raw.githubusercontent.com/yourusername/basepage/main/basepage.py)
 chmod +x ~/.config/local-ai/basepage-tui/basepage.py
+
 ```
 
 ### 3. Usage
+
 Run the script to launch the dashboard:
+
 ```bash
 python3 ~/.config/local-ai/basepage-tui/basepage.py
+
 ```
 
 ## Adding Custom Feeds
@@ -44,28 +50,33 @@ You can add any RSS, Atom, or Reddit feed by modifying the `FEEDS` dictionary at
 FEEDS = {
     "r/hyprland": {"type": "reddit", "subreddit": "hyprland"},
     "r/unixporn": {"type": "reddit", "subreddit": "unixporn"},
-    "Arch Linux News": {"type": "custom", "url": "https://archlinux.org/feeds/news/"},
-    "Hacker News": {"type": "custom", "url": "https://news.ycombinator.com/rss"},
-    "Your Custom Feed": {"type": "custom", "url": "https://example.com/feed.xml"}
+    "Hacker News": {"type": "custom", "url": "[https://news.ycombinator.com/rss](https://news.ycombinator.com/rss)"},
+    "llama.cpp Releases": {"type": "github", "owner": "ggml-org", "repo": "llama.cpp"}
 }
+
 ```
 
 ## Navigation & Controls
 
 ### Main Controller Grid
+
 * `↑` / `↓` : Navigate options
 * `Enter` : Select option / Open Feed
 
 ### Index Page
+
 * `↑` / `↓` : Scroll entries
 * `←` / `→` : Change page (15 items per page)
+* `/` : Activate keyword scan filter (renders text live with backspace and Escape support)
+* `c` : Clear active scan highlights and metrics
 * `Enter` : Open deep text reader
 * `o` : Open link in default browser (using Redlib redirects for Reddit)
 * `q` : Exit back to Main Controller Grid
 
 ### Text Reader
+
 * `↑` / `↓` : Scroll text body
+* `/` : Modify or update the scanner keyword from inside the content view
 * `o` : Open link in browser
 * `q` / `Enter` : Close reader and return to index
-
 

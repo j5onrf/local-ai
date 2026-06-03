@@ -1,173 +1,83 @@
-# AI-Suggestion Agent (v0.7.3-alpha)
+# AI Suggestion Agent (v0.7.7)
 
-<img alt="20260528_175036" src="https://github.com/user-attachments/assets/7f90513b-0b29-41e2-8471-055a00e8371c" />
+<img alt="ai-suggestion-agent" src="https://github.com/user-attachments/assets/1820c499-c721-40b4-93be-afb5d8fd2ee6" />
 
-`Qwen3.6-35B-A3B` `Gemini-3.1-Flash-Lite` `Python 3.10+` `Bash 4.0+` `OpenAI-Compatible API`
+`Qwen3.5-2B+` `Gemini-3.1-Flash-Lite` `OpenAI-Compatible API` `Python 3.10+` `Bash 4.0+` `Zsh 5.0+`
 
-> ⚠️ **Alpha Release Notice:** This project is currently in active **Alpha** development and is subject to rapid, drastic changes. Our core design goals are to maintain an extremely lightweight, minimal shell footprint while empowering your command line with high-performance local/cloud AI tool workflows.
+## How the Agent Works
 
----
+All configurations, automations, and custom project workspaces are managed through **`ai-context.txt`**. When you trigger a mapped keyword, a cached similarity index provides a local terminal suggestion instantly. When you ask a question (using the `ai` prefix), the agent securely executes your custom local scripts using [tools], captures their outputs, and streams context-aware answers. 
 
-## Introduction
-
-The **AI-Suggestion Agent** is an on-demand, local shell companion designed to conform to your keyboard habits with zero system overhead. It runs entirely on-demand, consuming **0% idle memory and 0% idle CPU** when your terminal is sitting idle [1]. 
-
-When you type a command typo or unrecognized phrase, a high-speed C-compiled local token matrix corrects your input in under 2ms [1]. When you run conversational questions (using the `ai` prefix), the agent securely invokes your designated system tools, reads their terminal outputs, and streams context-aware answers using a local or cloud-based LLM (like Google Gemini) in a single inference pass [1, 2].
+When working inside a codebase, the agent compiles a safe, path-specific map of your workspace structure, allowing you to run a dedicated project-aware development copilot session on demand.
 
 ---
 
 ## Core Features
 
-* **Zero-Background Footprint:** No background processes, timers, or daemons. Sourced synchronously only for the millisecond you execute a typo or query.
-* **Instant Typo Correction (Local):** Local set-matrix calculations match and correct command typos locally, completely bypassing the LLM.
-* **Active System Tools (RAG):** Map standard CLI commands or custom scripts as `[TOOL]` configurations [3]. Your LLM dynamically executes them, reads their raw outputs, and answers conversational system questions in a single pass [2].
-* **Hybrid Local/Cloud Brains:** Runs privately on your local `llama-server`, or routes instantly to **Google Gemini** for rapid cloud execution with **0% local RAM/CPU overhead** [1, 2].
-* **On-Demand Toggles:** Sourced directly in your active shell. Toggle Google Search Grounding (`ai --grounding [on|off]`) or Python Code Execution (`ai --code-exec [on|off]`) in real-time [3].
-* **CLI System Monitor Dashboard:** Run `ai --status` or `ai --usage` to view real-time API transactions, prompt token costs, and local index metrics in a compact terminal card.
+* **Zero-Daemon Footprint:** No background processes or active runtimes. Runs only for the millisecond you execute a query.
+* **Instant Local Suggestions:** Sørensen-Dice similarity matching suggests commands locally, completely bypassing the LLM.
+* **On-Demand Workspace Agents:** Indexes project directory trees, parses architectural files, and launches persistent codebase copilot sessions.
+* **Subprocess RAG Tool Injection:** Executes custom local scripts and pipes outputs directly into the conversational AI context.
+* **No Dependencies:** Written natively using Python's standard library—no `pip`, external dependencies, or heavy daemon environments required.
+* **Ultra-Lightweight & Auditable:** Built for complete transparency with under 40 lines of Bash and under 420 lines of highly readable, standard-library Python code.
 
 ---
 
-## Packaged Tools & TUI Integrations (`[TOOL]`)
+## TUI Carousel Controls
 
-The project is designed to be an infinitely extensible ecosystem of custom tools and Terminal User Interface (TUI) integrations. Included out-of-the-box and as template examples are:
-
-### A. System Diagnostics & Management
-* **`ai-system-diagnosis` (Real-Time System Doctor):** Inspects live CPU load, active memory metrics, disk space, and failed systemd units as simple key-value outputs, completely preventing model math hallucinations [4].
-* **`update-inspector` (Pending Upgrades Analyzer):** Safely parses pending repository and AUR updates in memory, allowing your LLM to warn you about critical library dependencies or package keyring overrides before running upgrades [1.1.3].
-* **`kill-ai-servers` (Resource Release Utility):** Instantly terminates background local AI inference servers to release system RAM back to your operating system on demand [1.1.3].
-
-### B. Workspace Awareness & Desktop Control
-* **`hyprstate` (Compositor & Window Monitor):** Inspects active windows, current workspaces, and session statistics, giving your conversational AI "eyes" on your graphical desktop environment [1.1.2].
-
-### C. TUI & Utility Integrations
-* **`basepage-tui` (RSS & Article Reader Integration):** Launches customized terminal user interfaces, feeds, and articles directly inside your active terminal window.
-* **`ai-summary` (Text & Pipeline Summarizer):** Integrates with custom text and code summarization engines to digest complex documents, pipeline logs, or data structures on demand.
-
-> **Extensibility:** You can easily wrap any custom shell script, Python routine, terminal utility, or third-party CLI tool into your context database to build your own personalized system assistant [3].
+* **`Up` / `Down` Arrow Keys:** Cycle through available suggestions
+* **`Enter`:** Execute the highlighted command (or initialize a workspace if the suggestion is a directory path)
+* **`Esc` / `Ctrl+C` / `Any Key`:** Cancel menu (features an anti-spam buffer flush to prevent command line leakage)
 
 ---
 
-## System Architecture Overview
+## Command Reference
 
-### A. The Typo Correction Loop (0% Idle CPU / Offline-Safe)
+* `ai`: Launch an interactive, multi-turn conversation session. Press `Ctrl+C` or type `exit`/`quit` to quit.
+* `ai init <path>`: Index a directory and launch an interactive workspace agent primed with your codebase structure.
+* `ai <query>`: Instantly answer a single question and return directly to your Bash prompt.
 
-```text
-                         [ Direct Shell Typo ]
-                                   │
-                                   ▼
-                        [ Token Matrix Search ]
-                       Sørensen-Dice Coefficient
-                                   │
-              ┌────────────────────┴────────────────────┐
-              ▼                                         ▼
-       ( Match Found )                           ( No Match Found )
-              │                                         │
-              ▼                                         ▼
-      [ Match Carousel ]                       [ Manual Teach Prompt ]
-    Up/Down Arrow Selector                    "Would you like to teach...?"
-              │                                         │
-    ┌─────────┼─────────┐                     ┌─────────┴─────────┐
-    ▼         ▼         ▼                     ▼                   ▼
-[Enter]     [ t ]    [Any Key]             [  y  ]             [  n  ]
-    │         │         │                     │                   │
-    ▼         ▼         ▼                     ▼                   ▼
- Execute   Override   Cancel               Override             Cancel
-   Cmd    Auto-Compile                     Auto-Compile
-```
+---
 
-### B. The Conversational Agent (On-Demand / Hybrid Local-Cloud)
+## The Brain: Configuration (`ai-context.txt`)
+
+Add your shortcuts, dynamic tool integrations, and project workspaces to `~/.config/local-ai/ai-suggestion/ai-context.txt`. The search index automatically compiles in under 2ms on your next execution.
 
 ```text
-                         [ ai <conversational query> ]
-                                      │
-                                      ▼
-                   [ Cloud Mode Active? (Env Key check) ]
-                                 /      \
-                        (No Key)/        \(API Key Sourced)
-                               /          \
-            [ 0ms TCP Handshake Check ]    [ Standard Cloud Routing ]
-             Port 8080 offline -> Exit      Bypasses local port checks
-                               \          /
-                                ▼        ▼
-                           [ Tool-Intent Match? ]
-                                      │
-                     ┌────────────────┴────────────────┐
-                     ▼                                 ▼
-                  ( Yes )                           ( No )
-                     │                                 │
-                     ▼                                 ▼
-            [ Execute local tool ]              [ Standard Chat ]
-            Inject Context (RAG)                 Generic Response
-                     │                                 │
-                     └────────────────┬────────────────┘
-                                      │
-                                      ▼
-                        [ Local/Cloud OpenAI-API ]
-                        (Streams Response to Shell)
+# Static Shortcut
+~/.config/local-ai/media-tui/media.py ---> play music, run media
+
+# Dynamic Local RAG Tool
+[TOOL] ~/.config/local-ai/ai-suggestion/tools/update-inspector ---> system updates, check updates
+
+# On-Demand Project Workspace (Launches Agent Workspace automatically on select)
+~/Projects/quickshell ---> projects quickshell, projects
 ```
 
 ---
 
-## Installation & Setup
+## Quick Setup
 
 ### 1. Install the Project Files
-
-Choose one of the following commands to install the core scripts directly into your configuration directory:
-
-**Option A: Universal Setup (No dependencies required)**
-
 ```bash
-mkdir -p ~/.config/local-ai/ai-suggestion && \
-curl -sL https://github.com/j5onrf/local-ai/tarball/main | \
-tar -xzf - --wildcards --strip-components=2 -C ~/.config/local-ai/ai-suggestion "*/ai-suggestion"
+git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai && \
+chmod +x ~/.config/local-ai/ai-suggestion/alias-ai.py && \
+chmod +x ~/.config/local-ai/ai-suggestion/tools/init-projects
 ```
 
-**Option B: Using Node.js/npx**
-
+### 2. Append the Hook to Your `~/.bashrc`
 ```bash
-mkdir -p ~/.config/local-ai && npx degit j5onrf/local-ai/ai-suggestion ~/.config/local-ai/ai-suggestion
-```
-
-### 2. Append the Hook to Your Shell Config
-
-#### For Bash (`~/.bashrc`):
-```bash
-cat << 'EOF' >> ~/.bashrc
-
-# AI-Suggestion Hook (Bash)
-[ -f "$HOME/.config/local-ai/ai-suggestion/ai-hook.sh" ] && source "$HOME/.config/local-ai/ai-suggestion/ai-hook.sh"
-EOF
-```
-
-Reload your shell:
-```bash
+echo '[ -f "$HOME/.config/local-ai/ai-suggestion/ai-hook.sh" ] && source "$HOME/.config/local-ai/ai-suggestion/ai-hook.sh"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
-*(Optional Cloud setup)*: Export your Gemini API key in your `.bashrc` to activate cloud routing instantly [1, 2]:
+*(Optional)* Export your Gemini API key to activate cloud routing:
 ```bash
 export GEMINI_API_KEY="AIzaSyYourGeminiKey"
+
+
+
+
+*For detailed system architecture diagrams, custom tool development guidelines, and advanced prompt engineering, refer to the full **[documentation.md](documentation.md)**.*
 ```
-
----
-
-## Core Commands & Configuration
-
-The system manages its binary token matrix index (`ai-context.idx`) using an automated synchronization engine.
-
-* **Auto-Compile on Change:** Whenever you manually open and edit `ai-context.txt` in your favorite text editor, the script automatically detects the file changes and recompiles your speed index in under 2ms on your very next execution.
-* **Manual Compilation:** Force an index rebuild at any time:
-  ```bash
-  ai --compile
-  ```
-* **Interactive Teaching:** Register custom mappings directly from your terminal prompt:
-  ```bash
-  ai --teach
-  ```
-
----
-
-## Detailed Documentation
-For deep dives into writing your own active system `[TOOL]` configurations, configuring dual-shell settings, or customizing prompt-engineering safety overrides, refer to the full **[documentation.md](documentation.md)**.
-
 
