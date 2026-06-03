@@ -18,14 +18,11 @@ ai_handle_missing() {
     local cmd
     cmd=$("$_AI_PYTHON_BIN" "$_AI_SCRIPT_PATH" --interactive "$intent")
     if [[ -n "$cmd" ]]; then
-        # Expand ~ to absolute path to test if it's a directory
         local expanded_cmd="${cmd/#\~/$HOME}"
         
         if [[ -d "$expanded_cmd" ]]; then
-            # Direct On-Demand Init: Launch the workspace agent on the target folder
             ai init "$expanded_cmd"
         else
-            # Run the command normally
             eval "$cmd"
         fi
     fi
@@ -54,12 +51,10 @@ ai() {
         fi
         target_path=$(cd "$target_path" && pwd)
 
-        # Generate unique path-safe context filename
         local safe_name="${target_path//\//-}"
         safe_name="${safe_name#-}"
         local context_file="$projects_dir/${safe_name}.txt"
 
-        # Execute indexing script
         "$tool_bin" "$target_path"
         if [ $? -ne 0 ]; then
             return 1 
