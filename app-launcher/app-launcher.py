@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# AI Suggestion Tool - Ultra-Lightweight Terminal App Launcher v0.1.0
+# Ultra-Lightweight Terminal App Launcher v0.1.0
 
 import os
 import sys
