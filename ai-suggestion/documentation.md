@@ -86,7 +86,7 @@ Command    ai init <path>
 The agent natively supports **Google Gemini's OpenAI-compatible completions API**. This allows you to offload conversational reasoning and context-injected tool calls to the cloud with **0% local CPU/RAM overhead**.
 
 ### Environment Configuration (`~/.bashrc`)
-To activate cloud mode, export your API key and preferred model at the top of your `~/.bashrc`:
+To activate cloud mode, export your API key and preferred model at the bottom of your `~/.bashrc`:
 ```bash
 export GEMINI_API_KEY="AIzaSyYourFullGeminiApiKeyHere"
 export CLOUD_MODEL="gemini-1.5-flash"
