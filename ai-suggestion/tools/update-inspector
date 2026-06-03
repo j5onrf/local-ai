@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# AI Update Inspector v0.7.3
-# High-speed, non-interactive package stream formatting for LLM context injection.
+# AI Update Inspector v0.7.7
 
 set -euo pipefail
 
@@ -9,6 +8,7 @@ echo "[INSTRUCTIONS FOR AI]:"
 echo "1. Focus entirely on analyzing the specific packages in the provided update list."
 echo "2. Identify and highlight the CRITICAL updates (like systemd, kernel, audio drivers, keyrings) and clearly explain how these specific updates affect their active system, security, or running processes."
 echo "3. DO NOT explain how to run the update commands (the user already knows how to update)."
+echo "4. Format your output strictly for clean, plain-text terminal rendering. DO NOT use any Markdown formatting (such as ### headers, ** bolding, or * asterisks). Use simple capitalized headers, clean vertical line spaces, and tab indentation for lists."
 echo "--------------------------------"
 
 # 1. Native Repository Updates (Run checkupdates EXACTLY once)
