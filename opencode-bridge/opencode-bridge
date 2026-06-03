@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+# Paths & Binary Tracking
+OPENCODE_BIN="opencode"
+PROFILE_DIR="/home/j5/.config/local-ai/opencode-bridge"
+
+# --- Intelligent Path Target Resolution ---
+if [ -d "$1" ]; then
+    WORKSPACE_PATH="$(realpath "$1")"
+    shift
+else
+    WORKSPACE_PATH="$(pwd)"
+fi
+
+# --- Cascade Fallback Engine Setup ---
+if [ -n "$GEMINI_API_KEY" ] && [ -f "$PROFILE_DIR/opencode.cloud.json" ]; then
+    export OPENCODE_CONFIG="$PROFILE_DIR/opencode.cloud.json"
+    AGENT_DISPLAY="Cloud (Gemini Architecture Profiling Enabled)"
+elif [ -z "$GEMINI_API_KEY" ] && [ -f "$PROFILE_DIR/opencode.local.json" ]; then
+    export OPENCODE_CONFIG="$PROFILE_DIR/opencode.local.json"
+    AGENT_DISPLAY="Local (Llama Isolation Profile Enabled)"
+else
+    # Fallback Mode: Profile blueprints missing or unreadable
+    unset OPENCODE_CONFIG
+    AGENT_DISPLAY="Standard Native Engine Fallback (opencode.json layout tracking)"
+fi
+
+# Visual confirmation indicator
+echo -e "\033[1;36m[OpenCode Bridge]\033[0m Activating terminal worker..."
+echo -e "\033[90mLocation Context: $WORKSPACE_PATH\033[0m"
+echo -e "\033[92mActive Profile  : $AGENT_DISPLAY\033[0m\n"
+
+# Execute OpenCode cleanly using the selected target environment file
+$OPENCODE_BIN "$WORKSPACE_PATH" "$@"
