@@ -3,8 +3,11 @@
 # ==============================================================================
 
 # ==============================================================================
-# 1: PROJECTS INIT
+# 1: PROJECTS INIT & OPENCODE BRIDGE
 # ==============================================================================
+
+# --- OpenCode Direct Terminal Launcher ---
+~/.config/local-ai/opencode-bridge/opencode-bridge ---> ocb, opencode bridge
 
 # --- Projects ---
 ~/Projects/qwen-hypr ---> projects qwen, projects
