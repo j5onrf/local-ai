@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # AI Project Workspace Initializer v0.7.7
-# High-speed, non-interactive project stream formatting for LLM context injection.
 
 set -euo pipefail
 
@@ -20,11 +19,9 @@ fi
 TARGET_DIR=$(cd "$TARGET_DIR" && pwd)
 PROJECT_NAME=$(basename "$TARGET_DIR")
 
-# Setup clean projects/ subdirectory
 CONTEXT_DIR="/home/j5/.config/local-ai/ai-suggestion/projects"
 mkdir -p "$CONTEXT_DIR"
 
-# Generate a unique, path-based safe filename
 SAFE_NAME="${TARGET_DIR//\//-}"
 SAFE_NAME="${SAFE_NAME#-}" # Remove leading dash
 CONTEXT_OUT="$CONTEXT_DIR/${SAFE_NAME}.txt"
