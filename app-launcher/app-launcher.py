@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Ultra-Lightweight Terminal App Launcher v0.1.0
+# Ultra-Lightweight Terminal App Launcher v0.1.3
 
 import os
 import sys
@@ -11,9 +11,18 @@ import termios
 import select
 
 def get_apps():
-    """Scan and parse standard system and local desktop entry files."""
+    """Scan and parse desktop entry files dynamically resolving XDG data paths."""
     apps = []
-    paths = ["/usr/share/applications/*.desktop", os.path.expanduser("~/.local/share/applications/*.desktop")]
+    
+    # Dynamically resolve active system and local application directories
+    xdg_dirs = os.environ.get("XDG_DATA_DIRS", "/usr/share:/usr/local/share").split(":")
+    paths = []
+    for d in xdg_dirs:
+        if d.strip():
+            paths.append(os.path.join(d.strip(), "applications", "*.desktop"))
+    # Add local user applications
+    paths.append(os.path.expanduser("~/.local/share/applications/*.desktop"))
+    
     seen_execs = set()
     
     for path_pattern in paths:
@@ -24,10 +33,25 @@ def get_apps():
                 if "[Desktop Entry]" not in content:
                     continue
                 
-                # Parse INI structure manually to avoid configparser overhead
+                # Parse strictly inside the [Desktop Entry] section to prevent Action blocks from overwriting
                 entry = {}
+                in_desktop_entry = False
+                
                 for line in content.split("\n"):
-                    if "=" in line and not line.startswith("#"):
+                    line = line.strip()
+                    if not line or line.startswith("#"):
+                        continue
+                    
+                    # Section header check
+                    if line.startswith("[") and line.endswith("]"):
+                        if line == "[Desktop Entry]":
+                            in_desktop_entry = True
+                        else:
+                            # Stop parsing once we leave the primary entry block (ignores secondary Actions)
+                            in_desktop_entry = False
+                        continue
+                    
+                    if in_desktop_entry and "=" in line:
                         k, v = line.split("=", 1)
                         entry[k.strip()] = v.strip()
                 
@@ -85,7 +109,7 @@ def main():
             
             # Reposition cursor and clear screen using standard ANSI escapes
             sys.stdout.write("\033[2J\033[H")
-            sys.stdout.write("\033[1;36mApp Launcher\033[0m\n")
+            sys.stdout.write("\033[1;36m🚀 App Launcher\033[0m\n")
             sys.stdout.write(f"\033[1;30mSearch:\033[0m {query}_\n")
             sys.stdout.write("\033[90m────────────────────────────────────────\033[0m\n")
             
