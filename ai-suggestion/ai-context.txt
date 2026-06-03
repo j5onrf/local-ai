@@ -45,6 +45,9 @@ Rules:
 # 3: COMMANDS & SCRIPTS
 # ==============================================================================
 
+# --- Applications & App Launcher ---
+~/.config/local-ai/app-launcher/app-launcher.py ---> app, app launcher, launcher
+
 # --- Interactive Shell Aliases & Directory Navigation ---
 btop ---> memory, cpu
 cd ~/Documents ---> cd documents, go to documents, open documents
