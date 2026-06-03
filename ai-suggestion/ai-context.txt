@@ -70,3 +70,5 @@ uwsm app -- brave-origin-beta --user-data-dir="~/.config/brave-spotify-bunker" -
 
 # --- Server Lifecycle Management ---
 ~/.config/local-ai/ai-suggestion/tools/kill-ai-servers ---> stop server, stop llama server, killserver
+
+
