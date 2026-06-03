@@ -22,20 +22,23 @@ Rules:
 [TOOL] ~/.config/local-ai/ai-suggestion/tools/update-inspector ---> update inspector
 
 # --- Hyprland Integration ---
-[TOOL] hyprctl clients ---> hyprland clients, list open windows, show active apps, check running apps, browser windows open
+[TOOL] hyprctl clients ---> hyprland clients, list open windows, show active apps
 
 # --- Weather ---
 [TOOL] curl -s "wttr.in/?format=3" ---> weather simple, rain forcast simple
 [TOOL] curl -s wttr.in ---> weather full, rain forcast full
 
 # --- GUI Navigation ---
-# --- [documents]
 [TOOL] xdg-open ~/Documents ---> open documents
 
 
 # ==============================================================================
 # 2: COMMANDS & SCRIPTS
 # ==============================================================================
+
+# --- Projects ---
+~/Projects/qwen-hypr ---> projects qwen, projects
+~/Projects/quickshell ---> projects quickshell, projects
 
 # --- Interactive Shell Aliases & Directory Navigation ---
 btop ---> memory, cpu
@@ -54,10 +57,6 @@ uwsm app -- brave-origin-beta --user-data-dir="~/.config/brave-spotify-bunker" -
 ~/.config/local-ai/media-tui/media.lua ---> media lua, media cliamp
 
 ~/.config/local-ai/ai-summary/llmsum.py ---> llmsum, ytsum, summary
-
-# --- Projects ---
-~/Projects/qwen-hypr ---> projects qwen, projects
-~/Projects/quickshell ---> projects quickshell, projects
 
 # --- State & Workflow Management ---
 ~/.config/local-ai/ai-suggestion/tools/hyprstate/work ---> hyprstate work, workspace work
