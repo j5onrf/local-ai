@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# AI Project Workspace Initializer v0.7.6
+# AI Project Workspace Initializer v0.7.7
 # High-speed, non-interactive project stream formatting for LLM context injection.
 
 set -euo pipefail
