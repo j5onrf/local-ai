@@ -35,7 +35,7 @@ render_frame() {
         ARTIST=$(playerctl metadata artist 2>/dev/null)
 
         TRACK_STRING="$TITLE"
-        [[ -n "$ARTIST" ]] && TRACK_STRING="$ARTIST - $TITLE"
+        [[ -n "$ARTArtist" ]] && TRACK_STRING="$ARTIST - $TITLE"
 
         TRACK_STRING="${TRACK_STRING% - YouTube}"
         TRACK_STRING="${TRACK_STRING% - YouTube Music}"
@@ -55,7 +55,10 @@ render_frame() {
             fi
         fi
 
-        if [[ "$STATUS" == "Playing" ]]; then
+        # Convert status to lowercase to handle both "playing" and "Playing"
+        STATUS_LOWER=$(echo "$STATUS" | tr '[:upper:]' '[:lower:]' 2>/dev/null || echo "paused")
+
+        if [[ "$STATUS_LOWER" == "playing" ]]; then
             STATUS_BADGE="\033[1;45;30m Playing \033[0m"
         else
             STATUS_BADGE="\033[1;42;30m Paused \033[0m"
@@ -85,6 +88,7 @@ while true; do
                 else
                     playerctl play-pause
                 fi
+                sleep 0.12 # DBus transition handshake
             fi
             ;;
         "+"|"="|"}"|"]") # Volume Up (Catches shifted and unshifted keys)
@@ -99,10 +103,12 @@ while true; do
             ;;
         "n"|"N") # Next Song
             playerctl next 2>/dev/null
+            sleep 0.12 # DBus transition handshake
             ;;
         "p"|"P") # Previous Song
             playerctl position 0 2>/dev/null
             playerctl previous 2>/dev/null
+            sleep 0.12 # DBus transition handshake
             ;;
         "q"|"Q"|$'\e') # Quit out
             break
