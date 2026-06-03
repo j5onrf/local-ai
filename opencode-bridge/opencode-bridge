@@ -2,7 +2,7 @@
 
 # Paths & Binary Tracking
 OPENCODE_BIN="opencode"
-PROFILE_DIR="/home/j5/.config/local-ai/opencode-bridge"
+PROFILE_DIR="$HOME/.config/local-ai/opencode-bridge"
 
 # --- Intelligent Path Target Resolution ---
 if [ -d "$1" ]; then
