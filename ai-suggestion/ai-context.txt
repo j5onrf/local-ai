@@ -15,7 +15,6 @@ Rules:
 # ==============================================================================
 
 # --- System Info & Diagnostics ---
-# --- [time, date, calendar, system, diagnostics, health, storage, usage, updates]
 [TOOL] date ---> time date, show current date
 [TOOL] date; cal -s ---> calendar date, show calendar, what is today's date
 [TOOL] df -h / ---> disk usage, nvme drive usage, check storage space
@@ -23,11 +22,9 @@ Rules:
 [TOOL] ~/.config/local-ai/ai-suggestion/tools/update-inspector ---> update inspector
 
 # --- Hyprland Integration ---
-# --- [hyprland, clients, apps, windows, active, running, browser]
 [TOOL] hyprctl clients ---> hyprland clients, list open windows, show active apps, check running apps, browser windows open
 
 # --- Weather ---
-# --- [weather, rain, simple, full, forecast]
 [TOOL] curl -s "wttr.in/Arnold?format=3" ---> weather simple, rain forcast simple
 [TOOL] curl -s wttr.in ---> weather full, rain forcast full
 
@@ -41,17 +38,14 @@ Rules:
 # ==============================================================================
 
 # --- Interactive Shell Aliases & Directory Navigation ---
-# --- [cpu, memory, documents]
 btop ---> memory, cpu
 cd ~/Documents ---> cd documents, go to documents, open documents
 
 # --- Applications (GUI & Webapps) ---
-# --- [spotify, youtube, music]
 omarchy-launch-webapp https://music.youtube.com/ ---> youtube music, yt music, youtube webapp
 uwsm app -- brave-origin-beta --user-data-dir="~/.config/brave-spotify-bunker" --app=https://open.spotify.com/ >/dev/null 2>&1 ---> spotify music
 
 # --- TUI (Terminal User Interface) Scripts ---
-# --- [basepage, basetracker, rss, media, cliamp, tui]
 ~/.config/local-ai/basepage-tui/basepage.py ---> base page, basepage tui, rss
 ~/.config/local-ai/basepage-tui/basetracker.py ---> base tracker, basetracker tui
 
@@ -66,11 +60,9 @@ uwsm app -- brave-origin-beta --user-data-dir="~/.config/brave-spotify-bunker" -
 ~/Projects/quickshell ---> projects quickshell, projects
 
 # --- State & Workflow Management ---
-# --- [hyprstate, workspace, work, clean, media]
 ~/.config/local-ai/ai-suggestion/tools/hyprstate/work ---> hyprstate work, workspace work
 ~/.config/local-ai/ai-suggestion/tools/hyprstate/clean ---> hyprstate clean, workspace clean
 ~/.config/local-ai/ai-suggestion/tools/hyprstate/media ---> hyprstate media, workspace media
 
 # --- Server Lifecycle Management ---
-# --- [server, llama, killserver]
 ~/.config/local-ai/ai-suggestion/tools/kill-ai-servers ---> stop server, stop llama server, killserver
