@@ -140,7 +140,7 @@ To make project initialization frictionless, you can map absolute directory path
 ```text
 ~/Projects/quickshell ---> projects quickshell, projects
 ```
-If you search for `projects qwen` and execute the suggestion, the `ai_handle_missing` shell hook detects that the target command is an existing directory path, bypasses standard execution, and seamlessly launches `ai init` on the target path automatically.
+If you search for `projects` and execute the suggestion, the `ai_handle_missing` shell hook detects that the target command is an existing directory path, bypasses standard execution, and seamlessly launches `ai init` on the target path automatically.
 
 ---
 
