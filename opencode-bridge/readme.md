@@ -1,7 +1,6 @@
-
 # OpenCode Bridge Orchestrator
 
-<img width="3840" height="2160" alt="20260603_160047" src="https://github.com/user-attachments/assets/21982191-2c00-4f89-a139-55ecb6800482" />
+<img alt="20260603_160047" src="https://github.com/user-attachments/assets/21982191-2c00-4f89-a139-55ecb6800482" />
 
 Integrating with OpenCode is a brilliant way to solve the performance bottleneck of smaller or slower local LLMs. 
 
@@ -15,31 +14,25 @@ Instead of porting everything, this bridge maps them using an **Orchestrator-Wor
 
 Rather than treating OpenCode as an active, independent system that listens for everything, this bridge transforms it into a dedicated, isolated "execution block" inside your agent's routing layer.
 
-
-```
-
-```
-              [ User Input / Goal ]
-                        |
-                        v
-            +-----------------------+
-            |   Custom Orchestrator |  <-- Light, Fast Local LLM
-            |    (Intent / Router)  |      (e.g., ai-suggestion)
-            +-----------------------+
-                        |
-             Is it complex engineering?
-                /               \
-              YES                NO
-              /                    \
-             v                      v
-  +-------------------+    +---------------------+
-  | OpenCode Worker   |    | Fast Local Tools    |
-  | (Bypasses LLM tool|    | (Simple edits, chat)|
-  |  overhead entirely)|    +---------------------+
-  +-------------------+
-
-```
-
+```text
+                      [ User Input / Goal ]
+                                |
+                                v
+                    +-----------------------+
+                    |   Custom Orchestrator |  <-- Light, Fast Local LLM
+                    |    (Intent / Router)  |      (e.g., ai-suggestion)
+                    +-----------------------+
+                                |
+                     Is it complex engineering?
+                        /               \
+                      YES                NO
+                      /                    \
+                     v                      v
+          +-------------------+    +---------------------+
+          | OpenCode Worker   |    | Fast Local Tools    |
+          | (Bypasses LLM tool|    | (Simple edits, chat)|
+          |  overhead entirely)|    +---------------------+
+          +-------------------+
 ```
 
 ---
@@ -56,23 +49,18 @@ Rather than treating OpenCode as an active, independent system that listens for 
 
 The project isolates runtime behaviors across modular blueprint files managed by a centralized configuration orchestrator:
 
-
-```
-
+```text
 ~/.config/local-ai/opencode-bridge/
 ├── opencode-bridge      # The execution launcher script (ocb)
 ├── opencode.cloud.json  # Locked-down Gemini API cloud profile
 └── opencode.local.json  # Fast, toolless local inference profile
-
 ```
 
 ### Cascade Fallback Sequence
 
 When you invoke the `ocb` command utility inside a project directory, the launcher computes the environment state using this strict order of precedence:
 
-
-```
-
+```text
 [ocb execution]
 |
 ├──> Is GEMINI_API_KEY set & opencode.cloud.json present?
@@ -82,8 +70,7 @@ When you invoke the `ocb` command utility inside a project directory, the launch
 │    └── YES: Spins up context-isolated Local Profile.
 │
 └──> Profiles missing or unreadable?
-└── FALLBACK: Unsets profile overrides; defers natively to standard opencode.json.
-
+     └── FALLBACK: Unsets profile overrides; defers natively to standard opencode.json.
 ```
 
 ---
@@ -97,7 +84,6 @@ The bridge natively interfaces with your active environment variables. No plain-
 # Sourced directly within your ~/.bashrc or session configuration
 export GEMINI_API_KEY="AIzaSyYourSecretAPIKey"
 export CLOUD_MODEL="gemini-3.1-flash-lite"
-
 ```
 
 ### Execution Usage
@@ -110,5 +96,4 @@ ocb
 
 # Temporarily force the local profile loop even if a cloud API key is present
 GEMINI_API_KEY="" ocb
-
 ```
