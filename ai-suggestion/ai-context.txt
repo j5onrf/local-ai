@@ -11,7 +11,16 @@ Rules:
 # ==============================================================================
 
 # ==============================================================================
-# 1: AGENTIC TOOLS
+# 1: Projects
+# ==============================================================================
+
+# --- Projects ---
+~/Projects/qwen-hypr ---> projects qwen, projects
+~/Projects/quickshell ---> projects quickshell, projects
+
+
+# ==============================================================================
+# 2: AGENTIC TOOLS
 # ==============================================================================
 
 # --- System Info & Diagnostics ---
@@ -33,12 +42,8 @@ Rules:
 
 
 # ==============================================================================
-# 2: COMMANDS & SCRIPTS
+# 3: COMMANDS & SCRIPTS
 # ==============================================================================
-
-# --- Projects ---
-~/Projects/qwen-hypr ---> projects qwen, projects
-~/Projects/quickshell ---> projects quickshell, projects
 
 # --- Interactive Shell Aliases & Directory Navigation ---
 btop ---> memory, cpu
