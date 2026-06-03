@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# AI Suggestion v0.7.7.8 [j5onrf] [06-03-26]
+# AI Suggestion v0.7.7.9 [j5onrf] [06-03-26]
 
 import sys, re, os, json, threading, time
 import urllib.request as urlreq, urllib.error as urlerr
@@ -143,7 +143,9 @@ def matrix_search(query, threshold=0.50):
             
     if not candidates:
         return None
-    candidates.sort(reverse=True, key=lambda x: (x[0], len(x[2])))
+    
+    # Sort by score descending (-x[0]) and shortest intent length ascending (len(x[2]))
+    candidates.sort(key=lambda x: (-x[0], len(x[2])))
     
     seen, top = set(), []
     for _, cmd, intent in candidates:
@@ -348,13 +350,15 @@ if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
     # Standard single-turn conversation logic
     elif len(sys.argv) > 2:
         query = " ".join(sys.argv[2:])
-        system_context, tool_match = "", matrix_search(query, threshold=0.65)
+        system_context, tool_match = matrix_search(query, threshold=0.65)
         if tool_match:
             first_match = tool_match.split("\n")[0]
             if "|||" in first_match:
                 intent, cmd = first_match.split("|||", 1)
                 if cmd.startswith("[TOOL]"):
-                    system_context = run_local_tool(cmd.replace("[TOOL]", "").strip())
+                    tool_cmd = cmd.replace("[TOOL]", "").strip()
+                    print(f"\033[90m[sys] Executing: {tool_cmd}\033[0m")
+                    system_context = run_local_tool(tool_cmd)
 
         prompt = (
             "You are a helpful, conversational local AI shell assistant with read-only terminal access.\n"
