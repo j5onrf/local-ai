@@ -2,6 +2,8 @@
 
 <img alt="20260603_160047" src="https://github.com/user-attachments/assets/21982191-2c00-4f89-a139-55ecb6800482" />
 
+---
+
 Integrating with OpenCode is a brilliant way to solve the performance bottleneck of smaller or slower local LLMs. 
 
 When a local LLM gets overloaded with massive system prompts or 15 to 20 tool definitions upfront, its reasoning latency tanks, and it often struggles to pick the correct function. Turning off the tools in OpenCode and using your custom lightweight agent as the primary orchestrator is exactly the right move.
