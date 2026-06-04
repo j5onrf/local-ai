@@ -25,12 +25,12 @@
 ~/Projects/qwen-hypr ---> projects qwen, projects
 
 # --- Specialized Codebase Workspaces (Skill-Primed) ---
-# Specialized project initializations (Primed with "coder" Skill!)
+# (Specialized project initializations primed with the "coder" Skill!)
 ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 
 
 # ==============================================================================
-# 2: ON-DEMAND SYSTEM PROMPTS & ROLE INJECTIONS (SKILLS)
+# SECTION 2: ON-DEMAND SYSTEM PROMPTS & ROLE INJECTIONS (SKILLS)
 # ==============================================================================
 
 # --- Skills (Prompt & Role Injection) ---
@@ -46,19 +46,15 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 # SECTION 3: DYNAMIC CONTEXT-INJECTED TOOLS (RAG)
 # ==============================================================================
 
-# --- System Logs & Diagnostics ---
-# (Runs journalctl through the custom stream compressor for low-token triage)
-[TOOL] ~/.config/local-ai/ai-suggestion/tools/ai-log-checker ---> ai log, check errors, system crashed, events
+# --- System Logs & Diagnostics (Compressed Stream Triage) ---
+[TOOL] ~/.config/local-ai/ai-suggestion/tools/agentic/ai-log-checker ---> ai log, check errors, system crashed, events
 
-# --- System Resources & Telemetry ---
-[TOOL] ~/.config/local-ai/ai-suggestion/tools/ai-system-diagnosis ---> system health, system diagnosis, why is my system slow
-[TOOL] ~/.config/local-ai/ai-suggestion/tools/update-inspector ---> update inspector, check upgrades, package list
+# --- System Resources & Telemetry (Active Diagnostics) ---
+[TOOL] ~/.config/local-ai/ai-suggestion/tools/agentic/ai-system-diagnosis ---> system health, system diagnosis, why is my system slow
+[TOOL] ~/.config/local-ai/ai-suggestion/tools/agentic/update-inspector ---> update inspector, check upgrades, package list
 [TOOL] df -h / ---> disk usage, nvme drive usage, check storage space
 
-# --- Active Window Tracking & Client Queries ---
-[TOOL] hyprctl clients ---> hyprland clients, list open windows, show active apps
-
-# --- APIs & Live Networking ---
+# --- Weather & Live Networking ---
 [TOOL] curl -s "wttr.in/?format=3" ---> weather simple, rain forecast simple
 [TOOL] curl -s wttr.in ---> weather full, rain forecast full
 
@@ -73,6 +69,9 @@ cd ~/Projects ---> cd projects, go to projects, open projects
 # --- Core Terminal Shortcuts ---
 btop ---> memory, cpu, task manager
 
+# --- Active Window Tracking & Client Queries ---
+hyprctl clients ---> hyprland clients, list open windows, show active apps
+
 
 # ==============================================================================
 # SECTION 5: TUI (TERMINAL USER INTERFACE) PROGRAMS
@@ -82,7 +81,7 @@ btop ---> memory, cpu, task manager
 ~/.config/local-ai/basepage-tui/basepage.py ---> base page, basepage tui, rss
 ~/.config/local-ai/basepage-tui/basetracker.py ---> base tracker, basetracker tui
 
-# --- Media & Volume Controllers ---
+# --- Media & Volume Controllers (Pure Reactive) ---
 ~/.config/local-ai/media-tui/media.py ---> media, cliamp
 ~/.config/local-ai/media-tui/media.sh ---> media sh, media controller
 ~/.config/local-ai/media-tui/media.lua ---> media lua
@@ -95,7 +94,7 @@ btop ---> memory, cpu, task manager
 # SECTION 6: GRAPHICAL APPLICATIONS & WEBAPPS
 # ==============================================================================
 
-# --- System App Launcher ---
+# --- System App Launcher (Ultra-Light Rofi-TUI) ---
 ~/.config/local-ai/app-launcher/app-launcher.py ---> app, app launcher, launcher
 
 # --- Native Webapp Wrappers & Browsers ---
