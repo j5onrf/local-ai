@@ -26,7 +26,7 @@
 
 # --- Specialized Codebase Workspaces (Skill-Primed) ---
 # (Pipes the specified skill text directly into the compiled project context)
-ai init ~/Projects/quickshell sysadmin ---> projects quickshell, projects quickshell skills
+ai init ~/Projects/systemwork sysadmin ---> projects quickshell, projects quickshell skills
 
 
 # ==============================================================================
