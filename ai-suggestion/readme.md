@@ -1,99 +1,180 @@
-# AI Suggestion Agent (v0.7.8)
+# AI-Suggestion Agent (v0.7.8) — Documentation
 
-<div align="center">
-
-```diff
-+ █████╗ ██╗     ███████╗██╗   ██╗ ██████╗  ██████╗ ███████╗███████╗████████╗██╗ ██████╗ ███╗   ██╗
-+██╔══██╗██║     ██╔════╝██║   ██║██╔════╝ ██╔════╝ ██╔════╝██╔════╝╚══██╔══╝██║██╔═══██╗████╗  ██║
-+███████║██║     ███████╗██║   ██║██║  ███╗██║  ███╗█████╗  ███████╗   ██║   ██║██║   ██║██╔██╗ ██║
-+██╔══██║██║     ╚════██║██║   ██║██║   ██║██║   ██║██╔══╝  ╚════██║   ██║   ██║██║   ██║██║╚██╗██║
-+██║  ██║██║     ███████║╚██████╔╝╚██████╔╝╚██████╔╝███████╗███████║   ██║   ██║╚██████╔╝██║ ╚████║
-+╚═╝  ╚═╝╚═╝     ╚══════╝ ╚═════╝  ╚═════╝  ╚═════╝ ╚══════╝╚══════╝   ╚═╝   ╚═╝ ╚═════╝ ╚═╝  ╚═══╝
-+                     █████╗  ██████╗ ███████╗███╗   ██╗████████╗
-+                    ██╔══██╗██╔════╝ ██╔════╝████╗  ██║╚══██╔══╝
-+                    ███████║██║  ███╗█████╗  ██╔██╗ ██║   ██║   
-+                    ██╔══██║██║   ██║██╔══╝  ██║╚██╗██║   ██║   
-+                    ██║  ██║╚██████╔╝███████╗██║ ╚████║   ██║   
-+                    ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝
-```
-`Qwen3.5-2B+` `Gemini-3.1-Flash-Lite` `OpenAI-Compatible API` `Python 3.10+` `Bash 4.0+` `Zsh 5.0+`
-</div>
+An adaptive, local/cloud AI shell assistant designed to conform to your terminal environment. By leveraging a high-speed, local token-matrix cache alongside local or cloud LLMs, it provides interactive command suggestions, manages aliases, executes system tools, and answers conversational queries with zero background CPU overhead.
 
 ---
 
-## How the Agent Works
+## 1. System Architecture Overview
 
-All configurations, automations, and custom project workspaces are managed through a single master blueprint: **`ai-context.txt`**. When you trigger a mapped keyword, a cached similarity index provides a local terminal suggestion instantly. When you ask a question (using the `ai` prefix), the agent securely executes your custom local scripts using [tools], captures their outputs, and streams context-aware answers. 
+The project operates under an on-demand execution model designed to protect terminal responsiveness:
 
-When working inside a codebase, the agent compiles a safe, path-specific map of your workspace structure, allowing you to run a dedicated project-aware development copilot session on demand.
+* **Zero-Background Footprint:** No background daemons, cron-jobs, or continuous CPU-polling threads are used. Your shell experiences 0% idle RAM and 0% idle CPU overhead.
+* **Dual-Layer Execution:** 
+  * **Standard suggestions (direct shell inputs):** Bypasses the LLM completely. Suggestion queries are evaluated locally via a pure Python Sørensen-Dice set-intersection matrix in under 2ms.
+  * **Conversational queries (using the `ai` prefix):** Run on-demand. If cloud API keys are set, it connects to Google Gemini; otherwise, it falls back to your local OpenAI-compatible completions API (such as `llama.cpp` or `Ollama` running on port 8080).
+* **On-Demand Workspace Agents (`ai init`):** A custom indexing routine that scans your project directories, generates structural file trees, and launches a persistent, multi-turn copilot session targeted specifically to your codebase.
+* **Offline Resilience:** If your local AI server and internet are offline, your command suggestions and custom aliases continue to work locally and instantly. Only conversational LLM chat requests are safely blocked.
 
----
-
-## Core Features
-
-* **Zero-Daemon Footprint:** No background processes or active runtimes. Runs only for the millisecond you execute a query.
-* **Instant Local Suggestions:** Sørensen-Dice similarity matching suggests commands locally, completely bypassing the LLM.
-* **On-Demand Workspace Agents:** Indexes project directory trees, parses architectural files, and launches codebase-aware copilot sessions.
-* **Declarative Skills System:** Dynamically primes your conversational sessions with custom prompt guidelines, development roles (like system administrators or language-specific developers), and specific constraints mapped directly inside your configuration.
-* **Subprocess RAG Tool Injection:** Executes custom local scripts and pipes outputs directly into the conversational AI context.
-* **No Dependencies:** Written natively using Python's standard library—no `pip`, external dependencies, or heavy daemon environments required.
-* **Ultra-Lightweight & Auditable:** Built for complete transparency with under 370 lines of highly readable, standard-library Python code.
-
----
-
-## TUI Carousel Controls
-
-* **`Up` / `Down` Arrow Keys:** Cycle through available suggestions
-* **`Enter`:** Execute the highlighted command (or initialize a workspace if the suggestion is a directory path)
-* **`Esc` / `Ctrl+C` / `Any Key`:** Cancel menu (features an anti-spam buffer flush to prevent command line leakage)
-
----
-
-## Command Reference
-
-* `ai`: Launch an interactive, multi-turn conversation session. Press `Ctrl+C` or type `exit`/`quit` to quit.
-* `ai init <path>`: Index a directory and launch an interactive workspace agent primed with your codebase structure.
-* `ai <query>`: Instantly answer a single question and return directly to your Bash prompt.
-
----
-
-## The Brain: Configuration (`ai-context.txt`)
-
-Add your shortcuts, dynamic tool integrations, on-demand skills, and project workspaces to `~/.config/local-ai/ai-suggestion/ai-context.txt`. The search index automatically compiles in under 2ms on your next execution.
+### A. The Suggestion Loop (0% Idle CPU / Offline-Safe)
 
 ```text
-# Static Shortcut
-~/.config/local-ai/media-tui/media.py ---> play music, run media
+                         [ Direct Shell Input ]
+                                   │
+                                   ▼
+                        [ Token Matrix Search ]
+                       Sørensen-Dice Coefficient
+                                   │
+              ┌────────────────────┴────────────────────┐
+              ▼                                         ▼
+       ( Match Found )                           ( No Match Found )
+              │                                         │
+              ▼                                         ▼
+      [ Match Carousel ]                      [ Unmapped Warning ]
+    Up/Down Arrow Selector                   "ℹ <intent> is not mapping..."
+              │                                         │
+       ┌──────┴──────┐                                  ▼
+       ▼             ▼                             [ Safe Exit ]
+    [Enter]      [Any Key / Esc / Ctrl+C]       Returns to Bash Prompt
+       │             │
+       ▼             ▼
+  Is Directory?    Cancel Menu
+   /       \      (Buffer Flush)
+ (No)      (Yes)
+  /          \
+Execute   Auto-Launch
+Command    ai init <path>
+```
 
-# On-Demand Prompt-Injection Skill
-[TOOL] cat ~/.config/local-ai/ai-suggestion/tools/skills/sysadmin.txt ---> sysadmin, load sysadmin
+### B. The Conversational Agent (On-Demand / Hybrid Local-Cloud)
 
-# Specialized Workspace Initializer (Primes workspace with your "sysadmin" Skill!)
-ai init ~/Projects/quickshell sysadmin ---> projects quickshell, projects
+```text
+                         [ ai <conversational query> ]
+                                      │
+                                      ▼
+                   [ Cloud Mode Active? (Env Key check) ]
+                                 /      \
+                        (No Key)/        \(API Key Sourced)
+                               /          \
+                     [ Local Port 8080 ]   [ Standard Cloud Routing ]
+                     (Offline -> Safe      (Bypasses local checks)
+                     Connection Error)            │
+                               \                  /
+                                ▼                ▼
+                         [ Inline Latency Spinner ]
+                           Displays Accent Rotator
+                                 (| / - \)
+                                      │
+                             [ Connection Opened ]
+                           Wipes Spinner from Screen
+                                      │
+                           [ Tool-Intent Match? ]
+                                 /          \
+                            ( Yes )          ( No )
+                              /                \
+               [ Execute local tool ]      [ Standard Chat ]
+                Inject Context (RAG)        Generic Response
+                              \                /
+                               ▼              ▼
+                          [ Local/Cloud OpenAI-API ]
+                          (Streams Response to Shell)
 ```
 
 ---
 
-## Quick Setup
+## 2. Cloud Integration
 
-### 1. Install the Project Files
-```bash
-git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai && \
-chmod +x ~/.config/local-ai/ai-suggestion/alias-ai.py && \
-chmod +x ~/.config/local-ai/ai-suggestion/tools/init-projects
-```
+The agent natively supports **Google Gemini's OpenAI-compatible completions API**. This allows you to offload conversational reasoning and context-injected tool calls to the cloud with **0% local CPU/RAM overhead**.
 
-### 2. Append the Hook to Your `~/.bashrc`
+### Environment Configuration (`~/.bashrc`)
+To activate cloud mode, export your API key and preferred model at the top of your `~/.bashrc`:
 ```bash
-echo '[ -f "$HOME/.config/local-ai/ai-suggestion/ai-hook.sh" ] && source "$HOME/.config/local-ai/ai-suggestion/ai-hook.sh"' >> ~/.bashrc
-source ~/.bashrc
-```
-
-*(Optional)* Export your Gemini API key to activate cloud routing:
-```bash
-export GEMINI_API_KEY="AIzaSyYourGeminiKey"
+export GEMINI_API_KEY="AIzaSyYourFullGeminiApiKeyHere"
+export CLOUD_MODEL="gemini-1.5-flash"
 ```
 
 ---
 
-*For detailed system architecture diagrams, custom tool development guidelines, and advanced prompt engineering, refer to the full **[documentation.md](documentation.md)**.*
+## 3. Configuration & The Semantic Index
+
+Your agent's brain is managed by a plain-text configuration master file.
+
+* **Path:** `~/.config/local-ai/ai-suggestion/ai-context.txt`
+* **Syntax:** `[command] ---> [intent1], [intent2], [intent3]`
+
+*Example:*
+```text
+omarchy-launch-webapp https://music.youtube.com/ ---> youtube music
+```
+
+### A. Automatic Compilation on the Fly
+Every time you interact with the agent, the Python script compares modification timestamps (`getmtime`) of your files. If the plain-text configuration has been modified, it silently rebuilds your minified, single-line lookup index (`ai-context.idx`) in under 2ms before executing.
+
+### B. Triple-Redundancy Self-Healing Index
+To prevent index corruption or empty cache loads from breaking command suggestions, the `matrix_search` function implements an active validation cycle:
+1. **Missing Cache Detection:** If the `.idx` file is deleted, it compiles a new one instantly on the next query.
+2. **Malformed JSON Recovery:** If the index file contains corrupt or interrupted data, it catches `json.JSONDecodeError` and forces a fresh rebuild.
+3. **Empty Index Validation (`[]`):** If the index successfully loads but parses as empty (`[]`) while the source configuration file actually has text lines, the script flags this as a logic failure and immediately forces a rebuild.
+
+---
+
+## 4. Active System Tools & Project Workspace Agents
+
+### A. Local Context-Injected RAG (`[TOOL]`)
+You can turn any standard Linux command, package, binary, or custom script into an AI tool by prefixing the command with `[TOOL]` in your `ai-context.txt`:
+```text
+[TOOL] df -h / ---> check my nvme drive, is my hard drive full, show disk space
+```
+When you run a conversational query targeting that intent, the script executes the tool behind the scenes (protected by a **15-second safety timeout**), captures its raw stdout, and injects it directly into the LLM's prompt context as real-time system data.
+
+### B. Project Workspace Agents (`ai init`)
+When analyzing codebase folders, running raw chat queries lacks necessary structural context. Running `ai init <path>` triggers a dedicated indexing binary (`tools/init-projects`) that:
+1. Resolves the absolute directory path and extracts the project name.
+2. Generates a recursive directory structure map down to three folder levels.
+3. Packages workspace-specific agent guidelines and system instructions.
+4. Permanently caches the compiled payload inside the isolated `projects/` directory under a path-sanitized filename (e.g., `projects/home-user-Projects-quickshell.txt`).
+
+This bypasses manual initialization cycles, allowing the Workspace Agent to read your directory trees, recognize active config files (like `hypr_api_ref.lua`), and respond to design questions with precise codebase awareness.
+
+### C. Specialized Workspace Initialization with Custom Skills
+Rather than using heavy wrapper utilities or custom prefixes, you can initialize a project with a custom role-persona by simply appending the skill name directly after your directory path in your master configuration file:
+
+```text
+# --- Specialized Project Initializer (Primes workspace with "coder" Skill!) ---
+~/Projects/quickshell coder ---> projects quickshell, projects
+```
+
+When you search for `projects quickshell` and execute the suggestion:
+1. The Bash hook (`ai_handle_missing`) detects that the matched command consists of a valid directory path followed by a trailing word (`coder`).
+2. It automatically separates the path from the skill name and executes: `ai init ~/Projects/quickshell coder`.
+3. The `init-projects` worker locates the matching `/skills/coder.txt` instruction sheet and merges it directly into the compiled project context file.
+4. When `alias-ai.py` boots, it dynamically scans the payload, extracts the active skill tag, and displays it highlighted inside your starting banner:
+   ```text
+   AI Agent Session Initialized | Context Loaded [coder] | Ctrl+C to exit.
+   ```
+
+### D. Command Interceptor Directory Routing
+To make project initialization frictionless, you can map absolute directory paths directly inside your `ai-context.txt`:
+```text
+~/Projects/qwen-hypr ---> projects qwen, projects
+```
+If you search for `projects qwen` and execute the suggestion, the `ai_handle_missing` shell hook detects that the target command is an existing directory path, bypasses standard execution, and seamlessly launches `ai init` on the target path automatically.
+
+---
+
+## 5. Mathematical, Structural, & Interface Optimizations
+
+### A. Conversational-Resilient Stop Words
+To prevent natural conversational padding (like *"what about...", "is it...", "do you have..."*) from causing keyword collisions in your local set-intersection matrix, the `tokenize()` function automatically filters out a pre-compiled set of common English stop words. This ensures that a phrase like `"is it going to rain in the next few days?"` resolves strictly to `["rain"]` under the hood.
+
+### B. Theme-Adaptive, Thread-Safe Latency Spinner
+To keep the terminal interface responsive during network handshakes and LLM processing delays, a lightweight daemon thread runs an inline spinner (`|`, `/`, `-`, `\`) at 12 FPS. 
+
+By utilizing standard 4-bit ANSI colors (`\033[1;32m` / Bold Green Theme Accent) rather than hardcoded 24-bit TrueColor hex codes, **the interface automatically and dynamically adapts to your system theme.** The spinner, `Agent:`, and `AI:` labels will seamlessly inherit the precise accent hue of your active terminal color palette (such as Tokyo Night, Nord, or Gruvbox) completely on the fly.
+
+When the first stream chunk is returned from the host, the spinner thread is joined, the carriage return line is wiped (`\r\x1b[K`), and the response begins outputting smoothly.
+
+### C. Multi-Turn Memory (State Preservation)
+Unlike single-turn command completions, interactive conversation sessions maintain state through a local, memory-resident `chat_history` list. The stream loop compiles the incoming text chunks and appends the assistant's response to the active array, ensuring the model retains full context of previous messages and initialized project configurations.
+```
+---
+```
