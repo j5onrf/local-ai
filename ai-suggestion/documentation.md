@@ -1,4 +1,4 @@
-# AI-Suggestion Agent (v0.7.7) — Documentation
+# AI-Suggestion Agent (v0.7.8) — Documentation
 
 An adaptive, local/cloud AI shell assistant designed to conform to your terminal environment. By leveraging a high-speed, local token-matrix cache alongside local or cloud LLMs, it provides interactive command suggestions, manages aliases, executes system tools, and answers conversational queries with zero background CPU overhead.
 
@@ -61,7 +61,7 @@ Command    ai init <path>
                                \                  /
                                 ▼                ▼
                          [ Inline Latency Spinner ]
-                           Displays Green Rotator
+                           Displays Accent Rotator
                                  (| / - \)
                                       │
                              [ Connection Opened ]
@@ -86,10 +86,10 @@ Command    ai init <path>
 The agent natively supports **Google Gemini's OpenAI-compatible completions API**. This allows you to offload conversational reasoning and context-injected tool calls to the cloud with **0% local CPU/RAM overhead**.
 
 ### Environment Configuration (`~/.bashrc`)
-To activate cloud mode, export your API key and preferred model at the bottom of your `~/.bashrc`:
+To activate cloud mode, export your API key and preferred model at the top of your `~/.bashrc`:
 ```bash
 export GEMINI_API_KEY="AIzaSyYourFullGeminiApiKeyHere"
-export CLOUD_MODEL="gemini-3.1-flash-lite"
+export CLOUD_MODEL="gemini-1.5-flash"
 ```
 
 ---
@@ -159,4 +159,3 @@ When the first stream chunk is returned from the host, the spinner thread is joi
 ### C. Multi-Turn Memory (State Preservation)
 Unlike single-turn command completions, interactive conversation sessions maintain state through a local, memory-resident `chat_history` list. The stream loop compiles the incoming text chunks and appends the assistant's response to the active array, ensuring the model retains full context of previous messages and initialized project configurations.
 ```
----
