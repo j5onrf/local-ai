@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# AI Suggestion v0.7.7.2 [j5onrf] [06-02-26]
+# AI Suggestion v0.7.8 [j5onrf] [06-04-26]
 
 [[ $- != *i* ]] && return
 
@@ -46,6 +46,8 @@ ai() {
 
     if [[ "$1" == "init" ]]; then
         local target_path="$2"
+        local skill_name="${3:-}" # Captures the skill name dynamically from the context mapping
+
         if [[ -z "$target_path" ]]; then
             target_path=$(pwd)
         fi
@@ -55,7 +57,8 @@ ai() {
         safe_name="${safe_name#-}"
         local context_file="$projects_dir/${safe_name}.txt"
 
-        "$tool_bin" "$target_path"
+        # Pass target path and skill name directly to the compiler script
+        "$tool_bin" "$target_path" "$skill_name"
         if [ $? -ne 0 ]; then
             return 1 
         fi
