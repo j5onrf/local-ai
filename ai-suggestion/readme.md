@@ -36,9 +36,8 @@ When working inside a codebase, the agent compiles a safe, path-specific map of 
 * **Instant Local Suggestions:** Sørensen-Dice similarity matching suggests commands locally, completely bypassing the LLM.
 * **On-Demand Workspace Agents:** Indexes project directory trees, parses architectural files, and launches persistent codebase copilot sessions.
 * **Subprocess RAG Tool Injection:** Executes custom local scripts and pipes outputs directly into the conversational AI context.
-* **Volatile Session Backups:** Instantly export active conversations into formatted Markdown notebooks (`~/ai-session-*.md`) by typing `save` or `backup` (automatically strips background RAG instructions for clean logs).
 * **No Dependencies:** Written natively using Python's standard library—no `pip`, external dependencies, or heavy daemon environments required.
-* **Ultra-Lightweight & Auditable:** Built for complete transparency with under 40 lines of Bash and under 400 lines of highly readable, standard-library Python code.
+* **Ultra-Lightweight & Auditable:** Built for complete transparency with under 40 lines of Bash and under 420 lines of highly readable, standard-library Python code.
 
 ---
 
@@ -52,7 +51,7 @@ When working inside a codebase, the agent compiles a safe, path-specific map of 
 
 ## Command Reference
 
-* `ai`: Launch an interactive, multi-turn conversation session. Type `save` or `backup` inside the prompt to export a clean Markdown log of the session to your home folder. Press `Ctrl+C` or type `exit`/`quit` to quit.
+* `ai`: Launch an interactive, multi-turn conversation session. Press `Ctrl+C` or type `exit`/`quit` to quit.
 * `ai init <path>`: Index a directory and launch an interactive workspace agent primed with your codebase structure.
 * `ai <query>`: Instantly answer a single question and return directly to your Bash prompt.
 
