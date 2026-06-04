@@ -135,12 +135,29 @@ When analyzing codebase folders, running raw chat queries lacks necessary struct
 
 This bypasses manual initialization cycles, allowing the Workspace Agent to read your directory trees, recognize active config files (like `hypr_api_ref.lua`), and respond to design questions with precise codebase awareness.
 
-### C. Command Interceptor Directory Routing
+### C. Specialized Workspace Initialization with Custom Skills
+Rather than using heavy wrapper utilities or custom prefixes, you can initialize a project with a custom role-persona by simply appending the skill name directly after your directory path in your master configuration file:
+
+```text
+# --- Specialized Project Initializer (Primes workspace with "coder" Skill!) ---
+~/Projects/quickshell coder ---> projects quickshell, projects
+```
+
+When you search for `projects quickshell` and execute the suggestion:
+1. The Bash hook (`ai_handle_missing`) detects that the matched command consists of a valid directory path followed by a trailing word (`coder`).
+2. It automatically separates the path from the skill name and executes: `ai init ~/Projects/quickshell coder`.
+3. The `init-projects` worker locates the matching `/skills/coder.txt` instruction sheet and merges it directly into the compiled project context file.
+4. When `alias-ai.py` boots, it dynamically scans the payload, extracts the active skill tag, and displays it highlighted inside your starting banner:
+   ```text
+   AI Agent Session Initialized | Context Loaded [coder] | Ctrl+C to exit.
+   ```
+
+### D. Command Interceptor Directory Routing
 To make project initialization frictionless, you can map absolute directory paths directly inside your `ai-context.txt`:
 ```text
-~/Projects/quickshell ---> projects quickshell, projects
+~/Projects/qwen-hypr ---> projects qwen, projects
 ```
-If you search for `projects quickshell` and execute the suggestion, the `ai_handle_missing` shell hook detects that the target command is an existing directory path, bypasses standard execution, and seamlessly launches `ai init` on the target path automatically.
+If you search for `projects qwen` and execute the suggestion, the `ai_handle_missing` shell hook detects that the target command is an existing directory path, bypasses standard execution, and seamlessly launches `ai init` on the target path automatically.
 
 ---
 
@@ -158,4 +175,6 @@ When the first stream chunk is returned from the host, the spinner thread is joi
 
 ### C. Multi-Turn Memory (State Preservation)
 Unlike single-turn command completions, interactive conversation sessions maintain state through a local, memory-resident `chat_history` list. The stream loop compiles the incoming text chunks and appends the assistant's response to the active array, ensuring the model retains full context of previous messages and initialized project configurations.
+```
+---
 ```
