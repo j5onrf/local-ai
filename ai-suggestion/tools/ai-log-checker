@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# AI Log Triage & Diagnostics v1.0.0
+
+set -euo pipefail
+
+echo "=== ACTIVE SYSTEM DIAGNOSTICS & LOG TRIAGE ==="
+echo "[INSTRUCTIONS FOR AI]:"
+echo "1. Focus entirely on analyzing the provided system events and errors."
+echo "2. Pinpoint the exact failure, dependency breakdown, or misconfiguration."
+echo "3. Explain what broke in 2 sentences max, and provide a single clean recovery action or command if applicable."
+echo "4. Format your output strictly for clean, plain-text terminal rendering. DO NOT use any Markdown formatting (such as ### headers, ** bolding, or * asterisks). Use simple capitalized headers and clean vertical line spaces for emphasis."
+echo "--------------------------------------"
+
+# 1. Grab the last 5 critical/error events from the active boot (Priority 3: err or higher)
+echo "[CRITICAL SYSTEM ERRORS (Active Boot)]"
+if command -v journalctl >/dev/null 2>&1; then
+    # -p 3 pulls err, crit, alert, and emerg level entries
+    errors=$(journalctl -b 0 -p 3 --no-pager -n 5 2>/dev/null || true)
+    if [ -n "$errors" ]; then
+        echo "$errors" | sed 's/^/  - /'
+    else
+        echo "  - No critical system errors detected in active journal."
+    fi
+else
+    echo "  - Error: journalctl utility not found."
+fi
+echo "--------------------------------------"
+
+# 2. Grab the absolute last 10 chronological events (for real-time context)
+echo "[ABSOLUTE LAST 10 SYSTEM EVENTS]"
+if command -v journalctl >/dev/null 2>&1; then
+    journalctl -b 0 --no-pager -n 10 2>/dev/null | sed 's/^/  - /'
+else
+    echo "  - Error: journalctl utility not found."
+fi
+echo "--------------------------------------"
