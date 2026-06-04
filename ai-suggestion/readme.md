@@ -24,7 +24,7 @@
 
 ## How the Agent Works
 
-All configurations, automations, and custom project workspaces are managed through **`ai-context.txt`**. When you trigger a mapped keyword, a cached similarity index provides a local terminal suggestion instantly. When you ask a question (using the `ai` prefix), the agent securely executes your custom local scripts using [tools], captures their outputs, and streams context-aware answers. 
+All configurations, automations, and custom project workspaces are managed through a single master blueprint: **`ai-context.txt`**. When you trigger a mapped keyword, a cached similarity index provides a local terminal suggestion instantly. When you ask a question (using the `ai` prefix), the agent securely executes your custom local scripts using [tools], captures their outputs, and streams context-aware answers. 
 
 When working inside a codebase, the agent compiles a safe, path-specific map of your workspace structure, allowing you to run a dedicated project-aware development copilot session on demand.
 
@@ -34,10 +34,11 @@ When working inside a codebase, the agent compiles a safe, path-specific map of 
 
 * **Zero-Daemon Footprint:** No background processes or active runtimes. Runs only for the millisecond you execute a query.
 * **Instant Local Suggestions:** Sørensen-Dice similarity matching suggests commands locally, completely bypassing the LLM.
-* **On-Demand Workspace Agents:** Indexes project directory trees, parses architectural files, and launches persistent codebase copilot sessions.
+* **On-Demand Workspace Agents:** Indexes project directory trees, parses architectural files, and launches codebase-aware copilot sessions.
+* **Declarative Skills System:** Dynamically primes your conversational sessions with custom prompt guidelines, development roles (like system administrators or language-specific developers), and specific constraints mapped directly inside your configuration.
 * **Subprocess RAG Tool Injection:** Executes custom local scripts and pipes outputs directly into the conversational AI context.
 * **No Dependencies:** Written natively using Python's standard library—no `pip`, external dependencies, or heavy daemon environments required.
-* **Ultra-Lightweight & Auditable:** Built for complete transparency with under 40 lines of Bash and under 420 lines of highly readable, standard-library Python code.
+* **Ultra-Lightweight & Auditable:** Built for complete transparency with under 50 lines of Bash and under 370 lines of highly readable, standard-library Python code.
 
 ---
 
@@ -59,17 +60,17 @@ When working inside a codebase, the agent compiles a safe, path-specific map of 
 
 ## The Brain: Configuration (`ai-context.txt`)
 
-Add your shortcuts, dynamic tool integrations, and project workspaces to `~/.config/local-ai/ai-suggestion/ai-context.txt`. The search index automatically compiles in under 2ms on your next execution.
+Add your shortcuts, dynamic tool integrations, on-demand skills, and project workspaces to `~/.config/local-ai/ai-suggestion/ai-context.txt`. The search index automatically compiles in under 2ms on your next execution.
 
 ```text
 # Static Shortcut
 ~/.config/local-ai/media-tui/media.py ---> play music, run media
 
-# Dynamic Local RAG Tool
-[TOOL] ~/.config/local-ai/ai-suggestion/tools/update-inspector ---> system updates, check updates
+# On-Demand Prompt-Injection Skill
+[TOOL] cat ~/.config/local-ai/ai-suggestion/tools/skills/sysadmin.txt ---> sysadmin, load sysadmin
 
-# On-Demand Project Workspace (Launches Agent Workspace automatically on select)
-~/Projects/quickshell ---> projects quickshell, projects
+# Specialized Workspace Initializer (Primes workspace with your "sysadmin" Skill!)
+ai init ~/Projects/quickshell sysadmin ---> projects quickshell, projects
 ```
 
 ---
