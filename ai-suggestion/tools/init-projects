@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# AI Project Workspace Initializer v0.7.7
+# AI Project Workspace Initializer v0.7.8
+# High-speed, non-interactive project stream formatting for LLM context injection.
 
 set -euo pipefail
 
 TARGET_DIR="${1:-}"
+SKILL_NAME="${2:-}" # Captures the skill name from the positional argument
 
 if [ -z "$TARGET_DIR" ]; then
     TARGET_DIR=$(pwd)
@@ -19,9 +21,11 @@ fi
 TARGET_DIR=$(cd "$TARGET_DIR" && pwd)
 PROJECT_NAME=$(basename "$TARGET_DIR")
 
+# Setup clean projects/ subdirectory
 CONTEXT_DIR="/home/j5/.config/local-ai/ai-suggestion/projects"
 mkdir -p "$CONTEXT_DIR"
 
+# Generate a unique, path-based safe filename
 SAFE_NAME="${TARGET_DIR//\//-}"
 SAFE_NAME="${SAFE_NAME#-}"
 CONTEXT_OUT="$CONTEXT_DIR/${SAFE_NAME}.txt"
@@ -33,6 +37,21 @@ CONTEXT_OUT="$CONTEXT_DIR/${SAFE_NAME}.txt"
     echo "2. Focus entirely on providing code solutions, refactoring, and directory tasks tailored strictly to this structure."
     echo "3. Prioritize clean, minimal snippets using the file names and architectural layouts found below."
     echo "4. DO NOT provide generic programming advice or basic boilerplate unless explicitly asked."
+    
+    # Check if a custom skill context is requested and exists
+    if [ -n "$SKILL_NAME" ]; then
+        # Removed "local" keyword to comply with POSIX standalone script standards
+        skill_file="/home/j5/.config/local-ai/ai-suggestion/tools/skills/${SKILL_NAME}.txt"
+        if [ -f "$skill_file" ]; then
+            echo ""
+            echo "[ACTIVE SKILL CONTEXT: ${SKILL_NAME}]"
+            cat "$skill_file"
+        else
+            echo ""
+            echo "[WARNING: Requested skill context '${SKILL_NAME}' not found at $skill_file]" >&2
+        fi
+    fi
+    
     echo "--------------------------------"
     echo "[WORKSPACE_INFO] Project: $PROJECT_NAME | Path: $TARGET_DIR"
     echo "--------------------------------"
