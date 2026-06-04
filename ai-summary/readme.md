@@ -4,6 +4,8 @@
 
 `Qwen3.5-2B+` `Gemini-3.1-Flash-Lite` `llama.cpp` `Python 3.10+` `Bash / Zsh 5.0+`
 
+---
+
 An ultra-lightweight, high-performance terminal companion designed to instantly summarize clipboard text, transcripts, and documents with zero background system overhead. Featuring an optimized neural Text-to-Speech (TTS) reader with a dynamic sliding-window progressive highlighter.
 
 ---
