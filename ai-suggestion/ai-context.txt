@@ -30,12 +30,16 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 
 
 # ==============================================================================
-# SECTION 2: SYSTEM PROMPTS & ROLE INJECTIONS (SKILLS)
+# 2: ON-DEMAND SYSTEM PROMPTS & ROLE INJECTIONS (SKILLS)
 # ==============================================================================
 
-# --- Skills (On-Demand Prompt & Role Injection) ---
+# --- Skills (Prompt & Role Injection) ---
 [TOOL] cat ~/.config/local-ai/ai-suggestion/tools/skills/sysadmin.txt ---> sysadmin, load sysadmin
-[TOOL] cat ~/.config/local-ai/ai-suggestion/tools/skills/coder.txt ---> coder, load coder, load developer, developer
+[TOOL] cat ~/.config/local-ai/ai-suggestion/tools/skills/sysadmin_audit.txt ---> system audit, log triage, audit
+[TOOL] cat ~/.config/local-ai/ai-suggestion/tools/skills/ast_refactor.txt ---> ast refactor, surgical edit, refactor
+[TOOL] cat ~/.config/local-ai/ai-suggestion/tools/skills/tui_designer.txt ---> tui designer, write tui, terminal ui
+[TOOL] cat ~/.config/local-ai/ai-suggestion/tools/skills/security_hardening.txt ---> security audit, harden system, permission audit
+[TOOL] cat ~/.config/local-ai/ai-suggestion/tools/skills/summary_brief.txt ---> summary brief, summarize release, changelog summary
 
 
 # ==============================================================================
