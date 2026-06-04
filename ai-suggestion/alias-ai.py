@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# AI Suggestion v0.7.7.9 [j5onrf] [06-03-26]
+# AI Suggestion v0.7.8.1 [j5onrf] [06-04-26]
 
 import sys, re, os, json, threading, time
 import urllib.request as urlreq, urllib.error as urlerr
@@ -267,20 +267,6 @@ if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
                     query = raw_query.strip()
                     if query.lower() in ("exit", "quit", "q"):
                         print("\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
-                    
-                    # Compacted Markdown Session Backup Interceptor (11 Lines)
-                    if query.lower() in ("backup", "save"):
-                        try:
-                            fn = os.path.expanduser(f"~/ai-session-{time.strftime('%Y-%m-%d_%H%M%S')}.md")
-                            with open(fn, "w") as f:
-                                f.write(f"# Session Backup — {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n" + "".join(
-                                    f"### ❯ {m['content'].split('User Question: ', 1)[-1]}\n\n" if m["role"] == "user"
-                                    else f"**{'Agent' if is_agent else 'AI'}:** {m['content']}\n\n---\n\n" for m in chat_history
-                                ))
-                            print(f"\033[1;32mSession successfully backed up to: {fn}\033[0m\n")
-                        except Exception as e:
-                            print(f"\033[1;31mError writing backup: {str(e)}\033[0m\n")
-                        continue
 
                 system_context, tool_match = "", matrix_search(query, threshold=0.65)
                 if tool_match:
@@ -289,7 +275,8 @@ if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
                         intent, cmd = first_match.split("|||", 1)
                         if cmd.startswith("[TOOL]"):
                             tool_cmd = cmd.replace("[TOOL]", "").strip()
-                            print(f"\033[90m[sys] Executing: {tool_cmd}\033[0m")
+                            sys.stderr.write(f"\033[90m[sys] Executing: {tool_cmd}\033[0m\n")
+                            sys.stderr.flush()
                             system_context = run_local_tool(tool_cmd)
 
                 prompt = (
@@ -356,7 +343,8 @@ if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
             if "|||" in first_match:
                 intent, cmd = first_match.split("|||", 1)
                 if cmd.startswith("[TOOL]"):
-                    system_context = run_local_tool(cmd.replace("[TOOL]", "").strip())
+                    tool_cmd = cmd.replace("[TOOL]", "").strip()
+                    system_context = run_local_tool(tool_cmd)
 
         prompt = (
             "You are a helpful, conversational local AI shell assistant with read-only terminal access.\n"
