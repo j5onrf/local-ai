@@ -2,6 +2,8 @@
 
 <img alt="20260529_153937" src="https://github.com/user-attachments/assets/cb60b6eb-aea6-4134-b8b3-a13208c0f3ae" />
 
+---
+
 A minimal, text-focused terminal dashboard and feed reader. It aggregates your favorite subreddits, standard RSS, and Atom feeds into a single lightweight, keyboard-driven interface.
 
 Designed to run completely sandboxed in your alternate screen buffer to keep your primary terminal scrollback clean.
