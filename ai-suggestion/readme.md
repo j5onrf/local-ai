@@ -19,10 +19,11 @@
     ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝
 </pre>
 </kbd>
-</div></div>
-<br>
+<br><br>
 
 `Qwen3.5-2B+` `Gemini-3.1-Flash-Lite` `OpenAI-Compatible API` `Python 3.10+` `Bash 4.0+` `Zsh 5.0+`
+
+</div></div>
 
 ## How the Agent Works
 
