@@ -37,7 +37,7 @@ When working inside a codebase, the agent compiles a safe, path-specific map of 
 * **Declarative Skills System:** Dynamically primes your conversational sessions with custom prompt guidelines, development roles (like system administrators or language-specific developers), and specific constraints mapped directly inside your configuration.
 * **Subprocess RAG Tool Injection:** Executes custom local scripts and pipes outputs directly into the conversational AI context.
 * **No Dependencies:** Written natively using Python's standard library—no `pip`, external dependencies, or heavy daemon environments required.
-* **Ultra-Lightweight & Auditable:** Built for complete transparency with under 50 lines of Bash and under 370 lines of highly readable, standard-library Python code.
+* **Ultra-Lightweight & Auditable:** Built for complete transparency with under 370 lines of highly readable, standard-library Python code.
 
 ---
 
