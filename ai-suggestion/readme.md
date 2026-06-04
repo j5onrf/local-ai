@@ -1,4 +1,4 @@
-# AI Suggestion Agent (v0.7.7)
+# AI Suggestion Agent (v0.7.8)
 
 <div align="center">
 <br>
