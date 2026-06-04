@@ -24,6 +24,7 @@
 [TOOL] df -h / ---> disk usage, nvme drive usage, check storage space
 [TOOL] ~/.config/local-ai/ai-suggestion/tools/ai-system-diagnosis ---> system health, system diagnosis, why is my system slow
 [TOOL] ~/.config/local-ai/ai-suggestion/tools/update-inspector ---> update inspector
+[TOOL] ~/.config/local-ai/ai-suggestion/tools/ai-log-checker ---> ai log, system crashed, check errors, events
 
 # --- Hyprland Integration ---
 [TOOL] hyprctl clients ---> hyprland clients, list open windows, show active apps
