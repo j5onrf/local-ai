@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# ai-commit - Automate Git Commits with AI Context v1.0.1
+
 set -euo pipefail
 
 # Check if there are any staged changes
@@ -7,11 +9,15 @@ if [[ -z "$(git diff --cached)" ]]; then
     exit 1
 fi
 
-# Ask your AI suggestion agent to generate the commit message silently
-message=$(ai "Write a single, precise, plain-text git commit message (max 10 words, no markdown, no quotes) describing these staged changes: $(git diff --cached)")
+# Define paths to bypass interactive subshell function limits
+_AI_SCRIPT_PATH="$HOME/.config/local-ai/ai-suggestion/alias-ai.py"
+_AI_PYTHON_BIN=$(command -v python3 2>/dev/null || type -p python3 2>/dev/null || echo "python3")
 
-# Clean up any trailing newlines or spaces
+# Query the Python script directly to generate the message
+message=$("$_AI_PYTHON_BIN" "$_AI_SCRIPT_PATH" --talk "Write a single, precise, plain-text git commit message (max 10 words, no markdown, no quotes) describing these staged changes: $(git diff --cached)")
+
+# Clean up any quotes or trailing newlines
 message=$(echo "$message" | tr -d '"' | xargs)
 
-# Execute the commit with the AI generated message
+# Execute the commit
 git commit -m "$message"
