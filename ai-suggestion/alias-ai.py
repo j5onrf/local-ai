@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# AI Suggestion v0.7.9.1 [j5onrf] [06-05-26]
+# AI Suggestion v0.7.9.2 [j5onrf] [06-05-26]
 
 import sys, re, os, json, threading, time
 import urllib.request as urlreq, urllib.error as urlerr
@@ -32,11 +32,11 @@ class InlineSpinner:
     def _spin(self):
         idx = 0
         while self.active:
-            sys.stdout.write(f"\r\033[1;32m{self.chars[idx % 4]}\033[0m ")
-            sys.stdout.flush()
+            sys.stderr.write(f"\r\033[1;32m{self.chars[idx % 4]}\033[0m ")
+            sys.stderr.flush()
             idx, _ = idx + 1, time.sleep(0.08)
-        sys.stdout.write("\r\x1b[K")
-        sys.stdout.flush()
+        sys.stderr.write("\r\x1b[K")
+        sys.stderr.flush()
 
     def start(self):
         self.active = True
