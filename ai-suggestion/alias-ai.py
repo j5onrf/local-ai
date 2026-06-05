@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# AI Suggestion v0.7.9 [j5onrf] [06-05-26]
+# AI Suggestion v0.7.9.1 [j5onrf] [06-05-26]
 
 import sys, re, os, json, threading, time
 import urllib.request as urlreq, urllib.error as urlerr
@@ -289,7 +289,12 @@ if len(sys.argv) > 1 and sys.argv[1] == "--interactive":
 if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
     if sys.argv[1] == "--talk-chat" or len(sys.argv) == 2:
         is_agent = (sys.argv[1] == "--talk-chat")
-        print(f"\033[1;36mAI Agent Session Initialized | Context Loaded | Ctrl+C to exit.\033[0m\n" if is_agent else "\033[1;34mLocal AI Conversation Mode. Ctrl+C to quit.\033[0m\n")
+        if is_agent:
+            active_skill = os.environ.get("AI_ACTIVE_SKILL")
+            skill_tag = f" [{active_skill}]" if active_skill else ""
+            print(f"\033[1;36mAI Agent Session Initialized | Context Loaded{skill_tag} | Ctrl+C to exit.\033[0m\n")
+        else:
+            print("\033[1;34mLocal AI Conversation Mode. Ctrl+C to quit.\033[0m\n")
         pending_query, chat_history = " ".join(sys.argv[2:]) if len(sys.argv) > 2 else None, []
         
         try:

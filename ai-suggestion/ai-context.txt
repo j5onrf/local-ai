@@ -61,9 +61,6 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 # SECTION 4: STATIC ALIASES & SHELL SHORTCUTS
 # ==============================================================================
 
-# --- Directory Navigation ---
-cd ~/Projects ---> cd projects, go to projects, open projects
-
 # --- Core Terminal Shortcuts ---
 btop ---> memory, cpu, task manager
 
