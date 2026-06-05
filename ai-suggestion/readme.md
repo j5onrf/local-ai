@@ -1,7 +1,6 @@
 # AI Suggestion Agent (v0.7.8)
 
-<img width="1376" height="768" alt="9nkqh39nkqh39nkq" src="https://github.com/user-attachments/assets/6f335aaa-d6dd-43a1-aeaf-3ca0b3e3da25" />
-
+<img alt="9nkqh39nkqh39nkq4" src="https://github.com/user-attachments/assets/02d6205c-4403-463c-acec-830305a38aec" />
 
 `Qwen3.5-2B+` `Gemini-3.1-Flash-Lite` `OpenAI-Compatible API` `Python 3.10+` `Bash 4.0+` `Zsh 5.0+`
 
@@ -15,9 +14,7 @@ When working inside a codebase, the agent compiles a safe, path-specific map of 
 
 ---
 
-</div>
-
-## Core Features</div></div>
+## Core Features
 
 * **Zero-Daemon Footprint:** No background processes or active runtimes. Runs only for the millisecond you execute a query.
 * **Instant Local Suggestions:** Sørensen-Dice similarity matching suggests commands locally, completely bypassing the LLM.
@@ -84,20 +81,21 @@ export GEMINI_API_KEY="AIzaSyYourGeminiKey"
 
 ---
 
+<div align="center">
 
-```diff
-+ █████╗ ██╗     ███████╗██╗   ██╗ ██████╗  ██████╗ ███████╗███████╗████████╗██╗ ██████╗ ███╗   ██╗
-+██╔══██╗██║     ██╔════╝██║   ██║██╔════╝ ██╔════╝ ██╔════╝██╔════╝╚══██╔══╝██║██╔═══██╗████╗  ██║
-+███████║██║     ███████╗██║   ██║██║  ███╗██║  ███╗█████╗  ███████╗   ██║   ██║██║   ██║██╔██╗ ██║
-+██╔══██║██║     ╚════██║██║   ██║██║   ██║██║   ██║██╔══╝  ╚════██║   ██║   ██║██║   ██║██║╚██╗██║
-+██║  ██║██║     ███████║╚██████╔╝╚██████╔╝╚██████╔╝███████╗███████║   ██║   ██║╚██████╔╝██║ ╚████║
-+╚═╝  ╚═╝╚═╝     ╚══════╝ ╚═════╝  ╚═════╝  ╚═════╝ ╚══════╝╚══════╝   ╚═╝   ╚═╝ ╚═════╝ ╚═╝  ╚═══╝
-+ █████╗  ██████╗ ███████╗███╗   ██╗████████╗
-+██╔══██╗██╔════╝ ██╔════╝████╗  ██║╚══██╔══╝
-+███████║██║  ███╗█████╗  ██╔██╗ ██║   ██║   
-+██╔══██║██║   ██║██╔══╝  ██║╚██╗██║   ██║   
-+██║  ██║╚██████╔╝███████╗██║ ╚████║   ██║   
-+╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝
+```
+            █████╗ ██╗    ███████╗██╗   ██╗ ██████╗  ██████╗ ███████╗███████╗████████╗██╗ ██████╗ ███╗   ██╗
+           ██╔══██╗██║    ██╔════╝██║   ██║██╔════╝ ██╔════╝ ██╔════╝██╔════╝╚══██╔══╝██║██╔═══██╗████╗  ██║
+           ███████║██║    ███████╗██║   ██║██║  ███╗██║  ███╗█████╗  ███████╗   ██║   ██║██║   ██║██╔██╗ ██║
+           ██╔══██║██║    ╚════██║██║   ██║██║   ██║██║   ██║██╔══╝  ╚════██║   ██║   ██║██║   ██║██║╚██╗██║
+           ██║  ██║██║    ███████║╚██████╔╝╚██████╔╝╚██████╔╝███████╗███████║   ██║   ██║╚██████╔╝██║ ╚████║
+           ╚═╝  ╚═╝╚═╝    ╚══════╝ ╚═════╝  ╚═════╝  ╚═════╝ ╚══════╝╚══════╝   ╚═╝   ╚═╝ ╚═════╝ ╚═╝  ╚═══╝
+             █████╗  ██████╗ ███████╗███╗   ██╗████████╗
+            ██╔══██╗██╔════╝ ██╔════╝████╗  ██║╚══██╔══╝
+            ███████║██║  ███╗█████╗  ██╔██╗ ██║   ██║   
+            ██╔══██║██║   ██║██╔══╝  ██║╚██╗██║   ██║   
+            ██║  ██║╚██████╔╝███████╗██║ ╚████║   ██║   
+         ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝
 ```
 
 </div>
@@ -105,4 +103,3 @@ export GEMINI_API_KEY="AIzaSyYourGeminiKey"
 ---
 
 *For detailed system architecture diagrams, custom tool development guidelines, and advanced prompt engineering, refer to the full **[documentation.md](documentation.md)**.*
-
