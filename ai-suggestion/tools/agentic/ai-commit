@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Check if there are any staged changes
+if [[ -z "$(git diff --cached)" ]]; then
+    echo "❌ Error: No staged changes found. Run 'git add' first." >&2
+    exit 1
+fi
+
+# Ask your AI suggestion agent to generate the commit message silently
+message=$(ai "Write a single, precise, plain-text git commit message (max 10 words, no markdown, no quotes) describing these staged changes: $(git diff --cached)")
+
+# Clean up any trailing newlines or spaces
+message=$(echo "$message" | tr -d '"' | xargs)
+
+# Execute the commit with the AI generated message
+git commit -m "$message"
