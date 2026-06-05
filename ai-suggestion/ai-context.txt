@@ -35,11 +35,6 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 
 # --- Skills (Prompt & Role Injection) ---
 [TOOL] cat ~/.config/local-ai/ai-suggestion/tools/skills/sysadmin.txt ---> sysadmin, load sysadmin
-[TOOL] cat ~/.config/local-ai/ai-suggestion/tools/skills/sysadmin_audit.txt ---> system audit, log triage, audit
-[TOOL] cat ~/.config/local-ai/ai-suggestion/tools/skills/ast_refactor.txt ---> ast refactor, surgical edit, refactor
-[TOOL] cat ~/.config/local-ai/ai-suggestion/tools/skills/tui_designer.txt ---> tui designer, write tui, terminal ui
-[TOOL] cat ~/.config/local-ai/ai-suggestion/tools/skills/security_hardening.txt ---> security audit, harden system, permission audit
-[TOOL] cat ~/.config/local-ai/ai-suggestion/tools/skills/summary_brief.txt ---> summary brief, summarize release, changelog summary
 
 
 # ==============================================================================
@@ -53,6 +48,9 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 [TOOL] ~/.config/local-ai/ai-suggestion/tools/agentic/ai-system-diagnosis ---> system health, system diagnosis, why is my system slow
 [TOOL] ~/.config/local-ai/ai-suggestion/tools/agentic/update-inspector ---> update inspector, check upgrades, package list
 [TOOL] df -h / ---> disk usage, nvme drive usage, check storage space
+
+# --- AI Status & Provider Diagnostics ---
+[TOOL] ~/.config/local-ai/ai-suggestion/tools/agentic/ai-status ---> ai-status agentic, aistat, aistatus, aidiag
 
 # --- Weather & Live Networking ---
 [TOOL] curl -s "wttr.in/?format=3" ---> weather simple, rain forecast simple
@@ -85,6 +83,11 @@ hyprctl clients ---> hyprland clients, list open windows, show active apps
 ~/.config/local-ai/media-tui/media.py ---> media, cliamp
 ~/.config/local-ai/media-tui/media.sh ---> media sh, media controller
 ~/.config/local-ai/media-tui/media.lua ---> media lua
+
+# --- State & Workflow Management ---
+~/.config/local-ai/ai-suggestion/tools/hyprstate/work ---> hyprstate work, workspace work
+~/.config/local-ai/ai-suggestion/tools/hyprstate/clean ---> hyprstate clean, workspace clean
+~/.config/local-ai/ai-suggestion/tools/hyprstate/media ---> hyprstate media, workspace media
 
 # --- Article Summarizers ---
 ~/.config/local-ai/ai-summary/llmsum.py ---> llmsum, ytsum, summary

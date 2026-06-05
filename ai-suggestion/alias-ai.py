@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# AI Suggestion v0.7.8.1 [j5onrf] [06-04-26]
+# AI Suggestion v0.8.4 [j5onrf] [06-05-26]
 
 import sys, re, os, json, threading, time
 import urllib.request as urlreq, urllib.error as urlerr
@@ -117,7 +117,6 @@ def matrix_search(query, threshold=0.50):
     except (OSError, json.JSONDecodeError):
         pass
 
-    # Recompile on empty or corrupted index
     if not index_data and os.path.exists(CONTEXT_FILE):
         compile_vector_index()
         try:
@@ -136,17 +135,19 @@ def matrix_search(query, threshold=0.50):
             continue
         entry_len = entry.get("len", len(entry["tokens"]))
         score = (2.0 * match_count) / (len_q + entry_len)
-        if match_count == entry_len:
+        
+        # Perfect subset bonus: Only applies if the matched words 
+        # represent 50% or more of the active query tokens.
+        if match_count == entry_len and (match_count / len_q >= 0.50):
             score += 0.20
+            
         if score >= threshold:
             candidates.append((score, entry["cmd"], entry["intent"]))
             
     if not candidates:
         return None
     
-    # Sort by score descending (-x[0]) and shortest intent length ascending (len(x[2]))
     candidates.sort(key=lambda x: (-x[0], len(x[2])))
-    
     seen, top = set(), []
     for _, cmd, intent in candidates:
         if cmd not in seen:
@@ -155,17 +156,6 @@ def matrix_search(query, threshold=0.50):
             if len(top) == 3:
                 break
     return "\n".join(top)
-
-def get_api_config():
-    gemini_key = os.environ.get("GEMINI_API_KEY")
-    if gemini_key:
-        return "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-            "Content-Type": "application/json", "Authorization": f"Bearer {gemini_key}"
-        }, os.environ.get("CLOUD_MODEL", "gemini-1.5-flash")
-    ckey, curl = os.environ.get("CLOUD_API_KEY"), os.environ.get("CLOUD_API_URL")
-    if ckey and curl:
-        return curl, {"Content-Type": "application/json", "Authorization": f"Bearer {ckey}"}, os.environ.get("CLOUD_MODEL")
-    return "http://localhost:8080/v1/chat/completions", {"Content-Type": "application/json"}, None
 
 def get_key():
     import tty, termios, select
@@ -244,13 +234,59 @@ def run_interactive_selection(intent):
     finally:
         sys.stderr.write("\033[?25h"); sys.stderr.flush()
 
+def stream_llm_response(messages, prefix="AI: "):
+    """Cascades dynamically through available API configurations with minimal overhead."""
+    configs = []
+    gkey, okey = os.environ.get("GEMINI_API_KEY"), os.environ.get("OPENROUTER_API_KEY")
+    if gkey:
+        configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Content-Type": "application/json", "Authorization": f"Bearer {gkey}"}, os.environ.get("CLOUD_MODEL", "gemini-1.5-flash"), {}))
+    if okey:
+        m = os.environ.get("OPENROUTER_MODEL", "poolside/laguna-m.1:free")
+        configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Content-Type": "application/json", "Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/ai-suggestion"}, m, {"models": [m, "qwen/qwen3-coder:free", "openrouter/free"]}))
+    ckey, curl = os.environ.get("CLOUD_API_KEY"), os.environ.get("CLOUD_API_URL")
+    if ckey and curl:
+        configs.append((curl, {"Content-Type": "application/json", "Authorization": f"Bearer {ckey}"}, os.environ.get("CLOUD_MODEL"), {}))
+    configs.append(("http://localhost:8080/v1/chat/completions", {"Content-Type": "application/json"}, None, {}))
+
+    spinner = InlineSpinner()
+    for url, headers, model, extra in configs:
+        body = {"messages": messages, "stream": True, **extra}
+        if model: body["model"] = model
+        req = urlreq.Request(url, data=json.dumps(body).encode("utf-8"), headers=headers, method="POST")
+        try:
+            spinner.start()
+            with urlreq.urlopen(req) as response:
+                first, acc = True, []
+                for line in response:
+                    dec = line.decode("utf-8").strip()
+                    if dec.startswith("data: "): dec = dec[6:].strip()
+                    if not dec or dec == "[DONE]": continue
+                    try:
+                        data = json.loads(dec)
+                        content = ""
+                        if "choices" in data and data["choices"]:
+                            content = data["choices"][0].get("delta", {}).get("content", "")
+                        elif "candidates" in data and data["candidates"]:
+                            parts = data["candidates"][0].get("content", {}).get("parts", [])
+                            content = parts[0].get("text", "") if parts else ""
+                        if content:
+                            if first:
+                                spinner.stop(); print(f"\033[1;32m{prefix}\033[0m ", end="", flush=True); first = False
+                            print(content, end="", flush=True); acc.append(content)
+                    except Exception: pass
+                print("\n"); return "".join(acc)
+        except Exception:
+            spinner.stop()
+            if url == configs[-1][0]:
+                print("\033[1;31mError: All fallbacks/local servers are offline.\033[0m\n")
+    return None
+
 if len(sys.argv) > 1 and sys.argv[1] == "--interactive":
     if len(sys.argv) >= 3:
         run_interactive_selection(" ".join(sys.argv[2:]))
     sys.exit(0)
 
 if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
-    url, headers, model = get_api_config()
     if sys.argv[1] == "--talk-chat" or len(sys.argv) == 2:
         is_agent = (sys.argv[1] == "--talk-chat")
         print(f"\033[1;36mAI Agent Session Initialized | Context Loaded | Ctrl+C to exit.\033[0m\n" if is_agent else "\033[1;34mLocal AI Conversation Mode. Ctrl+C to quit.\033[0m\n")
@@ -289,52 +325,12 @@ if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
                 prompt += f"User Question: {query}"
                 chat_history.append({"role": "user", "content": prompt})
 
-                req = urlreq.Request(url, data=json.dumps({"messages": chat_history, "stream": True, **({"model": model} if model else {})}).encode("utf-8"), headers=headers, method="POST")
-                spinner = InlineSpinner()
-                try:
-                    spinner.start()
-                    with urlreq.urlopen(req) as response:
-                        first_chunk, assistant_response_accumulator = True, []
-                        for line in response:
-                            decoded = line.decode("utf-8").strip()
-                            if not decoded or decoded == "[DONE]": continue
-                            if decoded.startswith("data: "): decoded = decoded[6:].strip()
-                            try:
-                                data = json.loads(decoded)
-                                if "choices" in data and len(data["choices"]) > 0:
-                                    content = data["choices"][0]["delta"].get("content", "")
-                                elif "candidates" in data and len(data["candidates"]) > 0:
-                                    parts = data["candidates"][0].get("content", {}).get("parts", [])
-                                    content = parts[0].get("text", "") if parts else ""
-                                else: content = ""
-                                
-                                if content:
-                                    if first_chunk:
-                                        spinner.stop()
-                                        print("\033[1;32mAgent:\033[0m " if is_agent else "\033[1;32mAI:\033[0m ", end="", flush=True)
-                                        first_chunk = False
-                                    print(content, end="", flush=True)
-                                    assistant_response_accumulator.append(content)
-                            except Exception: pass
-                        chat_history.append({"role": "assistant", "content": "".join(assistant_response_accumulator)})
-                        print("\n")
-                except urlerr.HTTPError as e:
-                    spinner.stop(); chat_history.pop()
-                    try:
-                        error_body = e.read().decode("utf-8")
-                        msg = json.loads(error_body).get("error", {}).get("message", error_body)
-                        print(f"\033[1;31mError: API returned status code {e.code}: {msg}\033[0m\n")
-                    except Exception:
-                        print(f"\033[1;31mError: API returned status code {e.code}\033[0m\n")
-                except urlerr.URLError as e:
-                    spinner.stop(); chat_history.pop()
-                    print(f"\033[1;31mError: Cloud AI API request failed: {e.reason}\033[0m\n" if os.environ.get("GEMINI_API_KEY") or os.environ.get("CLOUD_API_KEY") else "\033[1;31mError: Local AI server is offline. Please start your server.\033[0m\n")
-                except KeyboardInterrupt:
-                    spinner.stop(); print("\n\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
+                ans = stream_llm_response(chat_history, prefix="Agent:" if is_agent else "AI:")
+                if ans: chat_history.append({"role": "assistant", "content": ans})
+                else: chat_history.pop()
         except KeyboardInterrupt:
             print("\n\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
 
-    # Standard single-turn conversation logic
     elif len(sys.argv) > 2:
         query = " ".join(sys.argv[2:])
         system_context, tool_match = "", matrix_search(query, threshold=0.65)
@@ -355,46 +351,7 @@ if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
             prompt += f"### Real-time System Context:\n{system_context}\n\n"
         prompt += f"User Question: {query}"
 
-        req = urlreq.Request(url, data=json.dumps({"messages": [{"role": "user", "content": prompt}], "stream": True, **({"model": model} if model else {})}).encode("utf-8"), headers=headers, method="POST")
-        spinner = InlineSpinner()
-        try:
-            spinner.start()
-            with urlreq.urlopen(req) as response:
-                first_chunk = True
-                for line in response:
-                    decoded = line.decode("utf-8").strip()
-                    if not decoded or decoded == "[DONE]": continue
-                    if decoded.startswith("data: "): decoded = decoded[6:].strip()
-                    try:
-                        data = json.loads(decoded)
-                        if "choices" in data and len(data["choices"]) > 0:
-                            content = data["choices"][0]["delta"].get("content", "")
-                        elif "candidates" in data and len(data["candidates"]) > 0:
-                            parts = data["candidates"][0].get("content", {}).get("parts", [])
-                            content = parts[0].get("text", "") if parts else ""
-                        else: content = ""
-                        
-                        if content:
-                            if first_chunk:
-                                spinner.stop()
-                                print("\033[1;32mAI:\033[0m ", end="", flush=True)
-                                first_chunk = False
-                            print(content, end="", flush=True)
-                    except Exception: pass
-            print()
-        except urlerr.HTTPError as e:
-            spinner.stop()
-            try:
-                error_body = e.read().decode("utf-8")
-                msg = json.loads(error_body).get("error", {}).get("message", error_body)
-                print(f"\033[1;31mError: API returned status code {e.code}: {msg}\033[0m")
-            except Exception:
-                print(f"\033[1;31mError: API returned status code {e.code}\033[0m")
-        except urlerr.URLError as e:
-            spinner.stop()
-            print(f"\033[1;31mError: Cloud AI API request failed: {e.reason}\033[0m" if os.environ.get("GEMINI_API_KEY") or os.environ.get("CLOUD_API_KEY") else "\033[1;31mError: Local AI server is offline. Please start your server.\033[0m")
-        except KeyboardInterrupt:
-            spinner.stop(); print("\n\033[1;33mInterrupted.\033[0m")
+        stream_llm_response([{"role": "user", "content": prompt}], prefix="AI:")
         sys.exit(0)
 
 user_input = sanitize_input(" ".join(sys.argv[1:])) if len(sys.argv) > 1 else ""
