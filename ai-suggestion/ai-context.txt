@@ -1,5 +1,5 @@
 # ==============================================================================
-#               AI SUGGESTION BLUEPRINT CONFIGURATION INDEX
+#                AI SUGGESTION BLUEPRINT CONFIGURATION INDEX
 # ==============================================================================
 # Syntax: [command / execution] ---> [intent1], [intent2], [intent3]
 # Delimiter: " ---> " (Three-dash arrow with trailing space)
