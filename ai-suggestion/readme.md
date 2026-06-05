@@ -1,33 +1,37 @@
-# AI Suggestion Agent (v0.7.8)
+# AI Suggestion Agent (v0.7.9)
 
 <img alt="9nkqh39nkqh39nkq4" src="https://github.com/user-attachments/assets/02d6205c-4403-463c-acec-830305a38aec" />
 
-`Qwen3.5-2B+` `Gemini-3.1-Flash-Lite` `OpenAI-Compatible API` `Python 3.10+` `Bash 4.0+` `Zsh 5.0+`
+`Laguna-M.1` `Qwen3-Coder` `Gemini-3.1-Flash-Lite` `Python 3.10+` `Bash 4.0+` `Zsh 5.0+`
 
 ---
 
 ## How the Agent Works
 
-All configurations, automations, and custom project workspaces are managed through a single master blueprint: **`ai-context.txt`**. When you trigger a mapped keyword, a cached similarity index provides a local terminal suggestion instantly. When you ask a question (using the `ai` prefix), the agent securely executes your custom local scripts using [tools], captures their outputs, and streams context-aware answers. 
+All configurations, automations, and custom project workspaces are managed through a single plain-text master blueprint: **`ai-context.txt`**. 
 
-When working inside a codebase, the agent compiles a safe, path-specific map of your workspace structure, allowing you to run a dedicated project-aware development copilot session on demand.
+* **No Session (Direct suggestions)**: Typing custom commands or shortcuts prompts a local Sørensen-Dice set-intersection matrix to suggest options instantly without querying an LLM.
+* **Conversational Agent (`ai` prefix)**: Typing `ai <query>` executes your query via cloud or local LLM, silently running local diagnostic tools to gather context when your custom keywords are matched.
+* **Workspace Agents (`ai init`)**: Compiles a path-specific structural tree of your repository, launching a dedicated, codebase-aware co-pilot session.
 
 ---
 
 ## Core Features
 
-* **Zero-Daemon Footprint:** No background processes or active runtimes. Runs only for the millisecond you execute a query.
-* **Instant Local Suggestions:** Sørensen-Dice similarity matching suggests commands locally, completely bypassing the LLM.
-* **On-Demand Workspace Agents:** Indexes project directory trees, parses architectural files, and launches codebase-aware copilot sessions.
-* **Declarative Skills System:** Dynamically primes your conversational sessions with custom prompt guidelines, development roles (like system administrators or language-specific developers), and specific constraints mapped directly inside your configuration.
-* **Subprocess RAG Tool Injection:** Executes custom local scripts and pipes outputs directly into the conversational AI context.
-* **No Dependencies:** Written natively using Python's standard library—no `pip`, external dependencies, or heavy daemon environments required.
-* **Ultra-Lightweight & Auditable:** Built for complete transparency with under 370 lines of highly readable, standard-library Python code.
+* **Zero-Daemon Footprint:** No background processes, polling threads, or active runtimes. Consumes 0% idle RAM and 0% idle CPU.
+* **Instant Local Suggestions:** Norwegian/Dice-coefficient token matching suggests custom commands locally in under 2ms, completely bypassing the LLM.
+* **Cascading Fallback Chain:** Seamlessly cascades through configured cloud API keys (Gemini $\rightarrow$ OpenRouter $\rightarrow$ Custom Cloud API) down to local AI servers (such as `Ollama` or `llama.cpp`) if a service goes offline.
+* **OpenRouter Model Failover:** Automatically configures multiple free backup models inside the OpenRouter API payload, failing over from specific coding models (like `poolside/laguna-m.1:free`) to general routers if the target is congested.
+* **Subprocess RAG Tool Injection (`[TOOL]`):** Executes local scripts (such as diagnostic utilities or API status checks) behind the scenes, feeding their standard output straight into the LLM context for real-time system troubleshooting.
+* **Collision-Resilient Search Math:** Restricts the subset-matching score bonus to queries where the matched words cover at least 50% of the active search, preventing conversational sentences from accidentally triggering short command aliases.
+* **No Dependencies:** Written natively using Python's standard library—no `pip` installs or complex package runtimes required.
+* **Ultra-Lightweight & Auditable:** Built with complete transparency in under 390 lines of highly readable, standard-library Python code.
+
 ---
 
 ## TUI Carousel Controls
 
-* **`Up` / `Down` Arrow Keys:** Cycle through available suggestions
+* **`Up` / `Down` Arrow Keys:** Cycle through available ranked suggestions
 * **`Enter`:** Execute the highlighted command (or initialize a workspace if the suggestion is a directory path)
 * **`Esc` / `Ctrl+C` / `Any Key`:** Cancel menu (features an anti-spam buffer flush to prevent command line leakage)
 
@@ -43,17 +47,17 @@ When working inside a codebase, the agent compiles a safe, path-specific map of 
 
 ## The Brain: Configuration (`ai-context.txt`)
 
-Add your shortcuts, dynamic tool integrations, on-demand skills, and project workspaces to `~/.config/local-ai/ai-suggestion/ai-context.txt`. The search index automatically compiles in under 2ms on your next execution.
+Add your shortcuts, dynamic tool integrations, and project workspaces to `~/.config/local-ai/ai-suggestion/ai-context.txt`. The search index automatically compiles in under 2ms on your next execution.
 
 ```text
-# Static Shortcut
-~/.config/local-ai/media-tui/media.py ---> play music, run media
+# Static Shell Shortcut (Section 4)
+cd ~/Projects ---> cd projects, go to projects, open projects
 
-# On-Demand Prompt-Injection Skill
-[TOOL] cat ~/.config/local-ai/ai-suggestion/tools/skills/sysadmin.txt ---> sysadmin, load sysadmin
+# Context-Injected Diagnostic Tool (Section 3)
+[TOOL] ~/.config/local-ai/ai-suggestion/tools/agentic/ai-status ---> ai-status agentic, ai stack diagnostics
 
-# Specialized Workspace Initializer (Primes workspace with your "sysadmin" Skill!)
-ai init ~/Projects/quickshell sysadmin ---> projects quickshell, projects
+# Specialized Workspace Initializer (Primes workspace with your "coder" Skill!)
+ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 ```
 
 ---
@@ -62,9 +66,7 @@ ai init ~/Projects/quickshell sysadmin ---> projects quickshell, projects
 
 ### 1. Install the Project Files
 ```bash
-git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai && \
-chmod +x ~/.config/local-ai/ai-suggestion/alias-ai.py && \
-chmod +x ~/.config/local-ai/ai-suggestion/tools/init-projects
+git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai
 ```
 
 ### 2. Append the Hook to Your `~/.bashrc`
@@ -73,9 +75,10 @@ echo '[ -f "$HOME/.config/local-ai/ai-suggestion/ai-hook.sh" ] && source "$HOME/
 source ~/.bashrc
 ```
 
-*(Optional)* Export your Gemini API key to activate cloud routing:
+*(Optional)* Export your cloud API keys to activate cloud routing and fallback logic:
 ```bash
 export GEMINI_API_KEY="AIzaSyYourGeminiKey"
+export OPENROUTER_API_KEY="sk-or-v1-YourOpenRouterKey"
 ```
 
 ---
