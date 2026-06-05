@@ -2,7 +2,14 @@
 
 <img alt="9nkqh39nkqh39nkq4" src="https://github.com/user-attachments/assets/02d6205c-4403-463c-acec-830305a38aec" />
 
-`Qwen3.5-2B+` `Gemini-3.1-Flash-Lite` `OpenAI-Compatible API` `Python 3.10+` `Bash 4.0+` `Zsh 5.0+`
+<p align="center">
+  <code>Qwen3.5-2B+</code> &nbsp;&nbsp; 
+  <code>Gemini-3.1-Flash-Lite</code> &nbsp;&nbsp; 
+  <code>OpenAI-Compatible API</code> &nbsp;&nbsp; 
+  <code>Python 3.10+</code> &nbsp;&nbsp; 
+  <code>Bash 4.0+</code> &nbsp;&nbsp; 
+  <code>Zsh 5.0+</code>
+</p>
 
 ---
 
