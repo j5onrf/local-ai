@@ -16,8 +16,8 @@ When working inside a codebase, the agent compiles a safe, path-specific map of 
 
 ## Core Features
 
-| Feature | Description |
-| ---: | :--- |
+| Feature &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; | Description |
+| :--- | :--- |
 | **Zero-Daemon** | No background processes or active runtimes. Runs only for the millisecond you execute a query. |
 | **Local Suggestions** | Sørensen-Dice similarity matching suggests commands locally, completely bypassing the LLM. |
 | **Workspace Agents** | Indexes project directory trees, parses architectural files, and launches codebase-aware copilot sessions. |
