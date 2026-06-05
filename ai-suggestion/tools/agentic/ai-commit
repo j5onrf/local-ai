@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ai-commit - Automate Git Commits with AI Context v1.0.2
+# ai-commit - Automate Git Commits with AI Context v1.0.3
 
 set -euo pipefail
 
@@ -16,8 +16,8 @@ _AI_PYTHON_BIN=$(command -v python3 2>/dev/null || type -p python3 2>/dev/null |
 # Query the Python script directly to generate the message
 message=$("$_AI_PYTHON_BIN" "$_AI_SCRIPT_PATH" --talk "Write a single, precise, plain-text git commit message (max 10 words, no markdown, no quotes) describing these staged changes: $(git diff --cached)")
 
-# Clean up quotes, AI:/Agent: prefixes, and trailing spaces
-message=$(echo "$message" | sed -E 's/^(AI|Agent):[[:space:]]*//i' | tr -d '"' | xargs)
+# Clean up any trailing quotes or spaces
+message=$(echo "$message" | tr -d '"' | xargs)
 
 # Execute the commit
 git commit -m "$message"

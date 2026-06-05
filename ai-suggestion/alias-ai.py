@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# AI Suggestion v0.7.9.2 [j5onrf] [06-05-26]
+# AI Suggestion v0.7.9.3 [j5onrf] [06-05-26]
 
 import sys, re, os, json, threading, time
 import urllib.request as urlreq, urllib.error as urlerr
@@ -271,7 +271,11 @@ def stream_llm_response(messages, prefix="AI: "):
                             content = parts[0].get("text", "") if parts else ""
                         if content:
                             if first:
-                                spinner.stop(); print(f"\033[1;32m{prefix}\033[0m ", end="", flush=True); first = False
+                                spinner.stop()
+                                # Only print the colored prompt prefix if outputting to an interactive terminal
+                                if sys.stdout.isatty():
+                                    print(f"\033[1;32m{prefix}\033[0m ", end="", flush=True)
+                                first = False
                             print(content, end="", flush=True); acc.append(content)
                     except Exception: pass
                 print("\n"); return "".join(acc)
