@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+# ai-status - Diagnostics for Local AI Suggestion Stack v1.0.0
+
+set -euo pipefail
+
+# Dynamically set colors only when outputting directly to an interactive terminal
+if [[ -t 1 ]]; then
+    GREEN="\033[1;32m"
+    YELLOW="\033[1;33m"
+    RED="\033[1;31m"
+    CYAN="\033[1;36m"
+    GREY="\033[1;30m"
+    RESET="\033[0m"
+else
+    GREEN=""
+    YELLOW=""
+    RED=""
+    CYAN=""
+    GREY=""
+    RESET=""
+fi
+
+echo -e "${CYAN}=== ACTIVE AI ROUTING DIAGNOSTICS ===${RESET}"
+echo "[INSTRUCTIONS FOR AI]:"
+echo "1. Inform the user which AI provider is currently active and which model is selected."
+echo "2. If a key is disabled or an endpoint is offline (forcing a fallback to OpenRouter or Local), clearly explain why the current provider was chosen."
+echo "3. Keep your explanation to 2 sentences max."
+echo "4. Format your output strictly for clean, plain-text terminal rendering. DO NOT use any Markdown formatting (such as ### headers, ** bolding, or * asterisks). Use simple capitalized headers and clean vertical line spaces for emphasis."
+echo "--------------------------------------"
+
+# Helper to mask API keys safely under set -u
+mask_key() {
+    local key="${1:-}"
+    if [[ -z "$key" ]]; then
+        echo -e "${RED}Not Exported${RESET}"
+    else
+        echo -e "${GREEN}Enabled${RESET} ${GREY}(${key:0:6}...${key: -4})${RESET}"
+    fi
+}
+
+# Helper to check endpoint connectivity
+check_online() {
+    local url="$1"
+    if curl -s -I --connect-timeout 1.5 "$url" >/dev/null; then
+        echo -e "${GREEN}Online${RESET}"
+        return 0
+    else
+        echo -e "${RED}Unreachable / Offline${RESET}"
+        return 1
+    fi
+}
+
+# 1. Credentials & Configuration
+echo "[CREDENTIALS & CONFIGURATION]"
+echo -n "  GEMINI_API_KEY  : "
+mask_key "${GEMINI_API_KEY:-}"
+echo -e "  CLOUD_MODEL     : ${YELLOW}${CLOUD_MODEL:-gemini-1.5-flash}${RESET}"
+echo ""
+echo -n "  OPENROUTER_KEY  : "
+mask_key "${OPENROUTER_API_KEY:-}"
+echo -e "  OPENROUTER_MODEL: ${YELLOW}${OPENROUTER_MODEL:-poolside/laguna-m.1:free}${RESET}"
+echo "--------------------------------------"
+
+# 2. Endpoint Status
+echo "[ENDPOINT STATUS]"
+echo -n "  Google APIs     : "
+gemini_conn=1
+if [[ -n "${GEMINI_API_KEY:-}" ]]; then
+    if curl -s -I --connect-timeout 1.5 "https://generativelanguage.googleapis.com" >/dev/null; then
+        echo -e "${GREEN}Online${RESET}"
+        gemini_conn=0
+    else
+        echo -e "${RED}Offline${RESET}"
+    fi
+else
+    echo -e "${GREY}Skipped (No Key)${RESET}"
+fi
+
+echo -n "  OpenRouter API  : "
+or_conn=1
+if [[ -n "${OPENROUTER_API_KEY:-}" ]]; then
+    if curl -s -I --connect-timeout 1.5 "https://openrouter.ai" >/dev/null; then
+        echo -e "${GREEN}Online${RESET}"
+        or_conn=0
+    else
+        echo -e "${RED}Offline${RESET}"
+    fi
+else
+    echo -e "${GREY}Skipped (No Key)${RESET}"
+fi
+
+echo -n "  Local Server    : "
+local_conn=1
+if curl -s -I --connect-timeout 1.0 "http://localhost:8080" >/dev/null; then
+    echo -e "${GREEN}Online${RESET}"
+    local_conn=0
+else
+    echo -e "${RED}Offline${RESET}"
+fi
+echo "--------------------------------------"
+
+# 3. Active Fallback Route
+echo "[ACTIVE RUNTIME ROUTE]"
+if [[ -n "${GEMINI_API_KEY:-}" && $gemini_conn -eq 0 ]]; then
+    echo -e "  Selected Provider: ${GREEN}Gemini Cloud API${RESET}"
+    echo -e "  Active Model     : ${YELLOW}${CLOUD_MODEL:-gemini-1.5-flash}${RESET}"
+elif [[ -n "${OPENROUTER_API_KEY:-}" && $or_conn -eq 0 ]]; then
+    echo -e "  Selected Provider: ${GREEN}OpenRouter API${RESET}"
+    echo -e "  Active Model     : ${YELLOW}${OPENROUTER_MODEL:-poolside/laguna-m.1:free}${RESET}"
+elif [[ $local_conn -eq 0 ]]; then
+    echo -e "  Selected Provider: ${GREEN}Local AI Server${RESET}"
+    echo -e "  Active Model     : ${YELLOW}Local Server${RESET}"
+else
+    echo -e "  Selected Provider: ${RED}None / All Offline${RESET}"
+fi
+echo "--------------------------------------"
