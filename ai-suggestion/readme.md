@@ -1,6 +1,7 @@
 # AI Suggestion Agent (v0.7.8)
 
-<img alt="9nkqh39nkqh39nkq4" src="https://github.com/user-attachments/assets/02d6205c-4403-463c-acec-830305a38aec" />
+<img width="1376" height="768" alt="9nkqh39nkqh39nkq" src="https://github.com/user-attachments/assets/6f335aaa-d6dd-43a1-aeaf-3ca0b3e3da25" />
+
 
 `Qwen3.5-2B+` `Gemini-3.1-Flash-Lite` `OpenAI-Compatible API` `Python 3.10+` `Bash 4.0+` `Zsh 5.0+`
 
