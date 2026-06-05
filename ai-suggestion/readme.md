@@ -8,11 +8,12 @@
 
 ## How the Agent Works
 
-All configurations, automations, and custom project workspaces are managed through a single plain-text master blueprint: **`ai-context.txt`**. 
+All configurations, automations, and custom project workspaces are managed through a single plain-text master blueprint: **`ai-context.txt`**. The agent resolves your inputs into one of four execution paradigms:
 
-* **No Session (Direct suggestions)**: Typing custom commands or shortcuts prompts a local Sørensen-Dice set-intersection matrix to suggest options instantly without querying an LLM.
-* **Conversational Agent (`ai` prefix)**: Typing `ai <query>` executes your query via cloud or local LLM, silently running local diagnostic tools to gather context when your custom keywords are matched.
-* **Workspace Agents (`ai init`)**: Compiles a path-specific structural tree of your repository, launching a dedicated, codebase-aware co-pilot session.
+* **No Session (Direct suggestions)**: Typing custom commands or shortcuts prompts a local set-intersection matrix to suggest options instantly without querying an LLM.
+* **Single-Turn Agent (`ai <query>`)**: Typing `ai <query>` instantly answers a single question and returns you directly to your Bash prompt, silently running local diagnostic tools to gather context when your keywords are matched.
+* **Multi-Turn Chat (`ai` alone)**: Typing `ai` alone initiates an interactive, persistent conversation session with local state preservation and multi-turn context memory.
+* **Workspace Agents (`ai init <path>`)**: Compiles a path-specific structural tree of your repository, launching a dedicated, codebase-aware co-pilot session.
 
 ---
 
