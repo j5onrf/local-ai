@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# AI Suggestion v0.8.4 [j5onrf] [06-05-26]
+# AI Suggestion v0.7.9 [j5onrf] [06-05-26]
 
 import sys, re, os, json, threading, time
 import urllib.request as urlreq, urllib.error as urlerr
