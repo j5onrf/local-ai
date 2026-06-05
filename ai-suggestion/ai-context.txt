@@ -61,6 +61,9 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 # SECTION 4: STATIC ALIASES & SHELL SHORTCUTS
 # ==============================================================================
 
+# --- AI Suggestion Blueprint Map (Cheat Sheet) ---
+~/.config/local-ai/ai-suggestion/tools/blueprint ---> blueprint, show blueprint, cheatsheet, cheat sheet
+
 # --- AI-Generated Git Commits ---
 ~/.config/local-ai/ai-suggestion/tools/agentic/ai-commit ---> ai-commit, git commit ai
 
