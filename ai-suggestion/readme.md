@@ -16,14 +16,15 @@ When working inside a codebase, the agent compiles a safe, path-specific map of 
 
 ## Core Features
 
-* **Zero-Daemon Footprint:** No background processes or active runtimes. Runs only for the millisecond you execute a query.
-* **Instant Local Suggestions:** Sørensen-Dice similarity matching suggests commands locally, completely bypassing the LLM.
-* **On-Demand Workspace Agents:** Indexes project directory trees, parses architectural files, and launches codebase-aware copilot sessions.
-* **Declarative Skills System:** Dynamically primes your conversational sessions with custom prompt guidelines, development roles (like system administrators or language-specific developers), and specific constraints mapped directly inside your configuration.
-* **Subprocess RAG Tool Injection:** Executes custom local scripts and pipes outputs directly into the conversational AI context.
-* **No Dependencies:** Written natively using Python's standard library—no `pip`, external dependencies, or heavy daemon environments required.
-* **Ultra-Lightweight & Auditable:** Built for complete transparency with under 370 lines of highly readable, standard-library Python code.
-
+| Feature | Description |
+| ---: | :--- |
+| **Zero-Daemon** | No background processes or active runtimes. Runs only for the millisecond you execute a query. |
+| **Local Suggestions** | Sørensen-Dice similarity matching suggests commands locally, completely bypassing the LLM. |
+| **Workspace Agents** | Indexes project directory trees, parses architectural files, and launches codebase-aware copilot sessions. |
+| **Declarative Skills** | Dynamically primes conversational sessions with custom guidelines, roles, and constraints mapped in your configuration. |
+| **Subprocess RAG** | Executes custom local scripts and pipes outputs directly into the conversational AI context. |
+| **Zero Dependencies** | Written natively using Python's standard library—no `pip` or heavy daemon environments required. |
+| **Lightweight & Auditable** | Built for complete transparency with under 370 lines of highly readable, standard-library Python code. |
 ---
 
 ## TUI Carousel Controls
