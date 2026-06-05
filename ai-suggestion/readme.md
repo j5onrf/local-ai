@@ -14,7 +14,9 @@ All configurations, automations, and custom project workspaces are managed throu
 When working inside a codebase, the agent compiles a safe, path-specific map of your workspace structure, allowing you to run a dedicated project-aware development copilot session on demand.
 
 ---
-</div></div>
+
+</div>
+
 ## Core Features</div></div>
 
 * **Zero-Daemon Footprint:** No background processes or active runtimes. Runs only for the millisecond you execute a query.
