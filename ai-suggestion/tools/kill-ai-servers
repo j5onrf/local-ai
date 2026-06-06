@@ -26,6 +26,7 @@ stop_target "llama-server"
 # 2. Kill any terminal app instances holding an open AI agent wrapper session
 pkill -f "AI "
 pkill -f uvicorn
+fuser -k 9119/tcp 2>/dev/null
 
 # 3. Flush pages from system memory to instantly reclaim the massive model RAM cache
 sudo sync && echo 3 | sudo tee /proc/sys/vm/drop_caches > /dev/null

@@ -1,44 +1,13 @@
 #!/usr/bin/env python3
-# deep-research - Minimal TUI Wrapper v3.0.0 [j5onrf] [06-06-26]
+# deep-research - Minimal TUI Wrapper v3.1.0 [j5onrf] [06-06-26]
 
 import sys
 import subprocess
 import shutil
 import tty
 import termios
-import threading
 import time
 import re
-
-class InlineSpinner:
-    """A lightweight modern Braille spinner for high-fidelity terminal feedback."""
-    def __init__(self, message="Working"):
-        # 10-step circular Braille sequence used by gemini-cli and modern TUIs
-        self.chars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
-        self.active = False
-        self.thread = None
-        self.message = message
-
-    def _spin(self):
-        idx = 0
-        while self.active:
-            # Render the animated Braille tick and the active progress message
-            sys.stderr.write(f"\r\033[1;36m{self.chars[idx % 10]}\033[0m {self.message}")
-            sys.stderr.flush()
-            idx += 1
-            time.sleep(0.08)
-        sys.stderr.write("\r\x1b[K")  # Clear the spinner line on stop
-        sys.stderr.flush()
-
-    def start(self):
-        self.active = True
-        self.thread = threading.Thread(target=self._spin, daemon=True)
-        self.thread.start()
-
-    def stop(self):
-        self.active = False
-        if self.thread:
-            self.thread.join()
 
 # --- KoKo-Style Clean Markdown Engine (Adapted from AI Summary TUI) ---
 
@@ -136,56 +105,45 @@ def print_header(title):
     print(f"\033[1;36m=== {title} ===\033[0m\n")
 
 # --- Bridge Logic ---
-def run_odysseus_engine(topic, spinner):
-    bridge_path = "/home/j5/.config/local-ai/research-tui/odysseus-cli"
-    try:
-        # Spawn the bridge as a background pipe to monitor progress line-by-line
-        process = subprocess.Popen(
-            [bridge_path, topic],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
+def run_research_engine(topic, use_hermes=False):
+    """Dynamically routes execution to either Odysseus or Hermes CLI bridges."""
+    if use_hermes:
+        bridge_path = "/home/j5/.config/local-ai/research-tui/hermes-cli"
+    else:
+        bridge_path = "/home/j5/.config/local-ai/research-tui/odysseus-cli"
         
-        # Read stderr output in real-time to update the active spinner message
-        for line in iter(process.stderr.readline, ''):
-            if "planning" in line or "Formulating" in line:
-                spinner.message = "Formulating discovery search queries..."
-            elif "Round 1" in line:
-                spinner.message = "Executing Round 1: Discovery crawl..."
-            elif "Round 2" in line:
-                spinner.message = "Executing Round 2: Fact verification..."
-            elif "Round 3" in line:
-                spinner.message = "Executing Round 3: Deep gap-analysis..."
-            elif "synthesis" in line or "Synthesizing" in line:
-                spinner.message = "Synthesizing retrieved findings..."
-            elif "writing" in line or "Final report" in line:
-                spinner.message = "Formatting and polishing final report..."
-                
-        # Gather final synthesized report from stdout
-        stdout, _ = process.communicate()
-        return stdout
+    try:
+        result = subprocess.run(
+            [bridge_path, topic], 
+            stdout=subprocess.PIPE, 
+            stderr=sys.stderr, 
+            text=True, 
+            check=True
+        )
+        return result.stdout
     except Exception as e:
         return f"Error: {str(e)}"
 
 def main():
-    if len(sys.argv) < 2:
+    use_hermes = False
+    args = sys.argv[1:]
+    
+    # Detect the optional --hermes flag
+    if len(args) > 0 and args[0] == "--hermes":
+        use_hermes = True
+        args = args[1:]
+        
+    if not args:
         topic = get_text_input("Research Subject: ")
         if not topic:
             sys.exit(0)
     else:
-        topic = " ".join(sys.argv[1:])
+        topic = " ".join(args)
     
-    print_header(f"Researching: {topic}")
+    engine_name = "Hermes" if use_hermes else "Odysseus"
+    print_header(f"Researching ({engine_name}): {topic}")
     
-    # Initialize the modern Braille spinner
-    spinner = InlineSpinner("Connecting to Odysseus research engine...")
-    spinner.start()
-    
-    report = run_odysseus_engine(topic, spinner)
-    
-    # Stop spinner and clear status line
-    spinner.stop()
+    report = run_research_engine(topic, use_hermes)
     
     # Run clean markdown engine and calculate terminal margins
     cols, _ = shutil.get_terminal_size()
@@ -222,7 +180,6 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        # Clean terminal screen state restoration (restores buffer and cursor)
         sys.stdout.write("\033[?1049l\033[?25h\n\033[K")
         sys.stdout.flush()
         sys.exit(0)

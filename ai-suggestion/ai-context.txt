@@ -14,7 +14,7 @@
 
 
 # ==============================================================================
-# SECTION 1: WORKSPACE INITIALIZERS & OPENCODE BRIDGES
+# SECTION 1: WORKSPACE INITIALIZERS & BRIDGES
 # ==============================================================================
 
 # --- OpenCode Direct Terminal Launcher ---
@@ -22,6 +22,9 @@
 
 # --- Odysseus Direct Terminal Launcher ---
 ~/.config/local-ai/odysseus-bridge/odysseus-bridge ---> ody, odysseus. odb
+
+# --- Hermes Direct Browser Workspace Launcher ---
+~/.config/local-ai/hermes-bridge/hermes-bridge ---> hmb, hermes bridge, herm
 
 # --- Standard Codebase Workspaces (Dynamic Auto-Init) ---
 # (Triggers standard ai init on the directory tree when matched)

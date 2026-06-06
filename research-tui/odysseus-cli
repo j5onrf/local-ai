@@ -2,6 +2,8 @@
 import sys
 import os
 import asyncio
+import warnings
+warnings.filterwarnings("ignore")
 
 # 1. Ensure we use the Odysseus virtualenv
 venv_python = "/opt/odysseus/venv/bin/python3"
