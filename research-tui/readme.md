@@ -1,6 +1,6 @@
 # DeepResearch-TUI
 
-<img width="3840" height="2160" alt="20260605_225005" src="https://github.com/user-attachments/assets/90951db8-0b21-442e-bf8a-5ad8959dfe11" />
+<img alt="20260606_100004" src="https://github.com/user-attachments/assets/3b5dc15e-11e3-4d0b-850d-03010ba7165e" />
 
 ---
 
