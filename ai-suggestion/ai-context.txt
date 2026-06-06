@@ -70,11 +70,8 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 # --- AI-Generated Git Commits ---
 ~/.config/local-ai/ai-suggestion/tools/agentic/ai-commit ---> ai-commit, git commit ai
 
-# --- Core Terminal Shortcuts ---
-btop ---> memory, cpu, task manager
-
-# --- Active Window Tracking & Client Queries ---
-hyprctl clients ---> hyprland clients, list open windows, show active apps
+# --- Server Lifecycle Management ---
+~/.config/local-ai/ai-suggestion/tools/kill-ai-servers ---> killserver
 
 
 # ==============================================================================
