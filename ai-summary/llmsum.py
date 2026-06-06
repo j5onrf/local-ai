@@ -320,6 +320,40 @@ def render_and_read_summary(raw_text):
         sys.stdout.flush()
 
 def main():
+    # --- Odysseus CLI Handshake: If a file path is passed, bypass menu ---
+    if len(sys.argv) > 1 and sys.argv[1] == "--file" and len(sys.argv) > 2:
+        file_path = sys.argv[2]
+        if os.path.exists(file_path):
+            try:
+                with open(file_path, "r") as f:
+                    user_input = f.read().strip()
+                if user_input:
+                    # Automatically select Profile 1 (Core Takeaways) for summary
+                    choice = "1"
+                    sys.stdout.write("\033[H\033[J")
+                    print_robot_header()
+                    gemini_key = os.environ.get("GEMINI_API_KEY")
+                    if gemini_key:
+                        print("Processing request via Google Gemini Cloud...")
+                    else:
+                        print("Processing request locally via llama.cpp...")
+                    
+                    summary = call_llm(user_input, PROMPT_PROFILES[choice]['prompt'])
+                    render_and_read_summary(summary)
+                    
+                    # Clean return back to deep-research TUI
+                    flush_input_buffer()
+                    input("\nPress Enter to return to deep-research TUI.")
+                    sys.exit(0)
+            except Exception as e:
+                print(f"\n❌ Error in non-interactive summary: {e}")
+                time.sleep(3)
+                sys.exit(1)
+        else:
+            print(f"Error: File {file_path} not found.")
+            sys.exit(1)
+
+    # --- Standard Interactive Menu Fallback ---
     while True:
         idx, keys = run_menu()
         if idx == len(keys): break

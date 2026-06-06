@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# deep-research - Minimal TUI Wrapper v2.6.0 [j5onrf] [06-06-26]
+# deep-research - Minimal TUI Wrapper v2.7.0 [j5onrf] [06-06-26]
 
 import sys
 import subprocess
@@ -35,7 +35,7 @@ class InlineSpinner:
         if self.thread:
             self.thread.join()
 
-# --- Clean Markdown Engine (Adapted from AI Summary TUI) ---
+# --- KoKo-Style Clean Markdown Engine (Adapted from AI Summary TUI) ---
 
 RE_BOLD = re.compile(r'\*\*(.*?)\*\*')
 RE_ITALIC_STAR = re.compile(r'\*(.*?)\*')
@@ -46,47 +46,40 @@ RE_HEADER_STRIP = re.compile(r'^(#+)\s*')
 RE_LINK_STRIP = re.compile(r'\[(.*?)\]\((https?://.*?)\)')
 
 def clean_markdown(text):
-    """Integrates your responsive summary parser to strip markdown and normalize structures."""
     if not text:
         return ""
     
-    # 1. Clean inline formatting matches
     text = RE_BOLD.sub(r'\1', text)
     text = RE_ITALIC_STAR.sub(r'\1', text)
     text = RE_ITALIC_UNDER.sub(r'\1', text)
     text = RE_BACKTICK.sub(r'\1', text)
-    text = RE_LINK_STRIP.sub(r'\1 (\2)', text) # [text](url) -> text (url)
+    text = RE_LINK_STRIP.sub(r'\1 (\2)', text)
     
     lines = []
     bullet_counter = 1
     for line in text.splitlines():
         stripped = line.strip()
         if not stripped:
-            # Preserve paragraph boundary spaces
             lines.append("")
             continue
             
-        # Clean headers: "# Heading" -> "HEADING"
         if RE_HEADER_STRIP.match(line):
             cleaned_header = RE_HEADER_STRIP.sub('', line).strip().upper()
             if cleaned_header:
                 lines.append(f"\n{cleaned_header}")
             continue
             
-        # Clean and standardize any bullet/numerical list variants into your sequential format
         if RE_BULLET_STRIP.match(line):
             cleaned_content = RE_BULLET_STRIP.sub('', line).strip()
             if cleaned_content:
                 lines.append(f"{bullet_counter:2d}.  {cleaned_content}")
                 bullet_counter += 1
         else:
-            # Normal analytical paragraphs are preserved as-is
             lines.append(line)
             
     return "\n".join(lines).strip()
 
 def wrap_text(text, width=80):
-    """Wraps text on word boundaries to fit a specific column width."""
     wrapped_lines = []
     for line in text.split('\n'):
         if not line.strip():
@@ -165,16 +158,36 @@ def main():
     # Stop spinner and clear the console line
     spinner.stop()
     
-    # Run your clean markdown engine and calculate terminal margins
+    # Run clean markdown engine and calculate terminal margins
     cols, _ = shutil.get_terminal_size()
     clean_report = clean_markdown(report)
     wrapped_report = wrap_text(clean_report, max(cols - 6, 40))
     
-    # Display the structured result with margins
+    # Display the result
     print("\n" + "=" * cols + "\n")
     print(wrapped_report)
     print("\n" + "=" * cols + "\n")
-    input("Press Enter to exit...")
+    
+    # Key-listener exit prompt
+    sys.stdout.write(" \033[1;36m[s]\033[0m Summary Read-Aloud  |  \033[1;33m[Any Other Key]\033[0m Exit")
+    sys.stdout.flush()
+    
+    key = get_key()
+    if key.lower() == 's':
+        temp_path = "/tmp/deep_research_report.txt"
+        try:
+            with open(temp_path, "w") as f:
+                f.write(report)
+            
+            # Clear screen before switching tool contexts
+            sys.stdout.write("\033[2J\033[H")
+            sys.stdout.flush()
+            
+            # Launch llmsum.py with the compiled file directly
+            subprocess.run(["python3", "/home/j5/.config/local-ai/ai-summary/llmsum.py", "--file", temp_path])
+        except Exception as e:
+            print(f"\nError starting KoKo Read-Aloud: {str(e)}")
+            time.sleep(2)
 
 if __name__ == "__main__":
     main()

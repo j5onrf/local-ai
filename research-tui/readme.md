@@ -15,15 +15,17 @@ This tool acts as a **CLI Bridge**. It offloads the research heavy-lifting—Thi
 * **Backend:** Odysseus Engine (Stateful, research-hardened, API-resilient).
 
 ### Features
-*   **Production-Grade Engine:** Powered by the Odysseus Iterative Research loop.
+*   **Production-Grade Engine:** Powered by the Odysseus Iterative Research loop [1].
 *   **Terminal-Native TUI:** Scroll, filter, and read reports directly in your shell.
-*   **Keyboard-First:** Use `/` to scan keywords, `o` to launch source links, and `Ctrl+A` to copy the full report.
+*   **AI Summary & Read-Aloud Bridge:** Press `s` to automatically pass the generated report to your `llmsum.py` summary engine. It compiles a "Core Takeaways" summary and immediately launches the **KoKo text-to-speech reader** with responsive line-by-line highlighting.
+*   **Keyboard-First:** Use `/` to scan keywords, `o` to launch source links, `y` / `Ctrl+A` to copy the full report, and `s` to trigger the AI summary read-aloud.
 *   **Zero-Dependency UI:** Built using standard Python libraries only.
 *   **Parallel Fetching:** Concurrent web crawling for near-instant round execution.
 
 ### Setup
 1. Ensure your Odysseus environment is configured at `/opt/odysseus/`.
 2. Map the `odysseus-cli` bridge in your config directory.
+3. Ensure `llmsum.py` (AI Summary TUI) and `koko` are configured on your system paths.
 
 ```bash
 # Direct usage
@@ -31,7 +33,6 @@ deep-research "your research topic here"
 ```
 
 ### Attribution
-Built as a terminal interface bridge for the [Odysseus Research Engine](https://github.com/pewdiepie-archdaemon/odysseus/blob/dev/src/deep_research.py).
+Built as a terminal interface bridge for the [Odysseus Research Engine](https://github.com/pewdiepie-archdaemon/odysseus/blob/dev/src/deep_research.py) [1].
 
 ***
-
