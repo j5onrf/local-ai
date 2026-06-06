@@ -1,4 +1,4 @@
-# AI-Suggestion Agent (v0.7.9) — Documentation
+# AI-Suggestion Agent (v0.7.9.5) — Documentation
 
 An adaptive, local/cloud AI shell assistant designed to conform to your terminal environment. By leveraging a high-speed, local token-matrix cache alongside local or cloud LLMs, it provides interactive command suggestions, manages aliases, executes system tools, and answers conversational queries with zero background CPU overhead.
 
@@ -8,10 +8,10 @@ An adaptive, local/cloud AI shell assistant designed to conform to your terminal
 
 The project operates under an on-demand execution model designed to protect terminal responsiveness:
 
-* **Zero-Background Footprint:** No background daemons, cron-jobs, or continuous CPU-polling threads are used. Your shell experiences 0% idle RAM and 0% idle CPU overhead.
+* **Zero-Background Footprint:** No background daemons, cron-jobs, or continuous CPU-polling threads are used. Your shell experiences 0% idle RAM and 0% idle CPU overhead [1].
 * **Dual-Layer Execution:** 
   * **Standard suggestions (direct shell inputs):** Bypasses the LLM completely. Suggestion queries are evaluated locally via a pure Python set-intersection matrix in under 2ms.
-  * **Conversational queries (using the `ai` prefix):** Run on-demand. The script utilizes a robust, prioritized fallback hierarchy: Gemini Cloud API $\rightarrow$ OpenRouter Cloud API $\rightarrow$ Custom Cloud API $\rightarrow$ Local AI Server (such as `llama.cpp` or `Ollama` running on port 8080).
+  * **Conversational queries (using the `ai` prefix):** Run on-demand. The script utilizes a robust, prioritized fallback hierarchy: Gemini Cloud API $\rightarrow$ OpenRouter Cloud API $\rightarrow$ Custom Cloud API $\rightarrow$ Local AI Server (such as `llama.cpp` or `Ollama` running on port 8080) [1.1].
 * **On-Demand Workspace Agents (`ai init`):** A custom indexing routine that scans your project directories, generates structural file trees, and launches a persistent, multi-turn copilot session targeted specifically to your codebase.
 * **Offline Resilience:** If your local AI server and internet are offline, your command suggestions and custom aliases continue to work locally and instantly. Only conversational LLM chat requests are safely blocked.
 
@@ -63,16 +63,16 @@ Command    ai init <path>
                                   │       (Models Fallback List)        /      \
                                   │                  │          (Yes) /          \ (No)
                                   │                  │               /            \
-                                  │                  │      [ Custom Cloud ]   [ Local Port 8080 ]
-                                  │                  │             │           (Offline -> Safe
-                                  │                  │             │           Connection Error)
-                                  ▼                  ▼             ▼                  ▼
+                                  │      [ Custom Cloud ]   [ Local Port 8080 ]
+                                  │             │           (Offline -> Safe
+                                  │             │           Connection Error)
+                                  ▼             ▼                  ▼
                                 ┌─────────────────────────────────────────────────────┘
                                 │
                                 ▼
                     [ Inline Latency Spinner ]
                       Displays Accent Rotator
-                            (| / - \)
+                          (⠋ ⠙ ⠹ ⠸ ...)
                                 │
                       [ Connection Opened ]
                     Wipes Spinner from Screen
@@ -93,7 +93,7 @@ Command    ai init <path>
 
 ## 2. Cloud Integration & Multi-Provider Fallbacks
 
-The agent features a dynamic, cascading failover connection pipeline. This ensures your conversational queries and agentic tool integrations resolve reliably, shifting from cloud systems to local infrastructure seamlessly if credentials expire or endpoints go offline.
+The agent features a dynamic, cascading failover connection pipeline [1.1]. This ensures your conversational queries and agentic tool integrations resolve reliably, shifting from cloud systems to local infrastructure seamlessly if credentials expire or endpoints go offline [1.1].
 
 ### A. Environment Configuration (`~/.bashrc`)
 To configure your cloud access priorities, export your keys and models at the top of your `~/.bashrc`:
@@ -213,7 +213,7 @@ if match_count == entry_len and (match_count / len_q >= 0.50):
 This forces conversational sentences with lower overlap ratios to drop below your standard conversational threshold (e.g. `0.65`), preserving your generic terminal shortcuts without polluting conversational chats.
 
 ### C. Theme-Adaptive, Thread-Safe Latency Spinner
-To keep the terminal interface responsive during network handshakes and LLM processing delays, a lightweight daemon thread runs an inline spinner (`|`, `/`, `-`, `\`) at 12 FPS. 
+To keep the terminal interface responsive during network handshakes and LLM processing delays, a lightweight daemon thread runs an inline 10-step Braille spinner (`⠋`, `⠙`, `⠹`, ...) at 12 FPS [1.1]. 
 
 By utilizing standard 4-bit ANSI colors (`\033[1;32m` / Bold Green Theme Accent) rather than hardcoded 24-bit TrueColor hex codes, **the interface automatically and dynamically adapts to your system theme.** The spinner, `Agent:`, and `AI:` labels will seamlessly inherit the precise accent hue of your active terminal color palette (such as Tokyo Night, Nord, or Gruvbox) completely on the fly.
 
