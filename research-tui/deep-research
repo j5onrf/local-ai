@@ -35,7 +35,7 @@ class InlineSpinner:
         if self.thread:
             self.thread.join()
 
-# --- KoKo-Style Clean Markdown Engine (Adapted from AI Summary TUI) ---
+# --- Clean Markdown Engine (Adapted from AI Summary TUI) ---
 
 RE_BOLD = re.compile(r'\*\*(.*?)\*\*')
 RE_ITALIC_STAR = re.compile(r'\*(.*?)\*')

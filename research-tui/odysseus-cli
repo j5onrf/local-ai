@@ -19,7 +19,11 @@ async def run_research(topic):
     researcher = DeepResearcher(
         llm_endpoint="https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
         llm_model=os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"),
-        llm_headers={"Authorization": f"Bearer {os.environ.get('GEMINI_API_KEY')}"}
+        llm_headers={"Authorization": f"Bearer {os.environ.get('GEMINI_API_KEY')}"},
+        # --- ADD THESE PARAMETERS FOR LITE-TIER RATE SAFETY ---
+        max_content_chars=8000,     # Limit raw page extraction blocks to 8k chars
+        synthesis_window=4,         # Synthesize only the 4 most relevant findings per round
+        max_urls_per_round=2        # Limit URLs fetched per round to prevent TPM spikes
     )
     return await researcher.research(topic)
 
