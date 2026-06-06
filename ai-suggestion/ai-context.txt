@@ -14,7 +14,7 @@
 
 
 # ==============================================================================
-# SECTION 1: WORKSPACE INITIALIZERS & CO-PILOT BRIDGES
+# SECTION 1: WORKSPACE INITIALIZERS & OPENCODE BRIDGES
 # ==============================================================================
 
 # --- OpenCode Direct Terminal Launcher ---
@@ -108,4 +108,4 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 
 # --- Native Webapp Wrappers & Browsers ---
 omarchy-launch-webapp https://music.youtube.com/ ---> youtube music, yt music, youtube webapp
-uwsm app -- brave-origin-beta --user-data-dir="~/.config/brave-spotify-bunker" --app=https://open.spotify.com/ >/dev/null 2>&1 ---> spotify music
+nohup uwsm app -- brave-origin-beta --user-data-dir="~/.config/brave-spotify-bunker" --app=https://open.spotify.com/ >/dev/null 2>&1 & ---> spotify music

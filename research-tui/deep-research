@@ -1,9 +1,108 @@
 #!/usr/bin/env python3
+# deep-research - Minimal TUI Wrapper v2.6.0 [j5onrf] [06-06-26]
+
 import sys
 import subprocess
 import shutil
 import tty
 import termios
+import threading
+import time
+import re
+
+class InlineSpinner:
+    """A lightweight standard-library terminal spinner for latency feedback."""
+    def __init__(self, message="Working"):
+        self.chars, self.active, self.thread = ["|", "/", "-", "\\"], False, None
+        self.message = message
+
+    def _spin(self):
+        idx = 0
+        while self.active:
+            sys.stderr.write(f"\r\033[1;32m{self.chars[idx % 4]}\033[0m {self.message}")
+            sys.stderr.flush()
+            idx, _ = idx + 1, time.sleep(0.08)
+        sys.stderr.write("\r\x1b[K")  # Clear line on stop
+        sys.stderr.flush()
+
+    def start(self):
+        self.active = True
+        self.thread = threading.Thread(target=self._spin, daemon=True)
+        self.thread.start()
+
+    def stop(self):
+        self.active = False
+        if self.thread:
+            self.thread.join()
+
+# --- KoKo-Style Clean Markdown Engine (Adapted from AI Summary TUI) ---
+
+RE_BOLD = re.compile(r'\*\*(.*?)\*\*')
+RE_ITALIC_STAR = re.compile(r'\*(.*?)\*')
+RE_ITALIC_UNDER = re.compile(r'_(.*?)_')
+RE_BACKTICK = re.compile(r'`(.*?)`')
+RE_BULLET_STRIP = re.compile(r'^\s*([\*\-]|(\d+[\.\)]))\s+')
+RE_HEADER_STRIP = re.compile(r'^(#+)\s*')
+RE_LINK_STRIP = re.compile(r'\[(.*?)\]\((https?://.*?)\)')
+
+def clean_markdown(text):
+    """Integrates your responsive summary parser to strip markdown and normalize structures."""
+    if not text:
+        return ""
+    
+    # 1. Clean inline formatting matches
+    text = RE_BOLD.sub(r'\1', text)
+    text = RE_ITALIC_STAR.sub(r'\1', text)
+    text = RE_ITALIC_UNDER.sub(r'\1', text)
+    text = RE_BACKTICK.sub(r'\1', text)
+    text = RE_LINK_STRIP.sub(r'\1 (\2)', text) # [text](url) -> text (url)
+    
+    lines = []
+    bullet_counter = 1
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            # Preserve paragraph boundary spaces
+            lines.append("")
+            continue
+            
+        # Clean headers: "# Heading" -> "HEADING"
+        if RE_HEADER_STRIP.match(line):
+            cleaned_header = RE_HEADER_STRIP.sub('', line).strip().upper()
+            if cleaned_header:
+                lines.append(f"\n{cleaned_header}")
+            continue
+            
+        # Clean and standardize any bullet/numerical list variants into your sequential format
+        if RE_BULLET_STRIP.match(line):
+            cleaned_content = RE_BULLET_STRIP.sub('', line).strip()
+            if cleaned_content:
+                lines.append(f"{bullet_counter:2d}.  {cleaned_content}")
+                bullet_counter += 1
+        else:
+            # Normal analytical paragraphs are preserved as-is
+            lines.append(line)
+            
+    return "\n".join(lines).strip()
+
+def wrap_text(text, width=80):
+    """Wraps text on word boundaries to fit a specific column width."""
+    wrapped_lines = []
+    for line in text.split('\n'):
+        if not line.strip():
+            wrapped_lines.append("")
+            continue
+        words = line.split(' ')
+        current_line = []
+        for word in words:
+            if sum(len(w) for w in current_line) + len(current_line) + len(word) > width:
+                wrapped_lines.append(" ".join(current_line))
+                current_line = [word]
+            else:
+                current_line.append(word)
+        if current_line:
+            wrapped_lines.append(" ".join(current_line))
+    return "\n".join(wrapped_lines)
 
 # --- Minimal TUI Helpers ---
 def get_key():
@@ -48,7 +147,6 @@ def run_odysseus_engine(topic):
         return f"Error: {str(e)}"
 
 def main():
-    # If no topic, ask for one
     if len(sys.argv) < 2:
         topic = get_text_input("Research Subject: ")
         if not topic:
@@ -57,14 +155,25 @@ def main():
         topic = " ".join(sys.argv[1:])
     
     print_header(f"Researching: {topic}")
-    print(f"Invoking Odysseus engine...")
+    
+    # Initialize and start spinner
+    spinner = InlineSpinner("Invoking Odysseus engine...")
+    spinner.start()
     
     report = run_odysseus_engine(topic)
     
-    # Display the result
-    print("\n" + "="*40 + "\n")
-    print(report)
-    print("\n" + "="*40 + "\n")
+    # Stop spinner and clear the console line
+    spinner.stop()
+    
+    # Run your clean markdown engine and calculate terminal margins
+    cols, _ = shutil.get_terminal_size()
+    clean_report = clean_markdown(report)
+    wrapped_report = wrap_text(clean_report, max(cols - 6, 40))
+    
+    # Display the structured result with margins
+    print("\n" + "=" * cols + "\n")
+    print(wrapped_report)
+    print("\n" + "=" * cols + "\n")
     input("Press Enter to exit...")
 
 if __name__ == "__main__":
