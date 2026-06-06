@@ -24,7 +24,6 @@ This tool acts as a **CLI Bridge**. It offloads the research heavy-lifting—Thi
 ### Setup
 1. Ensure your Odysseus environment is configured at `/opt/odysseus/`.
 2. Map the `odysseus-cli` bridge in your config directory.
-3. Place `deep-research` in your `ai-suggestion/tools/agentic/` path.
 
 ```bash
 # Direct usage
