@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# deep-research - Minimal TUI Wrapper v2.7.0 [j5onrf] [06-06-26]
+# deep-research - Minimal TUI Wrapper v3.0.0 [j5onrf] [06-06-26]
 
 import sys
 import subprocess
@@ -11,18 +11,23 @@ import time
 import re
 
 class InlineSpinner:
-    """A lightweight standard-library terminal spinner for latency feedback."""
+    """A lightweight modern Braille spinner for high-fidelity terminal feedback."""
     def __init__(self, message="Working"):
-        self.chars, self.active, self.thread = ["|", "/", "-", "\\"], False, None
+        # 10-step circular Braille sequence used by gemini-cli and modern TUIs
+        self.chars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+        self.active = False
+        self.thread = None
         self.message = message
 
     def _spin(self):
         idx = 0
         while self.active:
-            sys.stderr.write(f"\r\033[1;32m{self.chars[idx % 4]}\033[0m {self.message}")
+            # Render the animated Braille tick and the active progress message
+            sys.stderr.write(f"\r\033[1;36m{self.chars[idx % 10]}\033[0m {self.message}")
             sys.stderr.flush()
-            idx, _ = idx + 1, time.sleep(0.08)
-        sys.stderr.write("\r\x1b[K")  # Clear line on stop
+            idx += 1
+            time.sleep(0.08)
+        sys.stderr.write("\r\x1b[K")  # Clear the spinner line on stop
         sys.stderr.flush()
 
     def start(self):
@@ -131,11 +136,35 @@ def print_header(title):
     print(f"\033[1;36m=== {title} ===\033[0m\n")
 
 # --- Bridge Logic ---
-def run_odysseus_engine(topic):
+def run_odysseus_engine(topic, spinner):
     bridge_path = "/home/j5/.config/local-ai/research-tui/odysseus-cli"
     try:
-        result = subprocess.run([bridge_path, topic], capture_output=True, text=True, check=True)
-        return result.stdout
+        # Spawn the bridge as a background pipe to monitor progress line-by-line
+        process = subprocess.Popen(
+            [bridge_path, topic],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        
+        # Read stderr output in real-time to update the active spinner message
+        for line in iter(process.stderr.readline, ''):
+            if "planning" in line or "Formulating" in line:
+                spinner.message = "Formulating discovery search queries..."
+            elif "Round 1" in line:
+                spinner.message = "Executing Round 1: Discovery crawl..."
+            elif "Round 2" in line:
+                spinner.message = "Executing Round 2: Fact verification..."
+            elif "Round 3" in line:
+                spinner.message = "Executing Round 3: Deep gap-analysis..."
+            elif "synthesis" in line or "Synthesizing" in line:
+                spinner.message = "Synthesizing retrieved findings..."
+            elif "writing" in line or "Final report" in line:
+                spinner.message = "Formatting and polishing final report..."
+                
+        # Gather final synthesized report from stdout
+        stdout, _ = process.communicate()
+        return stdout
     except Exception as e:
         return f"Error: {str(e)}"
 
@@ -149,13 +178,13 @@ def main():
     
     print_header(f"Researching: {topic}")
     
-    # Initialize and start spinner
-    spinner = InlineSpinner("Invoking Odysseus engine...")
+    # Initialize the modern Braille spinner
+    spinner = InlineSpinner("Connecting to Odysseus research engine...")
     spinner.start()
     
-    report = run_odysseus_engine(topic)
+    report = run_odysseus_engine(topic, spinner)
     
-    # Stop spinner and clear the console line
+    # Stop spinner and clear status line
     spinner.stop()
     
     # Run clean markdown engine and calculate terminal margins
@@ -190,4 +219,10 @@ def main():
             time.sleep(2)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        # Clean terminal screen state restoration (restores buffer and cursor)
+        sys.stdout.write("\033[?1049l\033[?25h\n\033[K")
+        sys.stdout.flush()
+        sys.exit(0)

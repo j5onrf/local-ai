@@ -380,4 +380,8 @@ def main():
             input("\nPress Enter to return to menu.")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        # Clean exit without tracebacks
+        sys.exit(0)

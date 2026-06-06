@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# AI Suggestion v0.7.9.3 [j5onrf] [06-05-26]
+# AI Suggestion v0.7.9.5 [j5onrf] [06-06-26]
 
 import sys, re, os, json, threading, time
 import urllib.request as urlreq, urllib.error as urlerr
@@ -25,14 +25,18 @@ STOP_WORDS = {
 }
 
 class InlineSpinner:
-    """A lightweight standard-library terminal spinner for network latency feedback."""
+    """A lightweight modern Braille spinner for network latency feedback."""
     def __init__(self):
-        self.chars, self.active, self.thread = ["|", "/", "-", "\\"], False, None
+        # 10-step circular Braille sequence
+        self.chars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+        self.active = False
+        self.thread = None
 
     def _spin(self):
         idx = 0
         while self.active:
-            sys.stderr.write(f"\r\033[1;32m{self.chars[idx % 4]}\033[0m ")
+            # Render the animated Braille tick
+            sys.stderr.write(f"\r\033[1;32m{self.chars[idx % 10]}\033[0m ")
             sys.stderr.flush()
             idx, _ = idx + 1, time.sleep(0.08)
         sys.stderr.write("\r\x1b[K")
@@ -376,4 +380,3 @@ if matched_base:
     print("\n".join(out_lines)); sys.exit(0)
 else:
     print("Command Not Found"); sys.exit(1)
-
