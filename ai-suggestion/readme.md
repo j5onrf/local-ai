@@ -51,8 +51,8 @@ All configurations, automations, and custom project workspaces are managed throu
 Add your shortcuts, dynamic tool integrations, and project workspaces to `~/.config/local-ai/ai-suggestion/ai-context.txt`. The search index automatically compiles in under 2ms on your next execution.
 
 ```text
-# Static Shell Shortcut (Section 4)
-cd ~/Projects ---> cd projects, go to projects, open projects
+# --- AI Deep Research TUI ---
+/home/j5/.config/local-ai/research-tui/deep-research ---> ai-research, deep research, research, deep-research
 
 # Context-Injected Diagnostic Tool (Section 3)
 [TOOL] ~/.config/local-ai/ai-suggestion/tools/agentic/ai-status ---> ai-status agentic, ai stack diagnostics
