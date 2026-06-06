@@ -52,7 +52,7 @@ Add your shortcuts, dynamic tool integrations, and project workspaces to `~/.con
 
 ```text
 # --- AI Deep Research TUI ---
-/home/j5/.config/local-ai/research-tui/deep-research ---> ai-research, deep research, research, deep-research
+~/.config/local-ai/research-tui/deep-research ---> ai-research, deep research, research, deep-research
 
 # Context-Injected Diagnostic Tool (Section 3)
 [TOOL] ~/.config/local-ai/ai-suggestion/tools/agentic/ai-status ---> ai-status agentic, ai stack diagnostics
