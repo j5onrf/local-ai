@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# odysseus-bridge - On-Demand Server & Web Workspace Initializer v1.0.3
+
+PORT=7000
+ENV_FILE="/opt/odysseus/.env"
+
+# --- Load Environment Variables from .env if present ---
+if [ -f "$ENV_FILE" ]; then
+    # Parse and export any non-commented keys from the .env into this subshell
+    export $(grep -v '^#' "$ENV_FILE" | xargs) 2>/dev/null || true
+fi
+
+# --- Intelligent Path Target Resolution ---
+if [ -d "$1" ]; then
+    WORKSPACE_PATH="$(realpath "$1")"
+else
+    WORKSPACE_PATH="$(pwd)"
+fi
+
+# --- Cascade Fallback Engine Setup (Direct Env-Key Driven) ---
+# Verifies that keys are both non-empty and have been changed from their placeholders
+if [ -n "${GEMINI_API_KEY:-}" ] && [ "${GEMINI_API_KEY}" != "your_gemini_api_key_here" ]; then
+    AGENT_DISPLAY="Cloud Array (Gemini 3.1 Flash-Lite Context Threading)"
+elif [ -n "${OPENROUTER_API_KEY:-}" ] && [ "${OPENROUTER_API_KEY}" != "your_openrouter_api_key_here" ]; then
+    AGENT_DISPLAY="Paid Overdrive (Xiaomi MiMo-V2.5 Low-Cost Efficiency)"
+else
+    AGENT_DISPLAY="Standard Free Fallback (OpenRouter Free Router Mapping)"
+fi
+
+# --- On-Demand Port Verification ---
+if ! curl -s -I --connect-timeout 1 "http://127.0.0.1:$PORT" >/dev/null; then
+    echo -e "\033[1;33m[sys]\033[0m Odysseus is offline. Initializing backend daemon on-demand..."
+    
+    cd /opt/odysseus
+    source venv/bin/activate
+    
+    # Launch Uvicorn in the background and discard raw startup logs
+    python -m uvicorn app:app --host 127.0.0.1 --port $PORT >/dev/null 2>&1 &
+    
+    sleep 2  # Hold execution for 2 seconds to allow the server to bind to the port
+fi
+
+# Visual confirmation indicators
+echo -e "\033[1;35m[Odysseus Bridge]\033[0m Launching browser workspace..."
+echo -e "\033[90mLocation Context: $WORKSPACE_PATH\033[0m"
+echo -e "\033[92mActive Profile  : $AGENT_DISPLAY\033[0m\n"
+
+# Automatically opens your default web browser directly to the self-hosted workspace
+xdg-open "http://localhost:$PORT"

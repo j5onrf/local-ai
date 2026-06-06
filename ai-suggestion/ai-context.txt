@@ -20,6 +20,9 @@
 # --- OpenCode Direct Terminal Launcher ---
 ~/.config/local-ai/opencode-bridge/opencode-bridge ---> ocb, opencode bridge
 
+# --- Odysseus Direct Terminal Launcher ---
+~/.config/local-ai/odysseus-bridge/odysseus-bridge ---> ody, odysseus. odb
+
 # --- Standard Codebase Workspaces (Dynamic Auto-Init) ---
 # (Triggers standard ai init on the directory tree when matched)
 ~/Projects/qwen-hypr ---> projects qwen, projects
@@ -77,6 +80,9 @@ hyprctl clients ---> hyprland clients, list open windows, show active apps
 # ==============================================================================
 # SECTION 5: TUI (TERMINAL USER INTERFACE) PROGRAMS
 # ==============================================================================
+
+# --- AI Deep Research TUI ---
+/home/j5/.config/local-ai/research-tui/deep-research ---> ai-research, deep research, research, deep-research
 
 # --- Custom TUI Applications ---
 ~/.config/local-ai/basepage-tui/basepage.py ---> base page, basepage tui, rss
