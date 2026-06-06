@@ -18,7 +18,7 @@ import concurrent.futures
 
 # Resolve credentials
 GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
-MODEL = os.environ.get("CLOUD_MODEL", "gemini-1.5-flash")
+MODEL = os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite")
 
 if not GEMINI_KEY:
     possible_paths = [
@@ -39,7 +39,7 @@ if not GEMINI_KEY:
                             k, v = k.strip(), v.strip().strip('"').strip("'")
                             if k == "GEMINI_API_KEY" and not GEMINI_KEY:
                                 GEMINI_KEY = v
-                            if k == "CLOUD_MODEL" and MODEL == "gemini-1.5-flash":
+                            if k == "CLOUD_MODEL" and MODEL == "gemini-3.1-flash-lite":
                                 MODEL = v
             except OSError:
                 pass
