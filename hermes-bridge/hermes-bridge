@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# hermes-bridge - On-Demand Server & Web Workspace Initializer v1.0.0
+# hermes-bridge - On-Demand Server & Web Workspace Initializer v1.0.1
 
 PORT=9119
-ENV_FILE="/home/j5/.config/local-ai/.env"
+ENV_FILE="$HOME/.config/local-ai/.env"
 
 # --- Load Environment Variables from .env if present ---
 if [ -f "$ENV_FILE" ]; then
@@ -18,7 +18,6 @@ else
 fi
 
 # --- Cascade Fallback Engine Setup (Direct Env-Key Driven) ---
-# Verifies that keys are both non-empty and have been changed from their placeholders
 if [ -n "${GEMINI_API_KEY:-}" ] && [ "${GEMINI_API_KEY}" != "your_gemini_api_key_here" ]; then
     AGENT_DISPLAY="Cloud Array (Gemini 3.1 Flash-Lite Context Threading)"
 elif [ -n "${OPENROUTER_API_KEY:-}" ] && [ "${OPENROUTER_API_KEY}" != "your_openrouter_api_key_here" ]; then

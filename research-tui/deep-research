@@ -1,13 +1,45 @@
 #!/usr/bin/env python3
-# deep-research - Minimal TUI Wrapper v3.1.0 [j5onrf] [06-06-26]
+# deep-research - Universal TUI Wrapper v3.2.2 [j5onrf] [06-06-26]
 
 import sys
 import subprocess
 import shutil
 import tty
 import termios
+import threading
 import time
 import re
+import os
+
+class InlineSpinner:
+    """A lightweight modern Braille spinner for high-fidelity terminal feedback."""
+    def __init__(self, message="Working"):
+        # 10-step circular Braille sequence used by gemini-cli and modern TUIs
+        self.chars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+        self.active = False
+        self.thread = None
+        self.message = message
+
+    def _spin(self):
+        idx = 0
+        while self.active:
+            # Render the animated Braille tick and the progress message
+            sys.stderr.write(f"\r\033[1;36m{self.chars[idx % 10]}\033[0m {self.message}")
+            sys.stderr.flush()
+            idx += 1
+            time.sleep(0.08)
+        sys.stderr.write("\r\x1b[K")  # Clear line on stop
+        sys.stderr.flush()
+
+    def start(self):
+        self.active = True
+        self.thread = threading.Thread(target=self._spin, daemon=True)
+        self.thread.start()
+
+    def stop(self):
+        self.active = False
+        if self.thread:
+            self.thread.join()
 
 # --- KoKo-Style Clean Markdown Engine (Adapted from AI Summary TUI) ---
 
@@ -106,21 +138,25 @@ def print_header(title):
 
 # --- Bridge Logic ---
 def run_research_engine(topic, use_hermes=False):
-    """Dynamically routes execution to either Odysseus or Hermes CLI bridges."""
+    """Orchestrates research threads cleanly without blocking pipe stalls."""
     if use_hermes:
-        bridge_path = "/home/j5/.config/local-ai/research-tui/hermes-cli"
+        bridge_path = os.path.expanduser("~/.config/local-ai/research-tui/hermes-cli")
     else:
-        bridge_path = "/home/j5/.config/local-ai/research-tui/odysseus-cli"
+        bridge_path = os.path.expanduser("~/.config/local-ai/research-tui/odysseus-cli")
         
     try:
-        result = subprocess.run(
-            [bridge_path, topic], 
-            stdout=subprocess.PIPE, 
-            stderr=sys.stderr, 
-            text=True, 
-            check=True
+        # Spawn the bridge as a background pipe with buffered output
+        process = subprocess.Popen(
+            [bridge_path, topic],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
         )
-        return result.stdout
+        
+        # Wait for the process to complete. This releases the GIL,
+        # allowing the InlineSpinner thread to spin smoothly in the background.
+        stdout, _ = process.communicate()
+        return stdout
     except Exception as e:
         return f"Error: {str(e)}"
 
@@ -128,7 +164,7 @@ def main():
     use_hermes = False
     args = sys.argv[1:]
     
-    # Detect the optional --hermes flag
+    # Detect the optional --hermes flag in CLI arguments
     if len(args) > 0 and args[0] == "--hermes":
         use_hermes = True
         args = args[1:]
@@ -137,13 +173,28 @@ def main():
         topic = get_text_input("Research Subject: ")
         if not topic:
             sys.exit(0)
+            
+        # Smart flag detection inside the interactive text prompt
+        if topic.startswith("--hermes "):
+            use_hermes = True
+            topic = topic.replace("--hermes ", "", 1).strip()
+        elif topic.startswith("-h "):
+            use_hermes = True
+            topic = topic.replace("-h ", "", 1).strip()
     else:
         topic = " ".join(args)
     
     engine_name = "Hermes" if use_hermes else "Odysseus"
     print_header(f"Researching ({engine_name}): {topic}")
     
+    # Initialize the modern Braille spinner with a clear message
+    spinner = InlineSpinner(f"Invoking {engine_name} research engine (running deep analysis)...")
+    spinner.start()
+    
     report = run_research_engine(topic, use_hermes)
+    
+    # Stop spinner and clear status line
+    spinner.stop()
     
     # Run clean markdown engine and calculate terminal margins
     cols, _ = shutil.get_terminal_size()
@@ -170,8 +221,9 @@ def main():
             sys.stdout.write("\033[2J\033[H")
             sys.stdout.flush()
             
-            # Launch llmsum.py with the compiled file directly
-            subprocess.run(["python3", "/home/j5/.config/local-ai/ai-summary/llmsum.py", "--file", temp_path])
+            # Launch llmsum.py using expanded path resolution
+            llmsum_path = os.path.expanduser("~/.config/local-ai/ai-summary/llmsum.py")
+            subprocess.run(["python3", llmsum_path, "--file", temp_path])
         except Exception as e:
             print(f"\nError starting KoKo Read-Aloud: {str(e)}")
             time.sleep(2)
@@ -180,6 +232,7 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
+        # Clean terminal screen state restoration (restores buffer and cursor)
         sys.stdout.write("\033[?1049l\033[?25h\n\033[K")
         sys.stdout.flush()
         sys.exit(0)
