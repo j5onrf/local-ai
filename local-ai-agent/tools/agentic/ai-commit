@@ -19,5 +19,16 @@ message=$("$_AI_PYTHON_BIN" "$_AI_SCRIPT_PATH" --talk "Write a highly concise, i
 # Clean up any trailing quotes or spaces
 message=$(echo "$message" | tr -d '"' | xargs)
 
-# Execute the commit
-git commit -m "$message"
+echo -e "\n📝 AI Suggestion (Edit inline with arrows/backspace, then press Enter):"
+
+# Pre-fill the terminal prompt with the AI suggestion for direct editing
+read -e -i "$message" -p "Commit message: " user_message
+
+# Abort if the user completely cleared out the message
+if [[ -z "$user_message" ]]; then
+    echo "❌ Error: Commit message cannot be empty. Aborting." >&2
+    exit 1
+fi
+
+# Execute the commit with the final text
+git commit -m "$user_message"
