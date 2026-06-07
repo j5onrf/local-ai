@@ -38,7 +38,7 @@ All configurations, automations, and custom project workspaces are managed throu
 ## Core Features
 
 | Feature | Technical Capability |
-| :--- | :--- |
+| ------: | :--- |
 | **Zero-Daemon Footprint** | No background processes, polling threads, or active runtimes. Consumes 0% idle RAM and 0% idle CPU. |
 | **Instant Local Suggestions** | Norwegian/Dice-coefficient token matching suggests custom commands locally in under 2ms, completely bypassing the LLM. |
 | **Cascading Fallback Chain** | Seamlessly cascades through configured cloud API keys (Gemini $\rightarrow$ OpenRouter $\rightarrow$ Custom Cloud API) down to local AI servers (such as `Ollama` or `llama.cpp`) if a service goes offline. |
