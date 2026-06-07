@@ -4,7 +4,7 @@
 
 <br>
 
-Agentic [Tools] | Hyprland, Omarchy, and Odysseus | Custom Integrated
+Agentic [Tools] | Hyprland, Omarchy, Odysseus, and Hermes | Custom Integrated
 <br><br>
   
 ```bash
