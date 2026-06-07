@@ -1,5 +1,5 @@
 # ==============================================================================
-#                AI SUGGESTION BLUEPRINT CONFIGURATION INDEX
+#                LOCAL-AI AGENT BLUEPRINT CONFIGURATION INDEX
 # ==============================================================================
 # Syntax: [command / execution] ---> [intent1], [intent2], [intent3]
 # Delimiter: " ---> " (Three-dash arrow with trailing space)
@@ -40,7 +40,7 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 # ==============================================================================
 
 # --- Skills (Prompt & Role Injection) ---
-[TOOL] cat ~/.config/local-ai/ai-suggestion/tools/skills/sysadmin.txt ---> sysadmin, load sysadmin
+[TOOL] cat ~/.config/local-ai/local-ai-agent/tools/skills/sysadmin.txt ---> sysadmin, load sysadmin
 
 
 # ==============================================================================
@@ -48,15 +48,15 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 # ==============================================================================
 
 # --- System Logs & Diagnostics (Compressed Stream Triage) ---
-[TOOL] ~/.config/local-ai/ai-suggestion/tools/agentic/ai-log-checker ---> ai log, check errors, system crashed, events
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/ai-log-checker ---> ai log, check errors, system crashed, events
 
 # --- System Resources & Telemetry (Active Diagnostics) ---
-[TOOL] ~/.config/local-ai/ai-suggestion/tools/agentic/ai-system-diagnosis ---> system health, system diagnosis, why is my system slow
-[TOOL] ~/.config/local-ai/ai-suggestion/tools/agentic/update-inspector ---> update inspector, check upgrades, package list
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/ai-system-diagnosis ---> system health, system diagnosis, why is my system slow
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/update-inspector ---> update inspector, check upgrades, package list
 [TOOL] df -h / ---> disk usage, nvme drive usage, check storage space
 
 # --- AI Status & Provider Diagnostics ---
-[TOOL] ~/.config/local-ai/ai-suggestion/tools/agentic/ai-status ---> ai-status agentic, aistat, aistatus, aidiag
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/ai-status ---> ai-status agentic, aistat, aistatus, aidiag
 
 # --- Weather & Live Networking ---
 [TOOL] curl -s "wttr.in/?format=3" ---> weather simple, rain forecast simple
@@ -67,14 +67,14 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 # SECTION 4: STATIC ALIASES & SHELL SHORTCUTS
 # ==============================================================================
 
-# --- AI Suggestion Blueprint Map (Cheat Sheet) ---
-~/.config/local-ai/ai-suggestion/tools/blueprint ---> blueprint, show blueprint, cheatsheet, cheat sheet
+# --- Local-Ai Agent Blueprint Map (Cheat Sheet) ---
+~/.config/local-ai/local-ai-agent/tools/blueprint ---> blueprint, show blueprint, cheatsheet, cheat sheet
 
 # --- AI-Generated Git Commits ---
-~/.config/local-ai/ai-suggestion/tools/agentic/ai-commit ---> ai-commit, git commit ai
+~/.config/local-ai/local-ai-agent/tools/agentic/ai-commit ---> ai-commit, git commit ai
 
 # --- Server Lifecycle Management ---
-~/.config/local-ai/ai-suggestion/tools/kill-ai-servers ---> killserver
+~/.config/local-ai/local-ai-agent/tools/kill-ai-servers ---> killserver
 
 
 # ==============================================================================
@@ -94,9 +94,9 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 ~/.config/local-ai/media-tui/media.lua ---> media lua
 
 # --- State & Workflow Management ---
-~/.config/local-ai/ai-suggestion/tools/hyprstate/work ---> hyprstate work, workspace work
-~/.config/local-ai/ai-suggestion/tools/hyprstate/clean ---> hyprstate clean, workspace clean
-~/.config/local-ai/ai-suggestion/tools/hyprstate/media ---> hyprstate media, workspace media
+~/.config/local-ai/local-ai-agent/tools/hyprstate/work ---> hyprstate work, workspace work
+~/.config/local-ai/local-ai-agent/tools/hyprstate/clean ---> hyprstate clean, workspace clean
+~/.config/local-ai/local-ai-agent/tools/hyprstate/media ---> hyprstate media, workspace media
 
 # --- Article Summarizers ---
 ~/.config/local-ai/ai-summary/llmsum.py ---> llmsum, ytsum, summary

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ai-status - Diagnostics for Local AI Suggestion Stack v1.0.0
+# ai-status - Diagnostics for Local-AI Agent Stack v1.0.0
 
 set -euo pipefail
 

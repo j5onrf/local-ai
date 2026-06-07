@@ -10,7 +10,7 @@ if [[ -z "$(git diff --cached)" ]]; then
 fi
 
 # Define paths to bypass interactive subshell function limits
-_AI_SCRIPT_PATH="$HOME/.config/local-ai/ai-suggestion/alias-ai.py"
+_AI_SCRIPT_PATH="$HOME/.config/local-ai/local-ai-agent/alias-ai.py"
 _AI_PYTHON_BIN=$(command -v python3 2>/dev/null || type -p python3 2>/dev/null || echo "python3")
 
 # Query the Python script directly to generate a highly simplified, imperative message

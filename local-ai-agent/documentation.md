@@ -1,4 +1,4 @@
-# AI-Suggestion Agent (v0.7.9.5) — Documentation
+# Local-AI Agent (v0.7.9.5) — Documentation
 
 An adaptive, local/cloud AI shell assistant designed to conform to your terminal environment. By leveraging a high-speed, local token-matrix cache alongside local or cloud LLMs, it provides interactive command suggestions, manages aliases, executes system tools, and answers conversational queries with zero background CPU overhead.
 
@@ -129,7 +129,7 @@ If the primary free coding model (`Laguna M.1`) is congested or rate-limited, Op
 
 Your agent's brain is managed by a plain-text configuration master file.
 
-* **Path:** `~/.config/local-ai/ai-suggestion/ai-context.txt`
+* **Path:** `~/.config/local-ai/local-ai-agent/ai-context.txt`
 * **Syntax:** `[command] ---> [intent1], [intent2], [intent3]`
 
 *Example:*
@@ -158,7 +158,7 @@ You can turn any standard Linux command, package, binary, or custom script into 
 When you run a conversational query targeting that intent, the script executes the tool behind the scenes (protected by a **15-second safety timeout**), captures its raw stdout, and injects it directly into the LLM's prompt context as real-time system data.
 
 ### B. Agentic Diagnostic Tool (`ai-status`)
-The system features a dedicated local diagnostic script located at `~/.config/local-ai/ai-suggestion/tools/agentic/ai-status`. It operates as a dual-purpose tool:
+The system features a dedicated local diagnostic script located at `~/.config/local-ai/local-ai-agent/tools/agentic/ai-status`. It operates as a dual-purpose tool:
 * **As a Native Shell Shortcut (Section 4):** Typing `ai-status` on the command line invokes the suggestion carousel, strips the `[TOOL]` prefix, and prints a beautiful colorized diagnostics panel showing key masks, endpoint connectivity, and your active fallback routing.
 * **As an Agentic Chat Tool (Section 3):** Typing `status check` inside an active chat session executes the script silently. It injects active API diagnostics and strict markdown instruction sets directly into the LLM context, enabling the model to conversationalize your connection details in under two sentences.
 

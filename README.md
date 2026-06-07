@@ -1,6 +1,6 @@
 # local-ai
 
-<img alt="ai-suggestion" src="https://github.com/user-attachments/assets/395d627f-5d08-4c04-82ab-def73c1bf860" />
+<img alt="local-ai-agent" src="https://github.com/user-attachments/assets/395d627f-5d08-4c04-82ab-def73c1bf860" />
 
 <br>
 

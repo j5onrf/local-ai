@@ -43,12 +43,12 @@ Terminal Keyword: llmsum
 
 ---
 
-## Quick Launch via AI Suggestion Agent
+## Quick Launch via Local-Ai Agent
 
-This TUI is designed to integrate seamlessly with your **AI Suggestion Agent**. By registering `llmsum.py` in your semantic mapping index, you can launch the summary engine on-demand simply by typing the `llmsum` keyword:
+This TUI is designed to integrate seamlessly with your **Local-Ai Agent**. By registering `llmsum.py` in your semantic mapping index, you can launch the summary engine on-demand simply by typing the `llmsum` keyword:
 
 ```text
-# Add this line to your ~/.config/local-ai/ai-suggestion/ai-context.txt
+# Add this line to your ~/.config/local-ai/local-ai-agent/ai-context.txt
 ~/.config/local-ai/ai-summary/llmsum.py ---> llmsum, ytsum, summary
 ```
 

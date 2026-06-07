@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# AI Suggestion v0.7.9 [j5onrf] [06-05-26]
+# Local-Ai Agent v0.7.9 [j5onrf] [06-05-26]
 
 [[ $- != *i* ]] && return
 
-_AI_SCRIPT_PATH="$HOME/.config/local-ai/ai-suggestion/alias-ai.py"
+_AI_SCRIPT_PATH="$HOME/.config/local-ai/local-ai-agent/alias-ai.py"
 [[ ! -f "$_AI_SCRIPT_PATH" ]] && return
 _AI_PYTHON_BIN=$(command -v python3 2>/dev/null || type -p python3 2>/dev/null || echo "python3")
 
@@ -24,8 +24,8 @@ command_not_found_handle() {
 command_not_found_handler() { command_not_found_handle "$@"; }
 
 ai() {
-    local projects_dir="$HOME/.config/local-ai/ai-suggestion/projects"
-    local tool_bin="$HOME/.config/local-ai/ai-suggestion/tools/init-projects"
+    local projects_dir="$HOME/.config/local-ai/local-ai-agent/projects"
+    local tool_bin="$HOME/.config/local-ai/local-ai-agent/tools/init-projects"
 
     if [[ "$1" == "init" ]]; then
         local target_path="" skill_name=""

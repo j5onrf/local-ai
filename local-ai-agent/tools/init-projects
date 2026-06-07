@@ -22,7 +22,7 @@ TARGET_DIR=$(cd "$TARGET_DIR" && pwd)
 PROJECT_NAME=$(basename "$TARGET_DIR")
 
 # Setup clean projects/ subdirectory
-CONTEXT_DIR="/home/j5/.config/local-ai/ai-suggestion/projects"
+CONTEXT_DIR="/home/j5/.config/local-ai/local-ai-agent/projects"
 mkdir -p "$CONTEXT_DIR"
 
 # Generate a unique, path-based safe filename
@@ -41,7 +41,7 @@ CONTEXT_OUT="$CONTEXT_DIR/${SAFE_NAME}.txt"
     # Check if a custom skill context is requested and exists
     if [ -n "$SKILL_NAME" ]; then
         # Removed "local" keyword to comply with POSIX standalone script standards
-        skill_file="/home/j5/.config/local-ai/ai-suggestion/tools/skills/${SKILL_NAME}.txt"
+        skill_file="/home/j5/.config/local-ai/local-ai-agent/tools/skills/${SKILL_NAME}.txt"
         if [ -f "$skill_file" ]; then
             echo ""
             echo "[ACTIVE SKILL CONTEXT: ${SKILL_NAME}]"

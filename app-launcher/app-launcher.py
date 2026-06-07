@@ -109,7 +109,7 @@ def main():
             
             # Reposition cursor and clear screen using standard ANSI escapes
             sys.stdout.write("\033[2J\033[H")
-            sys.stdout.write("\033[1;36m🚀 App Launcher\033[0m\n")
+            sys.stdout.write("\033[1;36mApp Launcher\033[0m\n")
             sys.stdout.write(f"\033[1;30mSearch:\033[0m {query}_\n")
             sys.stdout.write("\033[90m────────────────────────────────────────\033[0m\n")
             

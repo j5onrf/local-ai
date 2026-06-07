@@ -1,4 +1,4 @@
-# AI Suggestion Agent (v0.7.9)
+# Local-AI Agent (v0.7.9)
 
 <img alt="9nkqh39nkqh39nkq4" src="https://github.com/user-attachments/assets/02d6205c-4403-463c-acec-830305a38aec" />
 
@@ -48,14 +48,14 @@ All configurations, automations, and custom project workspaces are managed throu
 
 ## The Brain: Configuration (`ai-context.txt`)
 
-Add your shortcuts, dynamic tool integrations, and project workspaces to `~/.config/local-ai/ai-suggestion/ai-context.txt`. The search index automatically compiles in under 2ms on your next execution.
+Add your shortcuts, dynamic tool integrations, and project workspaces to `~/.config/local-ai/local-ai-agent/ai-context.txt`. The search index automatically compiles in under 2ms on your next execution.
 
 ```text
 # --- AI Deep Research TUI ---
 ~/.config/local-ai/research-tui/deep-research ---> ai-research, deep research, research, deep-research
 
 # Context-Injected Diagnostic Tool (Section 3)
-[TOOL] ~/.config/local-ai/ai-suggestion/tools/agentic/ai-status ---> ai-status agentic, ai stack diagnostics
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/ai-status ---> ai-status agentic, ai stack diagnostics
 
 # Specialized Workspace Initializer (Primes workspace with your "coder" Skill!)
 ai init ~/Projects/quickshell coder ---> projects quickshell, projects
@@ -72,7 +72,7 @@ git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai
 
 ### 2. Append the Hook to Your `~/.bashrc`
 ```bash
-echo '[ -f "$HOME/.config/local-ai/ai-suggestion/ai-hook.sh" ] && source "$HOME/.config/local-ai/ai-suggestion/ai-hook.sh"' >> ~/.bashrc
+echo '[ -f "$HOME/.config/local-ai/local-ai-agent/ai-hook.sh" ] && source "$HOME/.config/local-ai/local-ai-agent/ai-hook.sh"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
@@ -87,12 +87,12 @@ export OPENROUTER_API_KEY="sk-or-v1-YourOpenRouterKey"
 <div align="center">
 
 ```
-            █████╗ ██╗    ███████╗██╗   ██╗ ██████╗  ██████╗ ███████╗███████╗████████╗██╗ ██████╗ ███╗   ██╗
-           ██╔══██╗██║    ██╔════╝██║   ██║██╔════╝ ██╔════╝ ██╔════╝██╔════╝╚══██╔══╝██║██╔═══██╗████╗  ██║
-           ███████║██║    ███████╗██║   ██║██║  ███╗██║  ███╗█████╗  ███████╗   ██║   ██║██║   ██║██╔██╗ ██║
-           ██╔══██║██║    ╚════██║██║   ██║██║   ██║██║   ██║██╔══╝  ╚════██║   ██║   ██║██║   ██║██║╚██╗██║
-           ██║  ██║██║    ███████║╚██████╔╝╚██████╔╝╚██████╔╝███████╗███████║   ██║   ██║╚██████╔╝██║ ╚████║
-           ╚═╝  ╚═╝╚═╝    ╚══════╝ ╚═════╝  ╚═════╝  ╚═════╝ ╚══════╝╚══════╝   ╚═╝   ╚═╝ ╚═════╝ ╚═╝  ╚═══╝
+           ██╗      ██████╗  ██████╗  █████╗ ██╗              █████╗ ██╗
+           ██║     ██╔═══██╗██╔════╝ ██╔══██╗██║             ██╔══██╗██║
+           ██║     ██║   ██║██║      ███████║██║   ███████╗  ███████║██║
+           ██║     ██║   ██║██║      ██╔══██║██║   ╚══════╝  ██╔══██║██║
+           ███████╗╚██████╔╝╚██████╗ ██║  ██║███████╗        ██║  ██║██║
+           ╚══════╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚══════╝        ╚═╝  ╚═╝╚═╝
              █████╗  ██████╗ ███████╗███╗   ██╗████████╗
             ██╔══██╗██╔════╝ ██╔════╝████╗  ██║╚══██╔══╝
             ███████║██║  ███╗█████╗  ██╔██╗ ██║   ██║   
@@ -106,3 +106,4 @@ export OPENROUTER_API_KEY="sk-or-v1-YourOpenRouterKey"
 ---
 
 *For detailed system architecture diagrams, custom tool development guidelines, and advanced prompt engineering, refer to the full **[documentation.md](documentation.md)**.*
+

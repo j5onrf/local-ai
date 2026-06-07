@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# AI Suggestion v0.7.9.5 [j5onrf] [06-06-26]
+# Local-Ai Agent v0.7.9.5 [j5onrf] [06-06-26]
 
 import sys, re, os, json, threading, time
 import urllib.request as urlreq, urllib.error as urlerr
@@ -12,8 +12,8 @@ except ImportError:
 
 sys.argv = [arg for arg in sys.argv if arg != ""]
 
-CONTEXT_FILE = os.path.expanduser("~/.config/local-ai/ai-suggestion/ai-context.txt")
-INDEX_FILE = os.path.expanduser("~/.config/local-ai/ai-suggestion/ai-context.idx")
+CONTEXT_FILE = os.path.expanduser("~/.config/local-ai/local-ai-agent/ai-context.txt")
+INDEX_FILE = os.path.expanduser("~/.config/local-ai/local-ai-agent/ai-context.idx")
 DESTRUCTIVE_KEYWORDS = ["rm ", "dd ", "mkfs", "shred", "chmod -R 777", "> /dev/sda"]
 TOKEN_RE = re.compile(r"[^\w\s]")
 

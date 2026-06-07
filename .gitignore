@@ -1,7 +1,5 @@
 # Ignore the API usage JSON file
-ai-suggestion/api-usage.json
-ai-suggestion/ai-context.idx
-ai-suggestion/ai-server.sh
+local-ai-agent/ai-context.idx
 
 # Ignore Python cache directories and bytecode
 __pycache__/
