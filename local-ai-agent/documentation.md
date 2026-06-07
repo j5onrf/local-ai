@@ -96,7 +96,7 @@ Command    ai init <path>
 The agent features a dynamic, cascading failover connection pipeline [1.1]. This ensures your conversational queries and agentic tool integrations resolve reliably, shifting from cloud systems to local infrastructure seamlessly if credentials expire or endpoints go offline [1.1].
 
 ### A. Environment Configuration (`~/.bashrc`)
-To configure your cloud access priorities, export your keys and models at the top of your `~/.bashrc`:
+To configure your cloud access priorities, export your keys and models at the bottom of your `~/.bashrc`:
 
 ```bash
 # Primary: Google Gemini Cloud API Configuration
