@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.7.9.5 [j5onrf] [06-06-26]
+# Local-Ai Agent v0.7.9.6 [j5onrf] [06-07-26]
 
 import sys, re, os, json, threading, time
 import urllib.request as urlreq, urllib.error as urlerr
@@ -35,11 +35,10 @@ class InlineSpinner:
     def _spin(self):
         idx = 0
         while self.active:
-            # Render the animated Braille tick
             sys.stderr.write(f"\r\033[1;32m{self.chars[idx % 10]}\033[0m ")
             sys.stderr.flush()
             idx, _ = idx + 1, time.sleep(0.08)
-        sys.stderr.write("\r\x1b[K")
+        sys.stderr.write("\r\x1b[2K\r")
         sys.stderr.flush()
 
     def start(self):
@@ -76,7 +75,7 @@ def compile_vector_index():
             lines = f.read().splitlines()
         index_data = []
         for line in [l.strip() for l in lines if l.strip()]:
-            if line.startswith("#") or "----->" in line or "--->" not in line:
+            if line.startswith("#") or "----->" in line or "----->" not in line:
                 continue
             cmd, intents = line.split("--->", 1)
             for intent in [i.strip() for i in intents.split(",")]:
@@ -276,8 +275,10 @@ def stream_llm_response(messages, prefix="AI: "):
                         if content:
                             if first:
                                 spinner.stop()
-                                # Only print the colored prompt prefix if outputting to an interactive terminal
+                                # Clean carriage return status before outputting prompt prefix
                                 if sys.stdout.isatty():
+                                    sys.stdout.write("\r\x1b[2K\r")
+                                    sys.stdout.flush()
                                     print(f"\033[1;32m{prefix}\033[0m ", end="", flush=True)
                                 first = False
                             print(content, end="", flush=True); acc.append(content)
@@ -315,7 +316,7 @@ if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
                     if not raw_query.strip(): continue
                     query = raw_query.strip()
                     if query.lower() in ("exit", "quit", "q"):
-                        print("\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
+                        print("\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
 
                 system_context, tool_match = "", matrix_search(query, threshold=0.65)
                 if tool_match:

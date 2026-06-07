@@ -97,6 +97,7 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 ~/.config/local-ai/local-ai-agent/tools/hyprstate/work ---> hyprstate work, workspace work
 ~/.config/local-ai/local-ai-agent/tools/hyprstate/clean ---> hyprstate clean, workspace clean
 ~/.config/local-ai/local-ai-agent/tools/hyprstate/media ---> hyprstate media, workspace media
+~/.config/local-ai/local-ai-agent/tools/hyprstate/gitcom ---> hyprstate gitcom, workspace gitcom, hs-gitcom
 
 # --- Article Summarizers ---
 ~/.config/local-ai/ai-summary/llmsum.py ---> llmsum, ytsum, summary

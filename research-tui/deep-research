@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# deep-research - Universal TUI Wrapper v3.2.2 [j5onrf] [06-06-26]
+# deep-research - Universal TUI Wrapper v3.3 [j5onrf] [06-07-26]
 
 import sys
 import subprocess
@@ -10,6 +10,14 @@ import threading
 import time
 import re
 import os
+import select
+
+# Import readline to ensure standard input() supports line editing,
+# backspace, and arrow keys correctly on Unix systems.
+try:
+    import readline
+except ImportError:
+    pass
 
 class InlineSpinner:
     """A lightweight modern Braille spinner for high-fidelity terminal feedback."""
@@ -104,33 +112,36 @@ def wrap_text(text, width=80):
     return "\n".join(wrapped_lines)
 
 # --- Minimal TUI Helpers ---
+
 def get_key():
+    """Reads a single keypress cleanly using unbuffered reads to avoid lockups."""
     fd = sys.stdin.fileno()
     old = termios.tcgetattr(fd)
     try:
         tty.setraw(fd)
-        ch = sys.stdin.read(1)
-        if ch == '\033': ch += sys.stdin.read(2)
+        ch_bytes = os.read(fd, 1)
+        ch = ch_bytes.decode('utf-8', errors='ignore') if ch_bytes else ""
+        if ch == '\033':
+            # Check if there are more incoming characters (like arrow key codes)
+            r, _, _ = select.select([sys.stdin], [], [], 0.05)
+            if r:
+                ch += os.read(fd, 2).decode('utf-8', errors='ignore')
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old)
     return ch
 
 def get_text_input(prompt_text):
-    sys.stdout.write(f"\033[?25h\n \033[1;36m{prompt_text}\033[0m")
-    sys.stdout.flush()
-    user_input = []
-    while True:
-        ch = get_key()
-        if ch in ('\r', '\n'): break
-        elif ch in ('\x7f', '\x08'):
-            if user_input:
-                user_input.pop()
-                sys.stdout.write("\b \b"); sys.stdout.flush()
-        elif ch == '\033': return ""
-        elif len(ch) == 1 and ch.isprintable():
-            user_input.append(ch)
-            sys.stdout.write(ch); sys.stdout.flush()
-    return "".join(user_input).strip()
+    """
+    Prompts the user for text input. By leveraging standard library input(),
+    system backspace handling, delete keys, and arrow keys are supported.
+    """
+    try:
+        # \033[?25h ensures the terminal cursor is visible during typing
+        user_input = input(f"\033[?25h\n \033[1;36m{prompt_text}\033[0m ")
+        return user_input.strip()
+    except (KeyboardInterrupt, EOFError):
+        # Gracefully handle Ctrl+C or Ctrl+D as an empty escape return
+        return ""
 
 def print_header(title):
     sys.stdout.write("\033[2J\033[H")
@@ -170,7 +181,7 @@ def main():
         args = args[1:]
         
     if not args:
-        topic = get_text_input("Research Subject: ")
+        topic = get_text_input("Research Subject:")
         if not topic:
             sys.exit(0)
             
