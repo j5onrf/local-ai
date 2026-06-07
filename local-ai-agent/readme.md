@@ -18,9 +18,9 @@
                          ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝   
 ```
 
-`Laguna-M.1` `Qwen3-Coder` `Gemini-3.1-Flash-Lite` `Python 3.10+` `Bash 4.0+` `Zsh 5.0+`
-
 </div>
+
+`Laguna-M.1` `Qwen3-Coder` `Gemini-3.1-Flash-Lite` `Python 3.10+` `Bash 4.0+` `Zsh 5.0+`
 
 ---
 
