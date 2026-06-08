@@ -1,24 +1,6 @@
 # Local-AI Agent (v0.7.9)
 
-<div align="center">
-
-```
-                            ██╗      ██████╗  ██████╗  █████╗ ██╗             █████╗ ██╗   
-                            ██║     ██╔═══██╗██╔════╝ ██╔══██╗██║            ██╔══██╗██║   
-                            ██║     ██║   ██║██║      ███████║██║  ███████╗  ███████║██║   
-                            ██║     ██║   ██║██║      ██╔══██║██║  ╚══════╝  ██╔══██║██║   
-                            ███████╗╚██████╔╝╚██████╗ ██║  ██║███████╗       ██║  ██║██║   
-                         ╚══════╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚══════╝       ╚═╝  ╚═╝╚═╝
-                             
-                           █████╗  ██████╗ ███████╗███╗   ██╗████████╗
-                          ██╔══██╗██╔════╝ ██╔════╝████╗  ██║╚══██╔══╝
-                          ███████║██║  ███╗█████╗  ██╔██╗ ██║   ██║   
-                          ██╔══██║██║   ██║██╔══╝  ██║╚██╗██║   ██║   
-                          ██║  ██║╚██████╔╝███████╗██║ ╚████║   ██║   
-                          ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝   
-```
-
-</div>
+<img alt="9nkqh39nkqh39nkq4" src="https://github.com/user-attachments/assets/02d6205c-4403-463c-acec-830305a38aec" />
 
 `Laguna-M.1` `Qwen3-Coder` `Gemini-3.1-Flash-Lite` `Python 3.10+` `Bash / Zsh 5.0+`
 
@@ -102,8 +84,27 @@ export GEMINI_API_KEY="AIzaSyYourGeminiKey"
 export OPENROUTER_API_KEY="sk-or-v1-YourOpenRouterKey"
 ```
 
+<div align="center">
+
+```
+                            ██╗      ██████╗  ██████╗  █████╗ ██╗             █████╗ ██╗   
+                            ██║     ██╔═══██╗██╔════╝ ██╔══██╗██║            ██╔══██╗██║   
+                            ██║     ██║   ██║██║      ███████║██║  ███████╗  ███████║██║   
+                            ██║     ██║   ██║██║      ██╔══██║██║  ╚══════╝  ██╔══██║██║   
+                            ███████╗╚██████╔╝╚██████╗ ██║  ██║███████╗       ██║  ██║██║   
+                         ╚══════╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚══════╝       ╚═╝  ╚═╝╚═╝
+                             
+                           █████╗  ██████╗ ███████╗███╗   ██╗████████╗
+                          ██╔══██╗██╔════╝ ██╔════╝████╗  ██║╚══██╔══╝
+                          ███████║██║  ███╗█████╗  ██╔██╗ ██║   ██║   
+                          ██╔══██║██║   ██║██╔══╝  ██║╚██╗██║   ██║   
+                          ██║  ██║╚██████╔╝███████╗██║ ╚████║   ██║   
+                          ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝   
+```
+
 ---
 
-*For detailed system architecture diagrams, custom tool development guidelines, and advanced prompt engineering, refer to the full **[documentation.md](documentation.md)**.*
+</div>
 
+*For detailed system architecture diagrams, custom tool development guidelines, and advanced prompt engineering, refer to the full **[documentation.md](documentation.md)**.*
 
