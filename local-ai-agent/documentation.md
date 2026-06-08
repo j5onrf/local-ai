@@ -1,6 +1,6 @@
 # Local-AI Agent (v0.7.9.13) — Documentation
 
-An adaptive, local/cloud AI shell assistant designed to conform to your terminal environment. By leveraging a high-speed, local sparse-matrix token cache alongside local or cloud LLMs, it provides interactive command suggestions, manages aliases, executes system tools, and answers conversational queries with zero background CPU overhead.
+An adaptive, local/cloud AI shell assistant designed to conform to your terminal environment with zero background overhead. By leveraging a high-speed, rarity-weighted (TF-IDF) sparse search index alongside local or cloud LLMs, it provides instant command suggestions, executes local RAG tools, manages specialized project skills, and handles natural-language conversational queries. It features a zero-daemon local network Voice Query Bridge for hands-free desktop automation and is capable of continuous offline learning by automatically capturing and inoculating terminal shortcuts directly from LLM outputs.
 
 ---
 
