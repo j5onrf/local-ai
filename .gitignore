@@ -1,6 +1,7 @@
 # Ignore the API usage JSON file
 local-ai-agent/ai-context.idx
 local-ai-agent/tools/skills/mysys.txt
+voice/server.pem
 
 # Ignore Python cache directories and bytecode
 __pycache__/

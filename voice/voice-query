@@ -1,0 +1,208 @@
+#!/usr/bin/env python3
+import http.server, socketserver, subprocess, urllib.parse, os, socket, sys, re, base64, json, ssl
+import urllib.request as urlreq
+
+PORT = 9999
+
+# Mobile-friendly, high-contrast True Black (OLED) Web UI
+HTML_CONTENT = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Bridge</title>
+    <style>
+        body { background: #000000; color: #c0caf5; font-family: monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; -webkit-user-select: none; user-select: none; }
+        button { width: 220px; height: 220px; border-radius: 50%; border: 2px solid #7aa2f7; background: #000000; color: #7aa2f7; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s, box-shadow 0.2s, transform 0.1s; outline: none; -webkit-tap-highlight-color: transparent; touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+        #status { margin-top: 35px; font-size: 12px; color: #565f89; text-transform: uppercase; letter-spacing: 2px; }
+        #result { margin-top: 15px; font-size: 18px; color: #9ece6a; text-align: center; max-width: 85%; min-height: 40px; line-height: 1.4; }
+    </style>
+</head>
+<body>
+    <button id="mic-btn">HOLD TO SPEAK</button>
+    <div id="status">Ready</div>
+    <div id="result"></div>
+
+    <script>
+        const btn = document.getElementById('mic-btn');
+        const status = document.getElementById('status');
+        const result = document.getElementById('result');
+        
+        let mediaRecorder;
+        let audioChunks = [];
+
+        // Set up the standard open-source browser MediaRecorder
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                mediaRecorder = new MediaRecorder(stream);
+                
+                mediaRecorder.ondataavailable = (e) => {
+                    audioChunks.push(e.data);
+                };
+                
+                mediaRecorder.onstop = () => {
+                    status.innerText = "Transcribing...";
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    audioChunks = [];
+                    
+                    // POST the raw binary audio array directly over local Wi-Fi to your PC
+                    fetch('/upload', { method: 'POST', body: audioBlob })
+                        .then(r => r.text())
+                        .then(text => {
+                            result.innerText = text ? `"${text}"` : "Silence detected.";
+                            status.innerText = "Executed.";
+                        })
+                        .catch(() => {
+                            status.innerText = "Transmission failed.";
+                        });
+                };
+            }).catch(() => {
+                status.innerText = "Mic Permission Blocked";
+                btn.style.borderColor = "#f7768e";
+            });
+
+        // Push-to-Talk Event Handlers
+        btn.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            if (mediaRecorder && mediaRecorder.state === "inactive") {
+                mediaRecorder.start();
+                status.innerText = "Listening...";
+                btn.style.background = "#7aa2f7";
+                btn.style.color = "#000000";
+                btn.style.boxShadow = "0 0 35px #7aa2f7";
+            }
+        });
+
+        const stopRecording = (e) => {
+            if (e) e.preventDefault();
+            if (mediaRecorder && mediaRecorder.state === "recording") {
+                mediaRecorder.stop();
+                btn.style.background = "#000000";
+                btn.style.color = "#7aa2f7";
+                btn.style.boxShadow = "0 0 10px rgba(122, 162, 247, 0.1)";
+            }
+        };
+
+        btn.addEventListener('pointerup', stopRecording);
+        btn.addEventListener('pointercancel', stopRecording);
+        btn.addEventListener('mouseleave', stopRecording);
+
+        // Forcefully disable native long-press popup menus on mobile devices
+        btn.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        });
+    </script>
+</body>
+</html>
+"""
+
+class VoiceHandler(http.server.SimpleHTTPRequestHandler):
+    def log_message(self, format, *args): pass # Disable request log spam
+    
+    def do_POST(self):
+        try:
+            parsed = urllib.parse.urlparse(self.path)
+            if parsed.path == "/upload":
+                # Securely fetch content length to prevent TypeErrors
+                content_length = int(self.headers.get('Content-Length', 0))
+                audio_data = self.rfile.read(content_length)
+                
+                if not audio_data:
+                    sys.stderr.write("Warning: Received empty audio payload.\n")
+                    sys.stderr.flush()
+                    self.send_response(400)
+                    self.end_headers()
+                    return
+
+                # Base64 encode the raw webm audio recorded by the tablet
+                encoded_audio = base64.b64encode(audio_data).decode("utf-8")
+                
+                # Query Gemini API directly for zero-local-model transcription
+                gkey = os.environ.get("GEMINI_API_KEY")
+                query = ""
+                if gkey:
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key={gkey}"
+                    headers = {"Content-Type": "application/json"}
+                    body = {
+                        "contents": [{
+                            "parts": [
+                                {"inline_data": {"mime_type": "audio/webm", "data": encoded_audio}},
+                                {"text": "Transcribe this audio verbatim. Output ONLY the plain transcription text, with no conversational intros, explanations, or markdown punctuation."}
+                            ]
+                        }]
+                    }
+                    try:
+                        req = urlreq.Request(url, data=json.dumps(body).encode("utf-8"), headers=headers, method="POST")
+                        with urlreq.urlopen(req) as response:
+                            res_data = json.loads(response.read().decode("utf-8"))
+                            parts = res_data["candidates"][0]["content"]["parts"]
+                            raw_text = parts[0]["text"].strip()
+                            query = re.sub(r'[^a-zA-Z0-9\s?]', '', raw_text).strip()
+                    except Exception as e:
+                        sys.stderr.write(f"Cloud transcription failed: {str(e)}\n")
+                        sys.stderr.flush()
+                else:
+                    sys.stderr.write("Error: GEMINI_API_KEY is not set in your environment.\n")
+                    sys.stderr.flush()
+                
+                if query:
+                    # Force-write directly to stderr to bypass any stdout buffering/redirection
+                    sys.stderr.write(f"\033[1;30m❯\033[0m {query}\n")
+                    sys.stderr.flush()
+                    
+                    agent_script = os.path.expanduser("~/.config/local-ai/local-ai-agent/alias-ai.py")
+                    # Directly execute your agent script
+                    subprocess.Popen([sys.executable, agent_script, "--talk", query])
+                    
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain")
+                self.end_headers()
+                self.wfile.write(query.encode("utf-8"))
+                
+        except Exception as e:
+            # Capture and print any unhandled python exceptions directly to your terminal
+            sys.stderr.write(f"Server-side POST handling failed: {str(e)}\n")
+            sys.stderr.flush()
+            self.send_response(500)
+            self.end_headers()
+
+    def do_GET(self):
+        # Serve the main mobile-optimized HTML interface to the tablet
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html")
+        self.end_headers()
+        self.wfile.write(HTML_CONTENT.encode("utf-8"))
+        
+# Resolve active local Wi-Fi IP
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+try: s.connect(("8.8.8.8", 80)); local_ip = s.getsockname()[0]
+except: local_ip = "127.0.0.1"
+finally: s.close()
+
+# Auto-generate self-signed SSL certificate if missing
+cert_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "server.pem")
+if not os.path.exists(cert_path):
+    sys.stderr.write("Generating local self-signed SSL certificate...\n")
+    sys.stderr.flush()
+    subprocess.run(
+        f'openssl req -new -x509 -keyout "{cert_path}" -out "{cert_path}" -days 365 -nodes -subj "/CN={local_ip}"',
+        shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+    )
+
+with socketserver.TCPServer(("", PORT), VoiceHandler) as httpd:
+    if os.path.exists(cert_path):
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.load_cert_chain(certfile=cert_path)
+        httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
+        protocol = "https"
+    else:
+        protocol = "http"
+
+    print(f"Local-AI Voice Bridge started on port {PORT}")
+    print(f"Connect your Tab S5e to Wi-Fi and visit:")
+    print(f"{protocol}://{local_ip}:{PORT}")
+
+    try: httpd.serve_forever()
+    except KeyboardInterrupt: print("\nBridge stopped.")

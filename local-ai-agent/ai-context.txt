@@ -108,6 +108,9 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 # SECTION 6: GRAPHICAL APPLICATIONS & WEBAPPS
 # ==============================================================================
 
+# --- Local-Ai Tablet Voice Bridge ---
+/home/j5/.config/local-ai/voice/voice-query ---> voice, voice query, voice bridge
+
 # --- System App Launcher (Ultra-Light Rofi-TUI) ---
 ~/.config/local-ai/app-launcher/app-launcher.py ---> app, app launcher, launcher
 
