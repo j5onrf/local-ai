@@ -1,4 +1,4 @@
-# Local-AI Agent (v0.7.9.12)
+# Local-AI Agent (v0.7.9.13)
 
 <img alt="Image_5e1xpv5e1xpv5e1x" src="https://github.com/user-attachments/assets/ee9fe3e4-ef1c-497c-b4f1-84e17458daa2" />
 
@@ -26,9 +26,10 @@ All configurations, automations, and custom project workspaces are managed throu
 | **Resiliency** | **Cascading Fallback Chain** | Seamlessly cascades from Gemini $\rightarrow$ OpenRouter $\rightarrow$ Custom Cloud down to local servers if an endpoint drops offline. |
 | | **OpenRouter Failover** | Sends a prioritized model array payload to automatically route around free-tier model congestion on the server side. |
 | **Integration** | **Zero-Bloat Auto-Routing** | Automatically injects your system specs (`mysys.txt`) *only* when queries contain system keywords (e.g. `gpu`, `kernel`). |
+| | **Voice Query Bridge** | Connects any Wi-Fi tablet or phone over local HTTPS/HTTP to record audio, transcribing natively on the cloud with 0% PC CPU load. |
 | | **Continual Learning** | Extracts commands from LLM outputs and prompts you to save them as offline shortcuts, bypassing the LLM next time. |
 | **Portability** | **Zero-Config Bootstrap** | Silent local diagnostics query your CPU, GPU, and window manager on first-run, auto-generating your system profile. |
-| | **Auditable Codebase** | Designed with full transparency in under 450 lines of highly clean, standard-library Python code. |
+| | **Auditable Codebase** | Designed with full transparency in under 360 lines of highly clean, standard-library Python code. |
 
 ---
 
@@ -45,6 +46,7 @@ All configurations, automations, and custom project workspaces are managed throu
 * `ai`: Launch an interactive, multi-turn conversation session. Press `Ctrl+C` or type `exit`/`quit` to quit.
 * `ai init <path>`: Index a directory and launch an interactive workspace agent primed with your codebase structure.
 * `ai <query>`: Instantly answer a single question and return directly to your Bash prompt.
+* `voice`: Launch your high-speed, local-network tablet voice bridge on port 9999.
 
 ---
 
@@ -60,12 +62,6 @@ Add your shortcuts, dynamic tool integrations, and project workspaces to `~/.con
 # --- OpenCode Direct Terminal Launcher ---
 ~/.config/local-ai/opencode-bridge/opencode-bridge ---> ocb, opencode bridge
 
-# --- Odysseus Direct Terminal Launcher ---
-~/.config/local-ai/odysseus-bridge/odysseus-bridge ---> ody, odysseus. odb
-
-# --- Hermes Direct Browser Workspace Launcher ---
-~/.config/local-ai/hermes-bridge/hermes-bridge ---> hmb, hermes bridge, herm
-
 # --- Standard Codebase Workspaces (Dynamic Auto-Init) ---
 # (Triggers standard ai init on the directory tree when matched)
 ~/Projects/qwen-hypr ---> projects qwen, projects
@@ -73,6 +69,14 @@ Add your shortcuts, dynamic tool integrations, and project workspaces to `~/.con
 # --- Specialized Codebase Workspaces (Skill-Primed) ---
 # (Specialized project initializations primed with the "coder" Skill!)
 ai init ~/Projects/quickshell coder ---> projects quickshell, projects
+
+
+# ==============================================================================
+# SECTION 4: STATIC ALIASES & SHELL SHORTCUTS
+# ==============================================================================
+
+# --- Local-Ai Tablet Voice Bridge ---
+$HOME/.config/local-ai/voice/voice-query ---> voice, voice query, voice bridge
 ```
 
 ---

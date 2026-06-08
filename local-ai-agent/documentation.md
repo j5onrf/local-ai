@@ -1,4 +1,4 @@
-# Local-AI Agent (v0.7.9.12) — Documentation
+# Local-AI Agent (v0.7.9.13) — Documentation
 
 An adaptive, local/cloud AI shell assistant designed to conform to your terminal environment. By leveraging a high-speed, local sparse-matrix token cache alongside local or cloud LLMs, it provides interactive command suggestions, manages aliases, executes system tools, and answers conversational queries with zero background CPU overhead.
 
@@ -89,6 +89,12 @@ Command    ai init <path>
                     [ Selected OpenAI-API Endpoint ]
                      (Streams Response to Shell)
 ```
+
+### C. Voice Query Bridge (Zero-Daemon / Zero-Local-Model)
+
+The system features an optional lightweight voice companion served directly over your local Wi-Fi network. By running `voice`, your PC launches an on-demand, single-threaded HTTPS server on port 9999, completely avoiding any persistent background daemons [3].
+
+When accessed by a tablet or phone on the same network, the browser serves a pure black, mobile-optimized HTML5 client. Speech recognition is offloaded entirely to a secure cloud API over HTTPS using your exported Gemini API key, meaning your PC runs with 0MB of local transcription models and 0% idle CPU overhead [2, 3].
 
 ---
 
@@ -210,7 +216,7 @@ To make project initialization frictionless, you can map absolute directory path
 ```text
 ~/Projects/qwen-hypr ---> projects qwen, projects
 ```
-If you search for `projects qwen` and execute the suggestion, the `ai_handle_missing` shell hook detects that the target command is an existing directory path, bypasses standard execution, and seamlessly launches `ai init` on the target path automatically.
+If you search for `projects qwen` and execute the suggestion, the `ai_handle_missing` shell hook detects that the target command is an existing directory path, bypasses standard execution, and seamlessly launches `ai init on the target path automatically.
 
 ---
 
@@ -247,4 +253,23 @@ During conversational turns, the script parses incoming assistant messages for f
 ```
 If accepted, the script appends the new mapping directly to your `ai-context.txt` and removes `ai-context.idx`. The next time you type your query, it will be executed locally in $<2\text{ms}$ without ever querying the LLM.
 
+### F. Local-Network Voice Bridge & Secure Browser Context
+
+To enable seamless microphone access on mobile devices, modern web standards require a secure context (HTTPS) [1.3.3]. Plain HTTP connections over local Wi-Fi will forcefully reject microphone permissions with an `ERROR: NOT-ALLOWED` exception [1.3.3].
+
+The Voice Bridge overcomes this limitation by implementing a self-healing secure layer:
+1. **Automatic Certificate Generation**: On startup, if no certificate is found, the server utilizes your system's native `openssl` binary to generate a local self-signed SSL certificate (`server.pem`) bound directly to your PC's active network IP [3].
+2. **HTML5 MediaRecorder Integration**: Instead of relying on proprietary, Google-bloated system libraries on the tablet, the client interface uses the completely open-source, standard-library browser `MediaRecorder` API to capture raw audio [2].
+3. **Push-to-Talk (Hold to Speak)**: By capturing pointer events (`pointerdown` / `pointerup`), the browser records only while your finger is physically pressing the button [1, 2]. The exact millisecond you release your finger, it terminates recording and POSTs the raw binary audio array to your PC [1, 2].
+4. **Cloud-Assisted Multimodal Transcription**: Your Python server base64-encodes the raw audio array and forwards it directly to Google's active stable `gemini-3.1-flash-lite` model over the network [2]. This completely bypasses local model compilation, packages, and dependencies while returning high-precision transcriptions with zero local overhead [2].
+
+---
+
+```
+
+
+
+```
+
 <br><br>
+
