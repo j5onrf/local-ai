@@ -19,14 +19,16 @@ All configurations, automations, and custom project workspaces are managed throu
 
 ## Core Features
 
-* **Zero-Daemon Footprint:** No background processes, polling threads, or active runtimes. Consumes 0% idle RAM and 0% idle CPU.
-* **Instant Local Suggestions:** Norwegian/Dice-coefficient token matching suggests custom commands locally in under 2ms, completely bypassing the LLM.
-* **Cascading Fallback Chain:** Seamlessly cascades through configured cloud API keys (Gemini $\rightarrow$ OpenRouter $\rightarrow$ Custom Cloud API) down to local AI servers (such as `Ollama` or `llama.cpp`) if a service goes offline.
-* **OpenRouter Model Failover:** Automatically configures multiple free backup models inside the OpenRouter API payload, failing over from specific coding models (like `poolside/laguna-m.1:free`) to general routers if the target is congested.
-* **Subprocess RAG Tool Injection (`[TOOL]`):** Executes local scripts (such as diagnostic utilities or API status checks) behind the scenes, feeding their standard output straight into the LLM context for real-time system troubleshooting.
-* **Collision-Resilient Search Math:** Restricts the subset-matching score bonus to queries where the matched words cover at least 50% of the active search, preventing conversational sentences from accidentally triggering short command aliases.
-* **No Dependencies:** Written natively using Python's standard library—no `pip` installs or complex package runtimes required.
-* **Ultra-Lightweight & Auditable:** Built with complete transparency in under 390 lines of highly readable, standard-library Python code.
+| Pillar | Capability | Description |
+| :--- | :--- | :--- |
+| **⚡ Performance** | **Zero-Daemon Footprint** | Consumes 0% idle CPU and 0% idle RAM with absolutely no background processes or active polling threads. |
+| | **Instant Local Suggestions** | Sørensen–Dice coefficient token matching evaluates shortcuts locally in $<2\text{ms}$, bypassing the LLM. |
+| **🛡️ Resiliency** | **Cascading Fallback Chain** | Seamlessly cascades from Gemini $\rightarrow$ OpenRouter $\rightarrow$ Custom Cloud down to local servers if an endpoint drops offline. |
+| | **OpenRouter Failover** | Sends a prioritized model array payload to automatically route around free-tier model congestion on the server side. |
+| **⚙️ Integration** | **Subprocess RAG (`[TOOL]`)** | Executes local scripts behind the scenes, injecting standard terminal output directly into prompt contexts. |
+| | **Collision-Resilient Search** | Restricts the perfect-subset score bonus to queries with $\ge 50\%$ match coverage, protecting short command aliases. |
+| **📦 Portability** | **Zero Dependencies** | Written natively using the Python standard library—no `pip` installs or third-party packages required. |
+| | **Auditable Codebase** | Designed with full transparency in under 390 lines of clean, standard-library Python code. |
 
 ---
 
