@@ -84,6 +84,8 @@ export GEMINI_API_KEY="AIzaSyYourGeminiKey"
 export OPENROUTER_API_KEY="sk-or-v1-YourOpenRouterKey"
 ```
 
+---
+
 <div align="center">
 
 ```
