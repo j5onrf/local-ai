@@ -75,7 +75,8 @@ def compile_vector_index():
             lines = f.read().splitlines()
         index_data = []
         for line in [l.strip() for l in lines if l.strip()]:
-            if line.startswith("#") or "----->" in line or "----->" not in line:
+            # FIX: Restored check to filter out comment blocks and verify the 3-dash delimiter is present
+            if line.startswith("#") or "----->" in line or "--->" not in line:
                 continue
             cmd, intents = line.split("--->", 1)
             for intent in [i.strip() for i in intents.split(",")]:

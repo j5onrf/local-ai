@@ -97,7 +97,7 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 ~/.config/local-ai/local-ai-agent/tools/hyprstate/work ---> hyprstate work, workspace work
 ~/.config/local-ai/local-ai-agent/tools/hyprstate/clean ---> hyprstate clean, workspace clean
 ~/.config/local-ai/local-ai-agent/tools/hyprstate/media ---> hyprstate media, workspace media
-~/.config/local-ai/local-ai-agent/tools/hyprstate/gitcom ---> hyprstate gitcom, workspace gitcom, hs-gitcom
+~/.config/local-ai/local-ai-agent/tools/hyprstate/gitcom ---> hyprstate gitcom, workspace gitcom
 
 # --- Article Summarizers ---
 ~/.config/local-ai/ai-summary/llmsum.py ---> llmsum, ytsum, summary
@@ -112,4 +112,4 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 
 # --- Native Webapp Wrappers & Browsers ---
 omarchy-launch-webapp https://music.youtube.com/ ---> youtube music, yt music, youtube webapp
-nohup uwsm app -- brave-origin-beta --user-data-dir="~/.config/brave-spotify-bunker" --app=https://open.spotify.com/ >/dev/null 2>&1 & ---> spotify music
+nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-spotify-bunker" --app=https://open.spotify.com/ >/dev/null 2>&1 & ---> spotify music
