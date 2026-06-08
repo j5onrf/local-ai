@@ -1,8 +1,8 @@
 # Local-AI Agent (v0.7.9.12)
 
-<img alt="9nkqh39nkqh39nkq4" src="https://github.com/user-attachments/assets/02d6205c-4403-463c-acec-830305a38aec" />
+<img alt="Image_5e1xpv5e1xpv5e1x" src="https://github.com/user-attachments/assets/ee9fe3e4-ef1c-497c-b4f1-84e17458daa2" />
 
-`Laguna-M.1` `Qwen3-Coder` `Gemini-3.1-Flash-Lite` `Python 3.10+` `Bash / Zsh 5.0+`
+`Laguna-M.1` `Qwen3-Coder` `Gemini-3.1-Flash-Lite`
 
 ---
 

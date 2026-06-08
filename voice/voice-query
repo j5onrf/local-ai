@@ -190,6 +190,8 @@ if not os.path.exists(cert_path):
         f'openssl req -new -x509 -keyout "{cert_path}" -out "{cert_path}" -days 365 -nodes -subj "/CN={local_ip}"',
         shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
     )
+    
+socketserver.TCPServer.allow_reuse_address = True
 
 with socketserver.TCPServer(("", PORT), VoiceHandler) as httpd:
     if os.path.exists(cert_path):
