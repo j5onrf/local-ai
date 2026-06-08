@@ -1,6 +1,6 @@
-# Local-AI Agent (v0.7.9.5) — Documentation
+# Local-AI Agent (v0.7.9.12) — Documentation
 
-An adaptive, local/cloud AI shell assistant designed to conform to your terminal environment. By leveraging a high-speed, local token-matrix cache alongside local or cloud LLMs, it provides interactive command suggestions, manages aliases, executes system tools, and answers conversational queries with zero background CPU overhead.
+An adaptive, local/cloud AI shell assistant designed to conform to your terminal environment. By leveraging a high-speed, local sparse-matrix token cache alongside local or cloud LLMs, it provides interactive command suggestions, manages aliases, executes system tools, and answers conversational queries with zero background CPU overhead.
 
 ---
 
@@ -8,10 +8,11 @@ An adaptive, local/cloud AI shell assistant designed to conform to your terminal
 
 The project operates under an on-demand execution model designed to protect terminal responsiveness:
 
-* **Zero-Background Footprint:** No background daemons, cron-jobs, or continuous CPU-polling threads are used. Your shell experiences 0% idle RAM and 0% idle CPU overhead [1].
+* **Zero-Background Footprint:** No background daemons, cron-jobs, or continuous CPU-polling threads are used. Your shell experiences 0% idle RAM and 0% idle CPU overhead.
 * **Dual-Layer Execution:** 
-  * **Standard suggestions (direct shell inputs):** Bypasses the LLM completely. Suggestion queries are evaluated locally via a pure Python set-intersection matrix in under 2ms.
-  * **Conversational queries (using the `ai` prefix):** Run on-demand. The script utilizes a robust, prioritized fallback hierarchy: Gemini Cloud API $\rightarrow$ OpenRouter Cloud API $\rightarrow$ Custom Cloud API $\rightarrow$ Local AI Server (such as `llama.cpp` or `Ollama` running on port 8080) [1.1].
+  * **Standard suggestions (direct shell inputs):** Bypasses the LLM completely. Suggestion queries are evaluated locally via an upgraded, rarity-weighted sparse index (using a customized Sørensen-Dice similarity metric with log-scale Inverse Document Frequency weights) in under 2ms.
+  * **Conversational queries (using the `ai` prefix):** Run on-demand. The script utilizes a robust, prioritized fallback hierarchy: Gemini Cloud API -> OpenRouter Cloud API -> Custom Cloud API -> Local AI Server (such as `llama.cpp` or `Ollama` running on port 8080).
+* **Zero-Configuration Auto-Bootstrap:** On first-run, if no system profile is found, the script automatically executes safe, non-blocking local diagnostics to query your operating system, active kernel, CPU, GPU, and window manager to generate your bespoke `mysys.txt` profile with zero user intervention.
 * **On-Demand Workspace Agents (`ai init`):** A custom indexing routine that scans your project directories, generates structural file trees, and launches a persistent, multi-turn copilot session targeted specifically to your codebase.
 * **Offline Resilience:** If your local AI server and internet are offline, your command suggestions and custom aliases continue to work locally and instantly. Only conversational LLM chat requests are safely blocked.
 
@@ -30,7 +31,7 @@ The project operates under an on-demand execution model designed to protect term
               │                                         │
               ▼                                         ▼
       [ Match Carousel ]                      [ Unmapped Warning ]
-    Up/Down Arrow Selector                   "ℹ <intent> is not mapping..."
+    Up/Down Arrow Selector                   "Info: <intent> is not mapping..."
               │                                         │
        ┌──────┴──────┐                                  ▼
        ▼             ▼                             [ Safe Exit ]
@@ -93,7 +94,7 @@ Command    ai init <path>
 
 ## 2. Cloud Integration & Multi-Provider Fallbacks
 
-The agent features a dynamic, cascading failover connection pipeline [1.1]. This ensures your conversational queries and agentic tool integrations resolve reliably, shifting from cloud systems to local infrastructure seamlessly if credentials expire or endpoints go offline [1.1].
+The agent features a dynamic, cascading failover connection pipeline. This ensures your conversational queries and agentic tool integrations resolve reliably, shifting from cloud systems to local infrastructure seamlessly if credentials expire or endpoints go offline.
 
 ### A. Environment Configuration (`~/.bashrc`)
 To configure your cloud access priorities, export your keys and models at the bottom of your `~/.bashrc`:
@@ -137,32 +138,48 @@ Your agent's brain is managed by a plain-text configuration master file.
 omarchy-launch-webapp https://music.youtube.com/ ---> youtube music
 ```
 
-### A. Automatic Compilation on the Fly
-Every time you interact with the agent, the Python script compares modification timestamps (`getmtime`) of your files. If the plain-text configuration has been modified, it silently rebuilds your minified, single-line lookup index (`ai-context.idx`) in under 2ms before executing.
+### A. Automatic Compilation and Rarity Weighting
+Every time you interact with the agent, the Python script compares modification timestamps (`getmtime`) of your files. If the plain-text configuration has been modified, it silently rebuilds your compiled index (`ai-context.idx`) in under 2ms.
+
+During compilation, the indexer calculates the Document Frequency (DF) of every token across your entire configuration blueprint. It then assigns a log-scale Inverse Document Frequency (IDF) weight to each term:
+
+$$IDF(t) = \ln\left(1 + \frac{N}{DF(t)}\right)$$
+
+This means that highly unique keywords (like `hyprctl`, `nmtui`, or `wttr`) carry immense mathematical weight, while common words (like `show`, `get`, or `run`) are dynamically down-weighted to near-zero. This completely eliminates keyword collisions and false-positive trigger loops.
 
 ### B. Triple-Redundancy Self-Healing Index
-To prevent index corruption or empty cache loads from breaking command suggestions, the `matrix_search` function implements an active validation cycle:
+To prevent index corruption or empty cache loads from breaking command suggestions, the search function implements an active validation cycle:
 1. **Missing Cache Detection:** If the `.idx` file is deleted, it compiles a new one instantly on the next query.
 2. **Malformed JSON Recovery:** If the index file contains corrupt or interrupted data, it catches `json.JSONDecodeError` and forces a fresh rebuild.
 3. **Empty Index Validation (`[]`):** If the index successfully loads but parses as empty (`[]`) while the source configuration file actually has text lines, the script flags this as a logic failure and immediately forces a rebuild.
 
 ---
 
-## 4. Active System Tools & Project Workspace Agents
+## 4. Active System Tools, Auto-Routing, & Project Workspace Agents
 
-### A. Local Context-Injected RAG (`[TOOL]`)
+### A. Zero-Bloat Semantic Auto-Routing
+To prevent your custom hardware profile specifications from bloating the prompt context of every conversational query, your agent uses runtime semantic routing.
+
+The script monitors your queries against a set of `SYSTEM_KEYWORDS` (such as `system`, `gpu`, `kernel`, `storage`, `network`, `disk`). If your tokenized query intersects with any of these keywords, the script silently loads `/tools/skills/mysys.txt` behind the scenes and prepends it to the system context. For general non-system tasks, the profile is completely bypassed to conserve context window space.
+
+### B. On-Demand Skill Prefix Routing
+You can dynamically execute queries with specialized role profiles on the fly by prefixing your command with the skill name (e.g., `ai coder explain this loop` or `ai admin check this configure`).
+
+On execution, the script checks if the first word of your single-turn query matches a file inside your `tools/skills/` directory. If it matches, it reads the skill profile as your system prompt, strips that single keyword from your query, and forwards the rest of the question cleanly to the LLM.
+
+### C. Local Context-Injected RAG (`[TOOL]`)
 You can turn any standard Linux command, package, binary, or custom script into an AI tool by prefixing the command with `[TOOL]` in your `ai-context.txt`:
 ```text
 [TOOL] df -h / ---> check my nvme drive, is my hard drive full, show disk space
 ```
 When you run a conversational query targeting that intent, the script executes the tool behind the scenes (protected by a **15-second safety timeout**), captures its raw stdout, and injects it directly into the LLM's prompt context as real-time system data.
 
-### B. Agentic Diagnostic Tool (`ai-status`)
+### D. Agentic Diagnostic Tool (`ai-status`)
 The system features a dedicated local diagnostic script located at `~/.config/local-ai/local-ai-agent/tools/agentic/ai-status`. It operates as a dual-purpose tool:
 * **As a Native Shell Shortcut (Section 4):** Typing `ai-status` on the command line invokes the suggestion carousel, strips the `[TOOL]` prefix, and prints a beautiful colorized diagnostics panel showing key masks, endpoint connectivity, and your active fallback routing.
 * **As an Agentic Chat Tool (Section 3):** Typing `status check` inside an active chat session executes the script silently. It injects active API diagnostics and strict markdown instruction sets directly into the LLM context, enabling the model to conversationalize your connection details in under two sentences.
 
-### C. Project Workspace Agents (`ai init`)
+### E. Project Workspace Agents (`ai init`)
 When analyzing codebase folders, running raw chat queries lacks necessary structural context. Running `ai init <path>` triggers a dedicated indexing binary (`tools/init-projects`) that:
 1. Resolves the absolute directory path and extracts the project name.
 2. Generates a recursive directory structure map down to three folder levels.
@@ -171,7 +188,7 @@ When analyzing codebase folders, running raw chat queries lacks necessary struct
 
 This bypasses manual initialization cycles, allowing the Workspace Agent to read your directory trees, recognize active config files (like `hypr_api_ref.lua`), and respond to design questions with precise codebase awareness.
 
-### D. Specialized Workspace Initialization with Custom Skills
+### F. Specialized Workspace Initialization with Custom Skills
 Rather than using heavy wrapper utilities or custom prefixes, you can initialize a project with a custom role-persona by simply appending the skill name directly after your directory path in your master configuration file:
 
 ```text
@@ -188,7 +205,7 @@ When you search for `projects quickshell` and execute the suggestion:
    AI Agent Session Initialized | Context Loaded [coder] | Ctrl+C to exit.
    ```
 
-### E. Command Interceptor Directory Routing
+### G. Command Interceptor Directory Routing
 To make project initialization frictionless, you can map absolute directory paths directly inside your `ai-context.txt`:
 ```text
 ~/Projects/qwen-hypr ---> projects qwen, projects
@@ -202,25 +219,32 @@ If you search for `projects qwen` and execute the suggestion, the `ai_handle_mis
 ### A. Conversational-Resilient Stop Words
 To prevent natural conversational padding (like *"what about...", "is it...", "do you have..."*) from causing keyword collisions in your local set-intersection matrix, the `tokenize()` function automatically filters out a pre-compiled set of common English stop words. This ensures that a phrase like `"is it going to rain in the next few days?"` resolves strictly to `["rain"]` under the hood.
 
-### B. Match Coverage Collision Protection (Conflict Prevention Math)
-To prevent short, generic mappings (e.g. `[TOOL] .../ai-status ---> status`) from triggering on conversational sentences containing that word (e.g. `what is the status of the world`), the similarity algorithm uses a **Match Coverage constraint**.
+### B. Sparse Index Matching (Rarity Math)
+Instead of treated all matching terms as equal integer counts, the similarity algorithm uses rarity-weighted sparse matching scores to evaluate the best matches.
 
-The perfect-subset score bonus (`+0.20`) is only applied if the matched words represent at least 50% of the user's active search query:
-```python
-if match_count == entry_len and (match_count / len_q >= 0.50):
-    score += 0.20
-```
-This forces conversational sentences with lower overlap ratios to drop below your standard conversational threshold (e.g. `0.65`), preserving your generic terminal shortcuts without polluting conversational chats.
+For every index candidate, the matching calculation divides the sum of the matching term IDF weights by the total weights of the query and candidate entry:
+
+$$\text{Score} = \frac{2.0 \times \sum_{t \in Q \cap E} IDF(t)}{\sum_{t \in Q} IDF(t) + \sum_{t \in E} IDF(t)}$$
+
+A perfect-subset score bonus (`+0.20`) is subsequently applied if and only if the matched words represent the entire candidate entry, and cover at least 50% of the active query tokens. This completely isolates short shortcuts from being accidentally matched on generic conversational sentences.
 
 ### C. Theme-Adaptive, Thread-Safe Latency Spinner
-To keep the terminal interface responsive during network handshakes and LLM processing delays, a lightweight daemon thread runs an inline 10-step Braille spinner (`⠋`, `⠙`, `⠹`, ...) at 12 FPS [1.1]. 
+To keep the terminal interface responsive during network handshakes and LLM processing delays, a lightweight daemon thread runs an inline 10-step Braille spinner (`⠋`, `⠙`, `⠹`, ...) at 12 FPS. 
 
-By utilizing standard 4-bit ANSI colors (`\033[1;32m` / Bold Green Theme Accent) rather than hardcoded 24-bit TrueColor hex codes, **the interface automatically and dynamically adapts to your system theme.** The spinner, `Agent:`, and `AI:` labels will seamlessly inherit the precise accent hue of your active terminal color palette (such as Tokyo Night, Nord, or Gruvbox) completely on the fly.
+By utilizing standard 4-bit ANSI colors (`\033[1;32m` / Bold Green Theme Accent) rather than hardcoded 24-bit TrueColor hex codes, the interface automatically and dynamically adapts to your system theme. The spinner, `Agent:`, and `AI:` labels will seamlessly inherit the precise accent hue of your active terminal color palette completely on the fly.
 
-When the first stream chunk is returned from the host, the spinner thread is joined, the carriage return line is wiped (`\r\x1b[K`), and the response begins outputting smoothly.
+When the first stream chunk is returned from the host, the spinner thread is joined, the carriage return line is wiped cleanly using `\r\x1b[2K\r` across standard output and standard error, preventing line-overlapping at the absolute bottom of the terminal viewport.
 
 ### D. Multi-Turn Memory (State Preservation)
 Unlike single-turn command completions, interactive conversation sessions maintain state through a local, memory-resident `chat_history` list. The stream loop compiles the incoming text chunks and appends the assistant's response to the active array, ensuring the model retains full context of previous messages and initialized project configurations.
+
+### E. Continual Learning Auto-Inoculation
+To systematically build your personal dictionary, your agent is capable of automated command learning. 
+
+During conversational turns, the script parses incoming assistant messages for fenced markdown code blocks or inline terminal commands enclosed in backticks. If a valid, single-line command is extracted that does not already exist in your config, the agent prompts you:
+```text
+[Learn shortcut] Map "your query" ---> command? (y/N):
 ```
----
-```
+If accepted, the script appends the new mapping directly to your `ai-context.txt` and removes `ai-context.idx`. The next time you type your query, it will be executed locally in $<2\text{ms}$ without ever querying the LLM.
+
+<br><br>

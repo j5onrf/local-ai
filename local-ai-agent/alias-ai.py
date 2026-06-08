@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.7.9.6 [j5onrf] [06-07-26]
+# Local-Ai Agent v0.7.9.13 [j5onrf] [06-08-26]
 
-import sys, re, os, json, threading, time
-import urllib.request as urlreq, urllib.error as urlerr
+import sys, re, os, json, threading, time, math, subprocess
+import urllib.request as urlreq
 
-# Enable standard terminal line editing and history features for input()
 try:
     import readline
 except ImportError:
@@ -24,13 +23,15 @@ STOP_WORDS = {
     "in", "next", "few", "days", "going", "soon", "anytime", "day", "week"
 }
 
+UNIVERSAL_SYSTEM_KEYWORDS = {
+    "system", "sys", "os", "linux", "kernel", "cpu", "gpu", "hardware", "motherboard", "memory", "ram", "storage", "disk",
+    "drive", "nvme", "port", "network", "wifi", "ip", "dns", "log", "error", "specs", "hostname",
+    "crash", "slow", "performance", "driver", "package", "status", "health", "window", "manager"
+}
+
 class InlineSpinner:
-    """A lightweight modern Braille spinner for network latency feedback."""
     def __init__(self):
-        # 10-step circular Braille sequence
-        self.chars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
-        self.active = False
-        self.thread = None
+        self.chars, self.active, self.thread = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"], False, None
 
     def _spin(self):
         idx = 0
@@ -48,8 +49,7 @@ class InlineSpinner:
 
     def stop(self):
         self.active = False
-        if self.thread:
-            self.thread.join()
+        if self.thread: self.thread.join()
 
 def sanitize_input(text):
     return re.sub(r"[`$]", "", text).strip() if text else ""
@@ -57,8 +57,17 @@ def sanitize_input(text):
 def tokenize(text):
     return [w for w in TOKEN_RE.sub(" ", text.lower()).split() if len(w) > 1 and w not in STOP_WORDS]
 
+def get_active_system_keywords():
+    keywords = set(UNIVERSAL_SYSTEM_KEYWORDS)
+    p_path = os.path.expanduser("~/.config/local-ai/local-ai-agent/tools/skills/mysys.txt")
+    if os.path.exists(p_path):
+        try:
+            with open(p_path, "r") as f:
+                keywords.update(t for t in tokenize(f.read()) if len(t) > 2)
+        except: pass
+    return keywords
+
 def run_local_tool(cmd):
-    import subprocess
     try:
         out = subprocess.check_output(cmd, shell=True, text=True, timeout=15).strip()
         return f"{out}\n" if out else "Action executed successfully.\n"
@@ -66,99 +75,134 @@ def run_local_tool(cmd):
         sys.stderr.write(f"\033[1;31mTool execution failed: {str(e)}\033[0m\n")
         return f"[SYSTEM ERROR] Failed to run local tool: {str(e)}\n"
 
-def compile_vector_index():
-    if not os.path.exists(CONTEXT_FILE):
-        sys.stderr.write(f"\033[1;31mWarning: Configuration file not found at {CONTEXT_FILE}\033[0m\n")
-        return False
+def generate_system_profile():
+    p_dir = os.path.expanduser("~/.config/local-ai/local-ai-agent/tools/skills")
+    p_path = os.path.join(p_dir, "mysys.txt")
+    os.makedirs(p_dir, exist_ok=True)
+    sys.stderr.write("\033[1;36mRunning local diagnostics to generate system profile...\033[0m\n")
+    
+    def run(cmd):
+        try: return subprocess.check_output(cmd, shell=True, text=True, stderr=subprocess.DEVNULL).strip()
+        except: return "Unknown"
+            
+    os_name, cpu = "Unknown Linux", "Unknown"
+    if os.path.exists("/etc/os-release"):
+        with open("/etc/os-release") as f:
+            m = re.search(r'^PRETTY_NAME="?([^"\n]+)"?', f.read(), re.M)
+            if m: os_name = m.group(1)
+        
+    if os.path.exists("/proc/cpuinfo"):
+        with open("/proc/cpuinfo") as f:
+            m = re.search(r'^model name\s*:\s*(.+)', f.read(), re.M)
+            if m: cpu = m.group(1)
+    
+    gpu = run("lspci | grep -i -E 'vga|3d|display' | head -n 1 | cut -d':' -f3")
+    wm = os.environ.get("XDG_CURRENT_DESKTOP", "Standard Window Manager")
+    if "hyprland" in wm.lower() or os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"): wm = "Hyprland"
+    elif "i3" in wm.lower(): wm = "i3"
+
+    profile = f"""=== SYSTEM ADMINISTRATOR ACTIVE SKILL ===
+[HOST CONTEXT]
+- Static Hostname: {run("hostname")}
+- Operating System: {os_name}
+- Linux Kernel: {run("uname -r")}
+- CPU: {cpu}
+- GPU: {gpu if gpu and gpu != "Unknown" else "Integrated Graphics"}
+- Desktop Environment / Window Manager: {wm}
+
+[AI INSTRUCTIONS & RULES]
+1. Target System Awareness: All suggestions must strictly conform to {os_name} and {wm} conventions if applicable.
+2. System Diagnostics: Suggest non-destructive terminal solutions, prioritizing systemd logging (journalctl, systemctl) to identify boot or runtime regressions.
+3. Package Management: Target tools natively packaged or compatible with your target system's package manager.
+4. Format Constraints: Keep answers concise, direct, and terminal-focused. Focus entirely on system stability and efficiency.
+"""
     try:
-        with open(CONTEXT_FILE, "r") as f:
-            lines = f.read().splitlines()
+        with open(p_path, "w") as f: f.write(profile)
+        sys.stderr.write(f"\033[1;32mSaved system profile successfully to {p_path}!\033[0m\n")
+        return True
+    except Exception as e:
+        sys.stderr.write(f"\033[1;31mFailed to save system profile: {str(e)}\033[0m\n")
+        return False
+
+def compile_vector_index():
+    if not os.path.exists(CONTEXT_FILE): return False
+    try:
+        with open(CONTEXT_FILE, "r") as f: lines = f.read().splitlines()
         index_data = []
         for line in [l.strip() for l in lines if l.strip()]:
-            # FIX: Restored check to filter out comment blocks and verify the 3-dash delimiter is present
-            if line.startswith("#") or "----->" in line or "--->" not in line:
-                continue
+            if line.startswith("#") or "----->" in line or "--->" not in line: continue
             cmd, intents = line.split("--->", 1)
             for intent in [i.strip() for i in intents.split(",")]:
                 tokens = tokenize(intent)
-                if tokens:
-                    index_data.append({"cmd": cmd.strip(), "intent": intent, "tokens": tokens, "len": len(tokens)})
-        with open(INDEX_FILE, "w") as f:
-            json.dump(index_data, f)
+                if tokens: index_data.append({"cmd": cmd.strip(), "intent": intent, "tokens": tokens, "len": len(tokens)})
+        
+        from collections import defaultdict
+        df = defaultdict(int)
+        for entry in index_data:
+            for t in set(entry["tokens"]): df[t] += 1
+        
+        N, idfs = len(index_data), {}
+        for t, count in df.items():
+            idfs[t] = math.log(1.0 + (N / count))
+            
+        with open(INDEX_FILE, "w") as f: json.dump({"idfs": idfs, "entries": index_data}, f)
         return True
     except Exception as e:
-        sys.stderr.write(f"\033[1;31mError compiling search index: {str(e)}\033[0m\n")
+        sys.stderr.write(f"\033[1;31mError compiling index: {str(e)}\033[0m\n")
         return False
 
-# Diagnostic checks and startup compilation
+# Diagnostic checks, auto-bootstrapping, and startup compilation
 if not os.path.exists(CONTEXT_FILE):
     sys.stderr.write(f"\033[1;31mWarning: Context file is missing at {CONTEXT_FILE}\033[0m\n")
 else:
+    PROFILE_PATH = os.path.expanduser("~/.config/local-ai/local-ai-agent/tools/skills/mysys.txt")
+    if not os.path.exists(PROFILE_PATH): generate_system_profile()
     try:
         mtime_ctx = os.path.getmtime(CONTEXT_FILE)
         try:
-            if mtime_ctx > os.path.getmtime(INDEX_FILE):
-                compile_vector_index()
-        except OSError:
-            compile_vector_index()
+            if mtime_ctx > os.path.getmtime(INDEX_FILE): compile_vector_index()
+        except OSError: compile_vector_index()
     except OSError as e:
         sys.stderr.write(f"\033[1;31mError reading file metadata: {str(e)}\033[0m\n")
 
 def check_danger(cmd):
     return f"DANGER_FLAGGED:{cmd}" if cmd and any(kw in cmd.lower() for kw in DESTRUCTIVE_KEYWORDS) else cmd
 
-def matrix_search(query, threshold=0.50):
+def matrix_search(query, threshold=0.45):
     query_tokens = tokenize(query)
-    if not query_tokens:
-        return None
-    if not os.path.exists(INDEX_FILE):
-        compile_vector_index()
-
-    index_data = None
+    if not query_tokens: return None
+    if not os.path.exists(INDEX_FILE): compile_vector_index()
     try:
-        with open(INDEX_FILE, "r") as f:
-            index_data = json.load(f)
-    except (OSError, json.JSONDecodeError):
-        pass
-
-    if not index_data and os.path.exists(CONTEXT_FILE):
+        with open(INDEX_FILE, "r") as f: data = json.load(f)
+    except:
         compile_vector_index()
         try:
-            with open(INDEX_FILE, "r") as f:
-                index_data = json.load(f)
-        except (OSError, json.JSONDecodeError):
-            return None
-    if not index_data:
-        return None
+            with open(INDEX_FILE, "r") as f: data = json.load(f)
+        except: return None
 
-    candidates, q_set, len_q = [], set(query_tokens), len(query_tokens)
-    for entry in index_data:
+    idfs, entries = data.get("idfs", {}), data.get("entries", [])
+    candidates, q_set = [], set(query_tokens)
+    for entry in entries:
         intersect = q_set & set(entry["tokens"])
-        match_count = len(intersect)
-        if match_count == 0:
-            continue
-        entry_len = entry.get("len", len(entry["tokens"]))
-        score = (2.0 * match_count) / (len_q + entry_len)
+        if not intersect: continue
+            
+        match_weight = sum(idfs.get(t, 1.0) for t in intersect)
+        q_weight = sum(idfs.get(t, 1.0) for t in q_set)
+        entry_weight = sum(idfs.get(t, 1.0) for t in entry["tokens"])
+        score = (2.0 * match_weight) / (q_weight + entry_weight) if (q_weight + entry_weight) > 0 else 0.0
         
-        # Perfect subset bonus: Only applies if the matched words 
-        # represent 50% or more of the active query tokens.
-        if match_count == entry_len and (match_count / len_q >= 0.50):
+        if len(intersect) == len(entry["tokens"]) and (len(intersect) / len(q_set) >= 0.50):
             score += 0.20
             
-        if score >= threshold:
-            candidates.append((score, entry["cmd"], entry["intent"]))
+        if score >= threshold: candidates.append((score, entry["cmd"], entry["intent"]))
             
-    if not candidates:
-        return None
-    
+    if not candidates: return None
     candidates.sort(key=lambda x: (-x[0], len(x[2])))
     seen, top = set(), []
     for _, cmd, intent in candidates:
         if cmd not in seen:
-            seen.add(cmd)
-            top.append(f"{intent}|||{check_danger(cmd)}")
-            if len(top) == 3:
-                break
+            seen.add(cmd); top.append(f"{intent}|||{check_danger(cmd)}")
+            if len(top) == 3: break
     return "\n".join(top)
 
 def get_key():
@@ -167,14 +211,12 @@ def get_key():
     try:
         old = termios.tcgetattr(fd)
     except termios.error:
-        try:
-            return os.read(fd, 1).decode("utf-8", errors="ignore")
-        except Exception: return ""
+        try: return os.read(fd, 1).decode("utf-8", errors="ignore")
+        except: return ""
     try:
         tty.setraw(fd)
         r = os.read(fd, 1)
-        if r == b'\x1b' and select.select([fd], [], [], 0.05)[0]:
-            r += os.read(fd, 2)
+        if r == b'\x1b' and select.select([fd], [], [], 0.05)[0]: r += os.read(fd, 2)
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old)
     return r.decode("utf-8", errors="ignore")
@@ -185,17 +227,62 @@ def clean_tool_prefix(cmd):
         return f"DANGER_FLAGGED:{inner.replace('[TOOL]', '', 1).strip()}" if inner.startswith("[TOOL]") else cmd
     return cmd.replace("[TOOL]", "", 1).strip() if cmd.startswith("[TOOL]") else cmd
 
+def learn_command_from_response(query, ans):
+    if not query or not ans: return
+    cmds = re.findall(r"```(?:bash|sh|zsh)?\n([^\n]+)\n```", ans)
+    if not cmds: cmds = re.findall(r"`([^`\n]+)`", ans)
+    valid = [c.strip() for c in cmds if 2 < len(c.strip()) < 80 and not c.strip().startswith("#")]
+    if not valid: return
+    suggested = valid[0]
+    
+    if os.path.exists(CONTEXT_FILE):
+        try:
+            with open(CONTEXT_FILE, "r") as f:
+                if suggested in f.read(): return
+        except: pass
+
+    sys.stderr.write(f"\n\033[1;32m[Learn shortcut]\033[0m Map \"\033[1;36m{query.lower()}\033[0m\" ---> \033[1;33m{suggested}\033[0m? (y/N): ")
+    sys.stderr.flush()
+    if get_key().lower() == 'y':
+        sys.stderr.write("Saved!\n"); sys.stderr.flush()
+        try:
+            with open(CONTEXT_FILE, "a") as f: f.write(f"\n{suggested} ---> {query.lower()}\n")
+            if os.path.exists(INDEX_FILE): os.remove(INDEX_FILE)
+        except Exception as e:
+            sys.stderr.write(f"\033[1;31mFailed to save: {str(e)}\033[0m\n")
+    else:
+        sys.stderr.write("Skipped.\n"); sys.stderr.flush()
+
+def get_system_context(query):
+    context = ""
+    tool_match = matrix_search(query, threshold=0.65)
+    if tool_match:
+        first_match = tool_match.split("\n")[0]
+        if "|||" in first_match:
+            intent, cmd = first_match.split("|||", 1)
+            if cmd.startswith("[TOOL]"):
+                tool_cmd = cmd.replace("[TOOL]", "").strip()
+                sys.stderr.write(f"\033[90m[sys] Executing: {tool_cmd}\033[0m\n"); sys.stderr.flush()
+                context = run_local_tool(tool_cmd)
+                
+    q_tokens = tokenize(query)
+    if set(q_tokens) & get_active_system_keywords():
+        profile_path = os.path.expanduser("~/.config/local-ai/local-ai-agent/tools/skills/mysys.txt")
+        if os.path.exists(profile_path):
+            try:
+                with open(profile_path, "r") as f:
+                    context = f.read().strip() + "\n\n" + context
+            except: pass
+    return context
+
 def run_interactive_selection(intent):
     matched_base = matrix_search(intent)
     if not matched_base:
-        sys.stderr.write(f"\033[1;33mℹ \"{intent}\" is not mapping to a known automation.\033[0m\n")
+        sys.stderr.write(f"\033[1;33mInfo: \"{intent}\" is not mapping to a known automation.\033[0m\n")
         return
-
     options = matched_base.split("\n")
     num_opts, current_idx = len(options), 0
-    sys.stderr.write("\033[?25l")
-    sys.stderr.flush()
-
+    sys.stderr.write("\033[?25l"); sys.stderr.flush()
     try:
         while True:
             entry = options[current_idx]
@@ -206,7 +293,7 @@ def run_interactive_selection(intent):
             display_cmd = cmd_to_show.replace(" >/dev/null 2>&1", "").replace(os.path.expanduser("~"), "~")
 
             if is_danger:
-                sys.stderr.write("\r\x1b[K\x1b[1;31m⚠️ WARNING: Potentially destructive suggestion detected!\x1b[0m\n")
+                sys.stderr.write("\r\x1b[K\x1b[1;31mWARNING: Potentially destructive suggestion detected!\x1b[0m\n")
                 sys.stderr.write(f"\r\x1b[K\x1b[1;33mAI Suggestion ({display_idx}/{num_opts}):\x1b[0m \x1b[1;36m[{current_intent}]\x1b[0m {display_cmd}\n")
                 sys.stderr.write("\r\x1b[KAre you absolutely sure you want to run this? (y/N): ")
             else:
@@ -216,15 +303,12 @@ def run_interactive_selection(intent):
             
             sys.stderr.flush()
             key = get_key()
-
             if key in ('\x03', '\x1b') or (not is_danger and key not in ('\r', '', '\x1b[A', '\x1b[B')):
                 sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[KCancelled.\n"); sys.stderr.flush(); break
             if is_danger:
                 sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K\x1b[1A\r\x1b[K"); sys.stderr.flush()
-                if key.lower() == 'y':
-                    sys.stdout.write(cmd_to_show); sys.stdout.flush()
-                else:
-                    sys.stderr.write("Aborted safely.\n")
+                if key.lower() == 'y': sys.stdout.write(cmd_to_show); sys.stdout.flush()
+                else: sys.stderr.write("Aborted safely.\n")
                 break
             if key in ('\r', ''):
                 sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K"); sys.stderr.flush()
@@ -239,7 +323,6 @@ def run_interactive_selection(intent):
         sys.stderr.write("\033[?25h"); sys.stderr.flush()
 
 def stream_llm_response(messages, prefix="AI: "):
-    """Cascades dynamically through available API configurations with minimal overhead."""
     configs = []
     gkey, okey = os.environ.get("GEMINI_API_KEY"), os.environ.get("OPENROUTER_API_KEY")
     if gkey:
@@ -268,18 +351,13 @@ def stream_llm_response(messages, prefix="AI: "):
                     try:
                         data = json.loads(dec)
                         content = ""
-                        if "choices" in data and data["choices"]:
-                            content = data["choices"][0].get("delta", {}).get("content", "")
-                        elif "candidates" in data and data["candidates"]:
-                            parts = data["candidates"][0].get("content", {}).get("parts", [])
-                            content = parts[0].get("text", "") if parts else ""
+                        if "choices" in data and data["choices"]: content = data["choices"][0].get("delta", {}).get("content", "")
+                        elif "candidates" in data and data["candidates"]: content = data["candidates"][0].get("content", {}).get("parts", [{}])[0].get("text", "")
                         if content:
                             if first:
                                 spinner.stop()
-                                # Clean carriage return status before outputting prompt prefix
                                 if sys.stdout.isatty():
-                                    sys.stdout.write("\r\x1b[2K\r")
-                                    sys.stdout.flush()
+                                    sys.stdout.write("\r\x1b[2K\r"); sys.stdout.flush()
                                     print(f"\033[1;32m{prefix}\033[0m ", end="", flush=True)
                                 first = False
                             print(content, end="", flush=True); acc.append(content)
@@ -290,6 +368,10 @@ def stream_llm_response(messages, prefix="AI: "):
             if url == configs[-1][0]:
                 print("\033[1;31mError: All fallbacks/local servers are offline.\033[0m\n")
     return None
+
+if len(sys.argv) > 1 and sys.argv[1] == "--profile":
+    generate_system_profile()
+    sys.exit(0)
 
 if len(sys.argv) > 1 and sys.argv[1] == "--interactive":
     if len(sys.argv) >= 3:
@@ -309,8 +391,7 @@ if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
         
         try:
             while True:
-                if pending_query:
-                    query, pending_query = pending_query, None
+                if pending_query: query, pending_query = pending_query, None
                 else:
                     try: raw_query = input("\033[1;30m❯\033[0m ")
                     except EOFError: break
@@ -319,59 +400,56 @@ if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
                     if query.lower() in ("exit", "quit", "q"):
                         print("\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
 
-                system_context, tool_match = "", matrix_search(query, threshold=0.65)
-                if tool_match:
-                    first_match = tool_match.split("\n")[0]
-                    if "|||" in first_match:
-                        intent, cmd = first_match.split("|||", 1)
-                        if cmd.startswith("[TOOL]"):
-                            tool_cmd = cmd.replace("[TOOL]", "").strip()
-                            sys.stderr.write(f"\033[90m[sys] Executing: {tool_cmd}\033[0m\n")
-                            sys.stderr.flush()
-                            system_context = run_local_tool(tool_cmd)
-
+                system_context = get_system_context(query)
                 prompt = (
                     "You are a helpful, conversational local AI shell assistant with read-only terminal access.\n"
                     "Use the provided real-time system context (if available) to answer the user's question clearly, concisely, and directly.\n"
                     "Do not state that you cannot access their system, as the data has already been provided to you.\n\n"
                 )
-                if system_context:
-                    prompt += f"### Real-time System Context:\n{system_context}\n\n"
+                if system_context: prompt += f"### Real-time System Context:\n{system_context}\n\n"
                 prompt += f"User Question: {query}"
                 chat_history.append({"role": "user", "content": prompt})
 
                 ans = stream_llm_response(chat_history, prefix="Agent:" if is_agent else "AI:")
-                if ans: chat_history.append({"role": "assistant", "content": ans})
+                if ans: 
+                    chat_history.append({"role": "assistant", "content": ans})
+                    if sys.stdout.isatty(): learn_command_from_response(query, ans)
                 else: chat_history.pop()
         except KeyboardInterrupt:
-            print("\n\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
+            print("\n\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
 
     elif len(sys.argv) > 2:
-        query = " ".join(sys.argv[2:])
-        system_context, tool_match = "", matrix_search(query, threshold=0.65)
-        if tool_match:
-            first_match = tool_match.split("\n")[0]
-            if "|||" in first_match:
-                intent, cmd = first_match.split("|||", 1)
-                if cmd.startswith("[TOOL]"):
-                    tool_cmd = cmd.replace("[TOOL]", "").strip()
-                    system_context = run_local_tool(tool_cmd)
+        query_parts = sys.argv[2:]
+        system_context = ""
+
+        SKILLS_DIR = os.path.expanduser("~/.config/local-ai/local-ai-agent/tools/skills")
+        if query_parts:
+            first_word = query_parts[0].lower()
+            skill_file = os.path.join(SKILLS_DIR, f"{first_word}.txt")
+            if os.path.exists(skill_file):
+                try:
+                    with open(skill_file, "r") as f: system_context = f.read().strip() + "\n\n"
+                    query_parts = query_parts[1:]
+                except Exception as e:
+                    sys.stderr.write(f"\033[1;31mError loading skill profile: {str(e)}\033[0m\n")
+
+        query = " ".join(query_parts)
+        system_context += get_system_context(query)
 
         prompt = (
             "You are a helpful, conversational local AI shell assistant with read-only terminal access.\n"
             "Use the provided real-time system context (if available) to answer the user's question clearly, concisely, and directly.\n"
             "Do not state that you cannot access their system, as the data has already been provided to you.\n\n"
         )
-        if system_context:
-            prompt += f"### Real-time System Context:\n{system_context}\n\n"
+        if system_context: prompt += f"### Real-time System Context:\n{system_context}\n\n"
         prompt += f"User Question: {query}"
 
-        stream_llm_response([{"role": "user", "content": prompt}], prefix="AI:")
+        ans = stream_llm_response([{"role": "user", "content": prompt}], prefix="AI:")
+        if ans and sys.stdout.isatty(): learn_command_from_response(query, ans)
         sys.exit(0)
 
 user_input = sanitize_input(" ".join(sys.argv[1:])) if len(sys.argv) > 1 else ""
-if not user_input or sys.argv[1].startswith("--"):
-    sys.exit(0)
+if not user_input or sys.argv[1].startswith("--"): sys.exit(0)
 
 matched_base = matrix_search(user_input)
 if matched_base:

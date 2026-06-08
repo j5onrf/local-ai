@@ -41,6 +41,7 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 
 # --- Skills (Prompt & Role Injection) ---
 [TOOL] cat ~/.config/local-ai/local-ai-agent/tools/skills/sysadmin.txt ---> sysadmin, load sysadmin
+[TOOL] cat ~/.config/local-ai/local-ai-agent/tools/skills/mysa.txt ---> mysa, load mysa
 
 
 # ==============================================================================
@@ -113,3 +114,12 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 # --- Native Webapp Wrappers & Browsers ---
 omarchy-launch-webapp https://music.youtube.com/ ---> youtube music, yt music, youtube webapp
 nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-spotify-bunker" --app=https://open.spotify.com/ >/dev/null 2>&1 & ---> spotify music
+
+
+# ==============================================================================
+# SECTION 7: AUTOMATED CONTINUAL LEARNING
+# ==============================================================================
+
+# --- Self-Learned System Shortcuts ---
+ss -tuln ---> how do i view active network ports
+hostnamectl ---> how do i see my system information
