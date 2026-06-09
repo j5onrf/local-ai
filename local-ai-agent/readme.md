@@ -1,4 +1,4 @@
-# Local-AI Agent (v0.7.9.13)
+# Local-AI Agent (v0.7.9.16)
 
 <img alt="Image_5e1xpv5e1xpv5e1x" src="https://github.com/user-attachments/assets/ee9fe3e4-ef1c-497c-b4f1-84e17458daa2" />
 
@@ -102,18 +102,16 @@ export OPENROUTER_API_KEY="sk-or-v1-YourOpenRouterKey"
 
 ---
 
-<div align="center">
-
 ```text
-               ██╗
-               ██║
-              ███║
-            ██╔██║
-          ██╔╝ ██║
-        ██╔╝   ██║
-      █████████████████████████╗
-      ╚███████████████████████╔╝
-    ═══╝╚════╝╚════╝╚════╝╚════╝═══
+                                                                 ██╗
+                                                                 ██║
+                                                                ███║
+                                                              ██╔██║
+                                                            ██╔╝ ██║
+                                                          ██╔╝   ██║
+                                                        █████████████████████████╗
+                                                        ╚███████████████████████╔╝   ~ > A H O Y _
+                                                    ═══╝╚════╝╚════╝╚════╝╚════╝═══
 
 ```
 
