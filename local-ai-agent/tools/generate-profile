@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+import os, re, subprocess, sys
+
+p_dir = os.path.expanduser("~/.config/local-ai/local-ai-agent/tools/skills")
+p_path = os.path.join(p_dir, "mysys.txt")
+os.makedirs(p_dir, exist_ok=True)
+
+sys.stderr.write("Generating system profile...\n")
+sys.stderr.flush()
+
+def run(cmd):
+    try: return subprocess.check_output(cmd, shell=True, text=True, stderr=subprocess.DEVNULL).strip()
+    except: return "Unknown"
+        
+os_name, cpu = "Unknown Linux", "Unknown"
+if os.path.exists("/etc/os-release"):
+    with open("/etc/os-release") as f:
+        m = re.search(r'^PRETTY_NAME="?([^"\n]+)"?', f.read(), re.M)
+        if m: os_name = m.group(1)
+    
+if os.path.exists("/proc/cpuinfo"):
+    with open("/proc/cpuinfo") as f:
+        m = re.search(r'^model name\s*:\s*(.+)', f.read(), re.M)
+        if m: cpu = m.group(1)
+
+# 1. Detect graphics driver
+driver = "Unknown"
+for drv in ["xe", "i915", "nvidia", "amdgpu", "nouveau", "radeon"]:
+    if os.path.exists(f"/sys/bus/pci/drivers/{drv}"):
+        driver = drv
+        break
+
+# 2. Detect CachyOS/Arch x86-64 optimization level (v3/v4)
+arch_v = ""
+if os.path.exists("/etc/pacman.conf"):
+    try:
+        with open("/etc/pacman.conf") as f:
+            conf = f.read()
+            if "cachyos-v4" in conf: arch_v = " (v4)"
+            elif "cachyos-v3" in conf: arch_v = " (v3)"
+    except: pass
+
+# 3. Detect Display / Login Manager
+dm = "Unknown"
+dm_symlink = "/etc/systemd/system/display-manager.service"
+if os.path.islink(dm_symlink):
+    try: dm = os.path.basename(os.readlink(dm_symlink)).replace(".service", "")
+    except: pass
+
+# 4. Detect Active Bootloader
+bootloader = "Unknown"
+if os.path.exists("/boot/loader/loader.conf") or os.path.exists("/sys/firmware/efi/efivars/LoaderEntries-4a67b082-0a4c-41cf-b647-f31302b51130"):
+    bootloader = "systemd-boot"
+elif os.path.exists("/boot/grub/grub.cfg"):
+    bootloader = "GRUB"
+elif os.path.exists("/boot/limine.cfg") or os.path.exists("/boot/limine.conf"):
+    bootloader = "Limine"
+
+gpu = run("lspci | grep -i -E 'vga|3d|display' | head -n 1 | cut -d':' -f3")
+wm = os.environ.get("XDG_CURRENT_DESKTOP", "Standard Window Manager")
+if "hyprland" in wm.lower() or os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"): wm = "Hyprland"
+elif "i3" in wm.lower(): wm = "i3"
+
+profile = f"""=== SYSTEM ADMINISTRATOR ACTIVE SKILL ===
+[HOST CONTEXT]
+- Static Hostname: {run("hostname")}
+- Operating System: {os_name}
+- Linux Kernel: {run("uname -r")}{arch_v}
+- CPU: {cpu}
+- GPU: {gpu if gpu and gpu != "Unknown" else "Integrated Graphics"} (Driver: {driver})
+- Desktop Environment / Window Manager: {wm}
+- Login Manager: {dm}
+- System Bootloader: {bootloader}
+
+[AI INSTRUCTIONS & RULES]
+1. Target System Awareness: All suggestions must strictly conform to {os_name}, {wm} composites, {dm} logins, and {bootloader} parameters if applicable.
+2. System Diagnostics: Suggest non-destructive terminal solutions, prioritizing systemd logging (journalctl, systemctl) to identify boot or runtime regressions.
+3. Package Management: Target tools natively packaged or compatible with your target system's package manager.
+4. Format Constraints: Keep answers concise, direct, and terminal-focused. Do not use markdown formatting such as bold asterisks (**) or header hashes (#) in your response, as your output is rendered directly in a raw terminal.
+5. Optimization Awareness: If the host kernel is a performance-optimized variant (such as CachyOS or Zen) or detects x86-64-v3/v4 levels, prioritize suggestions that utilize compiler-optimized packages, performance-tuned parameters, and performance schedulers.
+6. Modern Graphics & Windowing: If running a Wayland compositor (like Hyprland) or a modern driver (like Xe or amdgpu), prioritize Wayland-native utilities and modern kernel module parameters over deprecated X11 configurations or legacy driver options.
+"""
+try:
+    with open(p_path, "w") as f: f.write(profile)
+    sys.stderr.write(f"Saved system profile successfully to {p_path}!\n")
+    sys.exit(0)
+except Exception as e:
+    sys.stderr.write(f"Failed to save system profile: {str(e)}\n")
+    sys.exit(1)

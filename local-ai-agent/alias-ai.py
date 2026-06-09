@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.7.9.13 [j5onrf] [06-08-26]
+# Local-Ai Agent v0.7.9.16 [j5onrf] [06-08-26]
 
 import sys, re, os, json, threading, time, math, subprocess
 import urllib.request as urlreq
@@ -23,10 +23,11 @@ STOP_WORDS = {
     "in", "next", "few", "days", "going", "soon", "anytime", "day", "week"
 }
 
+# Strictly universal system keywords applicable to any operating system
 UNIVERSAL_SYSTEM_KEYWORDS = {
     "system", "sys", "os", "linux", "kernel", "cpu", "gpu", "hardware", "motherboard", "memory", "ram", "storage", "disk",
     "drive", "nvme", "port", "network", "wifi", "ip", "dns", "log", "error", "specs", "hostname",
-    "crash", "slow", "performance", "driver", "package", "status", "health", "window", "manager"
+    "crash", "slow", "performance", "driver", "package", "status", "health", "window", "manager", "sddm", "gdm", "bootloader", "grub"
 }
 
 class InlineSpinner:
@@ -75,55 +76,6 @@ def run_local_tool(cmd):
         sys.stderr.write(f"\033[1;31mTool execution failed: {str(e)}\033[0m\n")
         return f"[SYSTEM ERROR] Failed to run local tool: {str(e)}\n"
 
-def generate_system_profile():
-    p_dir = os.path.expanduser("~/.config/local-ai/local-ai-agent/tools/skills")
-    p_path = os.path.join(p_dir, "mysys.txt")
-    os.makedirs(p_dir, exist_ok=True)
-    sys.stderr.write("\033[1;36mRunning local diagnostics to generate system profile...\033[0m\n")
-    
-    def run(cmd):
-        try: return subprocess.check_output(cmd, shell=True, text=True, stderr=subprocess.DEVNULL).strip()
-        except: return "Unknown"
-            
-    os_name, cpu = "Unknown Linux", "Unknown"
-    if os.path.exists("/etc/os-release"):
-        with open("/etc/os-release") as f:
-            m = re.search(r'^PRETTY_NAME="?([^"\n]+)"?', f.read(), re.M)
-            if m: os_name = m.group(1)
-        
-    if os.path.exists("/proc/cpuinfo"):
-        with open("/proc/cpuinfo") as f:
-            m = re.search(r'^model name\s*:\s*(.+)', f.read(), re.M)
-            if m: cpu = m.group(1)
-    
-    gpu = run("lspci | grep -i -E 'vga|3d|display' | head -n 1 | cut -d':' -f3")
-    wm = os.environ.get("XDG_CURRENT_DESKTOP", "Standard Window Manager")
-    if "hyprland" in wm.lower() or os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"): wm = "Hyprland"
-    elif "i3" in wm.lower(): wm = "i3"
-
-    profile = f"""=== SYSTEM ADMINISTRATOR ACTIVE SKILL ===
-[HOST CONTEXT]
-- Static Hostname: {run("hostname")}
-- Operating System: {os_name}
-- Linux Kernel: {run("uname -r")}
-- CPU: {cpu}
-- GPU: {gpu if gpu and gpu != "Unknown" else "Integrated Graphics"}
-- Desktop Environment / Window Manager: {wm}
-
-[AI INSTRUCTIONS & RULES]
-1. Target System Awareness: All suggestions must strictly conform to {os_name} and {wm} conventions if applicable.
-2. System Diagnostics: Suggest non-destructive terminal solutions, prioritizing systemd logging (journalctl, systemctl) to identify boot or runtime regressions.
-3. Package Management: Target tools natively packaged or compatible with your target system's package manager.
-4. Format Constraints: Keep answers concise, direct, and terminal-focused. Focus entirely on system stability and efficiency.
-"""
-    try:
-        with open(p_path, "w") as f: f.write(profile)
-        sys.stderr.write(f"\033[1;32mSaved system profile successfully to {p_path}!\033[0m\n")
-        return True
-    except Exception as e:
-        sys.stderr.write(f"\033[1;31mFailed to save system profile: {str(e)}\033[0m\n")
-        return False
-
 def compile_vector_index():
     if not os.path.exists(CONTEXT_FILE): return False
     try:
@@ -156,7 +108,11 @@ if not os.path.exists(CONTEXT_FILE):
     sys.stderr.write(f"\033[1;31mWarning: Context file is missing at {CONTEXT_FILE}\033[0m\n")
 else:
     PROFILE_PATH = os.path.expanduser("~/.config/local-ai/local-ai-agent/tools/skills/mysys.txt")
-    if not os.path.exists(PROFILE_PATH): generate_system_profile()
+    if not os.path.exists(PROFILE_PATH):
+        generator_script = os.path.expanduser("~/.config/local-ai/local-ai-agent/tools/generate-profile")
+        if os.path.exists(generator_script):
+            subprocess.run([sys.executable, generator_script])
+
     try:
         mtime_ctx = os.path.getmtime(CONTEXT_FILE)
         try:
@@ -231,7 +187,7 @@ def learn_command_from_response(query, ans):
     if not query or not ans: return
     cmds = re.findall(r"```(?:bash|sh|zsh)?\n([^\n]+)\n```", ans)
     if not cmds: cmds = re.findall(r"`([^`\n]+)`", ans)
-    valid = [c.strip() for c in cmds if 2 < len(c.strip()) < 80 and not c.strip().startswith("#")]
+    valid = [c.strip() for c in cmds if 2 < len(c.strip()) < 80 and not c.strip().startswith("#") and "://" not in c]
     if not valid: return
     suggested = valid[0]
     
@@ -326,7 +282,7 @@ def stream_llm_response(messages, prefix="AI: "):
     configs = []
     gkey, okey = os.environ.get("GEMINI_API_KEY"), os.environ.get("OPENROUTER_API_KEY")
     if gkey:
-        configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Content-Type": "application/json", "Authorization": f"Bearer {gkey}"}, os.environ.get("CLOUD_MODEL", "gemini-1.5-flash"), {}))
+        configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Content-Type": "application/json", "Authorization": f"Bearer {gkey}"}, os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"), {}))
     if okey:
         m = os.environ.get("OPENROUTER_MODEL", "poolside/laguna-m.1:free")
         configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Content-Type": "application/json", "Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/ai-suggestion"}, m, {"models": [m, "qwen/qwen3-coder:free", "openrouter/free"]}))
@@ -369,10 +325,6 @@ def stream_llm_response(messages, prefix="AI: "):
                 print("\033[1;31mError: All fallbacks/local servers are offline.\033[0m\n")
     return None
 
-if len(sys.argv) > 1 and sys.argv[1] == "--profile":
-    generate_system_profile()
-    sys.exit(0)
-
 if len(sys.argv) > 1 and sys.argv[1] == "--interactive":
     if len(sys.argv) >= 3:
         run_interactive_selection(" ".join(sys.argv[2:]))
@@ -404,6 +356,7 @@ if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
                 prompt = (
                     "You are a helpful, conversational local AI shell assistant with read-only terminal access.\n"
                     "Use the provided real-time system context (if available) to answer the user's question clearly, concisely, and directly.\n"
+                    "Do not use markdown formatting like bold asterisks (**) or header hashes (#) in your response, as the output is rendered directly in a raw terminal.\n"
                     "Do not state that you cannot access their system, as the data has already been provided to you.\n\n"
                 )
                 if system_context: prompt += f"### Real-time System Context:\n{system_context}\n\n"
@@ -439,6 +392,7 @@ if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
         prompt = (
             "You are a helpful, conversational local AI shell assistant with read-only terminal access.\n"
             "Use the provided real-time system context (if available) to answer the user's question clearly, concisely, and directly.\n"
+            "Do not use markdown formatting like bold asterisks (**) or header hashes (#) in your response, as the output is rendered directly in a raw terminal.\n"
             "Do not state that you cannot access their system, as the data has already been provided to you.\n\n"
         )
         if system_context: prompt += f"### Real-time System Context:\n{system_context}\n\n"

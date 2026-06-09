@@ -41,7 +41,7 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 
 # --- Skills (Prompt & Role Injection) ---
 [TOOL] cat ~/.config/local-ai/local-ai-agent/tools/skills/sysadmin.txt ---> sysadmin, load sysadmin
-[TOOL] cat ~/.config/local-ai/local-ai-agent/tools/skills/mysa.txt ---> mysa, load mysa
+[TOOL] cat ~/.config/local-ai/local-ai-agent/tools/skills/mysys.txt ---> mysys, load mysys
 
 
 # ==============================================================================
