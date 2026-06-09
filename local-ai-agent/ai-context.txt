@@ -120,7 +120,15 @@ nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-sp
 
 
 # ==============================================================================
-# SECTION 7: AUTOMATED CONTINUAL LEARNING
+# SECTION 7: SUBSECTION APPLICATIONS
+# ==============================================================================
+
+# --- Stopwatch ---
+$HOME/.config/local-ai/local-ai-agent/tools/subsec/stopwatch.py ---> stopwatch py, stop watch, sw
+$HOME/.config/local-ai/local-ai-agent/tools/subsec/stopwatch.sh ---> stopwatch sh, stop watch, sw
+
+# ==============================================================================
+# SECTION 8: AUTOMATED CONTINUAL LEARNING
 # ==============================================================================
 
 # --- Self-Learned System Shortcuts ---
