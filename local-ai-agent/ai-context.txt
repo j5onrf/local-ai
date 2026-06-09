@@ -90,9 +90,7 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 ~/.config/local-ai/basepage-tui/basetracker.py ---> base tracker, basetracker tui
 
 # --- Media & Volume Controllers (Pure Reactive) ---
-~/.config/local-ai/media-tui/media.py ---> media, cliamp
-~/.config/local-ai/media-tui/media.sh ---> media sh, media controller
-~/.config/local-ai/media-tui/media.lua ---> media lua
+~/.config/local-ai/local-ai-agent/tools/subsec/media/media.py ---> tuiamp, winamp, media
 
 # --- State & Workflow Management ---
 ~/.config/local-ai/local-ai-agent/tools/hyprstate/work ---> hyprstate work, workspace work
@@ -124,8 +122,8 @@ nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-sp
 # ==============================================================================
 
 # --- Stopwatch ---
-$HOME/.config/local-ai/local-ai-agent/tools/subsec/stopwatch.py ---> stopwatch py, stop watch, sw
-$HOME/.config/local-ai/local-ai-agent/tools/subsec/stopwatch.sh ---> stopwatch sh, stop watch, sw
+$HOME/.config/local-ai/local-ai-agent/tools/subsec/stopwatch/stopwatch.py ---> stopwatch py, stop watch, sw
+$HOME/.config/local-ai/local-ai-agent/tools/subsec/stopwatch/stopwatch.sh ---> stopwatch sh, stop watch, sw
 
 # ==============================================================================
 # SECTION 8: AUTOMATED CONTINUAL LEARNING
