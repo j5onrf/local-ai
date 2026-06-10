@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.7.9.16 [j5onrf] [06-08-26]
+# Local-Ai Agent v0.7.9.17 [j5onrf] [06-09-26]
 
 import sys, re, os, json, threading, time, math, subprocess
 import urllib.request as urlreq
@@ -216,6 +216,9 @@ def get_system_context(query):
         first_match = tool_match.split("\n")[0]
         if "|||" in first_match:
             intent, cmd = first_match.split("|||", 1)
+            # Strip DANGER_FLAGGED: for context generation tools since we trust our context.txt config
+            if cmd.startswith("DANGER_FLAGGED:"):
+                cmd = cmd.replace("DANGER_FLAGGED:", "", 1)
             if cmd.startswith("[TOOL]"):
                 tool_cmd = cmd.replace("[TOOL]", "").strip()
                 sys.stderr.write(f"\033[90m[sys] Executing: {tool_cmd}\033[0m\n"); sys.stderr.flush()
@@ -298,7 +301,8 @@ def stream_llm_response(messages, prefix="AI: "):
         req = urlreq.Request(url, data=json.dumps(body).encode("utf-8"), headers=headers, method="POST")
         try:
             spinner.start()
-            with urlreq.urlopen(req) as response:
+            # Added timeout=10 to prevent indefinite blocking when an endpoint hangs
+            with urlreq.urlopen(req, timeout=10) as response:
                 first, acc = True, []
                 for line in response:
                     dec = line.decode("utf-8").strip()

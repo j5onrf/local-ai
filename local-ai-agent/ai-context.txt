@@ -63,6 +63,9 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 [TOOL] curl -s "wttr.in/?format=3" ---> weather simple, rain forecast simple
 [TOOL] curl -s wttr.in ---> weather full, rain forecast full
 
+# --- System Time & Date (Real-time Clock Context) ---
+[TOOL] date ---> time, current time, what time is it, system date, system time
+
 
 # ==============================================================================
 # SECTION 4: STATIC ALIASES & SHELL SHORTCUTS
@@ -122,8 +125,11 @@ nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-sp
 # ==============================================================================
 
 # --- Stopwatch ---
-$HOME/.config/local-ai/local-ai-agent/tools/subsec/stopwatch/stopwatch.py ---> stopwatch py, stop watch, sw
-$HOME/.config/local-ai/local-ai-agent/tools/subsec/stopwatch/stopwatch.sh ---> stopwatch sh, stop watch, sw
+~/.config/local-ai/local-ai-agent/tools/subsec/stopwatch/stopwatch.py ---> stopwatch py, stop watch, sw
+~/.config/local-ai/local-ai-agent/tools/subsec/stopwatch/stopwatch.sh ---> stopwatch sh, stop watch, sw
+
+# --- Notes ---
+~/.config/local-ai/local-ai-agent/tools/subsec/notes/notes.sh ---> notes, open notes, add to notes
 
 # ==============================================================================
 # SECTION 8: AUTOMATED CONTINUAL LEARNING
@@ -132,3 +138,4 @@ $HOME/.config/local-ai/local-ai-agent/tools/subsec/stopwatch/stopwatch.sh ---> s
 # --- Self-Learned System Shortcuts ---
 ss -tuln ---> how do i view active network ports
 hostnamectl ---> how do i see my system information
+
