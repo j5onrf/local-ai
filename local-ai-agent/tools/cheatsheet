@@ -10,7 +10,7 @@ if [[ ! -f "$CONTEXT_FILE" ]]; then
     exit 1
 fi
 
-echo "# LOCAL-AI AGENT CHEATSHEET"
+echo "# CHEATSHEET"
 echo "This map represents your custom shortcuts and active targets."
 echo ""
 
