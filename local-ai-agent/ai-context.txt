@@ -41,8 +41,8 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 # ==============================================================================
 
 # --- Skills (Prompt & Role Injection) ---
-[TOOL] cat ~/.config/local-ai/local-ai-agent/tools/skills/sysadmin.txt ---> sysadmin, load sysadmin
-[TOOL] cat ~/.config/local-ai/local-ai-agent/tools/skills/mysys.md ---> mysys, load mysys
+[TOOL] cat ~/.config/local-ai/local-ai-agent/tools/skills/sysadmin.md ---> load sysadmin, inject sysadmin, sysadmin context
+[TOOL] cat ~/.config/local-ai/local-ai-agent/tools/skills/mysys.md ---> load mysys, inject mysys, mysys context
 
 
 # ==============================================================================
@@ -83,20 +83,19 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 
 
 # ==============================================================================
-# SECTION 4.5: GLOW SHORTCUTS
+# SECTION 5: MARKDOWN VIEWERS (GLOW RENDERING)
 # ==============================================================================
-# --- (This is your human viewer track. It uses glow to render colors and structure)
 
 glow ~/.config/local-ai/local-ai-agent/tools/skills/sysadmin.md ---> sysadmin, show sysadmin, sysadmin manual
 glow ~/.config/local-ai/local-ai-agent/tools/skills/mysys.md ---> mysys, show mysys, view mysys, mysys doc
 
 
 # ==============================================================================
-# SECTION 5: TUI (TERMINAL USER INTERFACE) PROGRAMS
+# SECTION 6: TUI (TERMINAL USER INTERFACE) PROGRAMS
 # ==============================================================================
 
 # --- AI Deep Research TUI ---
-~/.config/local-ai/research-tui/deep-research ---> ai-research, deep research, research, deep-research
+/home/j5/.config/local-ai/research-tui/deep-research ---> ai-research, deep research, research, deep-research
 
 # --- Custom TUI Applications ---
 ~/.config/local-ai/basepage-tui/basepage.py ---> base page, basepage tui, rss
@@ -110,11 +109,11 @@ glow ~/.config/local-ai/local-ai-agent/tools/skills/mysys.md ---> mysys, show my
 
 
 # ==============================================================================
-# SECTION 6: GRAPHICAL APPLICATIONS & WEBAPPS
+# SECTION 7: GRAPHICAL APPLICATIONS & WEBAPPS
 # ==============================================================================
 
 # --- Local-Ai Tablet Voice Bridge ---
-~/.config/local-ai/voice/voice-query ---> voice, voice query, voice bridge
+/home/j5/.config/local-ai/voice/voice-query ---> voice, voice query, voice bridge
 
 # --- System App Launcher (Ultra-Light Rofi-TUI) ---
 ~/.config/local-ai/local-ai-agent/tools/subsec/app-launcher/app-launcher.py ---> app, app launcher, launcher
@@ -126,7 +125,7 @@ nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-sp
 
 
 # ==============================================================================
-# SECTION 7: SUBSECTION APPLICATIONS
+# SECTION 8: SUBSECTION APPLICATIONS
 # ==============================================================================
 
 # --- Stopwatch ---
@@ -141,11 +140,11 @@ nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-sp
 ~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/clean ---> hyprstate clean, workspace clean
 ~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/gitcom ---> hyprstate gitcom, workspace gitcom
 
+
 # ==============================================================================
-# SECTION 8: AUTOMATED CONTINUAL LEARNING
+# SECTION 9: AUTOMATED CONTINUAL LEARNING
 # ==============================================================================
 
 # --- Self-Learned System Shortcuts ---
 ss -tuln ---> how do i view active network ports
 hostnamectl ---> how do i see my system information
-
