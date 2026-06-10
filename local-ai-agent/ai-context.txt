@@ -86,7 +86,7 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 # ==============================================================================
 
 # --- AI Deep Research TUI ---
-/home/j5/.config/local-ai/research-tui/deep-research ---> ai-research, deep research, research, deep-research
+~/.config/local-ai/research-tui/deep-research ---> ai-research, deep research, research, deep-research
 
 # --- Custom TUI Applications ---
 ~/.config/local-ai/basepage-tui/basepage.py ---> base page, basepage tui, rss
@@ -104,13 +104,14 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 # ==============================================================================
 
 # --- Local-Ai Tablet Voice Bridge ---
-/home/j5/.config/local-ai/voice/voice-query ---> voice, voice query, voice bridge
+~/.config/local-ai/voice/voice-query ---> voice, voice query, voice bridge
 
 # --- System App Launcher (Ultra-Light Rofi-TUI) ---
-~/.config/local-ai/app-launcher/app-launcher.py ---> app, app launcher, launcher
+~/.config/local-ai/local-ai-agent/tools/subsec/app-launcher/app-launcher.py ---> app, app launcher, launcher
 
 # --- Native Webapp Wrappers & Browsers ---
 omarchy-launch-webapp https://music.youtube.com/ ---> youtube music, yt music, youtube webapp
+
 nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-spotify-bunker" --app=https://open.spotify.com/ >/dev/null 2>&1 & ---> spotify music
 
 
