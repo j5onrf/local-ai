@@ -57,23 +57,27 @@ Add your shortcuts, dynamic tool integrations, and project workspaces to `~/.con
 
 ```text
 # ==============================================================================
-# SECTION 2: ON-DEMAND SYSTEM PROMPTS & ROLE INJECTIONS (SKILLS)
+# SECTION 1: WORKSPACE INITIALIZERS & BRIDGES
 # ==============================================================================
 
-# --- Unified Markdown Skills (Tool-Translation for AI, MDCat for Human) ---
-[TOOL] cat ~/.config/local-ai/local-ai-agent/tools/skills/sysadmin.md ---> sysadmin, show sysadmin, sysadmin manual
-[TOOL] cat ~/.config/local-ai/local-ai-agent/tools/skills/mysys.md ---> mysys, show mysys, view mysys, mysys doc
+# --- OpenCode Direct Terminal Launcher ---
+~/.config/local-ai/opencode-bridge/opencode-bridge ---> ocb, opencode bridge
+
+# --- Standard Codebase Workspaces (Dynamic Auto-Init) ---
+# (Triggers standard ai init on the directory tree when matched)
+~/Projects/qwen-hypr ---> projects qwen, projects
+
+# --- Specialized Codebase Workspaces (Skill-Primed) ---
+# (Specialized project initializations primed with the "coder" Skill!)
+ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 
 
 # ==============================================================================
-# SECTION 3: DYNAMIC CONTEXT-INJECTED TOOLS (RAG)
+# SECTION 4: STATIC ALIASES & SHELL SHORTCUTS
 # ==============================================================================
 
-# --- System Logs & Diagnostics (Compressed Stream Triage) ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/ai-log-checker ---> ai log, check errors, system crashed, events, ai-log
-
-# --- System Resources & Telemetry (Active Diagnostics) ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/ai-system-diagnosis ---> system health, system diagnosis, why is my system slow
+# --- Local-Ai Agent Blueprint Map (Cheatsheet) ---
+~/.config/local-ai/local-ai-agent/tools/cheatsheet | mdcat ---> cs, cheatsheet, cheat sheet
 ```
 
 ---
