@@ -80,6 +80,13 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 # --- Server Lifecycle Management ---
 ~/.config/local-ai/local-ai-agent/tools/kill-ai-servers ---> killserver
 
+
+# ==============================================================================
+# SECTION 4.5: GLOW SHORTCUTS
+# ==============================================================================
+# --- (This is your human viewer track. It uses glow to render colors and structure)
+
+glow ~/.config/local-ai/local-ai-agent/tools/skills/sysadmin.md ---> sysadmin, show sysadmin, sysadmin manual
 glow ~/.config/local-ai/local-ai-agent/tools/skills/mysys.md ---> mysys, show mysys, view mysys, mysys doc
 
 
