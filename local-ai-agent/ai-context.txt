@@ -7,7 +7,7 @@
 # Directional Syntax Guide:
 # 1. Directory Path   : Indexes workspace & launches standard AI Workspace.
 # 2. 'ai init' + Skill: Indexes workspace & launches AI pre-primed with Skill.
-# 3. '[TOOL] command' : Executes local tool/utility (cat, mdcat, script) for AI context.
+# 3. '[TOOL] command' : Runs local utility (cat, script) to inject dynamic Markdown context.
 # 4. Raw Command      : Native terminal alias, interactive TUI, or document viewer.
 # ==============================================================================
 
@@ -38,9 +38,9 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 # SECTION 2: ON-DEMAND SYSTEM PROMPTS & ROLE INJECTIONS (SKILLS)
 # ==============================================================================
 
-# --- Unified Markdown Skills (Tool-Translation for AI, mdcat for Human) ---
-[TOOL] mdcat ~/.config/local-ai/local-ai-agent/tools/skills/sysadmin.md ---> sysadmin, show sysadmin, sysadmin manual
-[TOOL] mdcat ~/.config/local-ai/local-ai-agent/tools/skills/mysys.md ---> mysys, show mysys, view mysys, mysys doc
+# --- Skills (Prompt & Role Injection) ---
+[TOOL] cat ~/.config/local-ai/local-ai-agent/tools/skills/sysadmin.md ---> sysadmin, show sysadmin, sysadmin manual
+[TOOL] cat ~/.config/local-ai/local-ai-agent/tools/skills/mysys.md ---> mysys, show mysys, view mysys, mysys doc
 
 
 # ==============================================================================
@@ -48,7 +48,7 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 # ==============================================================================
 
 # --- System Logs & Diagnostics (Compressed Stream Triage) ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/ai-log-checker ---> ai log, check errors, system crashed, events
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/ai-log-checker ---> ai log, check errors, system crashed, events, ai-log
 
 # --- System Resources & Telemetry (Active Diagnostics) ---
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/ai-system-diagnosis ---> system health, system diagnosis, why is my system slow
@@ -70,8 +70,8 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 # SECTION 4: STATIC ALIASES & SHELL SHORTCUTS
 # ==============================================================================
 
-# --- Local-Ai Agent Blueprint Map (Cheat Sheet) ---
-~/.config/local-ai/local-ai-agent/tools/blueprint ---> blueprint, show blueprint, cheatsheet, cheat sheet
+# --- Local-Ai Agent Blueprint Map (Cheatsheet) ---
+~/.config/local-ai/local-ai-agent/tools/cheatsheet | mdcat ---> cs, cheatsheet, cheat sheet
 
 # --- AI-Generated Git Commits ---
 ~/.config/local-ai/local-ai-agent/tools/agentic/ai-commit ---> ai-commit, git-commit, git commit

@@ -1,6 +1,6 @@
-# Local-AI Agent (v0.7.9.13) — Documentation
+# Local-AI Agent (v0.7.9.21) — Documentation
 
-An adaptive, local/cloud AI shell assistant designed to conform to your terminal environment with zero background overhead. By leveraging a high-speed, rarity-weighted (TF-IDF) sparse search index alongside local or cloud LLMs, it provides instant command suggestions, executes local RAG tools, manages specialized project skills, and handles natural-language conversational queries. It features a zero-daemon local network Voice Query Bridge for hands-free desktop automation and is capable of continuous offline learning by automatically capturing and inoculating terminal shortcuts directly from LLM outputs.
+An adaptive, local/cloud AI shell assistant designed to conform to your terminal environment with zero background overhead. By leveraging a high-speed, rarity-weighted (TF-IDF) sparse search index alongside local or cloud LLMs, it provides instant command suggestions, executes local RAG tools, manages specialized project skills, and handles natural-language conversational queries. It features a zero-daemon local network Voice Query Bridge for hands-on desktop automation and is capable of continuous offline learning by automatically capturing and inoculating terminal shortcuts directly from LLM outputs.
 
 ---
 
@@ -11,8 +11,8 @@ The project operates under an on-demand execution model designed to protect term
 * **Zero-Background Footprint:** No background daemons, cron-jobs, or continuous CPU-polling threads are used. Your shell experiences 0% idle RAM and 0% idle CPU overhead.
 * **Dual-Layer Execution:** 
   * **Standard suggestions (direct shell inputs):** Bypasses the LLM completely. Suggestion queries are evaluated locally via an upgraded, rarity-weighted sparse index (using a customized Sørensen-Dice similarity metric with log-scale Inverse Document Frequency weights) in under 2ms.
-  * **Conversational queries (using the `ai` prefix):** Run on-demand. The script utilizes a robust, prioritized fallback hierarchy: Gemini Cloud API -> OpenRouter Cloud API -> Custom Cloud API -> Local AI Server (such as `llama.cpp` or `Ollama` running on port 8080).
-* **Zero-Configuration Auto-Bootstrap:** On first-run, if no system profile is found, the script automatically executes safe, non-blocking local diagnostics to query your operating system, active kernel, CPU, GPU, and window manager to generate your bespoke `mysys.txt` profile with zero user intervention.
+  * **Conversational queries (using the `ai` prefix):** Run on-demand. The script utilizes a prioritized fallback hierarchy: Gemini Cloud API -> OpenRouter Cloud API -> Custom Cloud API -> Local AI Server (such as `llama.cpp` or `Ollama` running on port 8080).
+* **Zero-Configuration Auto-Bootstrap:** On first-run, if no system profile is found, the script automatically executes safe, non-blocking local diagnostics to query your operating system, active kernel, CPU, GPU, and window manager to generate your bespoke `mysys.md` profile with zero user intervention.
 * **On-Demand Workspace Agents (`ai init`):** A custom indexing routine that scans your project directories, generates structural file trees, and launches a persistent, multi-turn copilot session targeted specifically to your codebase.
 * **Offline Resilience:** If your local AI server and internet are offline, your command suggestions and custom aliases continue to work locally and instantly. Only conversational LLM chat requests are safely blocked.
 
@@ -141,7 +141,7 @@ Your agent's brain is managed by a plain-text configuration master file.
 
 *Example:*
 ```text
-omarchy-launch-webapp https://music.youtube.com/ ---> youtube music
+[TOOL] cat ~/.config/local-ai/local-ai-agent/tools/skills/mysys.md ---> mysys
 ```
 
 ### A. Automatic Compilation and Rarity Weighting
@@ -159,6 +159,13 @@ To prevent index corruption or empty cache loads from breaking command suggestio
 2. **Malformed JSON Recovery:** If the index file contains corrupt or interrupted data, it catches `json.JSONDecodeError` and forces a fresh rebuild.
 3. **Empty Index Validation (`[]`):** If the index successfully loads but parses as empty (`[]`) while the source configuration file actually has text lines, the script flags this as a logic failure and immediately forces a rebuild.
 
+### C. Collapsed 4-Step Syntax Guide
+To keep the file indexer uncluttered, the configuration rules are managed by four standardized directives defined in the blueprint's commented header:
+1. **Directory Path:** Indexes workspace and launches standard AI Workspace.
+2. **'ai init' + Skill:** Indexes workspace and launches AI pre-primed with Skill.
+3. **'[TOOL] command':** Executes local tool/utility (cat, script) for AI context.
+4. **Raw Command:** Native terminal alias, interactive TUI, or document viewer.
+
 ---
 
 ## 4. Active System Tools, Auto-Routing, & Project Workspace Agents
@@ -166,36 +173,42 @@ To prevent index corruption or empty cache loads from breaking command suggestio
 ### A. Zero-Bloat Semantic Auto-Routing
 To prevent your custom hardware profile specifications from bloating the prompt context of every conversational query, your agent uses runtime semantic routing.
 
-The script monitors your queries against a set of `SYSTEM_KEYWORDS` (such as `system`, `gpu`, `kernel`, `storage`, `network`, `disk`). If your tokenized query intersects with any of these keywords, the script silently loads `/tools/skills/mysys.txt` behind the scenes and prepends it to the system context. For general non-system tasks, the profile is completely bypassed to conserve context window space.
+The script monitors your queries against a set of `SYSTEM_KEYWORDS` (such as `system`, `gpu`, `kernel`, `storage`, `network`, `disk`). If your tokenized query intersects with any of these keywords, the script silently loads `/tools/skills/mysys.md` behind the scenes and prepends it to the system context [1.1]. For general non-system tasks, the profile is completely bypassed to conserve context window space.
 
 ### B. On-Demand Skill Prefix Routing
 You can dynamically execute queries with specialized role profiles on the fly by prefixing your command with the skill name (e.g., `ai coder explain this loop` or `ai admin check this configure`).
 
-On execution, the script checks if the first word of your single-turn query matches a file inside your `tools/skills/` directory. If it matches, it reads the skill profile as your system prompt, strips that single keyword from your query, and forwards the rest of the question cleanly to the LLM.
+On execution, the script checks if the first word of your single-turn query matches a file inside your `tools/skills/` directory. If it matches, it reads the `.md` skill profile as your system prompt, strips that single keyword from your query, and forwards the rest of the question cleanly to the LLM [1.1].
 
 ### C. Local Context-Injected RAG (`[TOOL]`)
-You can turn any standard Linux command, package, binary, or custom script into an AI tool by prefixing the command with `[TOOL]` in your `ai-context.txt`:
+You can turn any standard Linux command, package, binary, or custom script into an AI tool by prefixing the command with `[TOOL]` in your `ai-context.txt` [1.1]:
 ```text
 [TOOL] df -h / ---> check my nvme drive, is my hard drive full, show disk space
 ```
 When you run a conversational query targeting that intent, the script executes the tool behind the scenes (protected by a **15-second safety timeout**), captures its raw stdout, and injects it directly into the LLM's prompt context as real-time system data.
 
-### D. Agentic Diagnostic Tool (`ai-status`)
-The system features a dedicated local diagnostic script located at `~/.config/local-ai/local-ai-agent/tools/agentic/ai-status`. It operates as a dual-purpose tool:
-* **As a Native Shell Shortcut (Section 4):** Typing `ai-status` on the command line invokes the suggestion carousel, strips the `[TOOL]` prefix, and prints a beautiful colorized diagnostics panel showing key masks, endpoint connectivity, and your active fallback routing.
-* **As an Agentic Chat Tool (Section 3):** Typing `status check` inside an active chat session executes the script silently. It injects active API diagnostics and strict markdown instruction sets directly into the LLM context, enabling the model to conversationalize your connection details in under two sentences.
+#### The Dual-Track Formatting Pipeline (Smart Fallback & Auto-Piping)
+To achieve maximum ease of use on the human side while guaranteeing clean inputs on the AI side, the agent implements a transparent formatting pipeline:
+1. **The Human Terminal (Interactive Mode):** When a user runs a `[TOOL]` mapped command manually, the TUI interpreter `clean_tool_prefix(cmd)` automatically intercepts the command [1.1]. If the command is a script or text file that does not contain a viewer prefix, it dynamically appends a pipe (`| mdcat`) on the fly [1.1]. You receive a beautifully styled terminal document that respects your native terminal themes and colors [1.1, 1.2.7].
+2. **The AI Agent (Background Mode):** When running a background tool call, the Python script executes `run_local_tool(cmd)`. This function uses a global regex sweep (`re.sub(r'\bmdcat\b', 'cat', cmd)`) to translate `mdcat` commands (including trailing pipes) into raw `cat` commands behind the scenes [1.1]. The tool runs, pipes to `cat` (returning the unformatted, raw Markdown to standard output), and feeds the clean text directly to the LLM without any ANSI terminal coloring markers [1.1].
+3. **Dynamic Portability Fallback:** If you use this configuration on a system where `mdcat` is not installed, the standard-library path helper (`shutil.which("mdcat")`) automatically catches the absence and falls back to native `cat` for you, ensuring that commands never crash or return errors [1.1].
+
+### D. Agentic Diagnostic Tool (`ai-status` & `ai-system-diagnosis`)
+The system features dedicated local diagnostic scripts located at `~/.config/local-ai/local-ai-agent/tools/agentic/`. They operate as dual-purpose tools:
+* **As a Native Shell Shortcut (Section 4):** Typing `aistat` or `system health` on the command line invokes the suggestion carousel, strips the `[TOOL]` prefix, and automatically pipes the output into `mdcat`, rendering a beautiful, high-contrast diagnostics panel showing key masks, active process hogs, and your active fallback routing [1.1].
+* **As an Agentic Chat Tool (Section 3):** Typing `status check` or `system diagnostics` inside an active chat session executes the scripts silently. It automatically translates `| mdcat` to `| cat`, injecting raw connectivity details, system loads, and strict markdown rules directly into the LLM context, enabling the model to conversationalize your diagnostic details [1.1].
 
 ### E. Project Workspace Agents (`ai init`)
 When analyzing codebase folders, running raw chat queries lacks necessary structural context. Running `ai init <path>` triggers a dedicated indexing binary (`tools/init-projects`) that:
 1. Resolves the absolute directory path and extracts the project name.
 2. Generates a recursive directory structure map down to three folder levels.
 3. Packages workspace-specific agent guidelines and system instructions.
-4. Permanently caches the compiled payload inside the isolated `projects/` directory under a path-sanitized filename (e.g., `projects/home-user-Projects-quickshell.txt`).
+4. Permanently caches the compiled payload inside the isolated `projects/` directory under a path-sanitized filename (e.g., `projects/home-user-Projects-quickshell.txt` in a clean, code-fenced Markdown format).
 
 This bypasses manual initialization cycles, allowing the Workspace Agent to read your directory trees, recognize active config files (like `hypr_api_ref.lua`), and respond to design questions with precise codebase awareness.
 
 ### F. Specialized Workspace Initialization with Custom Skills
-Rather than using heavy wrapper utilities or custom prefixes, you can initialize a project with a custom role-persona by simply appending the skill name directly after your directory path in your master configuration file:
+Rather than using heavy wrapper utilities or custom prefixes, you can initialize a project with a custom role-persona by simply appending the skill name directly after your directory path in your master configuration file [1.1]:
 
 ```text
 # --- Specialized Project Initializer (Primes workspace with "coder" Skill!) ---
@@ -205,7 +218,7 @@ Rather than using heavy wrapper utilities or custom prefixes, you can initialize
 When you search for `projects quickshell` and execute the suggestion:
 1. The Bash hook (`ai_handle_missing`) detects that the matched command consists of a valid directory path followed by a trailing word (`coder`).
 2. It automatically separates the path from the skill name and executes: `ai init ~/Projects/quickshell coder`.
-3. The `init-projects` worker locates the matching `/skills/coder.txt` instruction sheet and merges it directly into the compiled project context file.
+3. The `init-projects` worker locates the matching `/skills/coder.md` instruction sheet and merges it directly into the compiled project context file [1.1].
 4. When `alias-ai.py` boots, it dynamically scans the payload, extracts the active skill tag, and displays it highlighted inside your starting banner:
    ```text
    AI Agent Session Initialized | Context Loaded [coder] | Ctrl+C to exit.
@@ -216,7 +229,7 @@ To make project initialization frictionless, you can map absolute directory path
 ```text
 ~/Projects/qwen-hypr ---> projects qwen, projects
 ```
-If you search for `projects qwen` and execute the suggestion, the `ai_handle_missing` shell hook detects that the target command is an existing directory path, bypasses standard execution, and seamlessly launches `ai init on the target path automatically.
+If you search for `projects qwen` and execute the suggestion, the `ai_handle_missing` shell hook detects that the target command is an existing directory path, bypasses standard execution, and seamlessly launches `ai init` on the target path automatically.
 
 ---
 
@@ -226,7 +239,7 @@ If you search for `projects qwen` and execute the suggestion, the `ai_handle_mis
 To prevent natural conversational padding (like *"what about...", "is it...", "do you have..."*) from causing keyword collisions in your local set-intersection matrix, the `tokenize()` function automatically filters out a pre-compiled set of common English stop words. This ensures that a phrase like `"is it going to rain in the next few days?"` resolves strictly to `["rain"]` under the hood.
 
 ### B. Sparse Index Matching (Rarity Math)
-Instead of treated all matching terms as equal integer counts, the similarity algorithm uses rarity-weighted sparse matching scores to evaluate the best matches.
+Instead of treating all matching terms as equal integer counts, the similarity algorithm uses rarity-weighted sparse matching scores to evaluate the best matches.
 
 For every index candidate, the matching calculation divides the sum of the matching term IDF weights by the total weights of the query and candidate entry:
 
@@ -263,10 +276,14 @@ The Voice Bridge overcomes this limitation by implementing a self-healing secure
 3. **Push-to-Talk (Hold to Speak)**: By capturing pointer events (`pointerdown` / `pointerup`), the browser records only while your finger is physically pressing the button [1, 2]. The exact millisecond you release your finger, it terminates recording and POSTs the raw binary audio array to your PC [1, 2].
 4. **Cloud-Assisted Multimodal Transcription**: Your Python server base64-encodes the raw audio array and forwards it directly to Google's active stable `gemini-3.1-flash-lite` model over the network [2]. This completely bypasses local model compilation, packages, and dependencies while returning high-precision transcriptions with zero local overhead [2].
 
+### G. High-Speed 1-to-1 Markdown Cheatsheet Generator (`cheatsheet`)
+To replace traditional, bloated help outputs or hardcoded aliases, the project features a dedicated cheatsheet generator located at `~/.config/local-ai/local-ai-agent/tools/cheatsheet`.
+* **Dynamic Content Extraction**: The script reads your live `ai-context.txt` master mapping index on the fly, dynamically parses out Section Headers, and collapses multi-synonym aliases down to their single, primary trigger keyword or phrase [1.1].
+* **Unified Pipeline Filtering**: It automatically strips absolute directory paths down to their base filenames and extracts raw URLs from complex command wrappers [1.1]. It is formatted as a beautiful, grid-aligned Markdown table that respects your terminal's native colors and fonts when rendered via `mdcat` [1.1, 1.2.7].
+
 ---
 
 > **Status: Alpha** | Built because other agents are too heavy; it won't leave Alpha until everything I want works perfectly.
 This is a minimal base template for developers, but primarily customized to make my personal system function exactly how I want.
 
 <br><br>
-

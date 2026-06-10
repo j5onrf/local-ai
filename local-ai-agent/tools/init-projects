@@ -31,8 +31,10 @@ SAFE_NAME="${SAFE_NAME#-}"
 CONTEXT_OUT="$CONTEXT_DIR/${SAFE_NAME}.txt"
 
 {
-    echo "=== ACTIVE PROJECT WORKSPACE ==="
-    echo "[INSTRUCTIONS FOR AI]:"
+    echo "# ACTIVE PROJECT WORKSPACE"
+    echo "System context cache for codebase-aware copilot executions."
+    echo ""
+    echo "## Copilot Instructions"
     echo "1. Act directly as a local development agent and copilot embedded in this workspace."
     echo "2. Focus entirely on providing code solutions, refactoring, and directory tasks tailored strictly to this structure."
     echo "3. Prioritize clean, minimal snippets using the file names and architectural layouts found below."
@@ -40,30 +42,45 @@ CONTEXT_OUT="$CONTEXT_DIR/${SAFE_NAME}.txt"
     
     # Check if a custom skill context is requested and exists
     if [ -n "$SKILL_NAME" ]; then
-        # Removed "local" keyword to comply with POSIX standalone script standards
-        skill_file="/home/j5/.config/local-ai/local-ai-agent/tools/skills/${SKILL_NAME}.txt"
+        # Updated to check for the migrated .md skill files
+        skill_file="/home/j5/.config/local-ai/local-ai-agent/tools/skills/${SKILL_NAME}.md"
         if [ -f "$skill_file" ]; then
             echo ""
-            echo "[ACTIVE SKILL CONTEXT: ${SKILL_NAME}]"
+            echo "---"
+            echo ""
+            echo "## Active Skill Context: ${SKILL_NAME}"
+            echo ""
             cat "$skill_file"
         else
             echo ""
-            echo "[WARNING: Requested skill context '${SKILL_NAME}' not found at $skill_file]" >&2
+            echo "---"
+            echo ""
+            echo "> **Warning**: Requested skill context \`${SKILL_NAME}\` not found at \`$skill_file\`." >&2
         fi
     fi
     
-    echo "--------------------------------"
-    echo "[WORKSPACE_INFO] Project: $PROJECT_NAME | Path: $TARGET_DIR"
-    echo "--------------------------------"
-    echo "[WORKSPACE_FILE_TREE]"
+    echo ""
+    echo "---"
+    echo ""
+    echo "## Workspace Configuration"
+    echo "* **Project Name**: \`$PROJECT_NAME\`"
+    echo "* **Absolute Path**: \`$TARGET_DIR\`"
+    echo ""
+    echo "---"
+    echo ""
+    echo "## Codebase File Tree"
+    echo "\`\`\`text"
     
     if cd "$TARGET_DIR" 2>/dev/null; then
         find . -maxdepth 3 -not -path '*/.*' | sed 's|^\./||' | sort | sed 's/^/  - /'
     else
         echo "  - Error: Unable to read directory tree paths."
     fi
-    echo "--------------------------------"
-    echo "[CONTEXT_STATUS] Environment successfully loaded. Awaiting user commands."
+    echo "\`\`\`"
+    echo ""
+    echo "---"
+    echo ""
+    echo "> **Context Status**: Environment successfully loaded. Awaiting user commands."
 } > "$CONTEXT_OUT"
 
 echo -e "\033[1;32mProject '$PROJECT_NAME' indexed successfully.\033[0m"

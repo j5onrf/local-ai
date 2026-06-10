@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# cheatsheet - High-Speed 1-to-1 Markdown Cheatsheet Generator v3.2.0
+
+set -euo pipefail
+
+CONTEXT_FILE="$HOME/.config/local-ai/local-ai-agent/ai-context.txt"
+
+if [[ ! -f "$CONTEXT_FILE" ]]; then
+    echo "❌ Error: Configuration file not found at $CONTEXT_FILE" >&2
+    exit 1
+fi
+
+echo "# LOCAL-AI AGENT BLUEPRINT MAP"
+echo "This map represents your custom shortcuts and active targets."
+echo ""
+
+table_open=false
+
+while IFS= read -r line || [[ -n "$line" ]]; do
+    # Trim leading/trailing whitespace
+    line=$(echo "$line" | xargs)
+
+    # Detect and print Section Headers
+    if [[ "$line" =~ ^#\ SECTION\ ([0-9]+):\ (.*) ]]; then
+        sec_num="${BASH_REMATCH[1]}"
+        sec_title="${BASH_REMATCH[2]}"
+        
+        if [ "$table_open" = true ]; then
+            echo "" # Close previous block cleanly
+        fi
+        
+        echo "## ${sec_num}. ${sec_title}"
+        echo ""
+        echo "| Shortcut | Target Command |"
+        echo "| :--- | :--- |"
+        table_open=true
+        continue
+    fi
+
+    # Skip other comments or empty lines
+    if [[ "$line" =~ ^# ]] || [[ -z "$line" ]]; then
+        continue
+    fi
+
+    # Parse command mappings strictly splitting on the "--->" delimiter
+    if [[ "$line" == *"--->"* ]]; then
+        cmd=$(echo "${line%%--->*}" | xargs)      # Strip everything from first ---> onwards
+        intents=$(echo "${line#*--->}" | xargs)  # Strip everything up to first --->
+
+        # Strip standard tool prefixes if present
+        if [[ "$cmd" == "[TOOL]"* ]]; then
+            cmd="${cmd#\[TOOL\]}"
+            cmd=$(echo "$cmd" | xargs)
+        fi
+
+        # Extract strictly the first primary keyword or trigger phrase
+        primary_intent=$(echo "$intents" | cut -d',' -f1 | xargs)
+
+        # Clean command: If it contains a URL (http/https), extract and show JUST the URL
+        if [[ "$cmd" =~ (https?://[^[:space:]]+) ]]; then
+            cleaned_cmd="${BASH_REMATCH[1]}"
+            cleaned_cmd=$(echo "$cleaned_cmd" | tr -d '"' | tr -d "'")
+        else
+            # Split command into words and strip paths down to base filenames
+            cleaned_cmd=""
+            for word in $cmd; do
+                if [[ "$word" =~ ^[/~] ]] || [[ "$word" =~ ^\.\.?/ ]]; then
+                    cleaned_word=$(basename "$word")
+                else
+                    cleaned_word="$word"
+                fi
+                if [ -n "$cleaned_cmd" ]; then
+                    cleaned_cmd="$cleaned_cmd $cleaned_word"
+                else
+                    cleaned_cmd="$cleaned_word"
+                fi
+            done
+        fi
+
+        # Escape pipes inside command strings to avoid breaking the markdown table structure
+        escaped_cmd=$(echo "$cleaned_cmd" | sed 's/|/\\|/g')
+
+        # Print Markdown table row
+        echo "| $primary_intent | $escaped_cmd |"
+    fi
+done < "$CONTEXT_FILE"
+
+echo ""

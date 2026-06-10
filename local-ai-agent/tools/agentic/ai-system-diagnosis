@@ -5,39 +5,64 @@
 # Fast exit on any errors
 set -euo pipefail
 
-echo "=== AI ACTIVE SYSTEM DIAGNOSTICS ==="
-echo "[SYSTEM] OS/Kernel: $(uname -sr)"
-echo "[SYSTEM] Display Server: ${XDG_SESSION_TYPE:-Unknown}"
+echo "# SYSTEM DIAGNOSTIC REPORT"
+echo ""
+echo "* **Kernel**: \`$(uname -sr)\` | **Display Server**: \`${XDG_SESSION_TYPE:-Unknown}\`"
+echo ""
+echo "---"
+echo ""
+echo "## CPU RESOURCES"
 
 # 1. Real-Time CPU Load Average (1m, 5m, 15m)
 if [ -f /proc/loadavg ]; then
-    loadavg=$(cat /proc/loadavg | awk '{print "1m: "$1", 5m: "$2", 15m: "$3}')
-    echo "[CPU] Load Average: $loadavg"
+    loadavg=$(awk '{print "1m: "$1" | 5m: "$2" | 15m: "$3}' /proc/loadavg)
+    echo "* **Load Average**: \`$loadavg\`"
 fi
 
-# 2. Top 3 CPU-Hogging Processes (C-compiled sorting, robust comma-space join)
-top_cpu=$(ps -eo comm,%cpu --sort=-%cpu | head -n 4 | tail -n +2 | awk '{print $1" ("$2"%)"}' | awk '{printf "%s%s", (NR==1?"":", "), $0} END {print ""}' || echo "None")
-echo "[CPU_HOGS] Top CPU Processes: $top_cpu"
+# 2. Top 3 CPU-Hogging Processes
+top_cpu=$(ps -eo comm,%cpu --sort=-%cpu | head -n 4 | tail -n +2 | awk '{print "`"$1"` ("$2"%)"}' | awk '{printf "%s%s", (NR==1?"":", "), $0} END {print ""}' || echo "*None*")
+echo "* **Top CPU Processes**: $top_cpu"
+
+echo ""
+echo "## MEMORY (RAM)"
 
 # 3. RAM Info & Top 3 Memory-Hogging Processes
 if [ -f /proc/meminfo ]; then
     ram_total=$(grep MemTotal /proc/meminfo | awk '{print $2}')
     ram_free=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
     ram_used=$((ram_total - ram_free))
-    echo "[MEMORY] RAM Space: Total: $((ram_total / 1024))MB, Used: $((ram_used / 1024))MB, Free: $((ram_free / 1024))MB"
+    
+    ram_total_mb=$((ram_total / 1024))
+    ram_used_mb=$((ram_used / 1024))
+    ram_free_mb=$((ram_free / 1024))
+    
+    echo "* **Memory Space**: Total: \`${ram_total_mb} MB\` | Used: \`${ram_used_mb} MB\` | Free: \`${ram_free_mb} MB\`"
 fi
-top_mem=$(ps -eo comm,%mem --sort=-%mem | head -n 4 | tail -n +2 | awk '{print $1" ("$2"%)"}' | awk '{printf "%s%s", (NR==1?"":", "), $0} END {print ""}' || echo "None")
-echo "[MEM_HOGS] Top Memory Processes: $top_mem"
+
+top_mem=$(ps -eo comm,%mem --sort=-%mem | head -n 4 | tail -n +2 | awk '{print "`"$1"` ("$2"%)"}' | awk '{printf "%s%s", (NR==1?"":", "), $0} END {print ""}' || echo "*None*")
+echo "* **Top Memory Processes**: $top_mem"
+
+echo ""
+echo "## STORAGE (ROOT)"
 
 # 4. Disk Space Information
-echo "[STORAGE] Root Disk Space: $(df -h / | awk 'NR==2{print "Total: "$2", Used: "$3", Free: "$4", Disk_Usage: "$5}')"
+if command -v df >/dev/null 2>&1; then
+    disk_total=$(df -h / | awk 'NR==2{print $2}')
+    disk_used=$(df -h / | awk 'NR==2{print $3}')
+    disk_free=$(df -h / | awk 'NR==2{print $4}')
+    disk_usage=$(df -h / | awk 'NR==2{print $5}')
+    echo "* **Root Disk Space**: Total: \`${disk_total}\` | Used: \`${disk_used}\` | Free: \`${disk_free}\` | Usage: \`${disk_usage}\`"
+fi
 
-# 5. Failed Systemd Services (Plain, no bullet points, no legends)
+echo ""
+echo "## SYSTEM SERVICES"
+
+# 5. Failed Systemd Services
 if command -v systemctl >/dev/null 2>&1; then
-    failed_services=$(systemctl --failed --state=failed --plain --no-legend 2>/dev/null | awk '{print $1}' | grep "\." | awk '{printf "%s%s", (NR==1?"":", "), $0} END {print ""}' || echo "")
+    failed_services=$(systemctl --failed --state=failed --plain --no-legend 2>/dev/null | awk '{print $1}' | grep "\." | awk '{print "`"$1"`"}' | awk '{printf "%s%s", (NR==1?"":", "), $0} END {print ""}' || echo "")
     if [ -n "$failed_services" ]; then
-        echo "[SERVICES] Failed Units: $failed_services"
+        echo "* **Failed Units**: $failed_services"
     else
-        echo "[SERVICES] Failed Units: None"
+        echo "* **Failed Units**: *None*"
     fi
 fi

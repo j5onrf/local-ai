@@ -1,4 +1,4 @@
-# Local-AI Agent (v0.7.9.16)
+# Local-AI Agent (v0.7.9.21)
 
 <img alt="Image_5e1xpv5e1xpv5e1x" src="https://github.com/user-attachments/assets/ee9fe3e4-ef1c-497c-b4f1-84e17458daa2" />
 
@@ -25,9 +25,10 @@ All configurations, automations, and custom project workspaces are managed throu
 | | **Rarity-Weighted Search** | Upgraded log-scale TF-IDF/BM25 sparse indexing weights rare terms (like `hyprctl`) over noise to eliminate conflicts. |
 | **Resiliency** | **Cascading Fallback Chain** | Seamlessly cascades from Gemini $\rightarrow$ OpenRouter $\rightarrow$ Custom Cloud down to local servers if an endpoint drops offline. |
 | | **OpenRouter Failover** | Sends a prioritized model array payload to automatically route around free-tier model congestion on the server side. |
-| **Integration** | **Zero-Bloat Auto-Routing** | Automatically injects your system specs (`mysys.txt`) *only* when queries contain system keywords (e.g. `gpu`, `kernel`). |
+| **Integration** | **Zero-Bloat Auto-Routing** | Automatically injects your system specs (`mysys.md`) *only* when queries contain system keywords (e.g. `gpu`, `kernel`). |
 | | **Voice Query Bridge** | Connects any Wi-Fi tablet or phone over local HTTPS/HTTP to record audio, transcribing natively on the cloud with 0% PC CPU load. |
 | | **Continual Learning** | Extracts commands from LLM outputs and prompts you to save them as offline shortcuts, bypassing the LLM next time. |
+| | **Dynamic Viewer Pipeline** | Intercepts manual `[TOOL]` calls, automatically piping them to `mdcat` for terminal rendering while translating them to `cat` for AI context tasks. |
 | **Portability** | **Zero-Config Bootstrap** | Silent local diagnostics query your CPU, GPU, and window manager on first-run, auto-generating your system profile. |
 | | **Auditable Codebase** | Designed with full transparency in under 360 lines of highly clean, standard-library Python code. |
 
@@ -56,39 +57,49 @@ Add your shortcuts, dynamic tool integrations, and project workspaces to `~/.con
 
 ```text
 # ==============================================================================
-# SECTION 1: WORKSPACE INITIALIZERS & BRIDGES
+# SECTION 2: ON-DEMAND SYSTEM PROMPTS & ROLE INJECTIONS (SKILLS)
 # ==============================================================================
 
-# --- OpenCode Direct Terminal Launcher ---
-~/.config/local-ai/opencode-bridge/opencode-bridge ---> ocb, opencode bridge
-
-# --- Standard Codebase Workspaces (Dynamic Auto-Init) ---
-# (Triggers standard ai init on the directory tree when matched)
-~/Projects/qwen-hypr ---> projects qwen, projects
-
-# --- Specialized Codebase Workspaces (Skill-Primed) ---
-# (Specialized project initializations primed with the "coder" Skill!)
-ai init ~/Projects/quickshell coder ---> projects quickshell, projects
+# --- Unified Markdown Skills (Tool-Translation for AI, MDCat for Human) ---
+[TOOL] cat ~/.config/local-ai/local-ai-agent/tools/skills/sysadmin.md ---> sysadmin, show sysadmin, sysadmin manual
+[TOOL] cat ~/.config/local-ai/local-ai-agent/tools/skills/mysys.md ---> mysys, show mysys, view mysys, mysys doc
 
 
 # ==============================================================================
-# SECTION 4: STATIC ALIASES & SHELL SHORTCUTS
+# SECTION 3: DYNAMIC CONTEXT-INJECTED TOOLS (RAG)
 # ==============================================================================
 
-# --- Local-Ai Tablet Voice Bridge ---
-$HOME/.config/local-ai/voice/voice-query ---> voice, voice query, voice bridge
+# --- System Logs & Diagnostics (Compressed Stream Triage) ---
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/ai-log-checker ---> ai log, check errors, system crashed, events, ai-log
+
+# --- System Resources & Telemetry (Active Diagnostics) ---
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/ai-system-diagnosis ---> system health, system diagnosis, why is my system slow
 ```
 
 ---
 
-## Quick Setup
+## Setup & Prerequisites
 
-### 1. Install the Project Files
+### 1. Install optional rendering utilities
+
+To render Markdown files (`.md` skills, system profiles, and diagnostic logs) cleanly inside your terminal using your **native terminal theme colors**, it is recommended to install **`mdcat`** (Rust-based Markdown CLI renderer):
+
+```bash
+# On Arch Linux / CachyOS
+sudo pacman -S mdcat
+
+# On macOS (Homebrew)
+brew install mdcat
+```
+
+*Note: If `mdcat` is missing from the system, the Python agent automatically falls back to standard `cat` using standard-library path checks, keeping the entire pipeline fully portable.*
+
+### 2. Install the Project Files
 ```bash
 git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai
 ```
 
-### 2. Append the Hook to Your `~/.bashrc`
+### 3. Append the Hook to Your `~/.bashrc`
 ```bash
 echo '[ -f "$HOME/.config/local-ai/local-ai-agent/ai-hook.sh" ] && source "$HOME/.config/local-ai/local-ai-agent/ai-hook.sh"' >> ~/.bashrc
 source ~/.bashrc

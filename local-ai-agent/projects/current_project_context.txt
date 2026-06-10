@@ -1,14 +1,21 @@
-=== ACTIVE PROJECT WORKSPACE ===
-[INSTRUCTIONS FOR AI]:
+# ACTIVE PROJECT WORKSPACE
+System context cache for codebase-aware copilot executions.
+
+## Copilot Instructions
 1. Act directly as a local development agent and copilot embedded in this workspace.
 2. Focus entirely on providing code solutions, refactoring, and directory tasks tailored strictly to this structure.
 3. Prioritize clean, minimal snippets using the file names and architectural layouts found below.
 4. DO NOT provide generic programming advice or basic boilerplate unless explicitly asked.
---------------------------------
-[WORKSPACE_INFO] Project: qwen-hypr | Path: /home/j5/Projects/qwen-hypr
---------------------------------
-[WORKSPACE_FILE_TREE]
+
+---
+
+## Workspace Configuration
+* **Project Name**: `qwen-hypr`
+* **Absolute Path**: `/home/j5/Projects/qwen-hypr`
+
+---
+
+## Codebase File Tree
+```text
   - .
   - hypr_api_ref.lua
---------------------------------
-[CONTEXT_STATUS] Environment successfully loaded. Awaiting user commands.
