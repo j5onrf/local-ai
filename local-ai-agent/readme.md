@@ -87,9 +87,6 @@ To render Markdown files (`.md` skills, system profiles, and diagnostic logs) cl
 ```bash
 # On Arch Linux / CachyOS
 sudo pacman -S mdcat
-
-# On macOS (Homebrew)
-brew install mdcat
 ```
 
 *Note: If `mdcat` is missing from the system, the Python agent automatically falls back to standard `cat` using standard-library path checks, keeping the entire pipeline fully portable.*
