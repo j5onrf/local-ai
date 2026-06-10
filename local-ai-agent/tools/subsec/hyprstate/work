@@ -2,10 +2,10 @@
 
 # --- WORKSPACE 1: Brave Beta ---
 if pgrep -f "brave-origin-beta" > /dev/null; then
-    hyprctl dispatch movetoworkspacesilent "1,class:brave-origin-beta" >/dev/null 2>&1
+    hyprctl dispatch movetoworkspacesilent "1,class:brave-origin" >/dev/null 2>&1
 else
     # Fix: Inject a one-time dynamic window rule before running the browser
-    hyprctl keyword windowrulev2 "workspace 1 silent,class:^(brave-origin-beta)$" >/dev/null 2>&1
+    hyprctl keyword windowrulev2 "workspace 1 silent,class:^(brave-origin)$" >/dev/null 2>&1
     hyprctl dispatch exec brave-origin-beta >/dev/null 2>&1
 fi
 

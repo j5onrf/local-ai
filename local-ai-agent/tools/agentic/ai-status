@@ -103,7 +103,7 @@ echo "--------------------------------------"
 echo "[ACTIVE RUNTIME ROUTE]"
 if [[ -n "${GEMINI_API_KEY:-}" && $gemini_conn -eq 0 ]]; then
     echo -e "  Selected Provider: ${GREEN}Gemini Cloud API${RESET}"
-    echo -e "  Active Model     : ${YELLOW}${CLOUD_MODEL:-gemini-1.5-flash}${RESET}"
+    echo -e "  Active Model     : ${YELLOW}${CLOUD_MODEL:-gemini-3.1-flash-lite}${RESET}"
 elif [[ -n "${OPENROUTER_API_KEY:-}" && $or_conn -eq 0 ]]; then
     echo -e "  Selected Provider: ${GREEN}OpenRouter API${RESET}"
     echo -e "  Active Model     : ${YELLOW}${OPENROUTER_MODEL:-poolside/laguna-m.1:free}${RESET}"

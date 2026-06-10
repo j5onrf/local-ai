@@ -2,7 +2,7 @@
 import os, re, subprocess, sys
 
 p_dir = os.path.expanduser("~/.config/local-ai/local-ai-agent/tools/skills")
-p_path = os.path.join(p_dir, "mysys.txt")
+p_path = os.path.join(p_dir, "mysys.md")
 os.makedirs(p_dir, exist_ok=True)
 
 sys.stderr.write("Generating system profile...\n")
@@ -61,25 +61,58 @@ wm = os.environ.get("XDG_CURRENT_DESKTOP", "Standard Window Manager")
 if "hyprland" in wm.lower() or os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"): wm = "Hyprland"
 elif "i3" in wm.lower(): wm = "i3"
 
-profile = f"""=== SYSTEM ADMINISTRATOR ACTIVE SKILL ===
-[HOST CONTEXT]
-- Static Hostname: {run("hostname")}
-- Operating System: {os_name}
-- Linux Kernel: {run("uname -r")}{arch_v}
-- CPU: {cpu}
-- GPU: {gpu if gpu and gpu != "Unknown" else "Integrated Graphics"} (Driver: {driver})
-- Desktop Environment / Window Manager: {wm}
-- Login Manager: {dm}
-- System Bootloader: {bootloader}
+kernel_ver = run("uname -r")
+hostname_str = run("hostname")
 
-[AI INSTRUCTIONS & RULES]
-1. Target System Awareness: All suggestions must strictly conform to {os_name}, {wm} composites, {dm} logins, and {bootloader} parameters if applicable.
-2. System Diagnostics: Suggest non-destructive terminal solutions, prioritizing systemd logging (journalctl, systemctl) to identify boot or runtime regressions.
-3. Package Management: Target tools natively packaged or compatible with your target system's package manager.
-4. Format Constraints: Keep answers concise, direct, and terminal-focused. Do not use markdown formatting such as bold asterisks (**) or header hashes (#) in your response, as your output is rendered directly in a raw terminal.
-5. Optimization Awareness: If the host kernel is a performance-optimized variant (such as CachyOS or Zen) or detects x86-64-v3/v4 levels, prioritize suggestions that utilize compiler-optimized packages, performance-tuned parameters, and performance schedulers.
-6. Modern Graphics & Windowing: If running a Wayland compositor (like Hyprland) or a modern driver (like Xe or amdgpu), prioritize Wayland-native utilities and modern kernel module parameters over deprecated X11 configurations or legacy driver options.
+# Dynamic rule construction based on system states
+graphics_rules = ""
+if wm.lower() == "hyprland" or driver in ["xe", "amdgpu"]:
+    graphics_rules = f"The active graphics driver is **{driver}** running the **{wm}** Wayland compositor. Prioritize Wayland-native utilities (such as `hyprctl`, `grimblast`, `wl-copy`) and modern kernel driver configurations over deprecated X11 tools."
+else:
+    graphics_rules = f"The active graphics driver is **{driver}** running the **{wm}** environment. Prioritize tools and commands native to this graphics and compositor setup."
+
+optimization_rules = ""
+if "cachyos" in kernel_ver.lower() or "v4" in arch_v or "v3" in arch_v:
+    optimization_rules = f"The host utilizes a performance-optimized kernel (`{kernel_ver}{arch_v}`). Always prioritize compiled-optimized packages, performance-tuned parameters, and modern scheduler suggestions (like Bore, EEVDF, or CachyOS optimizations)."
+else:
+    optimization_rules = "Prioritize standard package manager commands and standard execution runtimes appropriate for basic system hardware profiles."
+
+# Structured Markdown Template for AI attention heads
+profile = f"""# SYSTEM ARCHITECTURE BLUEPRINT
+Host Profile context for local AI shell executions.
+
+## Host Environment Context
+* **Static Hostname**: `{hostname_str}`
+* **Operating System**: `{os_name}`
+* **Linux Kernel**: `{kernel_ver}{arch_v}`
+* **CPU Hardware**: `{cpu}`
+* **GPU Hardware**: `{gpu if gpu and gpu != "Unknown" else "Integrated Graphics"}`
+* **Active Driver**: `{driver}`
+* **Compositor / WM**: `{wm}`
+* **Login Manager**: `{dm}`
+* **Bootloader**: `{bootloader}`
+
+---
+
+## AI System Rules & Guidelines
+
+### 1. OS & Windowing Alignment
+All shell suggestions, scripts, and commands must strictly target **{os_name}** using the **{wm}** interface, **{dm}** display manager, and **{bootloader}** configurations. Avoid legacy alternative parameters unless explicitly requested.
+
+### 2. Pacman & Kernel Optimization
+{optimization_rules}
+
+### 3. Wayland & Graphics Integration
+{graphics_rules}
+
+### 4. Non-Destructive Diagnostics
+Suggest non-destructive terminal configurations and queries. Prioritize standard `systemd` logging and diagnosis (`journalctl`, `systemctl`) to investigate boot or active runtime issues.
+
+### 5. Format Constraints
+Keep all answers highly concise, direct, and terminal-focused.
+* **CRITICAL**: Do not use markdown formatting (such as bold asterisks `**` or header hashes `#`) in your final output responses, as your output is rendered directly in a raw terminal. Use simple capitalized headers and clean vertical line spaces for visual separation.
 """
+
 try:
     with open(p_path, "w") as f: f.write(profile)
     sys.stderr.write(f"Saved system profile successfully to {p_path}!\n")

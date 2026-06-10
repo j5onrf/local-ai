@@ -41,7 +41,7 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 
 # --- Skills (Prompt & Role Injection) ---
 [TOOL] cat ~/.config/local-ai/local-ai-agent/tools/skills/sysadmin.txt ---> sysadmin, load sysadmin
-[TOOL] cat ~/.config/local-ai/local-ai-agent/tools/skills/mysys.txt ---> mysys, load mysys
+[TOOL] cat ~/.config/local-ai/local-ai-agent/tools/skills/mysys.md ---> mysys, load mysys
 
 
 # ==============================================================================
@@ -75,10 +75,12 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 ~/.config/local-ai/local-ai-agent/tools/blueprint ---> blueprint, show blueprint, cheatsheet, cheat sheet
 
 # --- AI-Generated Git Commits ---
-~/.config/local-ai/local-ai-agent/tools/agentic/ai-commit ---> ai-commit, git commit ai
+~/.config/local-ai/local-ai-agent/tools/agentic/ai-commit ---> ai-commit, git-commit, git commit
 
 # --- Server Lifecycle Management ---
 ~/.config/local-ai/local-ai-agent/tools/kill-ai-servers ---> killserver
+
+glow ~/.config/local-ai/local-ai-agent/tools/skills/mysys.md ---> mysys, show mysys, view mysys, mysys doc
 
 
 # ==============================================================================
