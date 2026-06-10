@@ -95,12 +95,6 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 # --- Media & Volume Controllers (Pure Reactive) ---
 ~/.config/local-ai/local-ai-agent/tools/subsec/media/media.py ---> tuiamp, winamp, media
 
-# --- State & Workflow Management ---
-~/.config/local-ai/local-ai-agent/tools/hyprstate/work ---> hyprstate work, workspace work
-~/.config/local-ai/local-ai-agent/tools/hyprstate/clean ---> hyprstate clean, workspace clean
-~/.config/local-ai/local-ai-agent/tools/hyprstate/media ---> hyprstate media, workspace media
-~/.config/local-ai/local-ai-agent/tools/hyprstate/gitcom ---> hyprstate gitcom, workspace gitcom
-
 # --- Article Summarizers ---
 ~/.config/local-ai/ai-summary/llmsum.py ---> llmsum, ytsum, summary
 
@@ -130,6 +124,11 @@ nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-sp
 
 # --- Notes ---
 ~/.config/local-ai/local-ai-agent/tools/subsec/notes/notes.sh ---> notes, open notes, add to notes
+
+# --- State & Workflow Management ---
+~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/work ---> hyprstate work, workspace work
+~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/clean ---> hyprstate clean, workspace clean
+~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/gitcom ---> hyprstate gitcom, workspace gitcom
 
 # ==============================================================================
 # SECTION 8: AUTOMATED CONTINUAL LEARNING
