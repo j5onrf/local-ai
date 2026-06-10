@@ -7,10 +7,8 @@
 # Directional Syntax Guide:
 # 1. Directory Path   : Indexes workspace & launches standard AI Workspace.
 # 2. 'ai init' + Skill: Indexes workspace & launches AI pre-primed with Skill.
-# 3. '[TOOL] cat'     : Injects custom prompt rules/roles during active chat.
-# 4. '[TOOL] command' : Executes local script & injects system stdout context.
-# 5. Raw Command      : Native terminal alias or interactive TUI program.
-# 6. 'glow' Command   : Formats markdown files natively for human reading.
+# 3. '[TOOL] command' : Executes local tool/utility (cat, glow, script) for AI context.
+# 4. Raw Command      : Native terminal alias, interactive TUI, or document viewer.
 # ==============================================================================
 
 
