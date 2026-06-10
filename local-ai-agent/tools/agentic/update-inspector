@@ -1,21 +1,50 @@
 #!/usr/bin/env bash
-# AI Update Inspector v0.7.7
+# AI Update Inspector v0.7.8
 
 set -euo pipefail
 
-echo "# PENDING SYSTEM UPGRADES"
-echo ""
-echo "> **Instructions for AI:**"
-echo "> 1. Focus entirely on analyzing the specific packages in the provided update list."
-echo "> 2. Identify and highlight the CRITICAL updates (like systemd, kernel, audio drivers, keyrings) and clearly explain how these specific updates affect their active system, security, or running processes."
-echo "> 3. DO NOT explain how to run the update commands (the user already knows how to update)."
-echo "> 4. Format your output strictly for clean, plain-text terminal rendering. DO NOT use any Markdown formatting in your response. Use simple capitalized headers, clean vertical line spaces, and tab indentation for lists."
-echo ""
-echo "---"
-echo ""
-echo "## NATIVE REPOSITORY UPDATES"
+# Spinner chars (10-step circular Braille sequence matching alias-ai.py)
+spinner_chars=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+SPINNER_PID=""
 
-# 1. Native Repository Updates (Run checkupdates EXACTLY once)
+start_spinner() {
+    # Hide cursor
+    echo -ne "\033[?25l" >&2
+    
+    # Spawn background subshell loop
+    (
+        local i=0
+        while true; do
+            printf "\r\033[1;32m%s\033[0m Checking for updates..." "${spinner_chars[i % 10]}" >&2
+            ((i++))
+            sleep 0.08
+        done
+    ) &
+    SPINNER_PID=$!
+}
+
+stop_spinner() {
+    # If the spinner PID is active, terminate it
+    if [ -n "${SPINNER_PID:-}" ]; then
+        kill "$SPINNER_PID" 2>/dev/null || true
+        wait "$SPINNER_PID" 2>/dev/null || true
+        SPINNER_PID=""
+    fi
+    # Wipe the spinner loading line and restore cursor
+    echo -ne "\r\033[2K\033[?25h" >&2
+}
+
+# Always ensure the cursor is restored and background spinner is killed on exit
+trap stop_spinner EXIT
+
+# 1. Start loading spinner in background
+start_spinner
+
+# 2. Gather Native Repository Updates (Run checkupdates in memory)
+repo_count="0"
+repo_packages="*None*"
+repo_error=""
+
 if command -v checkupdates >/dev/null 2>&1; then
     # Capture raw output in memory. Allow exit code 1 (no updates) safely
     raw_repo_updates=$(checkupdates 2>/dev/null || true)
@@ -25,20 +54,12 @@ if command -v checkupdates >/dev/null 2>&1; then
         repo_count=$(echo "$raw_repo_updates" | wc -l)
         # Parse package names, wrap in backticks, and join with commas
         repo_packages=$(echo "$raw_repo_updates" | awk '{print "`"$1"`"}' | awk '{printf "%s%s", (NR==1?"":", "), $0} END {print ""}')
-        echo "* **Pending Repos**: \`$repo_count\`"
-        echo "* **Packages**: $repo_packages"
-    else
-        echo "* **Pending Repos**: \`0\`"
-        echo "* **Packages**: *None*"
     fi
 else
-    echo "* **Pending Repos**: *Error: checkupdates utility missing*"
+    repo_error="*Error: checkupdates utility missing*"
 fi
 
-echo ""
-echo "## AUR REPOSITORY UPDATES"
-
-# 2. AUR Updates (Run helper -Qua EXACTLY once)
+# 3. Gather AUR Updates (Run helper -Qua in memory)
 aur_helper=""
 if command -v paru >/dev/null 2>&1; then
     aur_helper="paru"
@@ -46,9 +67,12 @@ elif command -v yay >/dev/null 2>&1; then
     aur_helper="yay"
 fi
 
+aur_count="0"
+aur_packages="*None*"
+aur_error=""
+
 if [ -n "$aur_helper" ]; then
     # -Qua pulls strictly from local sync cache; guaranteed 0ms timeout / no password prompt
-    # Capture raw output in memory. Allow exit code 1 safely
     raw_aur_updates=$($aur_helper -Qua 2>/dev/null || true)
 
     if [ -n "$raw_aur_updates" ]; then
@@ -56,13 +80,44 @@ if [ -n "$aur_helper" ]; then
         aur_count=$(echo "$raw_aur_updates" | wc -l)
         # Parse package names, wrap in backticks, and join with commas
         aur_packages=$(echo "$raw_aur_updates" | awk '{print "`"$1"`"}' | awk '{printf "%s%s", (NR==1?"":", "), $0} END {print ""}')
-        echo "* **Pending AUR**: \`$aur_count\`"
-        echo "* **Packages**: $aur_packages"
-    else
-        echo "* **Pending AUR**: \`0\`"
-        echo "* **Packages**: *None*"
     fi
 else
-    echo "* **Pending AUR**: \`0\`"
-    echo "* **Packages**: *None (No AUR helper detected)*"
+    aur_error="*None (No AUR helper detected)*"
+fi
+
+# 4. Stop loading spinner and clear stdout line before printing Markdown
+stop_spinner
+
+# 5. Output Markdown to stdout
+echo "# PENDING SYSTEM UPGRADES"
+echo ""
+echo "> **Instructions for AI:**"
+echo "> 1. Analyze the provided system update list and generate a response structured strictly under the following capitalized headers:"
+echo ">    - PENDING SYSTEM UPDATES: State the total count of packages pending in native repositories and AUR."
+echo ">    - PACKAGE LIST: Print the list of pending packages indented with a single tab."
+echo ">    - CRITICAL UPDATE ANALYSIS: State whether any core system components (e.g., Linux kernel, systemd, keyrings, audio drivers like ALSA/PipeWire) are present in the queue."
+echo ">    - IMPACT ASSESSMENT: Briefly explain if these updates affect active system stability, security, running processes, or if they are safe application-level changes."
+echo ">    - APPLICATION FEATURE SUMMARIES: If standalone user applications (e.g., browsers like brave-origin-bin, editors like opencode, terminal utilities, etc.) are present in the list, use your knowledge base (and active web search if available) to provide a 1-2 sentence summary of the major recent features, visual improvements, performance optimizations, or notable fixes included in the latest releases of each of those specific apps."
+echo "> 2. DO NOT explain how to run the update commands (the user already knows how to update)."
+echo "> 3. Format your output strictly for clean, plain-text terminal rendering. DO NOT use any Markdown formatting (such as bold asterisks ** or header hashes #) in your final response. Use simple capitalized headers, clean vertical line spaces, and tab indentation for lists."
+echo ""
+echo "---"
+echo ""
+echo "## NATIVE REPOSITORY UPDATES"
+
+if [ -n "$repo_error" ]; then
+    echo "* **Pending Repos**: $repo_error"
+else
+    echo "* **Pending Repos**: \`$repo_count\`"
+    echo "* **Packages**: $repo_packages"
+fi
+
+echo ""
+echo "## AUR REPOSITORY UPDATES"
+
+if [ -n "$aur_error" ]; then
+    echo "* **Pending AUR**: $aur_error"
+else
+    echo "* **Pending AUR**: \`$aur_count\`"
+    echo "* **Packages**: $aur_packages"
 fi

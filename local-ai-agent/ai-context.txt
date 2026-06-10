@@ -52,7 +52,9 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 
 # --- System Resources & Telemetry (Active Diagnostics) ---
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/ai-system-diagnosis ---> system health, system diagnosis, why is my system slow
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/update-inspector ---> update inspector, check upgrades, package list
+
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/update-inspector ---> update inspector, ui, check upgrades, what updates do i have, pending updates, what updates do i have pending
+
 [TOOL] df -h / ---> disk usage, nvme drive usage, check storage space
 
 # --- AI Status & Provider Diagnostics ---
