@@ -7,7 +7,7 @@
 # Directional Syntax Guide:
 # 1. Directory Path   : Indexes workspace & launches standard AI Workspace.
 # 2. 'ai init' + Skill: Indexes workspace & launches AI pre-primed with Skill.
-# 3. '[TOOL] command' : Executes local tool/utility (cat, glow, script) for AI context.
+# 3. '[TOOL] command' : Executes local tool/utility (cat, mdcat, script) for AI context.
 # 4. Raw Command      : Native terminal alias, interactive TUI, or document viewer.
 # ==============================================================================
 
@@ -38,9 +38,9 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 # SECTION 2: ON-DEMAND SYSTEM PROMPTS & ROLE INJECTIONS (SKILLS)
 # ==============================================================================
 
-# --- Unified Markdown Skills (Tool-Translation for AI, Glow for Human) ---
-[TOOL] glow ~/.config/local-ai/local-ai-agent/tools/skills/sysadmin.md ---> sysadmin, show sysadmin, sysadmin manual
-[TOOL] glow ~/.config/local-ai/local-ai-agent/tools/skills/mysys.md ---> mysys, show mysys, view mysys, mysys doc
+# --- Unified Markdown Skills (Tool-Translation for AI, mdcat for Human) ---
+[TOOL] mdcat ~/.config/local-ai/local-ai-agent/tools/skills/sysadmin.md ---> sysadmin, show sysadmin, sysadmin manual
+[TOOL] mdcat ~/.config/local-ai/local-ai-agent/tools/skills/mysys.md ---> mysys, show mysys, view mysys, mysys doc
 
 
 # ==============================================================================

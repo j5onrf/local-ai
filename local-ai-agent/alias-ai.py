@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.7.9.19 [j5onrf] [06-10-26]
+# Local-Ai Agent v0.7.9.20 [j5onrf] [06-10-26]
 
 import sys, re, os, json, threading, time, math, subprocess, shutil
 import urllib.request as urlreq
@@ -69,9 +69,9 @@ def get_active_system_keywords():
     return keywords
 
 def run_local_tool(cmd):
-    # Auto-translate glow commands to cat for clean background LLM context rendering
-    if cmd.strip().startswith("glow"):
-        cmd = re.sub(r'^glow\b', 'cat', cmd.strip())
+    # Auto-translate mdcat commands to cat for clean background LLM context rendering
+    if cmd.strip().startswith("mdcat"):
+        cmd = re.sub(r'^mdcat\b', 'cat', cmd.strip())
     try:
         out = subprocess.check_output(cmd, shell=True, text=True, timeout=15).strip()
         return f"{out}\n" if out else "Action executed successfully.\n"
@@ -186,9 +186,9 @@ def clean_tool_prefix(cmd):
         inner = cleaned.replace("DANGER_FLAGGED:", "", 1)
         cleaned = f"DANGER_FLAGGED:{inner.replace('[TOOL]', '', 1).strip()}" if inner.startswith("[TOOL]") else cleaned
     
-    # Safe fallback to cat if glow is not installed on the system
-    if "glow" in cleaned and not shutil.which("glow"):
-        cleaned = re.sub(r'\bglow\b', 'cat', cleaned)
+    # Safe fallback to cat if mdcat is not installed on the system
+    if "mdcat" in cleaned and not shutil.which("mdcat"):
+        cleaned = re.sub(r'\bmdcat\b', 'cat', cleaned)
     return cleaned
 
 def learn_command_from_response(query, ans):
@@ -421,9 +421,9 @@ if matched_base:
     for line in matched_base.split("\n"):
         intent, cmd = line.split("|||", 1)
         cleaned_cmd = cmd.replace('[TOOL]', '', 1).strip() if cmd.startswith('[TOOL]') else cmd
-        # Safe fallback to cat if glow is not installed on the system
-        if "glow" in cleaned_cmd and not shutil.which("glow"):
-            cleaned_cmd = re.sub(r'\bglow\b', 'cat', cleaned_cmd)
+        # Safe fallback to cat if mdcat is not installed on the system
+        if "mdcat" in cleaned_cmd and not shutil.which("mdcat"):
+            cleaned_cmd = re.sub(r'\bmdcat\b', 'cat', cleaned_cmd)
         out_lines.append(f"{intent}|||{cleaned_cmd}")
     print("\n".join(out_lines)); sys.exit(0)
 else:
