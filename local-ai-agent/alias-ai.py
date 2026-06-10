@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.7.9.17 [j5onrf] [06-09-26]
+# Local-Ai Agent v0.7.9.18 [j5onrf] [06-10-26]
 
 import sys, re, os, json, threading, time, math, subprocess
 import urllib.request as urlreq
@@ -60,7 +60,7 @@ def tokenize(text):
 
 def get_active_system_keywords():
     keywords = set(UNIVERSAL_SYSTEM_KEYWORDS)
-    p_path = os.path.expanduser("~/.config/local-ai/local-ai-agent/tools/skills/mysys.txt")
+    p_path = os.path.expanduser("~/.config/local-ai/local-ai-agent/tools/skills/mysys.md")
     if os.path.exists(p_path):
         try:
             with open(p_path, "r") as f:
@@ -69,6 +69,9 @@ def get_active_system_keywords():
     return keywords
 
 def run_local_tool(cmd):
+    # Auto-translate glow commands to cat for clean background LLM context rendering
+    if cmd.strip().startswith("glow"):
+        cmd = re.sub(r'^glow\b', 'cat', cmd.strip())
     try:
         out = subprocess.check_output(cmd, shell=True, text=True, timeout=15).strip()
         return f"{out}\n" if out else "Action executed successfully.\n"
@@ -107,7 +110,7 @@ def compile_vector_index():
 if not os.path.exists(CONTEXT_FILE):
     sys.stderr.write(f"\033[1;31mWarning: Context file is missing at {CONTEXT_FILE}\033[0m\n")
 else:
-    PROFILE_PATH = os.path.expanduser("~/.config/local-ai/local-ai-agent/tools/skills/mysys.txt")
+    PROFILE_PATH = os.path.expanduser("~/.config/local-ai/local-ai-agent/tools/skills/mysys.md")
     if not os.path.exists(PROFILE_PATH):
         generator_script = os.path.expanduser("~/.config/local-ai/local-ai-agent/tools/generate-profile")
         if os.path.exists(generator_script):
@@ -216,7 +219,6 @@ def get_system_context(query):
         first_match = tool_match.split("\n")[0]
         if "|||" in first_match:
             intent, cmd = first_match.split("|||", 1)
-            # Strip DANGER_FLAGGED: for context generation tools since we trust our context.txt config
             if cmd.startswith("DANGER_FLAGGED:"):
                 cmd = cmd.replace("DANGER_FLAGGED:", "", 1)
             if cmd.startswith("[TOOL]"):
@@ -226,7 +228,7 @@ def get_system_context(query):
                 
     q_tokens = tokenize(query)
     if set(q_tokens) & get_active_system_keywords():
-        profile_path = os.path.expanduser("~/.config/local-ai/local-ai-agent/tools/skills/mysys.txt")
+        profile_path = os.path.expanduser("~/.config/local-ai/local-ai-agent/tools/skills/mysys.md")
         if os.path.exists(profile_path):
             try:
                 with open(profile_path, "r") as f:
@@ -301,7 +303,6 @@ def stream_llm_response(messages, prefix="AI: "):
         req = urlreq.Request(url, data=json.dumps(body).encode("utf-8"), headers=headers, method="POST")
         try:
             spinner.start()
-            # Added timeout=10 to prevent indefinite blocking when an endpoint hangs
             with urlreq.urlopen(req, timeout=10) as response:
                 first, acc = True, []
                 for line in response:
@@ -382,7 +383,7 @@ if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
         SKILLS_DIR = os.path.expanduser("~/.config/local-ai/local-ai-agent/tools/skills")
         if query_parts:
             first_word = query_parts[0].lower()
-            skill_file = os.path.join(SKILLS_DIR, f"{first_word}.txt")
+            skill_file = os.path.join(SKILLS_DIR, f"{first_word}.md")
             if os.path.exists(skill_file):
                 try:
                     with open(skill_file, "r") as f: system_context = f.read().strip() + "\n\n"

@@ -40,9 +40,9 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 # SECTION 2: ON-DEMAND SYSTEM PROMPTS & ROLE INJECTIONS (SKILLS)
 # ==============================================================================
 
-# --- Skills (Prompt & Role Injection) ---
-[TOOL] cat ~/.config/local-ai/local-ai-agent/tools/skills/sysadmin.md ---> load sysadmin, inject sysadmin, sysadmin context
-[TOOL] cat ~/.config/local-ai/local-ai-agent/tools/skills/mysys.md ---> load mysys, inject mysys, mysys context
+# --- Unified Markdown Skills (Tool-Translation for AI, Glow for Human) ---
+[TOOL] glow ~/.config/local-ai/local-ai-agent/tools/skills/sysadmin.md ---> sysadmin, show sysadmin, sysadmin manual
+[TOOL] glow ~/.config/local-ai/local-ai-agent/tools/skills/mysys.md ---> mysys, show mysys, view mysys, mysys doc
 
 
 # ==============================================================================
@@ -83,15 +83,7 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 
 
 # ==============================================================================
-# SECTION 5: MARKDOWN VIEWERS (GLOW RENDERING)
-# ==============================================================================
-
-glow ~/.config/local-ai/local-ai-agent/tools/skills/sysadmin.md ---> sysadmin, show sysadmin, sysadmin manual
-glow ~/.config/local-ai/local-ai-agent/tools/skills/mysys.md ---> mysys, show mysys, view mysys, mysys doc
-
-
-# ==============================================================================
-# SECTION 6: TUI (TERMINAL USER INTERFACE) PROGRAMS
+# SECTION 5: TUI (TERMINAL USER INTERFACE) PROGRAMS
 # ==============================================================================
 
 # --- AI Deep Research TUI ---
@@ -109,7 +101,7 @@ glow ~/.config/local-ai/local-ai-agent/tools/skills/mysys.md ---> mysys, show my
 
 
 # ==============================================================================
-# SECTION 7: GRAPHICAL APPLICATIONS & WEBAPPS
+# SECTION 6: GRAPHICAL APPLICATIONS & WEBAPPS
 # ==============================================================================
 
 # --- Local-Ai Tablet Voice Bridge ---
@@ -125,7 +117,7 @@ nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-sp
 
 
 # ==============================================================================
-# SECTION 8: SUBSECTION APPLICATIONS
+# SECTION 7: SUBSECTION APPLICATIONS
 # ==============================================================================
 
 # --- Stopwatch ---
@@ -142,7 +134,7 @@ nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-sp
 
 
 # ==============================================================================
-# SECTION 9: AUTOMATED CONTINUAL LEARNING
+# SECTION 8: AUTOMATED CONTINUAL LEARNING
 # ==============================================================================
 
 # --- Self-Learned System Shortcuts ---
