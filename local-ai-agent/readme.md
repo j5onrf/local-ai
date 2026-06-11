@@ -90,6 +90,7 @@ To render Markdown files (`.md` skills, system profiles, and diagnostic logs) cl
 
 ```bash
 # On Arch Linux / CachyOS
+https://github.com/RivoLink/leaf
 yay -S leaf-markdown-viewer-bin
 ```
 
