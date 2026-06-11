@@ -1,16 +1,22 @@
 #!/usr/bin/env bash
 
-# --- WORKSPACE 1: Brave Beta ---
-if pgrep -f "brave-origin-beta" > /dev/null; then
-    hyprctl dispatch movetoworkspacesilent "1,class:brave-origin" >/dev/null 2>&1
+# --- WORKSPACE 1: Brave Origin ---
+if hyprctl clients | grep -q "class: brave-origin"; then
+    # If already running, extract its address and silently send it to workspace 1
+    BRAVE_ADDR=$(hyprctl clients -j | jq -r '.[] | select(.class == "brave-origin") | .address')
+    if [ -n "$BRAVE_ADDR" ]; then
+        hyprctl dispatch movetoworkspacesilent "1,address:$BRAVE_ADDR" >/dev/null 2>&1
+    fi
 else
-    # Fix: Inject a one-time dynamic window rule before running the browser
-    hyprctl keyword windowrulev2 "workspace 1 silent,class:^(brave-origin)$" >/dev/null 2>&1
-    hyprctl dispatch exec brave-origin-beta >/dev/null 2>&1
+    # Modern Hyprland syntax (Unified windowrule + match:class + strict boolean typing)
+    hyprctl keyword windowrule "workspace 1 silent, match:class ^(brave-origin)$" >/dev/null 2>&1
+    hyprctl keyword windowrule "no_initial_focus 1, match:class ^(brave-origin)$" >/dev/null 2>&1
+    
+    hyprctl dispatch exec brave-origin >/dev/null 2>&1
 fi
 
 # --- WORKSPACE 2: Nautilus (Left) ---
-if pgrep -f "nautilus" > /dev/null; then
+if hyprctl clients | grep -q "class: org.gnome.Nautilus"; then
     hyprctl dispatch movetoworkspacesilent "2,class:org.gnome.Nautilus" >/dev/null 2>&1
 else
     hyprctl dispatch exec "[workspace 2 silent]" nautilus >/dev/null 2>&1
@@ -18,7 +24,7 @@ else
 fi
 
 # --- WORKSPACE 2: Gnome Text Editor (Right) ---
-if pgrep -f "gnome-text-editor" > /dev/null; then
+if hyprctl clients | grep -q "class: org.gnome.TextEditor"; then
     hyprctl dispatch movetoworkspacesilent "2,class:org.gnome.TextEditor" >/dev/null 2>&1
 else
     hyprctl dispatch exec "[workspace 2 silent]" gnome-text-editor >/dev/null 2>&1
