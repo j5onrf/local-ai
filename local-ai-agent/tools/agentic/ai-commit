@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ai-commit - Automate Git Commits with AI Context v1.0.5
+# ai-commit - Automate Git Commits with AI Context v1.0.6
 
 set -euo pipefail
 
@@ -14,10 +14,10 @@ _AI_SCRIPT_PATH="$HOME/.config/local-ai/local-ai-agent/alias-ai.py"
 _AI_PYTHON_BIN=$(command -v python3 2>/dev/null || type -p python3 2>/dev/null || echo "python3")
 
 # Query the Python script directly to generate a highly simplified, imperative message
-message=$("$_AI_PYTHON_BIN" "$_AI_SCRIPT_PATH" --talk "Write a highly concise, imperative git commit message (max 6-8 words) describing these staged changes. Start with an action verb (e.g. Update, Fix, Add, Refactor) and omit redundant words like 'AI Suggestion' or 'local-ai': $(git diff --cached)")
+message=$("$_AI_PYTHON_BIN" "$_AI_SCRIPT_PATH" --talk "Write a highly concise, imperative git commit message (max 6-8 words) describing these staged changes. Start directly with an action verb (e.g. Update, Fix, Add, Refactor). CRITICAL: Do not include labels, headers, prefixes, or introductions like 'Commit message:'. Staged changes: $(git diff --cached)")
 
-# Clean up any trailing quotes or spaces
-message=$(echo "$message" | tr -d '"' | xargs)
+# Clean up trailing quotes, spaces, and strip accidental LLM labeling prefixes
+message=$(echo "$message" | tr -d '"' | sed -E 's/^[Cc]ommit [Mm]essage:?\s*//' | xargs)
 
 # Force standard Git casing to stop all-caps behavior
 message="${message,,}" # Converts the entire string to lowercase
@@ -25,7 +25,7 @@ message="${message^}"  # Capitalizes only the very first letter
 
 echo -e "\nAI-Commit (Edit inline with arrows/backspace, then press Enter):"
 
-# Pre-fill the terminal prompt with the AI suggestion for direct editing
+# Pre-fill the terminal prompt with the clean AI suggestion for direct editing
 read -e -i "$message" -p "Commit message: " user_message
 
 # Abort if the user completely cleared out the message
