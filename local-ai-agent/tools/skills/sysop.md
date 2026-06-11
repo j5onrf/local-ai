@@ -13,14 +13,11 @@
 ## 2. Dynamic Hardware Baseline Flow (Using `mysys.md`)
 Before formulating any optimization roadmap, you must actively analyze the accompanying `mysys.md` hardware profile [1]. Tailor your suggestions dynamically based on:
 
-1. **Active Kernel & Scheduler**  
-   Check if the system is running a low-latency desktop kernel (like `linux-cachyos` with BORE/EEVDF, or extensible BPF schedulers via `scx-scheds`). If running a standard generic kernel, suggest switching to a desktop-optimized alternative.
+1. **Active Kernel & Scheduler** Check if the system is running a low-latency desktop kernel (like `linux-cachyos` with BORE/EEVDF, or extensible BPF schedulers via `scx-scheds`). If running a standard generic kernel, suggest switching to a desktop-optimized alternative.
    
-2. **CPU Threads & Governor**  
-   Read the CPU model and thread count. On modern Intel/AMD CPUs, verify the governor (such as `powersave` with Intel P-States and `balance_performance` EPP hints) to ensure low-latency scaling under interactive loads.
+2. **CPU Threads & Governor** Read the CPU model and thread count. On modern Intel/AMD CPUs, verify the governor (such as `powersave` with Intel P-States and `balance_performance` EPP hints) to ensure low-latency scaling under interactive loads.
    
-3. **Graphics & Drivers**  
-   Check the GPU driver (`xe`, `amdgpu`, `nvidia`) and graphics hardware. Tailor compiler configurations, rendering backends (Vulkan), and system-level resource allocations to match their specific display stack.
+3. **Graphics & Drivers** Check the GPU driver (`xe`, `amdgpu`, `nvidia`) and graphics hardware. **If Hyprland is detected in the system info, note it strictly to trigger the `scx_bpfland` exception in Section 3; do not recommend any other compositor or environment configurations.**
 
 ---
 
@@ -28,17 +25,14 @@ Before formulating any optimization roadmap, you must actively analyze the accom
 
 ### A. Dynamic Thread & Process Balancing
 * **Automated Process Niceness (`ananicy-cpp`)**: For desktop systems, suggest enforcing real-time process-level nice and ionice priorities [1]. Running `ananicy-cpp` ensures active window focus, web browsers, and audio loops are automatically prioritized, preventing terminal compilation tasks or heavy operations from causing desktop micro-stuttering.
-* **Extensible BPF Schedulers (`scx-scheds` via `power-profiles-daemon`)**: On CachyOS or modern Linux, prioritize BPF-based schedulers (such as `scx_rusty`, `scx_lavd`, or `scx_bcl`) [1]. These dynamically handle desktop and gaming thread allocations in userspace, completely eliminating compositor scheduling latency under heavy CPU loads.
+* **Extensible BPF Schedulers (`scx-scheds`)**: On CachyOS or modern Linux, prioritize BPF-based schedulers (such as `scx_rusty`, `scx_lavd`, or `scx_bcl`) [1]. **Strict Exception: If Hyprland is detected upstream in `mysys.md`, ignore those options and explicitly instruct the user to configure `scx_bpfland` in Auto mode via `scx_loader.service` (managed in `/etc/scx_loader/config.toml`).** This isolates the Wayland rendering pipeline from background spikes.
 * **Hardware Interrupt Balancing (`irqbalance`)**: Ensure `irqbalance` is enabled and active [1]. This daemon dynamically distributes hardware interrupts (from network cards, SSD storage controllers, and GPUs) across all available CPU threads rather than saturating Core 0, maintaining stable input-device and network latency.
 * **Real-Time Kit (`rtkit`)**: Ensure `rtkit-daemon` is running to safely delegate real-time priorities to low-latency audio subsystems (like PipeWire).
 
 ### B. Virtual Memory & Desktop Swappiness
-* **vm.swappiness (Target: 10 to 30)**  
-  Standard Linux defaults to 60. On interactive desktops, lower values (e.g., 10) keep applications inside physical RAM longer, preventing thrashing and micro-stutter when switching between heavy tasks.
-* **vm.dirty_ratio (Target: 10 to 20) | vm.dirty_background_ratio (Target: 5 to 10)**  
-  Force the system to flush dirty pages to storage sooner, preventing heavy, delayed disk writes from blocking UI responsiveness.
-* **vm.vfs_cache_pressure (Target: 50 to 100)**  
-  Determines how aggressively the kernel reclaims file index caches. Keep near 100 for standard desktops to balance memory recovery with local file lookup speeds.
+* **vm.swappiness (Target: 10 to 30)** Standard Linux defaults to 60. On interactive desktops, lower values (e.g., 10) keep applications inside physical RAM longer, preventing thrashing and micro-stutter when switching between heavy tasks.
+* **vm.dirty_ratio (Target: 10 to 20) | vm.dirty_background_ratio (Target: 5 to 10)** Force the system to flush dirty pages to storage sooner, preventing heavy, delayed disk writes from blocking UI responsiveness.
+* **vm.vfs_cache_pressure (Target: 50 to 100)** Determines how aggressively the kernel reclaims file index caches. Keep near 100 for standard desktops to balance memory recovery with local file lookup speeds.
 
 ### C. Network Bufferbloat & Latency
 * **TCP Congestion Control**: Standard desktops on standard networks should run `cubic` or `bbr` [1].
