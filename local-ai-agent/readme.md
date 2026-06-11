@@ -89,7 +89,7 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 To render Markdown files (`.md` skills, system profiles, and diagnostic logs) cleanly inside your terminal using your **native terminal theme colors**, it is recommended to install **`leaf`** (Rust-based Markdown CLI/TUI viewer):
 
 #### On Arch Linux / CachyOS
-**Project Link:** https://github.com/RivoLink/leaf
+Project URL: https://github.com/RivoLink/leaf
 
 ```bash
 # Install leaf via your AUR helper
