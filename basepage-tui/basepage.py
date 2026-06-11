@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Basepage TUI v0.7.5 [j5onrf] [06-01-26]
+# Basepage TUI v1.2.1 [TUIAMP-Engine]
 
 import sys
 import os
@@ -190,11 +190,24 @@ def print_header(subtitle=""):
     sys.stdout.write("\033[2J\033[H")
     c = [f"\033[3{i}m" for i in range(1, 6)]
     reset = "\033[0m"
-    print(f"         {c[0]}╭━━━━━━━━━━━━━━━━━━━━━━━━━━━━╮{reset}")
-    print(f"         {c[1]}│    󰚌  BASEPAGE DASHBOARD    │{reset}")
-    print(f"         {c[2]}╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯{reset}")
+    print(f"         \033[90m┌──────────────────────────────┐\033[0m")
+    print(f"         \033[90m│\033[0m      \033[1;32m󰚌  B A S E P A G E\033[0m      \033[90m│\033[0m")
+    print(f"         \033[90m└──────────────────────────────┘\033[0m")
     if subtitle:
         print(f"               \033[1;35m// {subtitle}\033[0m\n")
+
+def draw_metadata_table(channel, sort, count, timestamp):
+    """Draws a high-fidelity Unicode metadata table mirroring Leaf."""
+    col1_w = 18
+    col2_w = 52
+    sys.stdout.write(f"  \033[90m┌{'─' * col1_w}┬{'─' * col2_w}┐\033[0m\r\n")
+    sys.stdout.write(f"  \033[90m│\033[0m \033[1;36m%-{col1_w-1}s\033[0m\033[90m│\033[0m \033[1;36m%-{col2_w-1}s\033[0m\033[90m│\033[0m\r\n" % ("Feed Intelligence", "Details"))
+    sys.stdout.write(f"  \033[90m├{'─' * col1_w}┼{'─' * col2_w}┤\033[0m\r\n")
+    sys.stdout.write(f"  \033[90m│\033[0m \033[1m%-{col1_w-1}s\033[0m\033[90m│\033[0m %-{col2_w-1}s\033[90m│\033[0m\r\n" % ("Source Channel", channel))
+    sys.stdout.write(f"  \033[90m│\033[0m \033[1m%-{col1_w-1}s\033[0m\033[90m│\033[0m %-{col2_w-1}s\033[90m│\033[0m\r\n" % ("Ecosystem Sort", sort))
+    sys.stdout.write(f"  \033[90m│\033[0m \033[1m%-{col1_w-1}s\033[0m\033[90m│\033[0m %-{col2_w-1}s\033[90m│\033[0m\r\n" % ("Vetted Articles", f"{count} items"))
+    sys.stdout.write(f"  \033[90m│\033[0m \033[1m%-{col1_w-1}s\033[0m\033[90m│\033[0m %-{col2_w-1}s\033[90m│\033[0m\r\n" % ("Synced Timestamp", timestamp))
+    sys.stdout.write(f"  \033[90m└{'─' * col1_w}┴{'─' * col2_w}┘\033[0m\r\n")
 
 def fetch_feed_instant(target_key):
     if target_key not in FEEDS:
@@ -321,7 +334,7 @@ def render_page(target_key):
     
     if feed_config["type"] == "reddit":
         cache_path = os.path.join(CACHE_DIR, f"{safe_key}_{sort_mode}_raw.json")
-        sort_suffix = f" {sort_labels[sort_mode]}"
+        sort_suffix = f" [{sort_labels[sort_mode]}]"
     else:
         cache_path = os.path.join(CACHE_DIR, f"{safe_key}_raw.json")
         sort_suffix = ""
@@ -343,7 +356,8 @@ def render_page(target_key):
         input("\n[Enter] Return")
         return
         
-    PAGE_SIZE = 15
+    # Standard single-spaced TUI viewport is locked to 15 items
+    PAGE_SIZE = 30
     current_page = 0
     selected_global = 0
     search_query = ""
@@ -363,29 +377,45 @@ def render_page(target_key):
             selected_global = end_idx - 1
             
         match_count = count_keyword_matches(items, search_query)
-        search_status = f" | \033[1;33m🔍 Scanner: '{search_query}' ({match_count} found)\033[0m" if search_query else ""
+        search_status = f" │ \033[1;33m🔍 Scanner: '{search_query}' ({match_count} found)\033[0m" if search_query else ""
         
-        print_header(f"{target_key}{sort_suffix} Feed (Page {current_page + 1}/{max_pages}){search_status}")
-        print("\033[34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m\n")
+        # Determine current terminal boundaries dynamically
+        W, H = shutil.get_terminal_size()
+        
+        # --- Redraw full screen header with a compact border panel ---
+        sys.stdout.write("\033[2J\033[H")
+        
+        sync_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(os.path.getmtime(cache_path)))
+        
+        header_text = f"{target_key}{sort_suffix}  │  {len(items)} Items  │  Synced: {sync_time}{search_status}"
+        sys.stdout.write(f"  \033[90m┌{'─' * (W - 6)}┐\033[0m\033[K\r\n")
+        sys.stdout.write(f"  \033[90m│\033[0m \033[1;32m{header_text:<{W - 8}}\033[0m \033[90m│\033[0m\033[K\r\n")
+        sys.stdout.write(f"  \033[90m└{'─' * (W - 6)}┘\033[0m\033[K\r\n\r\n")
         
         for local_idx, item in enumerate(page_items):
             global_idx = start_idx + local_idx
-            body_snippet = item.get('body', '').replace('\n', ' ').strip()
-            short_snippet = (body_snippet[:65] + '...') if len(body_snippet) > 65 else body_snippet
+            title = item.get("title", "No Title")
             
-            disp_title = highlight_matches(item['title'], search_query, reset_code="\033[0m\033[1;36m" if global_idx == selected_global else "\033[0m\033[1m")
-            disp_snippet = highlight_matches(short_snippet, search_query, reset_code="\033[0m\033[1;36m" if global_idx == selected_global else "\033[0m\033[3;90m")
+            # Safe truncation boundary based on terminal width to prevent line wraps
+            max_title_len = max(30, W - 14)
+            if len(title) > max_title_len:
+                title = f"{title[:max_title_len-3]}..."
             
+            # Standard single-spaced layout matching Leaf table of contents
             if global_idx == selected_global:
-                print(f" \033[1;36m❯ {global_idx+1:02d}. {disp_title}\033[0m")
-                print(f"       \033[1;36m↳ {disp_snippet}\033[0m")
+                disp_title = highlight_matches(title, search_query, reset_code="\033[0m\033[1;36m")
+                sys.stdout.write(f"  \033[1;36m▶ {global_idx+1:02d}. {disp_title}\033[0m\033[K\r\n")
             else:
-                print(f"   \033[90m{global_idx+1:02d}.\033[0m \033[1m{disp_title}\033[0m")
-                print(f"       \033[3;90m↳ {disp_snippet}\033[0m")
+                disp_title = highlight_matches(title, search_query, reset_code="\033[0m\033[1m")
+                sys.stdout.write(f"    \033[90m{global_idx+1:02d}.\033[0m \033[1m{disp_title}\033[0m\033[K\r\n")
                 
-        print("\n\033[34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m")
-        print(" [↑/↓] Navigate | [←/→] Page | [/] Scan Filter | [c] Clear Scan | [Enter] Read | [q] Back")
-        
+        # Fill empty lines if last page has fewer items to prevent footer jumping
+        num_items_printed = len(page_items)
+        for _ in range(PAGE_SIZE - num_items_printed):
+            sys.stdout.write("\r\n")
+            
+        sys.stdout.write("\r\n\033[90m─────────────────────────────────────────────────────────────────────────────\033[0m\033[K\r\n")
+        sys.stdout.write(" \033[90m[↑/↓] Navigate  │  [←/→] Page  │  [/] Filter  │  [o] Browser  │  [q] Back\033[0m\033[K\r\n")
         sys.stdout.flush()
         
         key = get_key()
@@ -415,84 +445,6 @@ def render_page(target_key):
                 open_in_browser(map_to_redlib(active_item['link']))
         elif key.lower() == 'q':
             break
-        elif key == '\r' and page_items: 
-            active_item = items[selected_global]
-            
-            if target_key == "Hacker News" and active_item.get("comments"):
-                open_in_browser(active_item["comments"])
-                continue
-                
-            term_cols = shutil.get_terminal_size().columns
-            term_width = max(term_cols - 8, 40)
-            raw_body_text = active_item.get('body', '[No text body parsed.]')
-            
-            body_lines = []
-            for paragraph in raw_body_text.split('\n\n'):
-                words = paragraph.split(' ')
-                current_line = []
-                for word in words:
-                    if '\n' in word:
-                        parts = word.split('\n')
-                        for p_idx, part in enumerate(parts):
-                            current_line.append(part)
-                            if p_idx < len(parts) - 1:
-                                body_lines.append(" " + " ".join(current_line))
-                                current_line = []
-                        continue
-                    if sum(len(w) for w in current_line) + len(current_line) + len(word) > term_width:
-                        body_lines.append(" " + " ".join(current_line))
-                        current_line = [word]
-                    else:
-                        current_line.append(word)
-                if current_line:
-                    body_lines.append(" " + " ".join(current_line))
-                body_lines.append("")
-            
-            scroll_offset = 0
-            
-            while True:
-                sys.stdout.write("\033[2J\033[H")
-                term_lines = shutil.get_terminal_size().lines
-                term_cols = shutil.get_terminal_size().columns
-                
-                local_body_matches = raw_body_text.lower().count(search_query.lower()) if search_query else 0
-                item_scan_status = f" | \033[1;33m🔍 Found here: {local_body_matches} times\033[0m" if search_query else ""
-                
-                print_header(f"Reading: {target_key}{item_scan_status}")
-                
-                disp_reader_title = highlight_matches(active_item['title'], search_query, reset_code="\033[0m\033[1;32m")
-                print(f" \033[1;32m❯ {disp_reader_title}\033[0m")
-                print("\033[90m─" * term_cols + "\033[0m")
-                
-                TEXT_START_ROW = 8
-                FOOTER_RESERVE = 3
-                VISIBLE_ROWS = max(term_lines - TEXT_START_ROW - FOOTER_RESERVE, 3)
-                
-                visible_slice = body_lines[scroll_offset:scroll_offset + VISIBLE_ROWS]
-                for idx, text_line in enumerate(visible_slice):
-                    disp_line = highlight_matches(text_line, search_query)
-                    sys.stdout.write(f"\033[{TEXT_START_ROW + idx};1H{disp_line}")
-                
-                DIVIDER_ROW = term_lines - 2
-                MENU_ROW = term_lines - 1
-                
-                sys.stdout.write(f"\033[{DIVIDER_ROW};1H\033[90m─" * term_cols + "\033[0m")
-                sys.stdout.write(f"\033[{MENU_ROW};1H \033[1;36m[↑/↓]\033[0m Scroll  |  \033[1;36m[/]\033[0m Change Scan Word  |  \033[1;33m[q/Enter]\033[0m Close")
-                
-                sys.stdout.flush()
-                
-                sub_key = get_key()
-                if sub_key == '\033[A': 
-                    if scroll_offset > 0: scroll_offset -= 1
-                elif sub_key == '\033[B': 
-                    if scroll_offset + VISIBLE_ROWS < len(body_lines): scroll_offset += 1
-                elif sub_key == '/':
-                    search_query = get_text_input("Change scanner keyword: ")
-                elif sub_key.lower() == 'o':
-                    open_in_browser(map_to_redlib(active_item['link']))
-                elif sub_key == '\r' or sub_key.lower() == 'q':
-                    sys.stdout.write("\033[2J\033[H")
-                    break
 
 def main():
     global current_sort_idx
