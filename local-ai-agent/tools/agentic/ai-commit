@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ai-commit - Automate Git Commits with AI Context v1.0.4
+# ai-commit - Automate Git Commits with AI Context v1.0.5
 
 set -euo pipefail
 
@@ -18,6 +18,10 @@ message=$("$_AI_PYTHON_BIN" "$_AI_SCRIPT_PATH" --talk "Write a highly concise, i
 
 # Clean up any trailing quotes or spaces
 message=$(echo "$message" | tr -d '"' | xargs)
+
+# Force standard Git casing to stop all-caps behavior
+message="${message,,}" # Converts the entire string to lowercase
+message="${message^}"  # Capitalizes only the very first letter
 
 echo -e "\nAI-Commit (Edit inline with arrows/backspace, then press Enter):"
 
