@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# sysctl-aware system profiler for local-ai-agent
+
 import os, re, subprocess, sys
 
 p_dir = os.path.expanduser("~/.config/local-ai/local-ai-agent/tools/skills")
@@ -64,6 +66,10 @@ elif "i3" in wm.lower(): wm = "i3"
 kernel_ver = run("uname -r")
 hostname_str = run("hostname")
 
+# 5. Extract Network Stack State for fq/fq_codel choices
+active_qdisc = run("sysctl -n net.core.default_qdisc")
+tcp_cc = run("sysctl -n net.ipv4.tcp_congestion_control")
+
 # Dynamic rule construction based on system states
 graphics_rules = ""
 if wm.lower() == "hyprland" or driver in ["xe", "amdgpu"]:
@@ -91,6 +97,8 @@ Host Profile context for local AI shell executions.
 * **Compositor / WM**: `{wm}`
 * **Login Manager**: `{dm}`
 * **Bootloader**: `{bootloader}`
+* **Active Qdisc**: `{active_qdisc}`
+* **TCP Congestion Control**: `{tcp_cc}`
 
 ---
 

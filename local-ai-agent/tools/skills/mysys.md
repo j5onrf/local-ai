@@ -11,6 +11,8 @@ Host Profile context for local AI shell executions.
 * **Compositor / WM**: `Hyprland`
 * **Login Manager**: `sddm`
 * **Bootloader**: `Limine`
+* **Active Qdisc**: `fq`
+* **TCP Congestion Control**: `bbr`
 
 ---
 

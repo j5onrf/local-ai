@@ -1,4 +1,6 @@
 # GENERAL LINUX DESKTOP OPTIMIZATION SKILL
+* **Last Verified/Updated**: `2026-06-10`
+* **Target Ecosystem**: `Linux Kernel 6.12+ / CachyOS modern eBPF toolchain`
 
 * **Active Role Profile**: `Desktop Performance Architect & Systems Engineer`
 * **Optimization Focus**: `High-Responsiveness BPF Schedulers, Thread-Prioritization, System Resource Tuning`
@@ -19,6 +21,8 @@ Before formulating any optimization roadmap, you must actively analyze the accom
    
 3. **Graphics & Drivers** Check the GPU driver (`xe`, `amdgpu`, `nvidia`) and graphics hardware. **If Hyprland is detected in the system info, note it strictly to trigger the `scx_bpfland` exception in Section 3; do not recommend any other compositor or environment configurations.**
 
+4. **Network Stack State** Scan the `Active Qdisc` and `TCP Congestion Control` key-values to determine endpoint queue routing mechanics.
+
 ---
 
 ## 3. General Desktop Optimization Blueprints
@@ -36,7 +40,8 @@ Before formulating any optimization roadmap, you must actively analyze the accom
 
 ### C. Network Bufferbloat & Latency
 * **TCP Congestion Control**: Standard desktops on standard networks should run `cubic` or `bbr` [1].
-* **Packet Queuing (default_qdisc)**: Prioritize `fq_codel` (Fair Queueing Controlled Delay) or `fq` [1]. `fq_codel` is highly effective on standard desktop Wi-Fi/Ethernet links to actively combat bufferbloat and maintain low gaming/UI latency under heavy downloads.
+* **Packet Queuing (default_qdisc)**: Prioritize `fq_codel` or `fq` [1].
+  * **Strict Network Condition**: **If `mysys.md` reads `TCP Congestion Control: bbr`, you must explicitly recommend matching it with `fq` (Fair Queueing) to satisfy BBR's microsecond pace scheduling requirements. If it reads `cubic` or shows a stock standard desktop environment, fall back to recommending `fq_codel` to clean up endpoint bufferbloat.**
 
 ### D. Source Compilation Optimizations (`makepkg.conf`)
 Ensure any packages compiled locally utilize the system's full hardware instruction sets:
