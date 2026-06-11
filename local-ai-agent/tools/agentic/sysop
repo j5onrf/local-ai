@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# sysop - Dynamic Optimization & Hardware Profile Integrator v1.0.0
+
+set -euo pipefail
+
+MYSYS_FILE="$HOME/.config/local-ai/local-ai-agent/tools/skills/mysys.md"
+SYSOP_FILE="$HOME/.config/local-ai/local-ai-agent/tools/skills/sysop.md"
+
+echo "# SYSTEM AUTOMATION & OPTIMIZATION PROFILE"
+echo ""
+
+if [ -f "$MYSYS_FILE" ]; then
+    cat "$MYSYS_FILE"
+    echo ""
+    echo "---"
+    echo ""
+fi
+
+if [ -f "$SYSOP_FILE" ]; then
+    cat "$SYSOP_FILE"
+fi
