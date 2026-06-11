@@ -1,41 +1,84 @@
 #!/usr/bin/env bash
-# AI Log Triage & Diagnostics v1.0.0
+# AI Log Triage & Diagnostics v2.0.0 (Zero-Config / One-And-Done)
 
 set -euo pipefail
+
+MYSYS_FILE="$HOME/.config/local-ai/local-ai-agent/tools/skills/mysys.md"
+CURSOR_FILE="$HOME/.cache/local-ai/log-checker.cursor"
+mkdir -p "$(dirname "$CURSOR_FILE")"
 
 echo "# ACTIVE SYSTEM DIAGNOSTICS & LOG TRIAGE"
 echo ""
 echo "> **Instructions for AI:**"
-echo "> 1. Focus entirely on analyzing the provided system events and errors."
-echo "> 2. Pinpoint the exact failure, dependency breakdown, or misconfiguration."
-echo "> 3. Explain what broke in 2 sentences max, and provide a single clean recovery action or command if applicable."
-echo "> 4. Format your output strictly for clean, plain-text terminal rendering. DO NOT use any Markdown formatting in your response."
+echo "> 1. Analyze the system events provided below *first* before reading the environment profile."
+echo "> 2. CRITICAL ATTENTION: Prioritize kernel, driver (e.g., DRM, GPU crashes, xe device coredumps), and hardware logs over repetitive user-space desktop warnings (such as GTK warnings or xdg-desktop-portal inhibition notices)."
+echo "> 3. Note the temporal context: If the header says 'NO NEW EVENTS RECORDED', it means the user's last action/fix successfully stopped the errors. Confirm this cleanly to the user!"
+echo "> 4. Explain what broke or hung in 2 sentences max, and provide a single clean recovery action or command if applicable."
+echo "> 5. Format your output using clean, semantic Markdown (headings, bolding, inline code, and code blocks) optimized for terminal rendering via mdcat."
 echo ""
 echo "---"
 echo ""
-echo "## CRITICAL SYSTEM ERRORS (Active Boot)"
+
+# ==========================================
+# SECTION 1: DYNAMIC SYSTEM EVENTS (High-Attention Area)
+# ==========================================
 
 if command -v journalctl >/dev/null 2>&1; then
-    # -p 3 pulls err, crit, alert, and emerg level entries
-    errors=$(journalctl -b 0 -p 3 --no-pager -n 5 2>/dev/null || true)
-    if [ -n "$errors" ]; then
+    if [ ! -f "$CURSOR_FILE" ]; then
+        # First-time run: Get the last 30 minutes of events for immediate context
+        new_logs=$(journalctl --since "30 minutes ago" -n 50 2>/dev/null || journalctl -b 0 -n 20 2>/dev/null || true)
+        # Silently seed the cursor bookmark for subsequent runs
+        journalctl -b 0 -n 1 --cursor-file="$CURSOR_FILE" >/dev/null 2>&1 || true
+    else
+        # Subsequent runs: Fetch only new events since the last run
+        new_logs=$(journalctl --cursor-file="$CURSOR_FILE" -n 50 2>/dev/null || true)
+    fi
+
+    # Display logic
+    if [ -n "$new_logs" ]; then
+        echo "## SYSTEM EVENTS"
         echo "\`\`\`text"
-        echo "$errors"
+        echo "$new_logs"
         echo "\`\`\`"
     else
-        echo "*No critical system errors detected in active journal.*"
+        echo "## NO NEW EVENTS RECORDED (System is Quiet)"
+        echo "The system has recorded no new events or errors since your last check."
+        echo "This indicates that any previous issues may have been successfully mitigated."
+        echo ""
+        echo "### HISTORICAL CONTEXT (Last 5 System Events)"
+        echo "\`\`\`text"
+        journalctl -b 0 -n 5 --no-pager 2>/dev/null || true
+        echo "\`\`\`"
     fi
 else
+    echo "## DIAGNOSTIC ERROR"
     echo "*Error: journalctl utility not found.*"
 fi
-
 echo ""
-echo "## ABSOLUTE LAST 10 SYSTEM EVENTS"
+echo "---"
+echo ""
 
+# ==========================================
+# SECTION 2: ENVIRONMENT PROFILE & RULES (Static Reference Area)
+# ==========================================
+
+# Inject target system profile context
+if [ -f "$MYSYS_FILE" ]; then
+    echo "## TARGET SYSTEM ENVIRONMENT PROFILE"
+    cat "$MYSYS_FILE"
+    echo ""
+    echo "---"
+    echo ""
+fi
+
+# Permissions Audit: Check if the user can read the system journal
 if command -v journalctl >/dev/null 2>&1; then
-    echo "\`\`\`text"
-    journalctl -b 0 --no-pager -n 10 2>/dev/null || true
-    echo "\`\`\`"
-else
-    echo "*Error: journalctl utility not found.*"
+    if ! journalctl -b 0 -n 1 >/dev/null 2>&1; then
+        echo "## SYSTEM DIAGNOSTICS WARNING"
+        echo "⚠️ **Warning for AI:** The tool is running without sufficient privileges to read the system-level systemd journal."
+        echo "The output below is restricted to user-space events. If the logs appear mostly empty or lack system errors, guide the user to run the tool via sudo or to add their user account to the 'systemd-journal' system group."
+        echo ""
+        echo "---"
+        echo ""
+    fi
 fi

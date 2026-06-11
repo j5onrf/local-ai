@@ -48,7 +48,7 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 # ==============================================================================
 
 # --- System Optimization (mysys skill primed) ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/sysop ---> system optimize, sysop, system optimization, sysop optimize
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system-optimize --->  sysop, system optimize, system optimization, sysop optimize
 
 # --- System Logs & Diagnostics (Compressed Stream Triage) ---
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/ai-log-checker ---> ai log, check errors, system crashed, events, ai-log

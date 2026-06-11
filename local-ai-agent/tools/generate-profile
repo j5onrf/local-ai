@@ -1,19 +1,34 @@
 #!/usr/bin/env python3
-# sysctl-aware system profiler for local-ai-agent
+# sysctl-aware system profiler for local-ai-agent v1.2.3
 
-import os, re, subprocess, sys
+import glob
+import os
+import re
+import socket
+import subprocess
+import sys
 
 p_dir = os.path.expanduser("~/.config/local-ai/local-ai-agent/tools/skills")
 p_path = os.path.join(p_dir, "mysys.md")
 os.makedirs(p_dir, exist_ok=True)
 
-sys.stderr.write("Generating system profile...\n")
+sys.stderr.write("Generating universal system profile...\n")
 sys.stderr.flush()
 
 def run(cmd):
-    try: return subprocess.check_output(cmd, shell=True, text=True, stderr=subprocess.DEVNULL).strip()
-    except: return "Unknown"
-        
+    try: 
+        return subprocess.check_output(cmd, shell=True, text=True, stderr=subprocess.DEVNULL).strip()
+    except Exception: 
+        return "Unknown"
+
+# 1. Hostname detection via Python built-in
+try:
+    hostname_str = socket.gethostname()
+except Exception:
+    hostname_str = run("hostname")
+
+# 2. OS and CPU detection
+cpu_threads = os.cpu_count() or "Unknown"
 os_name, cpu = "Unknown Linux", "Unknown"
 if os.path.exists("/etc/os-release"):
     with open("/etc/os-release") as f:
@@ -25,14 +40,19 @@ if os.path.exists("/proc/cpuinfo"):
         m = re.search(r'^model name\s*:\s*(.+)', f.read(), re.M)
         if m: cpu = m.group(1)
 
-# 1. Detect graphics driver
-driver = "Unknown"
-for drv in ["xe", "i915", "nvidia", "amdgpu", "nouveau", "radeon"]:
-    if os.path.exists(f"/sys/bus/pci/drivers/{drv}"):
-        driver = drv
-        break
+# 3. Dynamic active graphics driver detection via DRM sysfs
+drivers = []
+for path in glob.glob("/sys/class/drm/card*/device/driver"):
+    try:
+        if os.path.islink(path):
+            drv = os.path.basename(os.readlink(path))
+            if drv not in drivers:
+                drivers.append(drv)
+    except Exception:
+        pass
+driver = ", ".join(drivers) if drivers else "Unknown"
 
-# 2. Detect CachyOS/Arch x86-64 optimization level (v3/v4)
+# 4. Detect CachyOS/Arch x86-64 optimization level (v3/v4)
 arch_v = ""
 if os.path.exists("/etc/pacman.conf"):
     try:
@@ -40,39 +60,85 @@ if os.path.exists("/etc/pacman.conf"):
             conf = f.read()
             if "cachyos-v4" in conf: arch_v = " (v4)"
             elif "cachyos-v3" in conf: arch_v = " (v3)"
-    except: pass
+    except Exception: 
+        pass
 
-# 3. Detect Display / Login Manager
+# 5. Display / Login Manager
 dm = "Unknown"
 dm_symlink = "/etc/systemd/system/display-manager.service"
 if os.path.islink(dm_symlink):
-    try: dm = os.path.basename(os.readlink(dm_symlink)).replace(".service", "")
-    except: pass
+    try: 
+        dm = os.path.basename(os.readlink(dm_symlink)).replace(".service", "")
+    except Exception: 
+        pass
 
-# 4. Detect Active Bootloader
+# 6. Active Bootloader safely without needing root access to /boot
 bootloader = "Unknown"
-if os.path.exists("/boot/loader/loader.conf") or os.path.exists("/sys/firmware/efi/efivars/LoaderEntries-4a67b082-0a4c-41cf-b647-f31302b51130"):
+if os.path.exists("/usr/bin/bootctl"):
     bootloader = "systemd-boot"
-elif os.path.exists("/boot/grub/grub.cfg"):
-    bootloader = "GRUB"
-elif os.path.exists("/boot/limine.cfg") or os.path.exists("/boot/limine.conf"):
+elif os.path.exists("/usr/bin/limine"):
     bootloader = "Limine"
+elif os.path.exists("/usr/bin/grub-probe"):
+    bootloader = "GRUB"
 
-gpu = run("lspci | grep -i -E 'vga|3d|display' | head -n 1 | cut -d':' -f3")
-wm = os.environ.get("XDG_CURRENT_DESKTOP", "Standard Window Manager")
-if "hyprland" in wm.lower() or os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"): wm = "Hyprland"
-elif "i3" in wm.lower(): wm = "i3"
+# 7. Dynamically detect active boot filesystem type and mount options (checking /boot, /efi, and /boot/efi)
+boot_fstype = "Unknown"
+boot_options = "Unknown"
+boot_path = "Unknown"
+if os.path.exists("/proc/mounts"):
+    try:
+        with open("/proc/mounts") as f:
+            for line in f:
+                parts = line.split()
+                if len(parts) >= 4 and parts[1] in ["/boot", "/efi", "/boot/efi"]:
+                    # Prioritize fat partitions if multiple match, or assign if empty
+                    if parts[2] in ["vfat", "msdos", "exfat"] or boot_fstype == "Unknown":
+                        boot_path = parts[1]
+                        boot_fstype = parts[2]
+                        boot_options = parts[3]
+    except Exception: 
+        pass
+
+# 8. GPU Hardware identification
+gpu = "Unknown"
+if os.path.exists("/usr/bin/lspci"):
+    gpu = run("lspci | grep -i -E 'vga|3d|display' | head -n 1 | cut -d':' -f3")
+if not gpu or gpu == "Unknown":
+    gpu = "Integrated Graphics"
+
+# 9. WM / Compositor Detection with process-table fallback for headless/service executions
+wm = os.environ.get("XDG_CURRENT_DESKTOP", "")
+if not wm or wm.lower() == "standard window manager":
+    known_wms = ["hyprland", "sway", "i3", "kwin", "gnome-shell", "xfwm4", "openbox"]
+    try:
+        for pid in os.listdir("/proc"):
+            if pid.isdigit():
+                try:
+                    with open(os.path.join("/proc", pid, "comm"), "r") as f:
+                        comm = f.read().strip().lower()
+                        if comm in known_wms:
+                            wm = comm.capitalize()
+                            break
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+if not wm:
+    wm = "Standard Window Manager"
+
+if "hyprland" in wm.lower() or os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"): 
+    wm = "Hyprland"
+elif "i3" in wm.lower(): 
+    wm = "i3"
 
 kernel_ver = run("uname -r")
-hostname_str = run("hostname")
-
-# 5. Extract Network Stack State for fq/fq_codel choices
 active_qdisc = run("sysctl -n net.core.default_qdisc")
 tcp_cc = run("sysctl -n net.ipv4.tcp_congestion_control")
 
 # Dynamic rule construction based on system states
 graphics_rules = ""
-if wm.lower() == "hyprland" or driver in ["xe", "amdgpu"]:
+if wm.lower() == "hyprland" or any(d in driver for d in ["xe", "amdgpu"]):
     graphics_rules = f"The active graphics driver is **{driver}** running the **{wm}** Wayland compositor. Prioritize Wayland-native utilities (such as `hyprctl`, `grimblast`, `wl-copy`) and modern kernel driver configurations over deprecated X11 tools."
 else:
     graphics_rules = f"The active graphics driver is **{driver}** running the **{wm}** environment. Prioritize tools and commands native to this graphics and compositor setup."
@@ -83,6 +149,12 @@ if "cachyos" in kernel_ver.lower() or "v4" in arch_v or "v3" in arch_v:
 else:
     optimization_rules = "Prioritize standard package manager commands and standard execution runtimes appropriate for basic system hardware profiles."
 
+fs_rules = ""
+if boot_fstype in ["vfat", "msdos"]:
+    fs_rules = f"Your boot partition at `{boot_path}` utilizes a **{boot_fstype}** filesystem. NEVER suggest using `chmod` or `chown` on files or directories under `/boot` or `/efi`. If the current live **Boot Mount Options** contain `fmask=0077,dmask=0077`, the system is already secure! Inform the user that log errors related to mount permissions are purely historical entries from earlier in the boot sequence, and no action is required."
+else:
+    fs_rules = f"Your boot partition at `{boot_path}` utilizes a **{boot_fstype}** filesystem. Apply standard security permission logic native to this layout."
+
 # Structured Markdown Template for AI attention heads
 profile = f"""# SYSTEM ARCHITECTURE BLUEPRINT
 Host Profile context for local AI shell executions.
@@ -92,13 +164,16 @@ Host Profile context for local AI shell executions.
 * **Operating System**: `{os_name}`
 * **Linux Kernel**: `{kernel_ver}{arch_v}`
 * **CPU Hardware**: `{cpu}`
-* **GPU Hardware**: `{gpu if gpu and gpu != "Unknown" else "Integrated Graphics"}`
+* **CPU Threads (Logical)**: `{cpu_threads}`
+* **GPU Hardware**: `{gpu}`
 * **Active Driver**: `{driver}`
 * **Compositor / WM**: `{wm}`
 * **Login Manager**: `{dm}`
 * **Bootloader**: `{bootloader}`
 * **Active Qdisc**: `{active_qdisc}`
 * **TCP Congestion Control**: `{tcp_cc}`
+* **Boot Filesystem**: `{boot_fstype}`
+* **Boot Mount Options**: `{boot_options}`
 
 ---
 
@@ -113,16 +188,16 @@ All shell suggestions, scripts, and commands must strictly target **{os_name}** 
 ### 3. Wayland & Graphics Integration
 {graphics_rules}
 
-### 4. Non-Destructive Diagnostics
-Suggest non-destructive terminal configurations and queries. Prioritize standard `systemd` logging and diagnosis (`journalctl`, `systemctl`) to investigate boot or active runtime issues.
+### 4. Filesystem & Storage Safety
+{fs_rules}
 
-### 5. Format Constraints
-Keep all answers highly concise, direct, and terminal-focused.
-* **CRITICAL**: Do not use markdown formatting (such as bold asterisks `**` or header hashes `#`) in your final output responses, as your output is rendered directly in a raw terminal. Use simple capitalized headers and clean vertical line spaces for visual separation.
+### 5. Non-Destructive Diagnostics
+Suggest non-destructive terminal configurations and queries. Prioritize standard `systemd` logging and diagnosis (`journalctl`, `systemctl`) to investigate boot or active runtime issues.
 """
 
 try:
-    with open(p_path, "w") as f: f.write(profile)
+    with open(p_path, "w") as f: 
+        f.write(profile)
     sys.stderr.write(f"Saved system profile successfully to {p_path}!\n")
     sys.exit(0)
 except Exception as e:
