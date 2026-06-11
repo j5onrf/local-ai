@@ -1,0 +1,215 @@
+#!/usr/bin/env bash
+# security-audit - Dynamic Security Profile Integrator & System Auditor v1.0.5
+
+set -euo pipefail
+
+MYSYS_FILE="$HOME/.config/local-ai/local-ai-agent/tools/skills/mysys.md"
+SECAUD_FILE="$HOME/.config/local-ai/local-ai-agent/tools/skills/secaud.md"
+
+# 1. Print General System Profile (if available)
+if [ -f "$MYSYS_FILE" ]; then
+    cat "$MYSYS_FILE"
+    echo ""
+    echo "---"
+    echo ""
+fi
+
+# 2. Print Specific Skill Profile (if available)
+if [ -f "$SECAUD_FILE" ]; then
+    cat "$SECAUD_FILE"
+    echo ""
+    echo "---"
+    echo ""
+fi
+
+# 3. Print Real-time Security Telemetry
+echo "## REAL-TIME SYSTEM SECURITY TELEMETRY"
+echo ""
+
+# Kernel Status
+LOCAL_KERNEL=$(uname -r)
+
+# Inline Python helper to query kernel.org stable release securely
+STABLE_KERNEL=$(python3 -c '
+import urllib.request as urlreq, json
+try:
+    req = urlreq.Request("https://www.kernel.org/releases.json", headers={"User-Agent": "secaud-agent/1.0"})
+    with urlreq.urlopen(req, timeout=1.5) as r:
+        releases = json.loads(r.read().decode())["releases"]
+        for rel in releases:
+            if rel["moniker"] == "stable":
+                print(rel["version"])
+                break
+except:
+    print("None")
+' 2>/dev/null || echo "None")
+
+echo "### 1. Upstream Kernel Alignment"
+echo "* Running Local Kernel: \`$LOCAL_KERNEL\`"
+if [ "$STABLE_KERNEL" != "None" ] && [ -n "$STABLE_KERNEL" ]; then
+    echo "* Latest Upstream Stable: \`$STABLE_KERNEL\`"
+    
+    # Extract major and minor versions for a robust rolling-release comparison
+    IFS='.' read -r l1 l2 _ <<< "$LOCAL_KERNEL"
+    IFS='.' read -r s1 s2 _ <<< "$STABLE_KERNEL"
+    if [ "$l1" != "$s1" ] || [ "$l2" != "$s2" ]; then
+        echo "* Upstream Status: Diverged from latest stable branch. Verify if your distro has backported security patches for this branch."
+    else
+        echo "* Upstream Status: Inline with current stable kernel branch."
+    fi
+else
+    echo "* Upstream Status: Upstream server offline or timeout. Unable to verify latest stable kernel branch."
+fi
+echo ""
+
+# 2. Systemd Surface Area
+echo "### 2. Systemd Services Attack Surface"
+TOTAL_SERVICES=$(systemctl list-units --type=service --state=running --plain --no-legend 2>/dev/null | wc -l || echo "0")
+echo "* Active Running Services: \`$TOTAL_SERVICES\`"
+
+RESOLVED_ACTIVE=$(systemctl is-active systemd-resolved 2>/dev/null || echo "inactive")
+if [ "$RESOLVED_ACTIVE" = "active" ]; then
+    echo "* \`systemd-resolved.service\`: **ACTIVE** (Exposes DNS resolution vector)"
+else
+    echo "* \`systemd-resolved.service\`: INACTIVE / Not Running"
+fi
+
+AVAHI_ACTIVE=$(systemctl is-active avahi-daemon 2>/dev/null || echo "inactive")
+if [ "$AVAHI_ACTIVE" = "active" ]; then
+    echo "* \`avahi-daemon.service\`: **ACTIVE** (Exposes local network discovery mDNS surface area)"
+else
+    echo "* \`avahi-daemon.service\`: INACTIVE / Not Running"
+fi
+echo ""
+
+# 3. Sandbox Profiles
+echo "### 3. Containerized Application Sandboxing"
+FLATPAK_COUNT="0"
+if command -v flatpak >/dev/null 2>&1; then
+    FLATPAK_COUNT=$(flatpak list 2>/dev/null | wc -l || echo "0")
+fi
+echo "* Installed Flatpaks: \`$FLATPAK_COUNT\`"
+if [ "$FLATPAK_COUNT" -gt 0 ]; then
+    echo "  - Actionable mitigation: Review permissions for these packages using Flatseal to audit home directory or network read/write overrides."
+fi
+
+SNAP_CLASSIC="0"
+if command -v snap >/dev/null 2>&1; then
+    SNAP_CLASSIC=$(snap list 2>/dev/null | grep "classic" | wc -l || echo "0")
+fi
+echo "* Snaps with Classic Confinement: \`$SNAP_CLASSIC\`"
+echo ""
+
+# 4. Host Hardening and Privileges
+echo "### 4. Host Privilege & Identity Surface"
+
+# A: Passwordless Sudo Evaluation
+if sudo -n true 2>/dev/null; then
+    echo "* Passwordless Sudo: **ENABLED** (User can escalate to root without password verification)"
+else
+    echo "* Passwordless Sudo: DISABLED (Password authentication required for escalation)"
+fi
+
+# B: Default Umask
+CURRENT_UMASK=$(umask)
+echo "* Default File Umask: \`$CURRENT_UMASK\`"
+
+# C: SSH Folder Permissions
+SSH_DIR="$HOME/.ssh"
+if [ -d "$SSH_DIR" ]; then
+    SSH_PERM=$(stat -c "%a" "$SSH_DIR" 2>/dev/null || echo "Unknown")
+    echo "* SSH Directory Permissions: \`$SSH_PERM\` for \`~/.ssh\`"
+else
+    echo "* SSH Directory: NOT_FOUND (No local SSH keys or configuration directory)"
+fi
+echo ""
+
+# 5. Network Surface & Firewall
+echo "### 5. Network Listeners & Local Firewall"
+
+# A: Active Firewall Services
+UFW_ACTIVE=$(systemctl is-active ufw 2>/dev/null || echo "inactive")
+FIREWALLD_ACTIVE=$(systemctl is-active firewalld 2>/dev/null || echo "inactive")
+NFTABLES_ACTIVE=$(systemctl is-active nftables 2>/dev/null || echo "inactive")
+
+if [ "$UFW_ACTIVE" = "active" ] || [ "$FIREWALLD_ACTIVE" = "active" ] || [ "$NFTABLES_ACTIVE" = "active" ]; then
+    echo "* Active Firewall Service: **ENABLED** (Services: ufw=$UFW_ACTIVE, firewalld=$FIREWALLD_ACTIVE, nftables=$NFTABLES_ACTIVE)"
+else
+    echo "* Active Firewall Service: **DISABLED** (No standard systemd firewall services are active)"
+fi
+
+# B: Scan for Listening Public Ports (Listening on 0.0.0.0 or *)
+PUBLIC_PORTS=$(ss -tulnH 2>/dev/null | grep -E '0\.0\.0\.0|\*' | awk '{print $1 " on " $5}' || true)
+PUBLIC_COUNT=$(echo "$PUBLIC_PORTS" | grep -v "^$" | wc -l || echo "0")
+echo "* Active Public Network Listeners: \`$PUBLIC_COUNT\`"
+if [ "$PUBLIC_COUNT" -gt 0 ]; then
+    echo "  - Identified public listeners:"
+    while read -r line; do
+        if [ -n "$line" ]; then
+            echo "    - \`$line\`"
+        fi
+    done <<< "$PUBLIC_PORTS"
+fi
+echo ""
+
+# 6. AUR Auditing
+echo "### 6. Foreign (AUR) Packages Security Surface"
+AUR_PACKAGES=$(pacman -Qm 2>/dev/null || true)
+AUR_COUNT=$(echo "$AUR_PACKAGES" | grep -v "^$" | wc -l || echo "0")
+echo "* Total Foreign/AUR Packages: \`$AUR_COUNT\`"
+
+if [ "$AUR_COUNT" -gt 0 ]; then
+    # Inline Python helper to securely parse AUR RPC metadata and check risk metrics
+    python3 -c '
+import urllib.request as urlreq, urllib.parse, json, time, sys
+pkgs = [line.split()[0] for line in sys.stdin if line.strip()]
+if not pkgs:
+    sys.exit(0)
+
+results = []
+batch_size = 100
+for i in range(0, len(pkgs), batch_size):
+    batch = pkgs[i:i+batch_size]
+    params = [("arg[]", p) for p in batch]
+    url = "https://aur.archlinux.org/rpc/v5/info?" + urllib.parse.urlencode(params)
+    try:
+        req = urlreq.Request(url, headers={"User-Agent": "secaud-agent/1.0"})
+        with urlreq.urlopen(req, timeout=1.5) as r:
+            data = json.loads(r.read().decode())
+            if "results" in data:
+                results.extend(data["results"])
+    except:
+        pass
+        
+metadata = {res["Name"]: res for res in results}
+warnings = []
+keywords = ["network", "daemon", "server", "ssh", "ssl", "api", "remote", "socket", "download", "http", "dns", "proxy"]
+
+for pkg in pkgs:
+    meta = metadata.get(pkg)
+    if not meta:
+        warnings.append(f"  - `{pkg}`: Missing from the AUR database (may have been deleted or renamed).")
+        continue
+        
+    desc = meta.get("Description", "").lower()
+    votes = meta.get("NumVotes", 0)
+    is_orphan = not meta.get("Maintainer")
+    is_out_of_date = meta.get("OutOfDate") is not None
+    last_modified = meta.get("LastModified", 0)
+    
+    age_days = (time.time() - last_modified) / 86400.0
+    has_sensitive_surface = any(kw in desc for kw in keywords)
+    
+    if (is_orphan or is_out_of_date) and votes < 30 and age_days > 365 and has_sensitive_surface:
+        matched_kws = ", ".join(kw for kw in keywords if kw in desc)
+        warnings.append(f"  - `[CRITICAL]` `{pkg}` (votes: {votes}): Orphaned/Out-of-date > 1 yr, exposes sensitive network keywords: *{matched_kws}*")
+        
+if warnings:
+    print("* High-Priority Risks Identified:")
+    for w in warnings:
+        print(w)
+else:
+    print("* Risk Status: Secure. No unvetted, high-surface area unmaintained/orphaned AUR packages detected.")
+' <<< "$AUR_PACKAGES"
+fi
+echo ""

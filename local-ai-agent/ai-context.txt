@@ -47,6 +47,9 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 # SECTION 3: DYNAMIC CONTEXT-INJECTED TOOLS (RAG)
 # ==============================================================================
 
+# --- Host Security Surface & Vulnerability Intelligence (SECAUD) ---
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/security-audit ---> security audit, secaud, audit system security, scan for vulnerabilities
+
 # --- System Optimization (mysys skill primed) ---
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system-optimize --->  sysop, system optimize, system optimization, sysop optimize
 
