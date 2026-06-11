@@ -30,7 +30,7 @@ All configurations, automations, and custom project workspaces are managed throu
 | | **Continual Learning** | Extracts commands from LLM outputs and prompts you to save them as offline shortcuts, bypassing the LLM next time. |
 | | **Dynamic Viewer Pipeline** | Intercepts manual `[TOOL]` calls, automatically piping them to `mdcat` for terminal rendering while translating them to `cat` for AI context tasks. |
 | **Portability** | **Zero-Config Bootstrap** | Silent local diagnostics query your CPU, GPU, and window manager on first-run, auto-generating your system profile. |
-| | **Auditable Codebase** | Designed with full transparency in under 360 lines of highly clean, standard-library Python code. |
+| | **Auditable Codebase** | Designed with full transparency in under 450 lines of highly clean, standard-library Python code. |
 
 ---
 
