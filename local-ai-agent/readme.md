@@ -77,7 +77,7 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 # ==============================================================================
 
 # --- Local-Ai Agent Blueprint Map (Cheatsheet) ---
-~/.config/local-ai/local-ai-agent/tools/cheatsheet | leaf --inline ansi ---> cs, cheatsheet, cheat sheet
+~/.config/local-ai/local-ai-agent/tools/blueprint | leaf ---> cheatsheet, blueprint, bp, cs, map
 ```
 
 ---
