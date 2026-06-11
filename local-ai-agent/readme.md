@@ -92,8 +92,7 @@ To render Markdown files (`.md` skills, system profiles, and diagnostic logs) cl
 Project URL: https://github.com/RivoLink/leaf
 
 ```bash
-# Install leaf via your AUR helper
-yay -S leaf-markdown-viewer-bin
+yay -S leaf-markdown-viewer
 ```
 
 *Note: If `leaf` is missing from the system, the Python agent automatically falls back to standard `cat` using standard-library path checks, keeping the entire pipeline fully portable.*
