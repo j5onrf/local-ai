@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.7.9.21 [j5onrf] [06-10-26]
+# Local-Ai Agent v0.7.9.23 [j5onrf] [06-11-26]
 
 import sys, re, os, json, threading, time, math, subprocess, shutil
 import urllib.request as urlreq
@@ -69,12 +69,11 @@ def get_active_system_keywords():
     return keywords
 
 def run_local_tool(cmd):
-    # Auto-translate mdcat commands to cat for clean background LLM context rendering
     cmd_stripped = cmd.strip()
-    if "mdcat" in cmd_stripped:
-        cmd = re.sub(r'\bmdcat\b', 'cat', cmd_stripped)
+    # Strip any formatting pipe (leaf or mdcat) to guarantee the AI gets clean raw Markdown
+    cleaned_cmd = re.sub(r'\|\s*(leaf|mdcat)\b.*$', '', cmd_stripped).strip()
     try:
-        out = subprocess.check_output(cmd, shell=True, text=True, timeout=15).strip()
+        out = subprocess.check_output(cleaned_cmd, shell=True, text=True, timeout=15).strip()
         return f"{out}\n" if out else "Action executed successfully.\n"
     except Exception as e:
         sys.stderr.write(f"\033[1;31mTool execution failed: {str(e)}\033[0m\n")
@@ -189,15 +188,15 @@ def clean_tool_prefix(cmd):
         is_tool = inner.startswith("[TOOL]")
         cleaned = f"DANGER_FLAGGED:{inner.replace('[TOOL]', '', 1).strip()}" if is_tool else cleaned
     
-    # Safe fallback to cat if mdcat is not installed on the system
-    has_mdcat = bool(shutil.which("mdcat"))
+    # Safe fallback to cat if leaf is not installed on the system
+    has_leaf = bool(shutil.which("leaf"))
     if is_tool:
-        # If it's a dynamic context tool, automatically pipe to mdcat for humans
-        if "mdcat" not in cleaned:
-            cleaned = f"{cleaned} | {'mdcat' if has_mdcat else 'cat'}"
+        # If it's a dynamic context tool, automatically pipe to leaf for humans
+        if "leaf" not in cleaned:
+            cleaned = f"{cleaned} | {'leaf --inline ansi' if has_leaf else 'cat'}"
     else:
-        if "mdcat" in cleaned and not has_mdcat:
-            cleaned = re.sub(r'\bmdcat\b', 'cat', cleaned)
+        if "leaf" in cleaned and not has_leaf:
+            cleaned = re.sub(r'\|\s*leaf\b.*$', '', cleaned).strip()
     return cleaned
 
 def learn_command_from_response(query, ans):
@@ -286,7 +285,6 @@ def run_interactive_selection(intent):
                 else: sys.stderr.write("Aborted safely.\n")
                 break
             if key in ('\r', ''):
-                sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K"); sys.stderr.flush()
                 sys.stdout.write(cmd_to_show); sys.stdout.flush(); break
             elif key == '\x1b[A':
                 current_idx = (current_idx - 1 + num_opts) % num_opts
@@ -431,15 +429,15 @@ if matched_base:
         intent, cmd = line.split("|||", 1)
         is_tool = cmd.startswith("[TOOL]")
         cleaned_cmd = cmd.replace('[TOOL]', '', 1).strip() if is_tool else cmd
-        has_mdcat = bool(shutil.which("mdcat"))
+        has_leaf = bool(shutil.which("leaf"))
         
-        # Check if the command should be piped to mdcat automatically
+        # Check if the command should be piped to leaf automatically
         if is_tool:
-            if "mdcat" not in cleaned_cmd:
-                cleaned_cmd = f"{cleaned_cmd} | {'mdcat' if has_mdcat else 'cat'}"
+            if "leaf" not in cleaned_cmd:
+                cleaned_cmd = f"{cleaned_cmd} | {'leaf --inline' if has_leaf else 'cat'}"
         else:
-            if "mdcat" in cleaned_cmd and not has_mdcat:
-                cleaned_cmd = re.sub(r'\bmdcat\b', 'cat', cleaned_cmd)
+            if "leaf" in cleaned_cmd and not has_leaf:
+                cleaned_cmd = re.sub(r'\bleaf\b.*$', 'cat', cleaned_cmd)
         
         out_lines.append(f"{intent}|||{cleaned_cmd}")
     print("\n".join(out_lines)); sys.exit(0)

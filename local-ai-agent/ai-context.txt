@@ -79,7 +79,7 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 # ==============================================================================
 
 # --- Local-Ai Agent Blueprint Map (CheatSheet) ---
-~/.config/local-ai/local-ai-agent/tools/blueprint | mdcat ---> cheatsheet, blueprint, bp, cs, map
+~/.config/local-ai/local-ai-agent/tools/blueprint | leaf ---> cheatsheet, blueprint, bp, cs, map
 
 # --- AI-Generated Git Commits ---
 ~/.config/local-ai/local-ai-agent/tools/agentic/ai-commit ---> ai-commit, git-commit, git commit

@@ -1,4 +1,4 @@
-# Local-AI Agent (v0.7.9.21)
+# Local-AI Agent (v0.8.1.1)
 
 <img alt="Image_5e1xpv5e1xpv5e1x-3" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" />
 
@@ -28,7 +28,7 @@ All configurations, automations, and custom project workspaces are managed throu
 | **Integration** | **Zero-Bloat Auto-Routing** | Automatically injects your system specs (`mysys.md`) *only* when queries contain system keywords (e.g. `gpu`, `kernel`). |
 | | **Voice Query Bridge** | Connects any Wi-Fi tablet or phone over local HTTPS/HTTP to record audio, transcribing natively on the cloud with 0% PC CPU load. |
 | | **Continual Learning** | Extracts commands from LLM outputs and prompts you to save them as offline shortcuts, bypassing the LLM next time. |
-| | **Dynamic Viewer Pipeline** | Intercepts manual `[TOOL]` calls, automatically piping them to `mdcat` for terminal rendering while translating them to `cat` for AI context tasks. |
+| | **Dynamic Viewer Pipeline** | Intercepts manual `[TOOL]` calls, automatically piping them to `leaf` for terminal rendering while translating them to `cat` for AI context tasks. |
 | **Portability** | **Zero-Config Bootstrap** | Silent local diagnostics query your CPU, GPU, and window manager on first-run, auto-generating your system profile. |
 | | **Auditable Codebase** | Designed with full transparency in under 450 lines of highly clean, standard-library Python code. |
 
@@ -77,7 +77,7 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 # ==============================================================================
 
 # --- Local-Ai Agent Blueprint Map (Cheatsheet) ---
-~/.config/local-ai/local-ai-agent/tools/cheatsheet | mdcat ---> cs, cheatsheet, cheat sheet
+~/.config/local-ai/local-ai-agent/tools/cheatsheet | leaf --inline ansi ---> cs, cheatsheet, cheat sheet
 ```
 
 ---
@@ -86,14 +86,14 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 
 ### 1. Install optional rendering utilities
 
-To render Markdown files (`.md` skills, system profiles, and diagnostic logs) cleanly inside your terminal using your **native terminal theme colors**, it is recommended to install **`mdcat`** (Rust-based Markdown CLI renderer):
+To render Markdown files (`.md` skills, system profiles, and diagnostic logs) cleanly inside your terminal using your **native terminal theme colors**, it is recommended to install **`leaf`** (Rust-based Markdown CLI/TUI viewer) [1.3.1]:
 
 ```bash
 # On Arch Linux / CachyOS
-sudo pacman -S mdcat
+yay -S leaf-markdown-viewer-bin
 ```
 
-*Note: If `mdcat` is missing from the system, the Python agent automatically falls back to standard `cat` using standard-library path checks, keeping the entire pipeline fully portable.*
+*Note: If `leaf` is missing from the system, the Python agent automatically falls back to standard `cat` using standard-library path checks, keeping the entire pipeline fully portable.*
 
 ### 2. Install the Project Files
 ```bash
