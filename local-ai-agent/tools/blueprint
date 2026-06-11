@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# cheatsheet - High-Speed 1-to-1 Markdown Cheatsheet Generator v3.2.0
+# Blueprint - High-Speed 1-to-1 Markdown Cheatsheet Generator v3.2.0
 
 set -euo pipefail
 
@@ -10,7 +10,7 @@ if [[ ! -f "$CONTEXT_FILE" ]]; then
     exit 1
 fi
 
-echo "# CHEATSHEET"
+echo "# BLUEPRINT"
 echo "This map represents your custom shortcuts and active targets."
 echo ""
 
