@@ -17,13 +17,13 @@
 # ==============================================================================
 
 # --- OpenCode Direct Terminal Launcher ---
-~/.config/local-ai/opencode-bridge/opencode-bridge ---> ocb, opencode bridge
+~/.config/local-ai/opencode-bridge/opencode-bridge ---> opencode bridge, ocb
 
 # --- Odysseus Direct Terminal Launcher ---
-~/.config/local-ai/odysseus-bridge/odysseus-bridge ---> ody, odysseus. odb
+~/.config/local-ai/odysseus-bridge/odysseus-bridge ---> odysseus bridge. ody, odb
 
 # --- Hermes Direct Browser Workspace Launcher ---
-~/.config/local-ai/hermes-bridge/hermes-bridge ---> hmb, hermes bridge, herm
+~/.config/local-ai/hermes-bridge/hermes-bridge ---> hermes bridge, hmb, herm
 
 # --- Standard Codebase Workspaces (Dynamic Auto-Init) ---
 # (Triggers standard ai init on the directory tree when matched)
@@ -51,13 +51,13 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/security-audit ---> security audit, secaud, audit system security, scan for vulnerabilities
 
 # --- System Optimization (mysys skill primed) ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system-optimize --->  sysop, system optimize, system optimization, sysop optimize
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system-optimize --->  system optimize, sysop,  system optimization, sysop optimize
 
 # --- System Logs & Diagnostics (Compressed Stream Triage) ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/ai-log-checker ---> ai log, check errors, system crashed, events, ai-log
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/ai-log-checker ---> ai log, check errors, system crashed, events
 
 # --- System Resources & Telemetry (Active Diagnostics) ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/ai-system-diagnosis ---> system health, system diagnosis, why is my system slow
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/ai-system-diagnosis ---> system health, health, system diagnosis, why is my system slow
 
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/update-inspector ---> update inspector, ui, check upgrades, what updates do i have, pending updates, what updates do i have pending
 
@@ -67,8 +67,8 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/ai-status ---> status, ai-status, aistat, aistatus,
 
 # --- Weather & Live Networking ---
-[TOOL] curl -s "wttr.in/?format=3" ---> weather simple, rain forecast simple
-[TOOL] curl -s wttr.in ---> weather full, rain forecast full
+[TOOL] curl -s "wttr.in/?format=3" ---> weather simple, weather, rain forecast simple
+[TOOL] curl -s wttr.in ---> weather full, weather, rain forecast full
 
 # --- System Time & Date (Real-time Clock Context) ---
 [TOOL] date ---> time, current time, what time is it, system date, system time
@@ -82,10 +82,10 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 ~/.config/local-ai/local-ai-agent/tools/blueprint | mdcat ---> cheatsheet, blueprint, bp, cs, map
 
 # --- AI-Generated Git Commits ---
-~/.config/local-ai/local-ai-agent/tools/agentic/ai-commit ---> ai-commit, git-commit, git commit
+~/.config/local-ai/local-ai-agent/tools/agentic/ai-commit ---> ai-commit, gc, git-commit, git commit
 
 # --- Server Lifecycle Management ---
-~/.config/local-ai/local-ai-agent/tools/kill-ai-servers ---> killserver
+~/.config/local-ai/local-ai-agent/tools/kill-ai-servers ---> killserver, ks
 
 
 # ==============================================================================
@@ -114,10 +114,10 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 /home/j5/.config/local-ai/voice/voice-query ---> voice, voice query, voice bridge
 
 # --- System App Launcher (Ultra-Light Rofi-TUI) ---
-~/.config/local-ai/local-ai-agent/tools/subsec/app-launcher/app-launcher.py ---> app, app launcher, launcher
+~/.config/local-ai/local-ai-agent/tools/subsec/app-launcher/app-launcher.py ---> app launcher, app
 
 # --- Native Webapp Wrappers & Browsers ---
-omarchy-launch-webapp https://music.youtube.com/ ---> youtube music, yt music, youtube webapp
+omarchy-launch-webapp https://music.youtube.com/ ---> youtube music, yt, yt music, youtube webapp
 
 nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-spotify-bunker" --app=https://open.spotify.com/ >/dev/null 2>&1 & ---> spotify music
 
@@ -127,8 +127,8 @@ nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-sp
 # ==============================================================================
 
 # --- Stopwatch ---
-~/.config/local-ai/local-ai-agent/tools/subsec/stopwatch/stopwatch.py ---> stopwatch py, stop watch, sw
-~/.config/local-ai/local-ai-agent/tools/subsec/stopwatch/stopwatch.sh ---> stopwatch sh, stop watch, sw
+~/.config/local-ai/local-ai-agent/tools/subsec/stopwatch/stopwatch.py ---> stopwatch py, sw, stop watch, sw
+~/.config/local-ai/local-ai-agent/tools/subsec/stopwatch/stopwatch.sh ---> stopwatch sh, sw, stop watch, sw
 
 # --- Notes ---
 ~/.config/local-ai/local-ai-agent/tools/subsec/notes/notes.sh ---> notes, open notes, add to notes
