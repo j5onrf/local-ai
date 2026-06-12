@@ -189,13 +189,13 @@ When you run a conversational query targeting that intent, the script executes t
 
 #### The Dual-Track Formatting Pipeline (Smart Fallback & Auto-Piping)
 To achieve maximum ease of use on the human side while guaranteeing clean inputs on the AI side, the agent implements a transparent formatting pipeline:
-1. **The Human Terminal (Interactive Mode):** When a user runs a `[TOOL]` mapped command manually, the TUI interpreter `clean_tool_prefix(cmd)` automatically intercepts the command [1.1]. If the command is a script or text file that does not contain a viewer prefix, it dynamically appends a pipe (`| leaf --inline ansi`) on the fly [1.1, 1.3.1]. You receive a beautifully styled terminal document that respects your native terminal themes and colors [1.1, 1.2.2].
-2. **The AI Agent (Background Mode):** When running a background tool call, the Python script executes `run_local_tool(cmd)`. This function uses a global regex sweep (`re.sub(r'\|\s*(leaf|mdcat)\b.*$', '', cmd)`) to cleanly strip off any trailing formatting pipe (`| leaf` or `| mdcat`) completely [4]. The tool runs, outputting the clean, unformatted raw Markdown directly to standard output, which feeds directly to the LLM without any ANSI terminal coloring markers [4].
+1. **The Human Terminal (Interactive Mode):** When a user runs a `[TOOL]` mapped command manually, the TUI interpreter `clean_tool_prefix(cmd)` automatically intercepts the command [1.1]. If the command is a script or text file that does not contain a viewer prefix, it dynamically appends a pipe (`| leaf --inline`) on the fly [1.1, 1.3.1]. You receive a beautifully styled terminal document that respects your native terminal themes and colors [1.1, 1.2.2].
+2. **The AI Agent (Background Mode):** When running a background tool call, the Python script executes `run_local_tool(cmd)`. This function uses a global regex sweep (`re.sub(r'\|\s*leaf\b.*$', '', cmd)`) to cleanly strip off any trailing formatting pipe (`| leaf`) completely [4]. The tool runs, outputting the clean, unformatted raw Markdown directly to standard output, which feeds directly to the LLM without any ANSI terminal coloring markers [4].
 3. **Dynamic Portability Fallback:** If you use this configuration on a system where `leaf` is not installed, the standard-library path helper (`shutil.which("leaf")`) automatically catches the absence, strips the pipeline, and falls back to standard `cat` for you, ensuring that commands never crash or return errors [1.1, 1.3.1].
 
 ### D. Agentic Diagnostic Tool (`ai-status` & `ai-system-diagnosis`)
 The system features dedicated local diagnostic scripts located at `~/.config/local-ai/local-ai-agent/tools/agentic/`. They operate as dual-purpose tools:
-* **As a Native Shell Shortcut (Section 4):** Typing `aistat` or `system health` on the command line invokes the suggestion carousel, strips the `[TOOL]` prefix, and automatically pipes the output into `leaf --inline ansi`, rendering a beautiful, high-contrast diagnostics panel showing key masks, active process hogs, and your active fallback routing [1.1, 1.3.1].
+* **As a Native Shell Shortcut (Section 4):** Typing `aistat` or `system health` on the command line invokes the suggestion carousel, strips the `[TOOL]` prefix, and automatically pipes the output into `leaf --inline`, rendering a beautiful, high-contrast diagnostics panel showing key masks, active process hogs, and your active fallback routing [1.1, 1.3.1].
 * **As an Agentic Chat Tool (Section 3):** Typing `status check` or `system diagnostics` inside an active chat session executes the scripts silently. It automatically strips out `| leaf` pipelines completely, injecting raw connectivity details, system loads, and strict markdown rules directly into the LLM context, enabling the model to conversationalize your diagnostic details [1.1, 4].
 
 ### E. Project Workspace Agents (`ai init`)
@@ -272,19 +272,18 @@ To enable seamless microphone access on mobile devices, modern web standards req
 
 The Voice Bridge overcomes this limitation by implementing a self-healing secure layer:
 1. **Automatic Certificate Generation**: On startup, if no certificate is found, the server utilizes your system's native `openssl` binary to generate a local self-signed SSL certificate (`server.pem`) bound directly to your PC's active network IP [3].
-2. **HTML5 MediaRecorder Integration**: Instead of relying on proprietary, Google-bloated system libraries on the tablet, the client interface uses the completely open-source, standard-library browser `MediaRecorder` API to capture raw audio [2].
+2. **HTML5 MediaRecorder Integration**: Instead of relying on proprietary, Google system libraries on the tablet, the client interface uses the completely open-source, standard-library browser `MediaRecorder` API to capture raw audio [2].
 3. **Push-to-Talk (Hold to Speak)**: By capturing pointer events (`pointerdown` / `pointerup`), the browser records only while your finger is physically pressing the button [1, 2]. The exact millisecond you release your finger, it terminates recording and POSTs the raw binary audio array to your PC [1, 2].
 4. **Cloud-Assisted Multimodal Transcription**: Your Python server base64-encodes the raw audio array and forwards it directly to Google's active stable `gemini-3.1-flash-lite` model over the network [2]. This completely bypasses local model compilation, packages, and dependencies while returning high-precision transcriptions with zero local overhead [2].
 
 ### G. High-Speed 1-to-1 Markdown Cheatsheet Generator (`cheatsheet`)
-To replace traditional, bloated help outputs or hardcoded aliases, the project features a dedicated cheatsheet generator located at `~/.config/local-ai/local-ai-agent/tools/cheatsheet`.
+To replace traditional, help outputs or hardcoded aliases, the project features a dedicated cheatsheet generator located at `~/.config/local-ai/local-ai-agent/tools/cheatsheet`.
 * **Dynamic Content Extraction**: The script reads your live `ai-context.txt` master mapping index on the fly, dynamically parses out Section Headers, and collapses multi-synonym aliases down to their single, primary trigger keyword or phrase [1.1].
 * **Unified Pipeline Filtering**: It automatically strips absolute directory paths down to their base filenames and extracts raw URLs from complex command wrappers [1.1]. It is formatted as a beautiful, grid-aligned Markdown table that respects your terminal's native colors and fonts when rendered via `leaf` [1.1, 1.2.2].
 
 ---
 
-> **Status: Alpha** | Built because other agents are too heavy; it won't leave Alpha until everything I want works perfectly.
-This is a minimal base template for developers, but primarily customized to make my personal system function exactly how I want.
+> **Status: Alpha** | This is a minimal base template for developers, but primarily customized to make my personal system function exactly how I want.
 
 <br><br>
 
