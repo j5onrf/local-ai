@@ -1,4 +1,4 @@
-# Local-AI Agent (v0.7.9.21) — Documentation
+# Local-AI Agent (v0.8.1.1) — Documentation
 
 An adaptive, local/cloud AI shell assistant designed to conform to your terminal environment with zero background overhead. By leveraging a high-speed, rarity-weighted (TF-IDF) sparse search index alongside local or cloud LLMs, it provides instant command suggestions, executes local RAG tools, manages specialized project skills, and handles natural-language conversational queries. It features a zero-daemon local network Voice Query Bridge for hands-on desktop automation and is capable of continuous offline learning by automatically capturing and inoculating terminal shortcuts directly from LLM outputs.
 
@@ -78,7 +78,7 @@ Command    ai init <path>
                       [ Connection Opened ]
                     Wipes Spinner from Screen
                                 │
-                     [ Tool-Intent Match? ]
+                      [ Tool-Intent Match? ]
                            /          \
                       ( Yes )          ( No )
                         /                \
@@ -189,14 +189,14 @@ When you run a conversational query targeting that intent, the script executes t
 
 #### The Dual-Track Formatting Pipeline (Smart Fallback & Auto-Piping)
 To achieve maximum ease of use on the human side while guaranteeing clean inputs on the AI side, the agent implements a transparent formatting pipeline:
-1. **The Human Terminal (Interactive Mode):** When a user runs a `[TOOL]` mapped command manually, the TUI interpreter `clean_tool_prefix(cmd)` automatically intercepts the command [1.1]. If the command is a script or text file that does not contain a viewer prefix, it dynamically appends a pipe (`| mdcat`) on the fly [1.1]. You receive a beautifully styled terminal document that respects your native terminal themes and colors [1.1, 1.2.7].
-2. **The AI Agent (Background Mode):** When running a background tool call, the Python script executes `run_local_tool(cmd)`. This function uses a global regex sweep (`re.sub(r'\bmdcat\b', 'cat', cmd)`) to translate `mdcat` commands (including trailing pipes) into raw `cat` commands behind the scenes [1.1]. The tool runs, pipes to `cat` (returning the unformatted, raw Markdown to standard output), and feeds the clean text directly to the LLM without any ANSI terminal coloring markers [1.1].
-3. **Dynamic Portability Fallback:** If you use this configuration on a system where `mdcat` is not installed, the standard-library path helper (`shutil.which("mdcat")`) automatically catches the absence and falls back to native `cat` for you, ensuring that commands never crash or return errors [1.1].
+1. **The Human Terminal (Interactive Mode):** When a user runs a `[TOOL]` mapped command manually, the TUI interpreter `clean_tool_prefix(cmd)` automatically intercepts the command [1.1]. If the command is a script or text file that does not contain a viewer prefix, it dynamically appends a pipe (`| leaf --inline ansi`) on the fly [1.1, 1.3.1]. You receive a beautifully styled terminal document that respects your native terminal themes and colors [1.1, 1.2.2].
+2. **The AI Agent (Background Mode):** When running a background tool call, the Python script executes `run_local_tool(cmd)`. This function uses a global regex sweep (`re.sub(r'\|\s*(leaf|mdcat)\b.*$', '', cmd)`) to cleanly strip off any trailing formatting pipe (`| leaf` or `| mdcat`) completely [4]. The tool runs, outputting the clean, unformatted raw Markdown directly to standard output, which feeds directly to the LLM without any ANSI terminal coloring markers [4].
+3. **Dynamic Portability Fallback:** If you use this configuration on a system where `leaf` is not installed, the standard-library path helper (`shutil.which("leaf")`) automatically catches the absence, strips the pipeline, and falls back to standard `cat` for you, ensuring that commands never crash or return errors [1.1, 1.3.1].
 
 ### D. Agentic Diagnostic Tool (`ai-status` & `ai-system-diagnosis`)
 The system features dedicated local diagnostic scripts located at `~/.config/local-ai/local-ai-agent/tools/agentic/`. They operate as dual-purpose tools:
-* **As a Native Shell Shortcut (Section 4):** Typing `aistat` or `system health` on the command line invokes the suggestion carousel, strips the `[TOOL]` prefix, and automatically pipes the output into `mdcat`, rendering a beautiful, high-contrast diagnostics panel showing key masks, active process hogs, and your active fallback routing [1.1].
-* **As an Agentic Chat Tool (Section 3):** Typing `status check` or `system diagnostics` inside an active chat session executes the scripts silently. It automatically translates `| mdcat` to `| cat`, injecting raw connectivity details, system loads, and strict markdown rules directly into the LLM context, enabling the model to conversationalize your diagnostic details [1.1].
+* **As a Native Shell Shortcut (Section 4):** Typing `aistat` or `system health` on the command line invokes the suggestion carousel, strips the `[TOOL]` prefix, and automatically pipes the output into `leaf --inline ansi`, rendering a beautiful, high-contrast diagnostics panel showing key masks, active process hogs, and your active fallback routing [1.1, 1.3.1].
+* **As an Agentic Chat Tool (Section 3):** Typing `status check` or `system diagnostics` inside an active chat session executes the scripts silently. It automatically strips out `| leaf` pipelines completely, injecting raw connectivity details, system loads, and strict markdown rules directly into the LLM context, enabling the model to conversationalize your diagnostic details [1.1, 4].
 
 ### E. Project Workspace Agents (`ai init`)
 When analyzing codebase folders, running raw chat queries lacks necessary structural context. Running `ai init <path>` triggers a dedicated indexing binary (`tools/init-projects`) that:
@@ -279,7 +279,7 @@ The Voice Bridge overcomes this limitation by implementing a self-healing secure
 ### G. High-Speed 1-to-1 Markdown Cheatsheet Generator (`cheatsheet`)
 To replace traditional, bloated help outputs or hardcoded aliases, the project features a dedicated cheatsheet generator located at `~/.config/local-ai/local-ai-agent/tools/cheatsheet`.
 * **Dynamic Content Extraction**: The script reads your live `ai-context.txt` master mapping index on the fly, dynamically parses out Section Headers, and collapses multi-synonym aliases down to their single, primary trigger keyword or phrase [1.1].
-* **Unified Pipeline Filtering**: It automatically strips absolute directory paths down to their base filenames and extracts raw URLs from complex command wrappers [1.1]. It is formatted as a beautiful, grid-aligned Markdown table that respects your terminal's native colors and fonts when rendered via `mdcat` [1.1, 1.2.7].
+* **Unified Pipeline Filtering**: It automatically strips absolute directory paths down to their base filenames and extracts raw URLs from complex command wrappers [1.1]. It is formatted as a beautiful, grid-aligned Markdown table that respects your terminal's native colors and fonts when rendered via `leaf` [1.1, 1.2.2].
 
 ---
 
@@ -287,3 +287,4 @@ To replace traditional, bloated help outputs or hardcoded aliases, the project f
 This is a minimal base template for developers, but primarily customized to make my personal system function exactly how I want.
 
 <br><br>
+

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.1.1 [j5onrf] [06-11-26]
+# Local-Ai Agent v0.8.1.2 [j5onrf] [06-11-26]
 
 import sys, re, os, json, threading, time, math, subprocess, shutil
 import urllib.request as urlreq
@@ -70,8 +70,8 @@ def get_active_system_keywords():
 
 def run_local_tool(cmd):
     cmd_stripped = cmd.strip()
-    # Strip any formatting pipe (leaf or mdcat) to guarantee the AI gets clean raw Markdown
-    cleaned_cmd = re.sub(r'\|\s*(leaf|mdcat)\b.*$', '', cmd_stripped).strip()
+    # Strip any formatting pipe to guarantee the AI gets clean raw Markdown
+    cleaned_cmd = re.sub(r'\|\s*leaf\b.*$', '', cmd_stripped).strip()
     try:
         out = subprocess.check_output(cleaned_cmd, shell=True, text=True, timeout=15).strip()
         return f"{out}\n" if out else "Action executed successfully.\n"
@@ -191,9 +191,9 @@ def clean_tool_prefix(cmd):
     # Safe fallback to cat if leaf is not installed on the system
     has_leaf = bool(shutil.which("leaf"))
     if is_tool:
-        # If it's a dynamic context tool, automatically pipe to leaf for humans
+        # If it's a dynamic context tool, automatically pipe to leaf 
         if "leaf" not in cleaned:
-            cleaned = f"{cleaned} | {'leaf --inline ansi' if has_leaf else 'cat'}"
+            cleaned = f"{cleaned} | {'leaf --inline' if has_leaf else 'cat'}"
     else:
         if "leaf" in cleaned and not has_leaf:
             cleaned = re.sub(r'\|\s*leaf\b.*$', '', cleaned).strip()
