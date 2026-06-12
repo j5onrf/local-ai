@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.1.3 [j5onrf] [06-12-26]
+# Local-Ai Agent v0.8.1.4 [j5onrf] [06-12-26]
 
 import sys, re, os, json, threading, time, math, subprocess, shutil
 import urllib.request as urlreq
@@ -266,14 +266,15 @@ def run_interactive_selection(intent):
             cmd_to_show = current_cmd.replace("DANGER_FLAGGED:", "") if is_danger else current_cmd
             display_cmd = cmd_to_show.replace(" >/dev/null 2>&1", "").replace(os.path.expanduser("~"), "~")
 
+            idx_str = f"{display_idx:02d}/{num_opts:02d}"
+
             if is_danger:
-                sys.stderr.write("\r\x1b[K\x1b[1;31mWARNING: Potentially destructive suggestion detected!\x1b[0m\n")
-                sys.stderr.write(f"\r\x1b[K\x1b[1;33mSelect ({display_idx}/{num_opts}):\x1b[0m \x1b[1;36m[{current_intent}]\x1b[0m {display_cmd}\n")
-                sys.stderr.write("\r\x1b[KAre you absolutely sure you want to run this? (y/N): ")
+                sys.stderr.write("\r\x1b[K\033[1;31m▲ WARNING: Destructive payload detected\033[0m\n")
+                sys.stderr.write(f"\r\x1b[K\033[1;30m[\033[1;31m{idx_str}\033[1;30m]\033[0m ❯ \x1b[1;36m[{current_intent}]\x1b[0m {display_cmd}\n")
+                sys.stderr.write("\r\x1b[K\033[1;30m::\033[0m execute payload? [y/N]: ")
             else:
-                label = f"Select ({display_idx}/{num_opts}) [Up/Down]:" if num_opts > 1 else "Select:"
-                sys.stderr.write(f"\r\x1b[K\x1b[1;32m{label}\x1b[0m \x1b[1;36m[{current_intent}]\x1b[0m {display_cmd}\n")
-                sys.stderr.write("\r\x1b[K[Enter] Execute / [Any Key] Cancel: ")
+                sys.stderr.write(f"\r\x1b[K\033[1;30m[\033[1;32m{idx_str}\033[1;30m]\033[0m ❯ \x1b[1;36m[{current_intent}]\x1b[0m {display_cmd}\n")
+                sys.stderr.write("\r\x1b[K\033[1;30m::\033[0m ↵ run  any skip: ")
             
             sys.stderr.flush()
             key = get_key()
