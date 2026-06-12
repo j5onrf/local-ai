@@ -89,7 +89,6 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 To render Markdown files (`.md` skills, system profiles, and diagnostic logs) cleanly inside your terminal using your **native terminal theme colors**, it is recommended to install **`mdcat`** (Rust-based Markdown CLI viewer):
 
 ```bash
-# https://github.com/lunaryorn/mdcat
 yay mdcat
 ```
 
