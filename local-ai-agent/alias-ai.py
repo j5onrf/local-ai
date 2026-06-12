@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.1.4 [j5onrf] [06-12-26]
+# Local-Ai Agent v0.8.1.11 [j5onrf] [06-12-26]
 
 import sys, re, os, json, threading, time, math, subprocess, shutil
 import urllib.request as urlreq
@@ -68,10 +68,19 @@ def get_active_system_keywords():
         except: pass
     return keywords
 
+# Replicates the native stock shell command-not-found error directly on stderr
+def print_stock_error(cmd_name):
+    shell_path = os.environ.get("SHELL", "/bin/bash")
+    shell_name = os.path.basename(shell_path)
+    if "zsh" in shell_name:
+        sys.stderr.write(f"zsh: command not found: {cmd_name}\n")
+    else:
+        sys.stderr.write(f"bash: {cmd_name}: command not found\n")
+
 def run_local_tool(cmd):
     cmd_stripped = cmd.strip()
     # Strip any formatting pipe to guarantee the AI gets clean raw Markdown
-    cleaned_cmd = re.sub(r'\|\s*leaf\b.*$', '', cmd_stripped).strip()
+    cleaned_cmd = re.sub(r'\|\s*mdcat\b.*$', '', cmd_stripped).strip()
     try:
         out = subprocess.check_output(cleaned_cmd, shell=True, text=True, timeout=15).strip()
         return f"{out}\n" if out else "Action executed successfully.\n"
@@ -127,7 +136,8 @@ else:
 def check_danger(cmd):
     return f"DANGER_FLAGGED:{cmd}" if cmd and any(kw in cmd.lower() for kw in DESTRUCTIVE_KEYWORDS) else cmd
 
-def matrix_search(query, threshold=0.45):
+# Default threshold raised to 0.55 to prevent loose/accidental keyword matching
+def matrix_search(query, threshold=0.55):
     query_tokens = tokenize(query)
     if not query_tokens: return None
     if not os.path.exists(INDEX_FILE): compile_vector_index()
@@ -145,6 +155,12 @@ def matrix_search(query, threshold=0.45):
         intersect = q_set & set(entry["tokens"])
         if not intersect: continue
             
+        # Standalone Token Guard: If the query is a single word, it is strictly
+        # forbidden from matching a partial subset of a multi-word intent.
+        if len(query_tokens) == 1:
+            if query_tokens[0] != entry["intent"].strip().lower():
+                continue
+
         match_weight = sum(idfs.get(t, 1.0) for t in intersect)
         q_weight = sum(idfs.get(t, 1.0) for t in q_set)
         entry_weight = sum(idfs.get(t, 1.0) for t in entry["tokens"])
@@ -188,15 +204,15 @@ def clean_tool_prefix(cmd):
         is_tool = inner.startswith("[TOOL]")
         cleaned = f"DANGER_FLAGGED:{inner.replace('[TOOL]', '', 1).strip()}" if is_tool else cleaned
     
-    # Safe fallback to cat if leaf is not installed on the system
-    has_leaf = bool(shutil.which("leaf"))
+    # Safe fallback to cat if mdcat is not installed on the system
+    has_mdcat = bool(shutil.which("mdcat"))
     if is_tool:
-        # If it's a dynamic context tool, automatically pipe to leaf 
-        if "leaf" not in cleaned:
-            cleaned = f"{cleaned} | {'leaf --inline' if has_leaf else 'cat'}"
+        # If it's a dynamic context tool, automatically pipe to mdcat 
+        if "mdcat" not in cleaned:
+            cleaned = f"{cleaned} | {'mdcat' if has_mdcat else 'cat'}"
     else:
-        if "leaf" in cleaned and not has_leaf:
-            cleaned = re.sub(r'\|\s*leaf\b.*$', '', cleaned).strip()
+        if "mdcat" in cleaned and not has_mdcat:
+            cleaned = re.sub(r'\|\s*mdcat\b.*$', '', cleaned).strip()
     return cleaned
 
 def learn_command_from_response(query, ans):
@@ -250,10 +266,18 @@ def get_system_context(query):
     return context
 
 def run_interactive_selection(intent):
+    # Universal Syntax Guard: Immediately bypass AI suggestions on variable assignments, 
+    # programming syntax, inline comments, or shell redirection sequences, letting the stock shell handle it.
+    if re.search(r'[\[\]{}()=\'"",;|<>#]', intent):
+        print_stock_error(intent)
+        sys.exit(127)
+
     matched_base = matrix_search(intent)
     if not matched_base:
-        sys.stderr.write(f"\033[1;33mInfo: \"{intent}\" is not mapping to a known automation.\033[0m\n")
-        return
+        # Exit with standard stock shell error status
+        print_stock_error(intent)
+        sys.exit(127)
+
     options = matched_base.split("\n")
     num_opts, current_idx = len(options), 0
     sys.stderr.write("\033[?25l"); sys.stderr.flush()
@@ -423,6 +447,12 @@ if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
 user_input = sanitize_input(" ".join(sys.argv[1:])) if len(sys.argv) > 1 else ""
 if not user_input or sys.argv[1].startswith("--"): sys.exit(0)
 
+# Zero-conflict safeguard: Immediately bypass AI suggestions on variable assignments, 
+# inline comments, or shell redirection sequences, letting the stock shell handle the input.
+if re.search(r'[\[\]{}()=\'"",;|<>#]', user_input):
+    print_stock_error(user_input)
+    sys.exit(127)
+
 matched_base = matrix_search(user_input)
 if matched_base:
     out_lines = []
@@ -430,17 +460,19 @@ if matched_base:
         intent, cmd = line.split("|||", 1)
         is_tool = cmd.startswith("[TOOL]")
         cleaned_cmd = cmd.replace('[TOOL]', '', 1).strip() if is_tool else cmd
-        has_leaf = bool(shutil.which("leaf"))
+        has_mdcat = bool(shutil.which("mdcat"))
         
-        # Check if the command should be piped to leaf automatically
+        # Check if the command should be piped to mdcat automatically
         if is_tool:
-            if "leaf" not in cleaned_cmd:
-                cleaned_cmd = f"{cleaned_cmd} | {'leaf --inline' if has_leaf else 'cat'}"
+            if "mdcat" not in cleaned_cmd:
+                cleaned_cmd = f"{cleaned_cmd} | {'mdcat' if has_mdcat else 'cat'}"
         else:
-            if "leaf" in cleaned_cmd and not has_leaf:
-                cleaned_cmd = re.sub(r'\bleaf\b.*$', 'cat', cleaned_cmd)
+            if "mdcat" in cleaned_cmd and not has_mdcat:
+                cleaned_cmd = re.sub(r'\bmdcat\b.*$', 'cat', cleaned_cmd)
         
         out_lines.append(f"{intent}|||{cleaned_cmd}")
     print("\n".join(out_lines)); sys.exit(0)
 else:
-    print("Command Not Found"); sys.exit(1)
+    # Exit silently with standard stock shell error status
+    print_stock_error(user_input)
+    sys.exit(127)

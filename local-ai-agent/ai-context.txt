@@ -79,7 +79,7 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 # ==============================================================================
 
 # --- Local-Ai Agent Blueprint Map (CheatSheet) ---
-~/.config/local-ai/local-ai-agent/tools/blueprint | leaf ---> cheatsheet, blueprint, bp, cs, map
+~/.config/local-ai/local-ai-agent/tools/blueprint | mdcat ---> cheatsheet, blueprint, bp, cs, map
 
 # --- AI-Generated Git Commits ---
 ~/.config/local-ai/local-ai-agent/tools/agentic/ai-commit ---> ai-commit, git-commit, git commit
@@ -96,8 +96,8 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 /home/j5/.config/local-ai/research-tui/deep-research ---> ai-research, deep research, research, deep-research
 
 # --- Custom TUI Applications ---
-~/.config/local-ai/basepage-tui/basepage.py ---> base page, basepage tui, rss
-~/.config/local-ai/basepage-tui/basetracker.py ---> base tracker, basetracker tui
+~/.config/local-ai/basepage-tui/basepage.py ---> basepage, base, basepage tui, rss
+~/.config/local-ai/basepage-tui/basetracker.py ---> basetracker, base, basetracker tui
 
 # --- Media & Volume Controllers (Pure Reactive) ---
 ~/.config/local-ai/local-ai-agent/tools/subsec/media/media.py ---> tuiamp, winamp, media
@@ -134,9 +134,9 @@ nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-sp
 ~/.config/local-ai/local-ai-agent/tools/subsec/notes/notes.sh ---> notes, open notes, add to notes
 
 # --- State & Workflow Management ---
-~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/work ---> hyprstate work, workspace work
-~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/clean ---> hyprstate clean, workspace clean
-~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/gitcom ---> hyprstate gitcom, workspace gitcom
+~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/work ---> hyprstate work, work, workspace work
+~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/clean ---> hyprstate clean, clean, workspace clean
+~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/gitcom ---> hyprstate gitcom, gitcom, workspace gitcom
 
 
 # ==============================================================================
