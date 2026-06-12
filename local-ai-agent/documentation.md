@@ -94,7 +94,7 @@ Command    ai init <path>
 
 The system features an optional lightweight voice companion served directly over your local Wi-Fi network. By running `voice`, your PC launches an on-demand, single-threaded HTTPS server on port 9999, completely avoiding any persistent background daemons [3].
 
-When accessed by a tablet or phone on the same network, the browser serves a pure black, mobile-optimized HTML5 client. Speech recognition is offloaded entirely to a secure cloud API over HTTPS using your exported Gemini API key, meaning your PC runs with 0MB of local transcription models and 0% idle CPU overhead [2, 3].
+When accessed by a tablet or phone on the same network, the browser serves a pure black (OLED), mobile-optimized HTML5 client. Speech recognition is offloaded entirely to a secure cloud API over HTTPS using your exported Gemini API key, meaning your PC runs with 0MB of local transcription models and 0% idle CPU overhead [2, 3].
 
 ---
 

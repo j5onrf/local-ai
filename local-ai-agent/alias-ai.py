@@ -268,10 +268,10 @@ def run_interactive_selection(intent):
 
             if is_danger:
                 sys.stderr.write("\r\x1b[K\x1b[1;31mWARNING: Potentially destructive suggestion detected!\x1b[0m\n")
-                sys.stderr.write(f"\r\x1b[K\x1b[1;33mAI Suggestion ({display_idx}/{num_opts}):\x1b[0m \x1b[1;36m[{current_intent}]\x1b[0m {display_cmd}\n")
+                sys.stderr.write(f"\r\x1b[K\x1b[1;33mSelect ({display_idx}/{num_opts}):\x1b[0m \x1b[1;36m[{current_intent}]\x1b[0m {display_cmd}\n")
                 sys.stderr.write("\r\x1b[KAre you absolutely sure you want to run this? (y/N): ")
             else:
-                label = f"AI Suggestion ({display_idx}/{num_opts}) [Up/Down]:" if num_opts > 1 else "AI Suggestion:"
+                label = f"Select ({display_idx}/{num_opts}) [Up/Down]:" if num_opts > 1 else "Select:"
                 sys.stderr.write(f"\r\x1b[K\x1b[1;32m{label}\x1b[0m \x1b[1;36m[{current_intent}]\x1b[0m {display_cmd}\n")
                 sys.stderr.write("\r\x1b[K[Enter] Execute / [Any Key] Cancel: ")
             
