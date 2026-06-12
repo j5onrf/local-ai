@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# security-audit - Dynamic Security Profile Integrator & System Auditor v1.0.5
+# security-audit - Dynamic Security Profile Integrator & System Auditor v1.2.0
 
 set -euo pipefail
 
@@ -152,16 +152,18 @@ if [ "$PUBLIC_COUNT" -gt 0 ]; then
 fi
 echo ""
 
-# 6. AUR Auditing
+# 6. AUR Heuristic Auditing (Universal Timeline Rules)
 echo "### 6. Foreign (AUR) Packages Security Surface"
 AUR_PACKAGES=$(pacman -Qm 2>/dev/null || true)
 AUR_COUNT=$(echo "$AUR_PACKAGES" | grep -v "^$" | wc -l || echo "0")
 echo "* Total Foreign/AUR Packages: \`$AUR_COUNT\`"
 
 if [ "$AUR_COUNT" -gt 0 ]; then
-    # Inline Python helper to securely parse AUR RPC metadata and check risk metrics
+    # Inline Python helper to parse metadata, check live AUR databases, and calculate
+    # relative safety metrics dynamically.
     python3 -c '
 import urllib.request as urlreq, urllib.parse, json, time, sys
+
 pkgs = [line.split()[0] for line in sys.stdin if line.strip()]
 if not pkgs:
     sys.exit(0)
@@ -173,7 +175,7 @@ for i in range(0, len(pkgs), batch_size):
     params = [("arg[]", p) for p in batch]
     url = "https://aur.archlinux.org/rpc/v5/info?" + urllib.parse.urlencode(params)
     try:
-        req = urlreq.Request(url, headers={"User-Agent": "secaud-agent/1.0"})
+        req = urlreq.Request(url, headers={"User-Agent": "secaud-agent/1.2"})
         with urlreq.urlopen(req, timeout=1.5) as r:
             data = json.loads(r.read().decode())
             if "results" in data:
@@ -188,7 +190,7 @@ keywords = ["network", "daemon", "server", "ssh", "ssl", "api", "remote", "socke
 for pkg in pkgs:
     meta = metadata.get(pkg)
     if not meta:
-        warnings.append(f"  - `{pkg}`: Missing from the AUR database (may have been deleted or renamed).")
+        warnings.append(f"  - `[WARNING]` `{pkg}`: Missing from the AUR database (may have been deleted, renamed, or is private).")
         continue
         
     desc = meta.get("Description", "").lower()
@@ -200,16 +202,81 @@ for pkg in pkgs:
     age_days = (time.time() - last_modified) / 86400.0
     has_sensitive_surface = any(kw in desc for kw in keywords)
     
-    if (is_orphan or is_out_of_date) and votes < 30 and age_days > 365 and has_sensitive_surface:
+    # Rule A: Heuristic flag for very recently updated, low-trust packages (common supply-chain takeover window)
+    if votes < 50 and age_days < 14:
+        risk_reasons = []
+        if is_orphan: risk_reasons.append("orphaned")
+        if is_out_of_date: risk_reasons.append("out-of-date")
+        if has_sensitive_surface: risk_reasons.append("sensitive network keywords")
+        
+        reason_str = " & ".join(risk_reasons) if risk_reasons else "unvetted code changes"
+        warnings.append(f"  - `[HIGH RISK]` `{pkg}` (votes: {votes}): Modified very recently ({age_days:.1f} days ago) with low trust metrics ({reason_str}).")
+    
+    # Rule B: Check for unmaintained, stale software exposing critical system boundaries
+    elif (is_orphan or is_out_of_date) and votes < 30 and age_days > 365 and has_sensitive_surface:
         matched_kws = ", ".join(kw for kw in keywords if kw in desc)
-        warnings.append(f"  - `[CRITICAL]` `{pkg}` (votes: {votes}): Orphaned/Out-of-date > 1 yr, exposes sensitive network keywords: *{matched_kws}*")
+        warnings.append(f"  - `[SUSPICION]` `{pkg}` (votes: {votes}): Unmaintained/Orphaned > 1 yr, exposes network attributes: *{matched_kws}*")
         
 if warnings:
-    print("* High-Priority Risks Identified:")
+    print("* Alerts & Observations Identified:")
     for w in warnings:
         print(w)
 else:
-    print("* Risk Status: Secure. No unvetted, high-surface area unmaintained/orphaned AUR packages detected.")
+    print("* Risk Status: Secure. No unvetted or high-risk AUR packages detected.")
 ' <<< "$AUR_PACKAGES"
+fi
+echo ""
+
+# 7. Pacman Logs Supply-Chain Window Audit (Dynamic 14-day history)
+echo "### 7. Pacman Activity Log Audit"
+if [ -f "/var/log/pacman.log" ] && [ "$AUR_COUNT" -gt 0 ]; then
+    # Generate an array of date patterns for the last 14 days dynamically
+    DATE_PATTERNS=()
+    for i in {0..14}; do
+        if d_str=$(date -d "$i days ago" "+%Y-%m-%d" 2>/dev/null); then
+            DATE_PATTERNS+=("\[$d_str")
+        fi
+    done
+    
+    if [ ${#DATE_PATTERNS[@]} -gt 0 ]; then
+        IFS="|"
+        REGEX_DAYS="${DATE_PATTERNS[*]}"
+        unset IFS
+        
+        echo "* Scanning transaction history for foreign packages over the last 14 days..."
+        RECENT_AUR_LOGS=$(grep -E "$REGEX_DAYS" /var/log/pacman.log 2>/dev/null | grep -E "installed|upgraded" | grep -Ff <(pacman -Qmq) || true)
+        
+        if [ -n "$RECENT_AUR_LOGS" ]; then
+            echo "  - [NOTICE] Recent installations/upgrades detected within the active 14-day window:"
+            echo "$RECENT_AUR_LOGS" | sed 's/^/    - /'
+        else
+            echo "  - No foreign packages were installed or upgraded within the last 14 days."
+        fi
+    else
+        echo "* Unable to compute calendar days dynamically. Skipping relative transaction timeline scan."
+    fi
+else
+    echo "* Pacman logs not found or no foreign packages installed."
+fi
+echo ""
+
+# 8. AUR Helper PKGBUILD Cache Scan (Generic Supply-Chain Signatures)
+echo "### 8. Local Helper Build Cache Scan"
+CACHE_DIR="$HOME/.cache"
+SUSPICIOUS_FOUND=0
+if [ -d "$CACHE_DIR" ]; then
+    # Search inside cached build setups (yay/paru) for universal pipeline execution vectors
+    # Vectors target: pipeline-to-shell downloads, bypasses of package managers, hidden decodes, and standard historical payloads
+    SUSPICIOUS_REGEX="(curl|wget).+\| *(bash|sh|python|perl|node|bun)|(npm|bun|pip|cargo) +install|base64 +-d|eval +\\\$\(|atomic-lockfile|js-digest|temp\.sh"
+    
+    SUSPICIOUS_HITS=$(find "$CACHE_DIR" -type f -name "PKGBUILD" -exec grep -inE "$SUSPICIOUS_REGEX" {} + 2>/dev/null || true)
+    if [ -n "$SUSPICIOUS_HITS" ]; then
+        echo "* [CRITICAL] Suspicious installation signatures identified in your local build caches:"
+        echo "$SUSPICIOUS_HITS" | sed 's/^/  - /'
+        SUSPICIOUS_FOUND=1
+    fi
+fi
+if [ "$SUSPICIOUS_FOUND" -eq 0 ]; then
+    echo "* No suspicious installation hooks or network bypass triggers found in local PKGBUILD caches."
 fi
 echo ""
