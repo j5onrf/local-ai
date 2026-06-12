@@ -277,7 +277,7 @@ The Voice Bridge overcomes this limitation by implementing a self-healing secure
 4. **Cloud-Assisted Multimodal Transcription**: Your Python server base64-encodes the raw audio array and forwards it directly to Google's active stable `gemini-3.1-flash-lite` model over the network [2]. This completely bypasses local model compilation, packages, and dependencies while returning high-precision transcriptions with zero local overhead [2].
 
 ### G. High-Speed 1-to-1 Markdown Cheatsheet Generator (`cheatsheet`)
-To replace traditional, help outputs or hardcoded aliases, the project features a dedicated cheatsheet generator located at `~/.config/local-ai/local-ai-agent/tools/cheatsheet`.
+To replace traditional, help outputs or hardcoded aliases, the project features a dedicated cheatsheet generator located at `~/.config/local-ai/local-ai-agent/tools/blueprint`.
 * **Dynamic Content Extraction**: The script reads your live `ai-context.txt` master mapping index on the fly, dynamically parses out Section Headers, and collapses multi-synonym aliases down to their single, primary trigger keyword or phrase [1.1].
 * **Unified Pipeline Filtering**: It automatically strips absolute directory paths down to their base filenames and extracts raw URLs from complex command wrappers [1.1]. It is formatted as a beautiful, grid-aligned Markdown table that respects your terminal's native colors and fonts when rendered via `leaf` [1.1, 1.2.2].
 
