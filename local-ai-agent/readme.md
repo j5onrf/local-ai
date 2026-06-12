@@ -89,8 +89,8 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 To render Markdown files (`.md` skills, system profiles, and diagnostic logs) cleanly inside your terminal using your **native terminal theme colors**, it is recommended to install **`mdcat`** (Rust-based Markdown CLI viewer):
 
 ```bash
-# On Arch Linux / CachyOS
-sudo pacman -S mdcat
+# https://github.com/lunaryorn/mdcat
+yay mdcat
 ```
 
 *Note: If `mdcat` is missing from the system, the Python agent automatically falls back to standard `cat` using standard-library path checks, keeping the entire pipeline fully portable.*
