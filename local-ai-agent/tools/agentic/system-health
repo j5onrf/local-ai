@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+# system-health - AI System Health Diagnosis v0.8.4
+# Optimized, targeted real-time system diagnostics with unified specs integration.
+
+set -euo pipefail
+
+PRINT_MYSYS_BIN="$HOME/.config/local-ai/local-ai-agent/tools/agentic/print-mysys"
+
+# 1. Print General System Profile with dynamic, context-aware title override
+if [ -f "$PRINT_MYSYS_BIN" ]; then
+    "$PRINT_MYSYS_BIN"
+    echo ""
+    echo "---"
+    echo ""
+fi
+
+echo "## REAL-TIME SYSTEM DIAGNOSTIC REPORT"
+echo ""
+
+# CPU & Kernel Context
+echo "### 1. CPU & Kernel Environment"
+echo "* **Kernel**: \`$(uname -sr)\` | **Display Server**: \`${XDG_SESSION_TYPE:-Unknown}\`"
+
+# Parse Uptime natively from /proc/uptime (Zero process forks)
+if [ -f /proc/uptime ]; then
+    up_secs=$(cut -d. -f1 /proc/uptime)
+    up_mins=$((up_secs / 60))
+    up_hours=$((up_mins / 60))
+    up_days=$((up_hours / 24))
+    
+    formatted_uptime=""
+    if [ "$up_days" -gt 0 ]; then
+        formatted_uptime="${up_days}d "
+    fi
+    formatted_uptime="${formatted_uptime}$((up_hours % 24))h $((up_mins % 60))m"
+    echo "* **Uptime**: \`$formatted_uptime\`"
+fi
+
+# Parse CPU core temperature natively from sysfs thermal zones
+cpu_temp=""
+if [ -d /sys/class/thermal ]; then
+    for zone in /sys/class/thermal/thermal_zone*; do
+        if [ -f "$zone/type" ] && [ -f "$zone/temp" ]; then
+            type=$(cat "$zone/type" 2>/dev/null || echo "")
+            if [[ "$type" =~ ^(x86_pkg_temp|acpitz|cpu-thermal|cpu_thermal)$ ]]; then
+                raw_temp=$(cat "$zone/temp" 2>/dev/null || echo "0")
+                cpu_temp=$((raw_temp / 1000))
+                break
+            fi
+        fi
+    done
+    if [ -z "$cpu_temp" ] && [ -f /sys/class/thermal/thermal_zone0/temp ]; then
+        raw_temp=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo "0")
+        cpu_temp=$((raw_temp / 1000))
+    fi
+fi
+if [ -n "$cpu_temp" ]; then
+    echo "* **CPU Temperature**: \`${cpu_temp}°C\`"
+fi
+
+# CPU Load Average (1m, 5m, 15m)
+if [ -f /proc/loadavg ]; then
+    loadavg=$(awk '{print "1m: "$1" | 5m: "$2" | 15m: "$3}' /proc/loadavg)
+    echo "* **Load Average**: \`$loadavg\`"
+fi
+
+# Top 3 CPU-Hogging Processes (Optimized: Single-pass awk without backslash warnings)
+top_cpu=$(ps -eo comm,%cpu --sort=-%cpu | awk 'NR>1 && NR<=4 {printf "%s`%s` (%s%%)", (NR==2?"":", "), $1, $2} END {print ""}')
+if [ -n "$top_cpu" ]; then
+    echo "* **Top CPU Processes**: $top_cpu"
+fi
+echo ""
+
+# Memory (RAM) Space & Top Processes
+echo "### 2. Memory (RAM) Status"
+if [ -f /proc/meminfo ]; then
+    # Optimized: Parse meminfo RAM and Swap/Zram metrics in a single pass
+    eval "$(awk '/^MemTotal:/ {print "total=" $2} /^MemAvailable:/ {print "free=" $2} /^SwapTotal:/ {print "s_total=" $2} /^SwapFree:/ {print "s_free=" $2}' /proc/meminfo)"
+    used=$((total - free))
+    echo "* **Memory Space**: Total: \`$((total / 1024)) MB\` | Used: \`$((used / 1024)) MB\` | Free: \`$((free / 1024)) MB\`"
+    
+    # Render Zram Swap details if configured
+    if [ "${s_total:-0}" -gt 0 ]; then
+        s_used=$((s_total - s_free))
+        echo "* **Swap Space (ZRAM)**: Total: \`$((s_total / 1024)) MB\` | Used: \`$((s_used / 1024)) MB\` | Free: \`$((s_free / 1024)) MB\`"
+    fi
+fi
+
+# Top 3 Memory-Hogging Processes (Optimized: Single-pass awk without backslash warnings)
+top_mem=$(ps -eo comm,%mem --sort=-%mem | awk 'NR>1 && NR<=4 {printf "%s`%s` (%s%%)", (NR==2?"":", "), $1, $2} END {print ""}')
+if [ -n "$top_mem" ]; then
+    echo "* **Top Memory Processes**: $top_mem"
+fi
+echo ""
+
+# Storage Space (Root)
+echo "### 3. Disk Space (Root)"
+if command -v df >/dev/null 2>&1; then
+    # Optimized: Retrieve and parse disk statistics in a single pass
+    eval "$(df -h / | awk 'NR==2 {print "total=" $2 "; used=" $3 "; free=" $4 "; usage=" $5}')"
+    echo "* **Root Disk Space**: Total: \`${total}\` | Used: \`${used}\` | Free: \`${free}\` | Usage: \`${usage}\`"
+fi
+echo ""
+
+# Systemd Services Integrity
+echo "### 4. Systemd Services Integrity"
+if command -v systemctl >/dev/null 2>&1; then
+    # Optimized: Consolidate failed units formatting into a single-pass awk evaluation
+    failed_services=$(systemctl --failed --state=failed --plain --no-legend 2>/dev/null | awk '/\./ {printf "%s`%s`", (count++==0?"":", "), $1} END {if (count==0) print "*None*"}')
+    echo "* **Failed Units**: $failed_services"
+fi
+echo ""
+
+# 5. Output AI Instructions (Only if running as background AI context)
+if [ "${AI_CONTEXT_RUN:-0}" -eq 1 ]; then
+    cat << 'EOF'
+
+---
+
+## AGENT INSTRUCTIONS (FOR YOUR REASONING ENGINE)
+You are a highly structured system health diagnostics agent. Analyze the system metrics provided above. 
+You must format your response starting with an immediate, high-impact "System Health Posture" dashboard. Do not use conversational intros or filler.
+
+Follow this strict output structure:
+
+### 🩺 SYSTEM HEALTH POSTURE: [ SECURE | WARNING | CRITICAL ]
+* **Active Resource Warnings**: [List any high CPU loads, temperatures > 80°C, low RAM, high swap usage, disk spaces > 80%, or failed services. If none, show "None (All metrics within healthy boundaries)"]
+* **Recommended Interventions**: [List any services that need restarting, processes to investigate, or storage cleanup actions]
+* **Healthy Metrics**: [List all metrics that are within nominal boundaries (e.g., RAM space, kernel alignment, disk capacity, uptime, temperature)]
+
+---
+
+### DETAILED DIAGNOSTIC ANALYSIS
+
+1. **CPU & Kernel Environment**: [Factual analysis of current load, kernel alignment, uptime, and thermals]
+2. **Memory (RAM) Status**: [Factual analysis of available memory, Zram swap space, and process consumption]
+3. **Disk Space (Root)**: [Factual analysis of storage capacity]
+4. **Systemd Services Integrity**: [Factual analysis of unit failures]
+EOF
+fi

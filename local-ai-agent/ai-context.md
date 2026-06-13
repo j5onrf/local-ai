@@ -58,8 +58,9 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 # --- System Logs & Diagnostics (Compressed Stream Triage) ---
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/log-checker ---> log checker, ailog, log check, check errors, system crashed, events
 
-# --- System Resources & Diagnosis (System health) ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system-diagnosis ---> system health, sysh, health, system diagnosis, why is my system slow
+# --- System Resources & Diagnosis (System Health) ---
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system-health ---> system health, sysh, health, system diagnosis, why is my system slow
+~/.config/local-ai/local-ai-agent/tools/agentic/system-health | leaf ---> system health leaf, sysh, system health, system diagnosis, why is my system slow
 
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/update-inspector ---> update inspector, ui, check upgrades, what updates do i have, pending updates, what updates do i have pending
 
