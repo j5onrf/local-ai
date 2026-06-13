@@ -52,7 +52,7 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/security-audit ---> security audit, secaud
 ~/.config/local-ai/local-ai-agent/tools/agentic/security-audit | leaf ---> security audit leaf, secaud
 
-# --- System Optimization (mysys skill primed) ---
+# --- System Optimization (Improve System Performance) ---
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system-optimize --->  system optimize, sysop, system optimization
 
 # --- System Logs & Diagnostics (Compressed Stream Triage) ---
@@ -60,7 +60,7 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 
 # --- System Resources & Diagnosis (System Health) ---
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system-health ---> system health, sysh, health, system diagnosis, why is my system slow
-~/.config/local-ai/local-ai-agent/tools/agentic/system-health | leaf ---> system health leaf, sysh, system health, system diagnosis, why is my system slow
+~/.config/local-ai/local-ai-agent/tools/agentic/system-health | leaf ---> system health leaf, sysh, system health, system diagnosis
 
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/update-inspector ---> update inspector, ui, check upgrades, what updates do i have, pending updates, what updates do i have pending
 

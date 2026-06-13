@@ -19,7 +19,7 @@ git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai
 ## Update
 
 ```bash
-# Backup custom contents (ai-context.txt) and pull updates
+# Backup custom contents (ai-context.md) and pull updates
 cd ~/.config/local-ai && git pull
 
 ```
