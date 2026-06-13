@@ -46,7 +46,6 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 
 ```properties
 # --- Pre-Install Zero-Trust AUR Package & PKGBUILD Auditor ---
-# (Static execution pass-through to bypass Anubis bot proxy)
 ~/.config/local-ai/local-ai-agent/tools/agentic/aur-audit ---> audit package, audit pkg, check pkgbuild, aur audit, scan aur, verify pkgbuild, pre-install check
 
 # --- Host Security Surface & Vulnerability Intelligence (SECAUD) ---

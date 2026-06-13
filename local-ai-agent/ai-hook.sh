@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Local-Ai Agent v0.7.9 [j5onrf] [06-05-26]
+# Local-Ai Agent Hook v0.8.4.0 [j5onrf] [06-12-26]
 
+# Exit immediately if the shell is non-interactive
 [[ $- != *i* ]] && return
 
 _AI_SCRIPT_PATH="$HOME/.config/local-ai/local-ai-agent/alias-ai.py"
