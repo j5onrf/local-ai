@@ -80,7 +80,7 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 
 ```properties
 # --- Local-Ai Agent Blueprint Map (CheatSheet) (Optional: leaf, glow) ---
-~/.config/local-ai/local-ai-agent/tools/blueprint | mdcat ---> cheatsheet, blueprint, cheatsheet, bp, cs, map
+~/.config/local-ai/local-ai-agent/tools/blueprint | mdcat ---> cheatsheet, blueprint, bp, cs, map
 ~/.config/local-ai/local-ai-agent/tools/blueprint | leaf ---> cheatsheet leaf, blueprint, cheatsheet, bp, cs, map
 
 # --- AI-Generated Git Commits ---
@@ -133,10 +133,10 @@ nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-sp
 ~/.config/local-ai/local-ai-agent/tools/subsec/notes/notes.sh ---> notes, open notes, add to notes
 
 # --- State & Workflow Management ---
-~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/work ---> hyprstate work, work, hyprstate, workspace
-~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/clean ---> hyprstate clean, clean, hyprstate, workspace
-~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/gitcom ---> hyprstate gitcom, gitcom, hyprstate, workspace
-~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/media ---> hyprstate media, media, hyprstate, workspace
+~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/work ---> hyprstate work, work, hyprstate
+~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/clean ---> hyprstate clean, clean, hyprstate
+~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/gitcom ---> hyprstate gitcom, gitcom, hyprstate
+~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/media ---> hyprstate media, media, hyprstate
 ```
 
 ## 8. Continual Learning
