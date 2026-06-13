@@ -1,4 +1,4 @@
-# Local-AI Agent (v0.8.2.0)
+# Local-AI Agent (v0.8.3.2)
 
 <img alt="Image_5e1xpv5e1xpv5e1x-3" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" />
 
@@ -8,7 +8,7 @@
 
 ## How the Agent Works
 
-All configurations, automations, and custom project workspaces are managed through a single plain-text master blueprint: **`ai-context.txt`**. The agent resolves your inputs into one of four execution paradigms:
+All configurations, automations, and custom project workspaces are managed through a single markdown master blueprint: **`ai-context.md`**. The agent resolves your inputs into one of four execution paradigms:
 
 * **No Session (Direct selections)**: Typing custom commands or shortcuts prompts a local, rarity-weighted sparse search matrix to select options instantly without querying an LLM.
 * **Single-Turn Agent (`ai <query>`)**: Typing `ai <query>` instantly answers a single question and returns you directly to your Bash prompt, silently running local diagnostic tools to gather context when your keywords are matched.
@@ -50,11 +50,11 @@ All configurations, automations, and custom project workspaces are managed throu
 
 ---
 
-## The Brain: Configuration (`ai-context.txt`)
+## The Brain: Configuration (`ai-context.md`)
 
-Add your shortcuts, dynamic tool integrations, and project workspaces to `~/.config/local-ai/local-ai-agent/ai-context.txt`. The search index automatically compiles in under 2ms on your next execution.
+Add your shortcuts, dynamic tool integrations, and project workspaces to `~/.config/local-ai/local-ai-agent/ai-context.md`. The search index automatically compiles in under 2ms on your next execution.
 
-```text
+```markdown
 # ==============================================================================
 # SECTION 1: WORKSPACE INITIALIZERS & BRIDGES
 # ==============================================================================
