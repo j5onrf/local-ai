@@ -29,7 +29,7 @@ All configurations, automations, and custom project workspaces are managed throu
 | | **Voice Query Bridge** | Connects any Wi-Fi tablet or phone over local HTTPS/HTTP to record audio, transcribing natively on the cloud with 0% PC CPU load. |
 | | **Dynamic Viewer Pipeline** | Intercepts manual `[TOOL]` calls, automatically piping them to `mdcat` for terminal rendering while translating them to `cat` for AI context tasks. |
 | **Portability** | **Zero-Config Bootstrap** | Silent local diagnostics query your CPU, GPU, and window manager on first-run, auto-generating your system profile. |
-| | **Auditable Codebase** | Designed with full transparency in under 430 lines of highly clean, standard-library Python code. |
+| | **Auditable Codebase** | Designed with full transparency in under 400 lines of highly clean, standard-library Python code. |
 
 ---
 

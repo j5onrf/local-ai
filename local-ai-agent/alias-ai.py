@@ -1,34 +1,22 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.2.0 [j5onrf] [06-12-26]
+# Local-Ai Agent v0.8.2.3 [j5onrf] [06-12-26]
 
 import sys, re, os, json, threading, time, math, subprocess, shutil
-import urllib.request as urlreq
+import urllib.request as urlreq, urllib.error as urlerr
 
-try:
-    import readline
-except ImportError:
-    pass
+try: import readline
+except ImportError: pass
 
 sys.argv = [arg for arg in sys.argv if arg != ""]
 
-CONTEXT_FILE = os.path.expanduser("~/.config/local-ai/local-ai-agent/ai-context.txt")
-INDEX_FILE = os.path.expanduser("~/.config/local-ai/local-ai-agent/ai-context.idx")
+CFG_DIR = os.path.expanduser("~/.config/local-ai/local-ai-agent")
+CONTEXT_FILE = os.path.join(CFG_DIR, "ai-context.txt")
+INDEX_FILE = os.path.join(CFG_DIR, "ai-context.idx")
 DESTRUCTIVE_KEYWORDS = ["rm ", "dd ", "mkfs", "shred", "chmod -R 777", "> /dev/sda"]
 TOKEN_RE = re.compile(r"[^\w\s]")
 
-STOP_WORDS = {
-    "is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", 
-    "for", "me", "you", "my", "your", "we", "us", "show", "get", "run", "check",
-    "please", "can", "could", "would", "tell", "find", "list", "are", "about", 
-    "in", "next", "few", "days", "going", "soon", "anytime", "day", "week"
-}
-
-# Strictly universal system keywords applicable to any operating system
-UNIVERSAL_SYSTEM_KEYWORDS = {
-    "system", "sys", "os", "linux", "kernel", "cpu", "gpu", "hardware", "motherboard", "memory", "ram", "storage", "disk",
-    "drive", "nvme", "port", "network", "wifi", "ip", "dns", "log", "error", "specs", "hostname",
-    "crash", "slow", "performance", "driver", "package", "status", "health", "window", "manager", "sddm", "gdm", "bootloader", "grub"
-}
+STOP_WORDS = {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "show", "get", "run", "check", "please", "can", "could", "would", "tell", "find", "list", "are", "about", "in", "next", "few", "days", "going", "soon", "anytime", "day", "week"}
+UNIVERSAL_SYSTEM_KEYWORDS = {"system", "sys", "os", "linux", "kernel", "cpu", "gpu", "hardware", "motherboard", "memory", "ram", "storage", "disk", "drive", "nvme", "port", "network", "wifi", "ip", "dns", "log", "error", "specs", "hostname", "crash", "slow", "performance", "driver", "package", "status", "health", "window", "manager", "sddm", "gdm", "bootloader", "grub"}
 
 class InlineSpinner:
     def __init__(self):
@@ -40,8 +28,7 @@ class InlineSpinner:
             sys.stderr.write(f"\r\033[1;32m{self.chars[idx % 10]}\033[0m ")
             sys.stderr.flush()
             idx, _ = idx + 1, time.sleep(0.08)
-        sys.stderr.write("\r\x1b[2K\r")
-        sys.stderr.flush()
+        sys.stderr.write("\r\x1b[2K\r"); sys.stderr.flush()
 
     def start(self):
         self.active = True
@@ -60,27 +47,19 @@ def tokenize(text):
 
 def get_active_system_keywords():
     keywords = set(UNIVERSAL_SYSTEM_KEYWORDS)
-    p_path = os.path.expanduser("~/.config/local-ai/local-ai-agent/tools/skills/mysys.md")
+    p_path = os.path.join(CFG_DIR, "tools/skills/mysys.md")
     if os.path.exists(p_path):
         try:
-            with open(p_path, "r") as f:
-                keywords.update(t for t in tokenize(f.read()) if len(t) > 2)
+            with open(p_path, "r") as f: keywords.update(t for t in tokenize(f.read()) if len(t) > 2)
         except: pass
     return keywords
 
-# Replicates the native stock shell command-not-found error directly on stderr
 def print_stock_error(cmd_name):
-    shell_path = os.environ.get("SHELL", "/bin/bash")
-    shell_name = os.path.basename(shell_path)
-    if "zsh" in shell_name:
-        sys.stderr.write(f"zsh: command not found: {cmd_name}\n")
-    else:
-        sys.stderr.write(f"bash: {cmd_name}: command not found\n")
+    shell = os.path.basename(os.environ.get("SHELL", "/bin/bash"))
+    sys.stderr.write(f"zsh: command not found: {cmd_name}\n" if "zsh" in shell else f"bash: {cmd_name}: command not found\n")
 
 def run_local_tool(cmd):
-    cmd_stripped = cmd.strip()
-    # Strip any formatting pipe to guarantee the AI gets clean raw Markdown
-    cleaned_cmd = re.sub(r'\|\s*mdcat\b.*$', '', cmd_stripped).strip()
+    cleaned_cmd = re.sub(r'\|\s*mdcat\b.*$', '', cmd.strip()).strip()
     try:
         out = subprocess.check_output(cleaned_cmd, shell=True, text=True, timeout=15).strip()
         return f"{out}\n" if out else "Action executed successfully.\n"
@@ -93,50 +72,36 @@ def compile_vector_index():
     try:
         with open(CONTEXT_FILE, "r") as f: lines = f.read().splitlines()
         index_data = []
-        for line in [l.strip() for l in lines if l.strip()]:
-            if line.startswith("#") or "----->" in line or "--->" not in line: continue
+        for line in [l.strip() for l in lines if l.strip() and not l.startswith("#") and "--->" in l and "----->" not in l]:
             cmd, intents = line.split("--->", 1)
             for intent in [i.strip() for i in intents.split(",")]:
                 tokens = tokenize(intent)
                 if tokens: index_data.append({"cmd": cmd.strip(), "intent": intent, "tokens": tokens, "len": len(tokens)})
-        
         from collections import defaultdict
         df = defaultdict(int)
         for entry in index_data:
             for t in set(entry["tokens"]): df[t] += 1
-        
-        N, idfs = len(index_data), {}
-        for t, count in df.items():
-            idfs[t] = math.log(1.0 + (N / count))
-            
+        N, idfs = len(index_data), {t: math.log(1.0 + (len(index_data) / count)) for t, count in df.items()}
         with open(INDEX_FILE, "w") as f: json.dump({"idfs": idfs, "entries": index_data}, f)
         return True
     except Exception as e:
         sys.stderr.write(f"\033[1;31mError compiling index: {str(e)}\033[0m\n")
         return False
 
-# Diagnostic checks, auto-bootstrapping, and startup compilation
 if not os.path.exists(CONTEXT_FILE):
     sys.stderr.write(f"\033[1;31mWarning: Context file is missing at {CONTEXT_FILE}\033[0m\n")
 else:
-    PROFILE_PATH = os.path.expanduser("~/.config/local-ai/local-ai-agent/tools/skills/mysys.md")
+    PROFILE_PATH = os.path.join(CFG_DIR, "tools/skills/mysys.md")
     if not os.path.exists(PROFILE_PATH):
-        generator_script = os.path.expanduser("~/.config/local-ai/local-ai-agent/tools/generate-profile")
-        if os.path.exists(generator_script):
-            subprocess.run([sys.executable, generator_script])
-
+        gen_script = os.path.join(CFG_DIR, "tools/generate-profile")
+        if os.path.exists(gen_script): subprocess.run([sys.executable, gen_script])
     try:
-        mtime_ctx = os.path.getmtime(CONTEXT_FILE)
-        try:
-            if mtime_ctx > os.path.getmtime(INDEX_FILE): compile_vector_index()
-        except OSError: compile_vector_index()
-    except OSError as e:
-        sys.stderr.write(f"\033[1;31mError reading file metadata: {str(e)}\033[0m\n")
+        if os.path.getmtime(CONTEXT_FILE) > os.path.getmtime(INDEX_FILE): compile_vector_index()
+    except OSError: compile_vector_index()
 
 def check_danger(cmd):
     return f"DANGER_FLAGGED:{cmd}" if cmd and any(kw in cmd.lower() for kw in DESTRUCTIVE_KEYWORDS) else cmd
 
-# Default threshold raised to 0.55 to prevent loose/accidental keyword matching
 def matrix_search(query, threshold=0.55):
     query_tokens = tokenize(query)
     if not query_tokens: return None
@@ -148,29 +113,17 @@ def matrix_search(query, threshold=0.55):
         try:
             with open(INDEX_FILE, "r") as f: data = json.load(f)
         except: return None
-
     idfs, entries = data.get("idfs", {}), data.get("entries", [])
     candidates, q_set = [], set(query_tokens)
     for entry in entries:
         intersect = q_set & set(entry["tokens"])
-        if not intersect: continue
-            
-        # Standalone Token Guard: If the query is a single word, it is strictly
-        # forbidden from matching a partial subset of a multi-word intent.
-        if len(query_tokens) == 1:
-            if query_tokens[0] != entry["intent"].strip().lower():
-                continue
-
+        if not intersect or (len(query_tokens) == 1 and query_tokens[0] != entry["intent"].strip().lower()): continue
         match_weight = sum(idfs.get(t, 1.0) for t in intersect)
         q_weight = sum(idfs.get(t, 1.0) for t in q_set)
         entry_weight = sum(idfs.get(t, 1.0) for t in entry["tokens"])
         score = (2.0 * match_weight) / (q_weight + entry_weight) if (q_weight + entry_weight) > 0 else 0.0
-        
-        if len(intersect) == len(entry["tokens"]) and (len(intersect) / len(q_set) >= 0.50):
-            score += 0.20
-            
+        if len(intersect) == len(entry["tokens"]) and (len(intersect) / len(q_set) >= 0.50): score += 0.20
         if score >= threshold: candidates.append((score, entry["cmd"], entry["intent"]))
-            
     if not candidates: return None
     candidates.sort(key=lambda x: (-x[0], len(x[2])))
     seen, top = set(), []
@@ -183,8 +136,7 @@ def matrix_search(query, threshold=0.55):
 def get_key():
     import tty, termios, select
     fd = sys.stdin.fileno()
-    try:
-        old = termios.tcgetattr(fd)
+    try: old = termios.tcgetattr(fd)
     except termios.error:
         try: return os.read(fd, 1).decode("utf-8", errors="ignore")
         except: return ""
@@ -192,8 +144,7 @@ def get_key():
         tty.setraw(fd)
         r = os.read(fd, 1)
         if r == b'\x1b' and select.select([fd], [], [], 0.05)[0]: r += os.read(fd, 2)
-    finally:
-        termios.tcsetattr(fd, termios.TCSADRAIN, old)
+    finally: termios.tcsetattr(fd, termios.TCSADRAIN, old)
     return r.decode("utf-8", errors="ignore")
 
 def clean_tool_prefix(cmd):
@@ -203,16 +154,11 @@ def clean_tool_prefix(cmd):
         inner = cleaned.replace("DANGER_FLAGGED:", "", 1)
         is_tool = inner.startswith("[TOOL]")
         cleaned = f"DANGER_FLAGGED:{inner.replace('[TOOL]', '', 1).strip()}" if is_tool else cleaned
-    
-    # Safe fallback to cat if mdcat is not installed on the system
     has_mdcat = bool(shutil.which("mdcat"))
     if is_tool:
-        # If it's a dynamic context tool, automatically pipe to mdcat 
-        if "mdcat" not in cleaned:
-            cleaned = f"{cleaned} | {'mdcat' if has_mdcat else 'cat'}"
-    else:
-        if "mdcat" in cleaned and not has_mdcat:
-            cleaned = re.sub(r'\|\s*mdcat\b.*$', '', cleaned).strip()
+        if "mdcat" not in cleaned: cleaned = f"{cleaned} | {'mdcat' if has_mdcat else 'cat'}"
+    elif "mdcat" in cleaned and not has_mdcat:
+        cleaned = re.sub(r'\|\s*mdcat\b.*$', '', cleaned).strip()
     return cleaned
 
 def get_system_context(query):
@@ -222,38 +168,30 @@ def get_system_context(query):
         first_match = tool_match.split("\n")[0]
         if "|||" in first_match:
             intent, cmd = first_match.split("|||", 1)
-            if cmd.startswith("DANGER_FLAGGED:"):
-                cmd = cmd.replace("DANGER_FLAGGED:", "", 1)
+            if cmd.startswith("DANGER_FLAGGED:"): cmd = cmd.replace("DANGER_FLAGGED:", "", 1)
             if cmd.startswith("[TOOL]"):
                 tool_cmd = cmd.replace("[TOOL]", "").strip()
                 
-                # Universally pass the entire query to any tool without parsing hacks
-                sys.stderr.write(f"\033[90m[sys] Executing: {tool_cmd} {query}\033[0m\n"); sys.stderr.flush()
-                context = run_local_tool(f"{tool_cmd} {query}")
+                intent_tokens = set(tokenize(intent))
+                args = " ".join([w for w in query.split() if tokenize(w) and tokenize(w)[0] not in intent_tokens])
+                if args: tool_cmd = f"{tool_cmd} {args}"
                 
+                sys.stderr.write(f"\033[90m[sys] Executing: {tool_cmd}\033[0m\n"); sys.stderr.flush()
+                context = run_local_tool(tool_cmd)
     q_tokens = tokenize(query)
     if set(q_tokens) & get_active_system_keywords():
-        profile_path = os.path.expanduser("~/.config/local-ai/local-ai-agent/tools/skills/mysys.md")
+        profile_path = os.path.join(CFG_DIR, "tools/skills/mysys.md")
         if os.path.exists(profile_path):
             try:
-                with open(profile_path, "r") as f:
-                    context = f.read().strip() + "\n\n" + context
+                with open(profile_path, "r") as f: context = f.read().strip() + "\n\n" + context
             except: pass
     return context
 
 def run_interactive_selection(intent):
-    # Universal Syntax Guard: Immediately bypass selections on variable assignments, 
-    # programming syntax, inline comments, or shell redirection sequences, letting the stock shell handle it.
     if re.search(r'[\[\]{}()=\'"",;|<>#]', intent):
-        print_stock_error(intent)
-        sys.exit(127)
-
+        print_stock_error(intent); sys.exit(127)
     matched_base = matrix_search(intent)
-    if not matched_base:
-        # Exit with standard stock shell error status
-        print_stock_error(intent)
-        sys.exit(127)
-
+    if not matched_base: print_stock_error(intent); sys.exit(127)
     options = matched_base.split("\n")
     num_opts, current_idx = len(options), 0
     sys.stderr.write("\033[?25l"); sys.stderr.flush()
@@ -265,9 +203,7 @@ def run_interactive_selection(intent):
             is_danger = current_cmd.startswith("DANGER_FLAGGED:")
             cmd_to_show = current_cmd.replace("DANGER_FLAGGED:", "") if is_danger else current_cmd
             display_cmd = cmd_to_show.replace(" >/dev/null 2>&1", "").replace(os.path.expanduser("~"), "~")
-
             idx_str = f"{display_idx:02d}/{num_opts:02d}"
-
             if is_danger:
                 sys.stderr.write("\r\x1b[K\033[1;31m▲ WARNING: Destructive payload detected\033[0m\n")
                 sys.stderr.write(f"\r\x1b[K\033[1;30m[\033[1;31m{idx_str}\033[1;30m]\033[0m ❯ \x1b[1;36m[{current_intent}]\x1b[0m {display_cmd}\n")
@@ -275,7 +211,6 @@ def run_interactive_selection(intent):
             else:
                 sys.stderr.write(f"\r\x1b[K\033[1;30m[\033[1;32m{idx_str}\033[1;30m]\033[0m ❯ \x1b[1;36m[{current_intent}]\x1b[0m {display_cmd}\n")
                 sys.stderr.write("\r\x1b[K\033[1;30m::\033[0m ↵ run  any skip: ")
-            
             sys.stderr.flush()
             key = get_key()
             if key in ('\x03', '\x1b') or (not is_danger and key not in ('\r', '', '\x1b[A', '\x1b[B')):
@@ -285,16 +220,14 @@ def run_interactive_selection(intent):
                 if key.lower() == 'y': sys.stdout.write(cmd_to_show); sys.stdout.flush()
                 else: sys.stderr.write("Aborted safely.\n")
                 break
-            if key in ('\r', ''):
-                sys.stdout.write(cmd_to_show); sys.stdout.flush(); break
+            if key in ('\r', ''): sys.stdout.write(cmd_to_show); sys.stdout.flush(); break
             elif key == '\x1b[A':
                 current_idx = (current_idx - 1 + num_opts) % num_opts
                 sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
             elif key == '\x1b[B':
                 current_idx = (current_idx + 1) % num_opts
                 sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
-    finally:
-        sys.stderr.write("\033[?25h"); sys.stderr.flush()
+    finally: sys.stderr.write("\033[?25h"); sys.stderr.flush()
 
 def stream_llm_response(messages, prefix="AI: "):
     configs = []
@@ -311,41 +244,52 @@ def stream_llm_response(messages, prefix="AI: "):
 
     spinner = InlineSpinner()
     for url, headers, model, extra in configs:
-        body = {"messages": messages, "stream": True, **extra}
+        body, retries, backoff_sec = {"messages": messages, "stream": True, **extra}, 2, 1.5
         if model: body["model"] = model
         req = urlreq.Request(url, data=json.dumps(body).encode("utf-8"), headers=headers, method="POST")
-        try:
-            spinner.start()
-            with urlreq.urlopen(req, timeout=10) as response:
-                first, acc = True, []
-                for line in response:
-                    dec = line.decode("utf-8").strip()
-                    if dec.startswith("data: "): dec = dec[6:].strip()
-                    if not dec or dec == "[DONE]": continue
-                    try:
-                        data = json.loads(dec)
-                        content = ""
-                        if "choices" in data and data["choices"]: content = data["choices"][0].get("delta", {}).get("content", "")
-                        elif "candidates" in data and data["candidates"]: content = data["candidates"][0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                        if content:
-                            if first:
-                                spinner.stop()
-                                if sys.stdout.isatty():
-                                    sys.stdout.write("\r\x1b[2K\r"); sys.stdout.flush()
-                                    print(f"\033[1;32m{prefix}\033[0m ", end="", flush=True)
-                                first = False
-                            print(content, end="", flush=True); acc.append(content)
-                    except Exception: pass
-                print("\n"); return "".join(acc)
-        except Exception:
-            spinner.stop()
-            if url == configs[-1][0]:
-                print("\033[1;31mError: All fallbacks/local servers are offline.\033[0m\n")
+        while retries >= 0:
+            try:
+                spinner.start()
+                with urlreq.urlopen(req, timeout=10) as response:
+                    first, acc = True, []
+                    for line in response:
+                        dec = line.decode("utf-8").strip()
+                        if dec.startswith("data: "): dec = dec[6:].strip()
+                        if not dec or dec == "[DONE]": continue
+                        try:
+                            data = json.loads(dec)
+                            content = ""
+                            if "choices" in data and data["choices"]: content = data["choices"][0].get("delta", {}).get("content", "")
+                            elif "candidates" in data and data["candidates"]: content = data["candidates"][0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                            if content:
+                                if first:
+                                    spinner.stop()
+                                    if sys.stdout.isatty():
+                                        sys.stdout.write("\r\x1b[2K\r"); sys.stdout.flush()
+                                        print(f"\033[1;32m{prefix}\033[0m ", end="", flush=True)
+                                    first = False
+                                print(content, end="", flush=True); acc.append(content)
+                        except Exception: pass
+                    print("\n"); return "".join(acc)
+            except urlerr.HTTPError as e:
+                spinner.stop()
+                if e.code == 429 and retries > 0:
+                    time.sleep(backoff_sec)
+                    retries, backoff_sec = retries - 1, backoff_sec * 2
+                    continue
+                elif e.code == 400:
+                    try: sys.stderr.write(f"\n\033[1;31m[API 400 Error]: {e.read().decode('utf-8')}\033[0m\n")
+                    except: sys.stderr.write("\n\033[1;31m[API 400 Error]: Bad Request syntax or payload limit.\033[0m\n")
+                    break
+                else: break
+            except Exception:
+                spinner.stop()
+                break
+    print("\033[1;31mError: All fallbacks/local servers are offline.\033[0m\n")
     return None
 
 if len(sys.argv) > 1 and sys.argv[1] == "--interactive":
-    if len(sys.argv) >= 3:
-        run_interactive_selection(" ".join(sys.argv[2:]))
+    if len(sys.argv) >= 3: run_interactive_selection(" ".join(sys.argv[2:]))
     sys.exit(0)
 
 if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
@@ -353,12 +297,10 @@ if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
         is_agent = (sys.argv[1] == "--talk-chat")
         if is_agent:
             active_skill = os.environ.get("AI_ACTIVE_SKILL")
-            skill_tag = f" [{active_skill}]" if active_skill else ""
-            print(f"\033[1;36mAI Agent Session Initialized | Context Loaded{skill_tag} | Ctrl+C to exit.\033[0m\n")
+            print(f"\033[1;36mAI Agent Session Initialized | Context Loaded{f' [{active_skill}]' if active_skill else ''} | Ctrl+C to exit.\033[0m\n")
         else:
             print("\033[1;34mLocal AI Conversation Mode. Ctrl+C to quit.\033[0m\n")
         pending_query, chat_history = " ".join(sys.argv[2:]) if len(sys.argv) > 2 else None, []
-        
         try:
             while True:
                 if pending_query: query, pending_query = pending_query, None
@@ -382,8 +324,7 @@ if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
                 chat_history.append({"role": "user", "content": prompt})
 
                 ans = stream_llm_response(chat_history, prefix="Agent:" if is_agent else "AI:")
-                if ans: 
-                    chat_history.append({"role": "assistant", "content": ans})
+                if ans: chat_history.append({"role": "assistant", "content": ans})
                 else: chat_history.pop()
         except KeyboardInterrupt:
             print("\n\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
@@ -391,8 +332,7 @@ if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
     elif len(sys.argv) > 2:
         query_parts = sys.argv[2:]
         system_context = ""
-
-        SKILLS_DIR = os.path.expanduser("~/.config/local-ai/local-ai-agent/tools/skills")
+        SKILLS_DIR = os.path.join(CFG_DIR, "tools/skills")
         if query_parts:
             first_word = query_parts[0].lower()
             skill_file = os.path.join(SKILLS_DIR, f"{first_word}.md")
@@ -405,7 +345,6 @@ if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
 
         query = " ".join(query_parts)
         system_context += get_system_context(query)
-
         prompt = (
             "You are a helpful, conversational local AI shell assistant with read-only terminal access.\n"
             "Use the provided real-time system context (if available) to answer the user's question clearly, concisely, and directly.\n"
@@ -414,18 +353,14 @@ if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
         )
         if system_context: prompt += f"### Real-time System Context:\n{system_context}\n\n"
         prompt += f"User Question: {query}"
-
         stream_llm_response([{"role": "user", "content": prompt}], prefix="AI:")
         sys.exit(0)
 
 user_input = sanitize_input(" ".join(sys.argv[1:])) if len(sys.argv) > 1 else ""
 if not user_input or sys.argv[1].startswith("--"): sys.exit(0)
 
-# Zero-conflict safeguard: Immediately bypass AI suggestions on variable assignments, 
-# inline comments, or shell redirection sequences, letting the stock shell handle the input.
 if re.search(r'[\[\]{}()=\'"",;|<>#]', user_input):
-    print_stock_error(user_input)
-    sys.exit(127)
+    print_stock_error(user_input); sys.exit(127)
 
 matched_base = matrix_search(user_input)
 if matched_base:
@@ -435,18 +370,12 @@ if matched_base:
         is_tool = cmd.startswith("[TOOL]")
         cleaned_cmd = cmd.replace('[TOOL]', '', 1).strip() if is_tool else cmd
         has_mdcat = bool(shutil.which("mdcat"))
-        
-        # Check if the command should be piped to mdcat automatically
         if is_tool:
-            if "mdcat" not in cleaned_cmd:
-                cleaned_cmd = f"{cleaned_cmd} | {'mdcat' if has_mdcat else 'cat'}"
+            if "mdcat" not in cleaned_cmd: cleaned_cmd = f"{cleaned_cmd} | {'mdcat' if has_mdcat else 'cat'}"
         else:
             if "mdcat" in cleaned_cmd and not has_mdcat:
-                cleaned_cmd = re.sub(r'\bmdcat\b.*$', 'cat', cleaned_cmd)
-        
+                cleaned_cmd = re.sub(r'\|\s*mdcat\b.*$', '', cleaned_cmd).strip()
         out_lines.append(f"{intent}|||{cleaned_cmd}")
     print("\n".join(out_lines)); sys.exit(0)
 else:
-    # Exit silently with standard stock shell error status
-    print_stock_error(user_input)
-    sys.exit(127)
+    print_stock_error(user_input); sys.exit(127)
