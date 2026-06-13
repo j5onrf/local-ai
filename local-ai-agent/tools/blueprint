@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# Blueprint - High-Speed 1-to-1 Markdown Cheatsheet Generator v4.0.0
+# Blueprint - High-Speed Markdown-Native Cheatsheet Generator v4.1.0
 
 import os
 import re
 import sys
 
-CONTEXT_FILE = os.path.expanduser("~/.config/local-ai/local-ai-agent/ai-context.txt")
+CONTEXT_FILE = os.path.expanduser("~/.config/local-ai/local-ai-agent/ai-context.md")
 
 if not os.path.exists(CONTEXT_FILE):
     print(f"❌ Error: Configuration file not found at {CONTEXT_FILE}", file=sys.stderr)
@@ -21,35 +21,44 @@ except Exception as e:
     print(f"❌ Error reading file: {e}", file=sys.stderr)
     sys.exit(1)
 
+in_code_block = False
 table_open = False
-section_re = re.compile(r"^#\s*SECTION\s*([0-9]+):\s*(.*)$")
+section_re = re.compile(r"^##\s*([0-9]+)\.\s*(.*)$")
 url_re = re.compile(r"(https?://\S+)")
 
 for line in lines:
-    line = line.strip()
-    if not line:
+    line_stripped = line.strip()
+
+    # Track code block boundaries to isolate configuration mappings
+    if line_stripped.startswith("```"):
+        in_code_block = not in_code_block
         continue
 
-    # Detect Section Headers
-    match = section_re.match(line)
+    # Detect Section Headers (always outside code blocks)
+    match = section_re.match(line_stripped)
     if match:
         sec_num = match.group(1)
         sec_title = match.group(2)
         if table_open:
             print()  # Close previous table block cleanly
+            table_open = False
         print(f"## {sec_num}. {sec_title}\n")
         print("| Shortcut | Target Command |")
         print("| :--- | :--- |")
         table_open = True
         continue
 
-    # Skip other comments or empty lines
-    if line.startswith("#"):
+    # Only process configuration lines inside code blocks
+    if not in_code_block:
+        continue
+
+    # Skip comments inside code blocks
+    if line_stripped.startswith("#"):
         continue
 
     # Parse command mappings strictly splitting on the "--->" delimiter
-    if "--->" in line:
-        cmd, intents = line.split("--->", 1)
+    if "--->" in line_stripped:
+        cmd, intents = line_stripped.split("--->", 1)
         cmd = cmd.strip()
         intents = intents.strip()
 

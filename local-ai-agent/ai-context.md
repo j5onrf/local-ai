@@ -1,21 +1,21 @@
-# ==============================================================================
-#                LOCAL-AI AGENT BLUEPRINT CONFIGURATION INDEX
-# ==============================================================================
-# Syntax: [command / execution] ---> [intent1], [intent2], [intent3]
-# Delimiter: " ---> " (Three-dash arrow with trailing space)
-#
-# Directional Syntax Guide:
-# 1. Directory Path   : Indexes workspace & launches standard AI Workspace.
-# 2. 'ai init' + Skill: Indexes workspace & launches AI pre-primed with Skill.
-# 3. '[TOOL] command' : Runs local utility (cat, script) to inject dynamic Markdown context.
-# 4. Raw Command      : Native terminal alias, interactive TUI, or document viewer.
-# ==============================================================================
+# Local-AI Agent Blueprint
 
+> **Syntax**: `[command / execution] ---\> [intent1], [intent2], [intent3]`  
+> **Delimiter**: `" ---> "` (Three-dash arrow with a trailing space)
 
-# ==============================================================================
-# SECTION 1: WORKSPACE INITIALIZERS & BRIDGES
-# ==============================================================================
+---
 
+### Directional Syntax Guide
+1. **Directory Path**: Indexes workspace and launches standard AI Workspace.
+2. **'ai init' + Skill**: Indexes workspace and launches AI pre-primed with Skill.
+3. **'[TOOL] command'**: Runs local utility to inject dynamic Markdown context.
+4. **Raw Command**: Native terminal alias, interactive TUI, or document viewer.
+
+---
+
+## 1. Workspace Initializers & Bridges
+
+```properties
 # --- OpenCode Direct Terminal Launcher ---
 ~/.config/local-ai/opencode-bridge/opencode-bridge ---> opencode bridge, ocb
 
@@ -32,22 +32,21 @@
 # --- Specialized Codebase Workspaces (Skill-Primed) ---
 # (Specialized project initializations primed with the "coder" Skill!)
 ai init ~/Projects/quickshell coder ---> projects quickshell, projects
+```
 
+## 2. On-Demand System Prompts & Role Injections (Skills)
 
-# ==============================================================================
-# SECTION 2: ON-DEMAND SYSTEM PROMPTS & ROLE INJECTIONS (SKILLS)
-# ==============================================================================
-
+```properties
 # --- Skills (Prompt & Role Injection) ---
 [TOOL] cat ~/.config/local-ai/local-ai-agent/tools/skills/sysadmin.md ---> sysadmin, show sysadmin, sysadmin manual
 [TOOL] cat ~/.config/local-ai/local-ai-agent/tools/skills/mysys.md ---> mysys, show mysys, view mysys, mysys doc
+```
 
+## 3. Dynamic Context-Injected Tools (RAG)
 
-# ==============================================================================
-# SECTION 3: DYNAMIC CONTEXT-INJECTED TOOLS (RAG)
-# ==============================================================================
-
+```properties
 # --- Pre-Install Zero-Trust AUR Package & PKGBUILD Auditor ---
+# (Static execution pass-through to bypass Anubis bot proxy)
 ~/.config/local-ai/local-ai-agent/tools/agentic/aur-audit ---> audit package, audit pkg, check pkgbuild, aur audit, scan aur, verify pkgbuild, pre-install check
 
 # --- Host Security Surface & Vulnerability Intelligence (SECAUD) ---
@@ -75,12 +74,11 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 
 # --- System Time & Date (Real-time Clock Context) ---
 [TOOL] date ---> time, date, current time, what time is it, system date, system time
+```
 
+## 4. Static Aliases & Shell Shortcuts
 
-# ==============================================================================
-# SECTION 4: STATIC ALIASES & SHELL SHORTCUTS
-# ==============================================================================
-
+```properties
 # --- Local-Ai Agent Blueprint Map (CheatSheet) (Optional: leaf, glow) ---
 ~/.config/local-ai/local-ai-agent/tools/blueprint | mdcat ---> cheatsheet, blueprint, bp, cs, map
 ~/.config/local-ai/local-ai-agent/tools/blueprint | leaf ---> cheatsheet leaf, blueprint, bp, cs, map
@@ -90,12 +88,11 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 
 # --- Server Lifecycle Management ---
 ~/.config/local-ai/local-ai-agent/tools/kill-ai-servers ---> killserver, ks
+```
 
+## 5. TUI (Terminal User Interface) Programs
 
-# ==============================================================================
-# SECTION 5: TUI (TERMINAL USER INTERFACE) PROGRAMS
-# ==============================================================================
-
+```properties
 # --- AI Deep Research TUI ---
 /home/j5/.config/local-ai/research-tui/deep-research ---> deep research, research, dr
 
@@ -108,12 +105,11 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 
 # --- Article Summarizers ---
 ~/.config/local-ai/ai-summary/llmsum.py ---> llmsum, ytsum, summary
+```
 
+## 6. Graphical Applications & Webapps
 
-# ==============================================================================
-# SECTION 6: GRAPHICAL APPLICATIONS & WEBAPPS
-# ==============================================================================
-
+```properties
 # --- Local-Ai Tablet Voice Bridge ---
 /home/j5/.config/local-ai/voice/voice-query ---> voice, voice query, voice bridge
 
@@ -124,12 +120,11 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 omarchy-launch-webapp https://music.youtube.com/ ---> youtube music, yt, yt music, youtube
 
 nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-spotify-bunker" --app=https://open.spotify.com/ >/dev/null 2>&1 & ---> spotify music, spotify, music
+```
 
+## 7. Subsection Applications
 
-# ==============================================================================
-# SECTION 7: SUBSECTION APPLICATIONS
-# ==============================================================================
-
+```properties
 # --- Stopwatch ---
 ~/.config/local-ai/local-ai-agent/tools/subsec/stopwatch/stopwatch.py ---> stopwatch py, sw, stop watch
 ~/.config/local-ai/local-ai-agent/tools/subsec/stopwatch/stopwatch.sh ---> stopwatch sh, sw, stop watch
@@ -141,12 +136,11 @@ nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-sp
 ~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/work ---> hyprstate work, work, workspace
 ~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/clean ---> hyprstate clean, clean, workspace
 ~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/gitcom ---> hyprstate gitcom, gitcom, workspace
+```
 
+## 8. Continual Learning
 
-# ==============================================================================
-# SECTION 8: CONTINUAL LEARNING
-# ==============================================================================
-
+```properties
 # --- Learned System Shortcuts ---
 ss -tuln ---> how do i view active network ports
 hostnamectl ---> how do i see my system information
