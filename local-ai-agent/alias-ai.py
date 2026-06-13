@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.2.3 [j5onrf] [06-12-26]
+# Local-Ai Agent v0.8.4.0 [j5onrf] [06-12-26]
 
 import sys, re, os, json, threading, time, math, subprocess, shutil
 import urllib.request as urlreq, urllib.error as urlerr
@@ -9,9 +9,11 @@ except ImportError: pass
 
 sys.argv = [arg for arg in sys.argv if arg != ""]
 
-CFG_DIR = os.path.expanduser("~/.config/local-ai/local-ai-agent")
-CONTEXT_FILE = os.path.join(CFG_DIR, "ai-context.txt")
-INDEX_FILE = os.path.join(CFG_DIR, "ai-context.idx")
+# Standard, unified absolute paths
+CONTEXT_FILE = os.path.expanduser("~/.config/local-ai/local-ai-agent/ai-context.txt")
+INDEX_FILE = os.path.expanduser("~/.config/local-ai/local-ai-agent/ai-context.idx")
+CFG_DIR = os.path.dirname(CONTEXT_FILE)
+
 DESTRUCTIVE_KEYWORDS = ["rm ", "dd ", "mkfs", "shred", "chmod -R 777", "> /dev/sda"]
 TOKEN_RE = re.compile(r"[^\w\s]")
 
@@ -67,13 +69,23 @@ def run_local_tool(cmd):
         sys.stderr.write(f"\033[1;31mTool execution failed: {str(e)}\033[0m\n")
         return f"[SYSTEM ERROR] Failed to run local tool: {str(e)}\n"
 
-def compile_vector_index():
-    if not os.path.exists(CONTEXT_FILE): return False
+def load_vector_index():
+    if not os.path.exists(CONTEXT_FILE):
+        sys.stderr.write(f"\n\033[1;31m[CRITICAL ERROR]: ai-context.txt not found at: {CONTEXT_FILE}\033[0m\n")
+        return {}, []
+    try:
+        if os.path.exists(INDEX_FILE) and os.path.getmtime(CONTEXT_FILE) <= os.path.getmtime(INDEX_FILE):
+            with open(INDEX_FILE, "r") as f:
+                data = json.load(f)
+                if data.get("entries"):
+                    return data.get("idfs", {}), data.get("entries", [])
+    except:
+        pass
     try:
         with open(CONTEXT_FILE, "r") as f: lines = f.read().splitlines()
         index_data = []
         for line in [l.strip() for l in lines if l.strip() and not l.startswith("#") and "--->" in l and "----->" not in l]:
-            cmd, intents = line.split("--->", 1)
+            cmd, intents = line.split("----->" if "----->" in line else "--->", 1)
             for intent in [i.strip() for i in intents.split(",")]:
                 tokens = tokenize(intent)
                 if tokens: index_data.append({"cmd": cmd.strip(), "intent": intent, "tokens": tokens, "len": len(tokens)})
@@ -81,23 +93,12 @@ def compile_vector_index():
         df = defaultdict(int)
         for entry in index_data:
             for t in set(entry["tokens"]): df[t] += 1
-        N, idfs = len(index_data), {t: math.log(1.0 + (len(index_data) / count)) for t, count in df.items()}
+        idfs = {t: math.log(1.0 + (len(index_data) / count)) for t, count in df.items()}
         with open(INDEX_FILE, "w") as f: json.dump({"idfs": idfs, "entries": index_data}, f)
-        return True
+        return idfs, index_data
     except Exception as e:
         sys.stderr.write(f"\033[1;31mError compiling index: {str(e)}\033[0m\n")
-        return False
-
-if not os.path.exists(CONTEXT_FILE):
-    sys.stderr.write(f"\033[1;31mWarning: Context file is missing at {CONTEXT_FILE}\033[0m\n")
-else:
-    PROFILE_PATH = os.path.join(CFG_DIR, "tools/skills/mysys.md")
-    if not os.path.exists(PROFILE_PATH):
-        gen_script = os.path.join(CFG_DIR, "tools/generate-profile")
-        if os.path.exists(gen_script): subprocess.run([sys.executable, gen_script])
-    try:
-        if os.path.getmtime(CONTEXT_FILE) > os.path.getmtime(INDEX_FILE): compile_vector_index()
-    except OSError: compile_vector_index()
+        return {}, []
 
 def check_danger(cmd):
     return f"DANGER_FLAGGED:{cmd}" if cmd and any(kw in cmd.lower() for kw in DESTRUCTIVE_KEYWORDS) else cmd
@@ -105,24 +106,21 @@ def check_danger(cmd):
 def matrix_search(query, threshold=0.55):
     query_tokens = tokenize(query)
     if not query_tokens: return None
-    if not os.path.exists(INDEX_FILE): compile_vector_index()
-    try:
-        with open(INDEX_FILE, "r") as f: data = json.load(f)
-    except:
-        compile_vector_index()
-        try:
-            with open(INDEX_FILE, "r") as f: data = json.load(f)
-        except: return None
-    idfs, entries = data.get("idfs", {}), data.get("entries", [])
+    idfs, entries = load_vector_index()
+    if not entries: return None
     candidates, q_set = [], set(query_tokens)
     for entry in entries:
-        intersect = q_set & set(entry["tokens"])
+        ent_tokens = entry.get("tokens", [])
+        if len(query_tokens) >= len(ent_tokens) and query_tokens[:len(ent_tokens)] == ent_tokens:
+            candidates.append((2.0, entry["cmd"], entry["intent"]))
+            continue
+        intersect = q_set & set(ent_tokens)
         if not intersect or (len(query_tokens) == 1 and query_tokens[0] != entry["intent"].strip().lower()): continue
         match_weight = sum(idfs.get(t, 1.0) for t in intersect)
         q_weight = sum(idfs.get(t, 1.0) for t in q_set)
-        entry_weight = sum(idfs.get(t, 1.0) for t in entry["tokens"])
+        entry_weight = sum(idfs.get(t, 1.0) for t in ent_tokens)
         score = (2.0 * match_weight) / (q_weight + entry_weight) if (q_weight + entry_weight) > 0 else 0.0
-        if len(intersect) == len(entry["tokens"]) and (len(intersect) / len(q_set) >= 0.50): score += 0.20
+        if len(intersect) == len(ent_tokens) and (len(intersect) / len(q_set) >= 0.50): score += 0.20
         if score >= threshold: candidates.append((score, entry["cmd"], entry["intent"]))
     if not candidates: return None
     candidates.sort(key=lambda x: (-x[0], len(x[2])))
@@ -162,23 +160,22 @@ def clean_tool_prefix(cmd):
     return cleaned
 
 def get_system_context(query):
-    context = ""
-    tool_match = matrix_search(query, threshold=0.50)
-    if tool_match:
-        first_match = tool_match.split("\n")[0]
-        if "|||" in first_match:
-            intent, cmd = first_match.split("|||", 1)
-            if cmd.startswith("DANGER_FLAGGED:"): cmd = cmd.replace("DANGER_FLAGGED:", "", 1)
-            if cmd.startswith("[TOOL]"):
-                tool_cmd = cmd.replace("[TOOL]", "").strip()
-                
-                intent_tokens = set(tokenize(intent))
-                args = " ".join([w for w in query.split() if tokenize(w) and tokenize(w)[0] not in intent_tokens])
-                if args: tool_cmd = f"{tool_cmd} {args}"
-                
-                sys.stderr.write(f"\033[90m[sys] Executing: {tool_cmd}\033[0m\n"); sys.stderr.flush()
-                context = run_local_tool(tool_cmd)
-    q_tokens = tokenize(query)
+    context, q_tokens = "", tokenize(query)
+    if not q_tokens: return ""
+    idfs, entries = load_vector_index()
+    matched_cmd, matched_intent = None, None
+    for entry in entries:
+        ent_tokens = entry.get("tokens", [])
+        if len(q_tokens) >= len(ent_tokens) and q_tokens[:len(ent_tokens)] == ent_tokens:
+            matched_cmd, matched_intent = entry.get("cmd"), entry.get("intent")
+            break
+    if matched_cmd and matched_cmd.startswith("[TOOL]"):
+        tool_cmd = matched_cmd.replace("[TOOL]", "").strip()
+        intent_tokens = set(tokenize(matched_intent))
+        args = " ".join([w for w in query.split() if tokenize(w) and tokenize(w)[0] not in intent_tokens])
+        if args: tool_cmd = f"{tool_cmd} {args}"
+        sys.stderr.write(f"\033[90m[sys] Executing: {tool_cmd}\033[0m\n"); sys.stderr.flush()
+        context = run_local_tool(tool_cmd)
     if set(q_tokens) & get_active_system_keywords():
         profile_path = os.path.join(CFG_DIR, "tools/skills/mysys.md")
         if os.path.exists(profile_path):

@@ -1,87 +1,89 @@
 #!/usr/bin/env bash
-# aur-audit - Dynamic AUR Package Auditor & Guideline Integrator v1.0.6
+# aur-audit - Interactive Zero-Trust AUR Package Auditor v1.1.0
 
 set -euo pipefail
 
-AUDIT_SKILL_FILE="$HOME/.config/local-ai/local-ai-agent/tools/skills/aur-audit.md"
+SKILLS_DIR="$HOME/.config/local-ai/local-ai-agent/tools/skills"
+AUDIT_SKILL_FILE="$SKILLS_DIR/aur-audit.md"
+ALIAS_AI_SCRIPT="$HOME/.config/local-ai/local-ai-agent/alias-ai.py"
 
-# 1. Print Dedicated AUR Audit Skill Profile (if available)
-if [ -f "$AUDIT_SKILL_FILE" ]; then
-    cat "$AUDIT_SKILL_FILE"
-    echo ""
-    echo "---"
-    echo ""
+# 1. Resolve target package name (Interactive or direct argument)
+if [ "$#" -ge 1 ]; then
+    # If the script was executed via a mapped alias (e.g., "audit package swww")
+    # we take the very last argument as the package name
+    PKG_NAME="${@: -1}"
+    
+    # If the last argument matches an intent keyword, the user forgot the name
+    if [[ "$PKG_NAME" =~ ^(package|pkg|pkgbuild|audit|check|scan|verify)$ ]]; then
+        read -p "❯ Enter AUR package name to audit: " PKG_NAME
+    fi
+else
+    # Prompt the user interactively if executed without parameters
+    read -p "❯ Enter AUR package name to audit: " PKG_NAME
 fi
 
-# 2. Dynamic Package Query Validation
-if [ "$#" -lt 1 ]; then
-    echo "## AUR PRE-INSTALL SECURITY AUDIT ERROR"
-    echo "* Error: No package name was provided to the audit script."
-    echo "* Usage: ai audit pkg <package_name>"
-    exit 0
+# Clean trailing whitespace
+PKG_NAME=$(echo "$PKG_NAME" | xargs 2>/dev/null || echo "$PKG_NAME")
+
+if [ -z "$PKG_NAME" ]; then
+    echo "❌ Error: No package name was provided."
+    exit 1
 fi
 
-# Extract the very last argument (the package name) from the passed query
-PKG_NAME="${@: -1}"
-
-# Safeguard: If the last argument matches an intent keyword, the user forgot the package name
-if [[ "$PKG_NAME" =~ ^(package|pkg|pkgbuild|audit|check|scan|verify)$ ]]; then
-    echo "## AUR PRE-INSTALL SECURITY AUDIT ERROR"
-    echo "* Error: No package name was provided to the audit script."
-    echo "* Usage: ai audit pkg <package_name>"
-    exit 0
-fi
-
-echo "## REAL-TIME AUR PACKAGE TELEMETRY: $PKG_NAME"
-echo ""
-
-# Create a clean temporary directory for the shallow clone
+# 2. Fetch package specifications deterministically
+echo -ne "⠋ Fetching AUR repository data for: \033[1;33m$PKG_NAME\033[0m...\r"
 TEMP_DIR=$(mktemp -d)
-
-# Cleanup trap to guarantee removal of temp files on script exit/failure
 trap 'rm -rf "$TEMP_DIR"' EXIT
 
-# Bypassing the Anubis PoW anti-bot proxy by cloning the official Git repo directly.
-# (Git smart-HTTP transfers are universally whitelisted by Anubis to keep system updates functional).
-if git clone --depth 1 "https://aur.archlinux.org/$PKG_NAME.git" "$TEMP_DIR" >/dev/null 2>&1; then
-    
-    # 1. Extract Local Metadata from the cloned .SRCINFO
-    echo "### 1. Package Metadata Overview"
-    if [ -f "$TEMP_DIR/.SRCINFO" ]; then
-        # Cleanly parse and format the key-value attributes from the .SRCINFO file
-        while IFS=' = ' read -r key val; do
-            key=$(echo "$key" | xargs 2>/dev/null || echo "$key")
-            val=$(echo "$val" | xargs 2>/dev/null || echo "$val")
-            if [ -n "$key" ] && [ -n "$val" ]; then
-                case "$key" in
-                    pkgdesc) echo "* **Description**: $val" ;;
-                    pkgver) echo "* **Version**: $val" ;;
-                    url) echo "* **Upstream URL**: \`$val\`" ;;
-                    license) echo "* **License**: $val" ;;
-                    depends) echo "* **Dependency**: \`$val\`" ;;
-                esac
-            fi
-        done < "$TEMP_DIR/.SRCINFO"
-        echo "* **Source Integrity**: Bypassed Anubis Anti-Bot Proxy successfully via Git Secure-Clone."
-    else
-        echo "* Warning: .SRCINFO file not found in repository."
-    fi
-    echo ""
-
-    # 2. Print PKGBUILD Build Script Source
-    echo "### 2. PKGBUILD Build Script Source"
-    if [ -f "$TEMP_DIR/PKGBUILD" ]; then
-        echo "\`\`\`bash"
-        cat "$TEMP_DIR/PKGBUILD"
-        echo "\`\`\`"
-    else
-        echo "* Error: PKGBUILD file was missing from the cloned repository."
-    fi
-
-else
-    echo "### 1. Source Fetch Failure"
-    echo "* [CRITICAL] Failed to retrieve package data for \"$PKG_NAME\"."
-    echo "* **Cause**: The AUR is currently protected by the Anubis anti-bot middleware, and both the direct Git clone and standard HTTPS fallbacks failed."
-    echo "* **Action**: Verify your network connection or inspect the package manually at \`https://aur.archlinux.org/packages/$PKG_NAME\`."
+if ! git clone --depth 1 "https://aur.archlinux.org/$PKG_NAME.git" "$TEMP_DIR" >/dev/null 2>&1; then
+    echo -e "\x1b[2K\r❌ [CRITICAL ERROR] Failed to retrieve package data for \"$PKG_NAME\"."
+    echo "   Ensure your network is active or verify that the package exists on the AUR."
+    exit 1
 fi
-echo ""
+
+# Compile metadata locally
+METADATA=""
+if [ -f "$TEMP_DIR/.SRCINFO" ]; then
+    while IFS=' = ' read -r key val; do
+        key=$(echo "$key" | xargs 2>/dev/null || echo "$key")
+        val=$(echo "$val" | xargs 2>/dev/null || echo "$val")
+        if [ -n "$key" ] && [ -n "$val" ]; then
+            case "$key" in
+                pkgdesc) METADATA="$METADATA* **Description**: $val"$'\n' ;;
+                pkgver) METADATA="$METADATA* **Version**: $val"$'\n' ;;
+                url) METADATA="$METADATA* **Upstream URL**: \$val"$'\n' ;;
+                license) METADATA="$METADATA* **License**: $val"$'\n' ;;
+                depends) METADATA="$METADATA* **Dependency**: \`$val\`"$'\n' ;;
+            esac
+        fi
+    done < "$TEMP_DIR/.SRCINFO"
+fi
+
+PKGBUILD_CONTENT=""
+if [ -f "$TEMP_DIR/PKGBUILD" ]; then
+    PKGBUILD_CONTENT=$(cat "$TEMP_DIR/PKGBUILD")
+else
+    echo -e "\x1b[2K\r❌ Error: PKGBUILD file was missing from the cloned repository."
+    exit 1
+fi
+
+# Clear spinner line
+sys_stderr_write() {
+    python3 -c "import sys; sys.stderr.write(\"$1\"); sys.stderr.flush()"
+}
+sys_stderr_write "\r\x1b[2K\r"
+
+# 3. Formulate the zero-trust system prompt
+PROMPT="Please perform a highly rigorous, zero-trust security audit on this AUR package based on your system guidelines.
+
+### 1. Package Metadata Overview
+$METADATA
+* **Source Integrity**: Bypassed Anubis Anti-Bot Proxy successfully via Git Secure-Clone.
+
+### 2. PKGBUILD Build Script Source
+\`\`\`bash
+$PKGBUILD_CONTENT
+\`\`\`"
+
+# 4. Handoff directly to the AI Agent primed with your skill directives
+python3 "$ALIAS_AI_SCRIPT" --talk aur-audit "$PROMPT"

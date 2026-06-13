@@ -47,8 +47,8 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 # SECTION 3: DYNAMIC CONTEXT-INJECTED TOOLS (RAG)
 # ==============================================================================
 
-# --- Pre-Install Zero-Trust AUR Package & PKGBUILD Auditor (Usage: ai audit pkg <name>) ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/aur-audit ---> audit package, audit pkg, check pkgbuild, aur audit, scan aur, verify pkgbuild, pre-install check
+# --- Pre-Install Zero-Trust AUR Package & PKGBUILD Auditor (Usage: audit pkg <name>) ---
+~/.config/local-ai/local-ai-agent/tools/agentic/aur-audit ---> audit package, audit pkg, check pkgbuild, aur audit, scan aur, verify pkgbuild, pre-install check
 
 # --- Host Security Surface & Vulnerability Intelligence (SECAUD) ---
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/security-audit ---> security audit, secaud, audit system security, scan for vulnerabilities
