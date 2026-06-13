@@ -86,9 +86,11 @@ def load_vector_index():
         index_data = []
         for line in [l.strip() for l in lines if l.strip() and not l.startswith("#") and "--->" in l and "----->" not in l]:
             cmd, intents = line.split("----->" if "----->" in line else "--->", 1)
-            for intent in [i.strip() for i in intents.split(",")]:
+            intent_list = [i.strip() for i in intents.split(",")]
+            primary_intent = intent_list[0] if intent_list else ""
+            for intent in intent_list:
                 tokens = tokenize(intent)
-                if tokens: index_data.append({"cmd": cmd.strip(), "intent": intent, "tokens": tokens, "len": len(tokens)})
+                if tokens: index_data.append({"cmd": cmd.strip(), "intent": intent, "primary": primary_intent, "tokens": tokens, "len": len(tokens)})
         from collections import defaultdict
         df = defaultdict(int)
         for entry in index_data:
@@ -111,8 +113,9 @@ def matrix_search(query, threshold=0.55):
     candidates, q_set = [], set(query_tokens)
     for entry in entries:
         ent_tokens = entry.get("tokens", [])
+        # Prefix Match Bypass
         if len(query_tokens) >= len(ent_tokens) and query_tokens[:len(ent_tokens)] == ent_tokens:
-            candidates.append((2.0, entry["cmd"], entry["intent"]))
+            candidates.append((2.0, entry["cmd"], entry.get("primary", entry["intent"])))
             continue
         intersect = q_set & set(ent_tokens)
         if not intersect or (len(query_tokens) == 1 and query_tokens[0] != entry["intent"].strip().lower()): continue
@@ -121,13 +124,13 @@ def matrix_search(query, threshold=0.55):
         entry_weight = sum(idfs.get(t, 1.0) for t in ent_tokens)
         score = (2.0 * match_weight) / (q_weight + entry_weight) if (q_weight + entry_weight) > 0 else 0.0
         if len(intersect) == len(ent_tokens) and (len(intersect) / len(q_set) >= 0.50): score += 0.20
-        if score >= threshold: candidates.append((score, entry["cmd"], entry["intent"]))
+        if score >= threshold: candidates.append((score, entry["cmd"], entry.get("primary", entry["intent"])))
     if not candidates: return None
     candidates.sort(key=lambda x: (-x[0], len(x[2])))
     seen, top = set(), []
-    for _, cmd, intent in candidates:
+    for _, cmd, primary in candidates:
         if cmd not in seen:
-            seen.add(cmd); top.append(f"{intent}|||{check_danger(cmd)}")
+            seen.add(cmd); top.append(f"{primary}|||{check_danger(cmd)}")
             if len(top) == 3: break
     return "\n".join(top)
 

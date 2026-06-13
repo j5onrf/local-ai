@@ -126,16 +126,16 @@ nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-sp
 
 ```properties
 # --- Stopwatch ---
-~/.config/local-ai/local-ai-agent/tools/subsec/stopwatch/stopwatch.py ---> stopwatch py, sw, stop watch
-~/.config/local-ai/local-ai-agent/tools/subsec/stopwatch/stopwatch.sh ---> stopwatch sh, sw, stop watch
+~/.config/local-ai/local-ai-agent/tools/subsec/stopwatch/stopwatch.py ---> stopwatch py, sw, stopwatch
+~/.config/local-ai/local-ai-agent/tools/subsec/stopwatch/stopwatch.sh ---> stopwatch sh, sw, stopwatch
 
 # --- Notes ---
 ~/.config/local-ai/local-ai-agent/tools/subsec/notes/notes.sh ---> notes, open notes, add to notes
 
 # --- State & Workflow Management ---
-~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/work ---> hyprstate work, work, workspace
-~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/clean ---> hyprstate clean, clean, workspace
-~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/gitcom ---> hyprstate gitcom, gitcom, workspace
+~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/work ---> hyprstate work, work, hyprstate, workspace
+~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/clean ---> hyprstate clean, clean, hyprstate, workspace
+~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/gitcom ---> hyprstate gitcom, gitcom, hyprstate, workspace
 ```
 
 ## 8. Continual Learning
