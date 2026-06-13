@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# aur-audit - Dynamic AUR Package Auditor & Guideline Integrator v1.0.2
+
+set -euo pipefail
+
+# MYSYS_FILE="$HOME/.config/local-ai/local-ai-agent/tools/skills/mysys.md"
+AUDIT_SKILL_FILE="$HOME/.config/local-ai/local-ai-agent/tools/skills/aur-audit.md"
+
+# 1. Print General System Profile (if available)
+# if [ -f "$MYSYS_FILE" ]; then
+#    cat "$MYSYS_FILE"
+#    echo ""
+#    echo "---"
+#    echo ""
+# fi
+
+# 2. Print Dedicated AUR Audit Skill Profile (if available)
+if [ -f "$AUDIT_SKILL_FILE" ]; then
+    cat "$AUDIT_SKILL_FILE"
+    echo ""
+    echo "---"
+    echo ""
+fi
+
+# 3. Dynamic Package Query Validation
+if [ "$#" -lt 1 ] || [ -z "$1" ]; then
+    echo "## AUR PRE-INSTALL SECURITY AUDIT ERROR"
+    echo "* Error: No package name was provided to the audit script."
+    echo "* Usage: aur-audit <package_name>"
+    exit 0 # Exit 0 so the agent can read the formatted message cleanly
+fi
+
+PKG_NAME="$1"
+
+if ! command -v yay >/dev/null 2>&1; then
+    echo "## AUR PRE-INSTALL SECURITY AUDIT ERROR"
+    echo "* Error: 'yay' is not installed or not in PATH."
+    exit 0
+fi
+
+echo "## REAL-TIME AUR PACKAGE TELEMETRY: $PKG_NAME"
+echo ""
+
+# A: Fetch Metadata from the AUR RPC
+echo "### 1. Public AUR Metadata Overview"
+python3 -c '
+import urllib.request as urlreq, urllib.parse, json, sys, time
+pkg = sys.argv[1]
+url = "https://aur.archlinux.org/rpc/v5/info?" + urllib.parse.urlencode([("arg[]", pkg)])
+try:
+    req = urlreq.Request(url, headers={"User-Agent": "aur-audit-agent/1.0"})
+    with urlreq.urlopen(req, timeout=2.0) as r:
+        data = json.loads(r.read().decode())
+        if "results" in data and data["results"]:
+            res = data["results"][0]
+            print(f"* **Maintainer**: `{res.get(\"Maintainer\", \"ORPHANED (No active maintainer)\")}`")
+            print(f"* **Votes**: `{res.get(\"NumVotes\", 0)}`")
+            print(f"* **Popularity**: `{res.get(\"Popularity\", 0.0)}`")
+            last_mod = res.get("LastModified", 0)
+            print(f"* **Last Modified**: `{time.ctime(last_mod)}` ({int((time.time() - last_mod)/86400)} days ago)")
+            if res.get("OutOfDate"):
+                print("* **Status Flags**: `OUT-OF-DATE` (Flagged by community)")
+            else:
+                print("* **Status Flags**: None (Active/Up-to-date)")
+        else:
+            print("* **Status**: No metadata found in the AUR database. Verify package spelling.")
+except Exception as e:
+    print(f"* **Status**: Metadata query timed out or offline.")
+' "$PKG_NAME"
+echo ""
+
+# B: Fetch PKGBUILD Source
+echo "### 2. PKGBUILD Build Script Source"
+if PKGBUILD_CONTENT=$(yay -Gp "$PKG_NAME" 2>/dev/null); then
+    echo "\`\`\`bash"
+    echo "$PKGBUILD_CONTENT"
+    echo "\`\`\`"
+else
+    echo "* Error: Failed to fetch PKGBUILD for '$PKG_NAME'. Ensure the package exists on the AUR."
+fi
+echo ""
