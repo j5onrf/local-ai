@@ -1,4 +1,4 @@
-# Local-AI Agent (v0.8.1.10)
+# Local-AI Agent (v0.8.2.0)
 
 <img alt="Image_5e1xpv5e1xpv5e1x-3" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" />
 
@@ -27,10 +27,9 @@ All configurations, automations, and custom project workspaces are managed throu
 | | **OpenRouter Failover** | Sends a prioritized model array payload to automatically route around free-tier model congestion on the server side. |
 | **Integration** | **Zero-Bloat Auto-Routing** | Automatically injects your system specs (`mysys.md`) *only* when queries contain system keywords (e.g. `gpu`, `kernel`). |
 | | **Voice Query Bridge** | Connects any Wi-Fi tablet or phone over local HTTPS/HTTP to record audio, transcribing natively on the cloud with 0% PC CPU load. |
-| | **Continual Learning** | Extracts commands from LLM outputs and prompts you to save them as offline shortcuts, bypassing the LLM next time. |
 | | **Dynamic Viewer Pipeline** | Intercepts manual `[TOOL]` calls, automatically piping them to `mdcat` for terminal rendering while translating them to `cat` for AI context tasks. |
 | **Portability** | **Zero-Config Bootstrap** | Silent local diagnostics query your CPU, GPU, and window manager on first-run, auto-generating your system profile. |
-| | **Auditable Codebase** | Designed with full transparency in under 450 lines of highly clean, standard-library Python code. |
+| | **Auditable Codebase** | Designed with full transparency in under 430 lines of highly clean, standard-library Python code. |
 
 ---
 
@@ -132,3 +131,4 @@ export OPENROUTER_API_KEY="sk-or-v1-YourOpenRouterKey"
 </div>
 
 *For detailed system architecture diagrams, custom tool development guidelines, and advanced prompt engineering, refer to the full **[documentation.md](documentation.md)**.*
+```
