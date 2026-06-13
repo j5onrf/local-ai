@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.1.11 [j5onrf] [06-12-26]
+# Local-Ai Agent v0.8.2.0 [j5onrf] [06-12-26]
 
 import sys, re, os, json, threading, time, math, subprocess, shutil
 import urllib.request as urlreq
@@ -215,32 +215,6 @@ def clean_tool_prefix(cmd):
             cleaned = re.sub(r'\|\s*mdcat\b.*$', '', cleaned).strip()
     return cleaned
 
-def learn_command_from_response(query, ans):
-    if not query or not ans: return
-    cmds = re.findall(r"```(?:bash|sh|zsh)?\n([^\n]+)\n```", ans)
-    if not cmds: cmds = re.findall(r"`([^`\n]+)`", ans)
-    valid = [c.strip() for c in cmds if 2 < len(c.strip()) < 80 and not c.strip().startswith("#") and "://" not in c]
-    if not valid: return
-    suggested = valid[0]
-    
-    if os.path.exists(CONTEXT_FILE):
-        try:
-            with open(CONTEXT_FILE, "r") as f:
-                if suggested in f.read(): return
-        except: pass
-
-    sys.stderr.write(f"\n\033[1;32m[Learn shortcut]\033[0m Map \"\033[1;36m{query.lower()}\033[0m\" ---> \033[1;33m{suggested}\033[0m? (y/N): ")
-    sys.stderr.flush()
-    if get_key().lower() == 'y':
-        sys.stderr.write("Saved!\n"); sys.stderr.flush()
-        try:
-            with open(CONTEXT_FILE, "a") as f: f.write(f"\n{suggested} ---> {query.lower()}\n")
-            if os.path.exists(INDEX_FILE): os.remove(INDEX_FILE)
-        except Exception as e:
-            sys.stderr.write(f"\033[1;31mFailed to save: {str(e)}\033[0m\n")
-    else:
-        sys.stderr.write("Skipped.\n"); sys.stderr.flush()
-
 def get_system_context(query):
     context = ""
     tool_match = matrix_search(query, threshold=0.65)
@@ -408,7 +382,6 @@ if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
                 ans = stream_llm_response(chat_history, prefix="Agent:" if is_agent else "AI:")
                 if ans: 
                     chat_history.append({"role": "assistant", "content": ans})
-                    if sys.stdout.isatty(): learn_command_from_response(query, ans)
                 else: chat_history.pop()
         except KeyboardInterrupt:
             print("\n\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
@@ -440,8 +413,7 @@ if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
         if system_context: prompt += f"### Real-time System Context:\n{system_context}\n\n"
         prompt += f"User Question: {query}"
 
-        ans = stream_llm_response([{"role": "user", "content": prompt}], prefix="AI:")
-        if ans and sys.stdout.isatty(): learn_command_from_response(query, ans)
+        stream_llm_response([{"role": "user", "content": prompt}], prefix="AI:")
         sys.exit(0)
 
 user_input = sanitize_input(" ".join(sys.argv[1:])) if len(sys.argv) > 1 else ""
