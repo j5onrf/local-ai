@@ -70,8 +70,8 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/ai-status ---> status, aistatus, aistat, ai-status
 
 # --- Weather & Live Networking ---
-[TOOL] curl -s "wttr.in/?format=3" ---> weather simple, weather, rain forecast simple
-[TOOL] curl -s wttr.in ---> weather full, weather, rain forecast full
+[TOOL] curl -s "wttr.in/?format=3" ---> weather simple, wttr, weather, rain forecast simple
+[TOOL] curl -s wttr.in ---> weather full, wttr, weather, rain forecast full
 
 # --- System Time & Date (Real-time Clock Context) ---
 [TOOL] date ---> time, current time, what time is it, system date, system time
@@ -81,7 +81,7 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 # SECTION 4: STATIC ALIASES & SHELL SHORTCUTS
 # ==============================================================================
 
-# --- Local-Ai Agent Blueprint Map (CheatSheet) ---
+# --- Local-Ai Agent Blueprint Map (CheatSheet) (Optional: leaf, glow) ---
 ~/.config/local-ai/local-ai-agent/tools/blueprint | mdcat ---> cheatsheet, blueprint, bp, cs, map
 ~/.config/local-ai/local-ai-agent/tools/blueprint | leaf ---> cheatsheet leaf, blueprint, bp, cs, map
 
@@ -97,7 +97,7 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 # ==============================================================================
 
 # --- AI Deep Research TUI ---
-/home/j5/.config/local-ai/research-tui/deep-research ---> ai-research, deep research, research, deep-research
+/home/j5/.config/local-ai/research-tui/deep-research ---> deep research, research, dr
 
 # --- Custom TUI Applications ---
 ~/.config/local-ai/basepage-tui/basepage.py ---> basepage, base, basepage tui, rss
@@ -121,9 +121,9 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 ~/.config/local-ai/local-ai-agent/tools/subsec/app-launcher/app-launcher.py ---> app launcher, app
 
 # --- Native Webapp Wrappers & Browsers ---
-omarchy-launch-webapp https://music.youtube.com/ ---> youtube music, yt, yt music, youtube webapp
+omarchy-launch-webapp https://music.youtube.com/ ---> youtube music, yt, yt music, youtube
 
-nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-spotify-bunker" --app=https://open.spotify.com/ >/dev/null 2>&1 & ---> spotify music
+nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-spotify-bunker" --app=https://open.spotify.com/ >/dev/null 2>&1 & ---> spotify music, spotify, music
 
 
 # ==============================================================================
@@ -131,16 +131,16 @@ nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-sp
 # ==============================================================================
 
 # --- Stopwatch ---
-~/.config/local-ai/local-ai-agent/tools/subsec/stopwatch/stopwatch.py ---> stopwatch py, sw, stop watch, sw
-~/.config/local-ai/local-ai-agent/tools/subsec/stopwatch/stopwatch.sh ---> stopwatch sh, sw, stop watch, sw
+~/.config/local-ai/local-ai-agent/tools/subsec/stopwatch/stopwatch.py ---> stopwatch py, sw, stop watch
+~/.config/local-ai/local-ai-agent/tools/subsec/stopwatch/stopwatch.sh ---> stopwatch sh, sw, stop watch
 
 # --- Notes ---
 ~/.config/local-ai/local-ai-agent/tools/subsec/notes/notes.sh ---> notes, open notes, add to notes
 
 # --- State & Workflow Management ---
-~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/work ---> hyprstate work, work, workspace work
-~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/clean ---> hyprstate clean, clean, workspace clean
-~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/gitcom ---> hyprstate gitcom, gitcom, workspace gitcom
+~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/work ---> hyprstate work, work, workspace
+~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/clean ---> hyprstate clean, clean, workspace
+~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/gitcom ---> hyprstate gitcom, gitcom, workspace
 
 
 # ==============================================================================
