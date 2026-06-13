@@ -55,12 +55,10 @@ All configurations, automations, and custom project workspaces are managed throu
 Add your shortcuts, dynamic tool integrations, and project workspaces to `~/.config/local-ai/local-ai-agent/ai-context.md`. The search index automatically compiles in under 2ms on your next execution.
 
 ```markdown
-# ==============================================================================
-# SECTION 1: WORKSPACE INITIALIZERS & BRIDGES
-# ==============================================================================
+## 1. Workspace Initializers & Bridges
 
 # --- OpenCode Direct Terminal Launcher ---
-~/.config/local-ai/opencode-bridge/opencode-bridge ---> ocb, opencode bridge
+~/.config/local-ai/opencode-bridge/opencode-bridge ---> opencode bridge, ocb
 
 # --- Standard Codebase Workspaces (Dynamic Auto-Init) ---
 # (Triggers standard ai init on the directory tree when matched)
@@ -71,12 +69,11 @@ Add your shortcuts, dynamic tool integrations, and project workspaces to `~/.con
 ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 
 
-# ==============================================================================
-# SECTION 4: STATIC ALIASES & SHELL SHORTCUTS
-# ==============================================================================
+## 4. Static Aliases & Shell Shortcuts
 
-# --- Local-Ai Agent Blueprint Map (Cheatsheet) ---
+# --- Local-Ai Agent Blueprint Map (CheatSheet) (Optional: leaf, glow) ---
 ~/.config/local-ai/local-ai-agent/tools/blueprint | mdcat ---> cheatsheet, blueprint, bp, cs, map
+~/.config/local-ai/local-ai-agent/tools/blueprint | leaf ---> cheatsheet leaf, blueprint, bp, cs, map
 ```
 
 ---
