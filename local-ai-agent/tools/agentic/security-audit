@@ -1,15 +1,14 @@
 #!/usr/bin/env bash
-# security-audit - Dynamic Security Profile Integrator & System Auditor v1.3.3
+# security-audit - Dynamic Security Profile Integrator & System Auditor v1.3.6
 
 set -euo pipefail
 
-MYSYS_FILE="$HOME/.config/local-ai/local-ai-agent/tools/skills/mysys.md"
+PRINT_MYSYS_BIN="$HOME/.config/local-ai/local-ai-agent/tools/agentic/print-mysys"
 SECAUD_FILE="$HOME/.config/local-ai/local-ai-agent/tools/skills/secaud.md"
 
 # 1. Print General System Profile with dynamic title override
-if [ -f "$MYSYS_FILE" ]; then
-    echo "# SYSTEM SECURITY DIAGNOSTICS"
-    tail -n +2 "$MYSYS_FILE"
+if [ -f "$PRINT_MYSYS_BIN" ]; then
+    "$PRINT_MYSYS_BIN"
     echo ""
     echo "---"
     echo ""
@@ -144,6 +143,20 @@ PUBLIC_PORTS=$(ss -tulnH 2>/dev/null | grep -E '0\.0\.0\.0|\*' | awk '{print $1 
 PUBLIC_COUNT=$(echo "$PUBLIC_PORTS" | grep -v "^$" | wc -l || echo "0")
 echo "* Active Public Network Listeners: \`$PUBLIC_COUNT\`"
 if [ "$PUBLIC_COUNT" -gt 0 ]; then
+    # Security Sanity Check: If run as background AI context, mask raw local network layouts
+    if [ "${AI_CONTEXT_RUN:-0}" -eq 1 ]; then
+        PUBLIC_PORTS=$(echo "$PUBLIC_PORTS" | sed -E \
+            -e 's/127\.[0-9]+\.[0-9]+\.[0-9]+%?[a-zA-Z0-9]*/[localhost]/g' \
+            -e 's/192\.168\.[0-9]+\.[0-9]+%?[a-zA-Z0-9]*/[private-ip]/g' \
+            -e 's/172\.(1[6-9]|2[0-9]|3[0-1])\.[0-9]+\.[0-9]+%?[a-zA-Z0-9]*/[private-ip]/g' \
+            -e 's/10\.[0-9]+\.[0-9]+\.[0-9]+%?[a-zA-Z0-9]*/[private-ip]/g' \
+            -e 's/0\.0\.0\.0/[all-interfaces]/g' \
+            -e 's/\*/[all-interfaces]/g' \
+            -e 's/\[::1\]/[localhost]/g' \
+            -e 's/\[::\]/[all-interfaces]/g' \
+            -e 's/fe80::[a-fA-F0-9:]+%[a-zA-Z0-9]*/[link-local]/g')
+    fi
+
     echo "  - Identified public listeners:"
     while read -r line; do
         if [ -n "$line" ]; then
@@ -160,8 +173,6 @@ AUR_COUNT=$(echo "$AUR_PACKAGES" | grep -v "^$" | wc -l || echo "0")
 echo "* Total Foreign/AUR Packages: \`$AUR_COUNT\`"
 
 if [ "$AUR_COUNT" -gt 0 ]; then
-    # Inline Python using a secure Heredoc to cross-reference installed packages against 
-    # the official June 2026 compromised packages index and run backup heuristics.
     python3 - "$AUR_PACKAGES" << 'EOF'
 import urllib.request as urlreq, urllib.parse, json, time, sys
 
@@ -170,7 +181,6 @@ pkgs = [line.split()[0] for line in raw_pkgs.splitlines() if line.strip()]
 if not pkgs:
     sys.exit(0)
 
-# 1. Fetch live, official June 2026 compromise blacklist (bypassing Anubis proxy via browser header)
 compromised = set()
 try:
     url = "https://md.archlinux.org/s/SxbqukK6IA"
@@ -183,9 +193,8 @@ try:
             if line_clean and all(c.isalnum() or c in ".-_+" for c in line_clean):
                 compromised.add(line_clean)
 except:
-    pass  # Fail gracefully if offline or blocked
+    pass
 
-# 2. Fetch standard RPC metadata for heuristic analysis of non-blacklisted packages
 results = []
 batch_size = 100
 for i in range(0, len(pkgs), batch_size):
@@ -207,7 +216,6 @@ warnings = []
 keywords = ["network", "daemon", "server", "ssh", "ssl", "api", "remote", "socket", "download", "http", "dns", "proxy"]
 
 for pkg in pkgs:
-    # Rule A: Cross-reference with the live June 2026 HedgeDoc blacklist (direct hit)
     if pkg in compromised:
         warnings.append(f"  - `[CRITICAL]` `{pkg}`: Matches live Arch Linux compromised packages list! Remove immediately.")
         continue
@@ -226,7 +234,6 @@ for pkg in pkgs:
     age_days = (time.time() - last_modified) / 86400.0
     has_sensitive_surface = any(kw in desc for kw in keywords)
     
-    # Rule B: Heuristic flag for very recently updated, low-trust packages (common supply-chain takeover window)
     if votes < 50 and age_days < 14:
         risk_reasons = []
         if is_orphan: risk_reasons.append("orphaned")
@@ -236,7 +243,6 @@ for pkg in pkgs:
         reason_str = " & ".join(risk_reasons) if risk_reasons else "unvetted code changes"
         warnings.append(f"  - `[HIGH RISK]` `{pkg}` (votes: {votes}): Modified very recently ({age_days:.1f} days ago) with low trust metrics ({reason_str}).")
     
-    # Rule C: Check for unmaintained, stale software exposing critical system boundaries
     elif (is_orphan or is_out_of_date) and votes < 30 and age_days > 365 and has_sensitive_surface:
         matched_kws = ", ".join(kw for kw in keywords if kw in desc)
         warnings.append(f"  - `[SUSPICION]` `{pkg}` (votes: {votes}): Unmaintained/Orphaned > 1 yr, exposes network attributes: *{matched_kws}*")
@@ -255,7 +261,6 @@ echo ""
 # 7. Pacman Logs Supply-Chain Window Audit (Dynamic 14-day history)
 echo "### 7. Pacman Activity Log Audit"
 if [ -f "/var/log/pacman.log" ] && [ "$AUR_COUNT" -gt 0 ]; then
-    # Generate an array of date patterns for the last 14 days dynamically
     DATE_PATTERNS=()
     for i in {0..14}; do
         if d_str=$(date -d "$i days ago" "+%Y-%m-%d" 2>/dev/null); then
@@ -290,7 +295,6 @@ echo "### 8. Local Helper Build Cache Scan"
 CACHE_DIR="$HOME/.cache"
 SUSPICIOUS_FOUND=0
 if [ -d "$CACHE_DIR" ]; then
-    # Search inside cached build setups (yay/paru) for universal pipeline execution vectors
     SUSPICIOUS_REGEX="(curl|wget).+\| *(bash|sh|python|perl|node|bun)|(npm|bun|pip|cargo) +install|base64 +-d|eval +\\\$\(|atomic-lockfile|js-digest|temp\.sh"
     
     SUSPICIOUS_HITS=$(find "$CACHE_DIR" -type f -name "PKGBUILD" -exec grep -inE "$SUSPICIOUS_REGEX" {} + 2>/dev/null || true)

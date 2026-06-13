@@ -61,9 +61,11 @@ def print_stock_error(cmd_name):
     sys.stderr.write(f"zsh: command not found: {cmd_name}\n" if "zsh" in shell else f"bash: {cmd_name}: command not found\n")
 
 def run_local_tool(cmd):
-    cleaned_cmd = re.sub(r'\|\s*mdcat\b.*$', '', cmd.strip()).strip()
+    cleaned_cmd = re.sub(r'\|\s*(leaf|mdcat|cat)\b.*$', '', cmd.strip()).strip()
     try:
-        out = subprocess.check_output(cleaned_cmd, shell=True, text=True, timeout=15).strip()
+        env_copy = os.environ.copy()
+        env_copy["AI_CONTEXT_RUN"] = "1"
+        out = subprocess.check_output(cleaned_cmd, shell=True, text=True, timeout=15, env=env_copy).strip()
         return f"{out}\n" if out else "Action executed successfully.\n"
     except Exception as e:
         sys.stderr.write(f"\033[1;31mTool execution failed: {str(e)}\033[0m\n")
