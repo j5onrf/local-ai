@@ -217,7 +217,7 @@ def clean_tool_prefix(cmd):
 
 def get_system_context(query):
     context = ""
-    tool_match = matrix_search(query, threshold=0.65)
+    tool_match = matrix_search(query, threshold=0.50)
     if tool_match:
         first_match = tool_match.split("\n")[0]
         if "|||" in first_match:
@@ -226,8 +226,10 @@ def get_system_context(query):
                 cmd = cmd.replace("DANGER_FLAGGED:", "", 1)
             if cmd.startswith("[TOOL]"):
                 tool_cmd = cmd.replace("[TOOL]", "").strip()
-                sys.stderr.write(f"\033[90m[sys] Executing: {tool_cmd}\033[0m\n"); sys.stderr.flush()
-                context = run_local_tool(tool_cmd)
+                
+                # Universally pass the entire query to any tool without parsing hacks
+                sys.stderr.write(f"\033[90m[sys] Executing: {tool_cmd} {query}\033[0m\n"); sys.stderr.flush()
+                context = run_local_tool(f"{tool_cmd} {query}")
                 
     q_tokens = tokenize(query)
     if set(q_tokens) & get_active_system_keywords():
@@ -240,7 +242,7 @@ def get_system_context(query):
     return context
 
 def run_interactive_selection(intent):
-    # Universal Syntax Guard: Immediately bypass AI suggestions on variable assignments, 
+    # Universal Syntax Guard: Immediately bypass selections on variable assignments, 
     # programming syntax, inline comments, or shell redirection sequences, letting the stock shell handle it.
     if re.search(r'[\[\]{}()=\'"",;|<>#]', intent):
         print_stock_error(intent)
