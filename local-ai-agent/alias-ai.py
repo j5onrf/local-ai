@@ -10,7 +10,7 @@ except ImportError: pass
 sys.argv = [arg for arg in sys.argv if arg != ""]
 
 # Standard, unified absolute paths
-CONTEXT_FILE = os.path.expanduser("~/.config/local-ai/local-ai-agent/ai-context.txt")
+CONTEXT_FILE = os.path.expanduser("~/.config/local-ai/local-ai-agent/ai-context.md")
 INDEX_FILE = os.path.expanduser("~/.config/local-ai/local-ai-agent/ai-context.idx")
 CFG_DIR = os.path.dirname(CONTEXT_FILE)
 
@@ -71,7 +71,7 @@ def run_local_tool(cmd):
 
 def load_vector_index():
     if not os.path.exists(CONTEXT_FILE):
-        sys.stderr.write(f"\n\033[1;31m[CRITICAL ERROR]: ai-context.txt not found at: {CONTEXT_FILE}\033[0m\n")
+        sys.stderr.write(f"\n\033[1;31m[CRITICAL ERROR]: ai-context.md not found at: {CONTEXT_FILE}\033[0m\n")
         return {}, []
     try:
         if os.path.exists(INDEX_FILE) and os.path.getmtime(CONTEXT_FILE) <= os.path.getmtime(INDEX_FILE):
