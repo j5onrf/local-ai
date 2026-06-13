@@ -10,7 +10,7 @@
 
 All configurations, automations, and custom project workspaces are managed through a single plain-text master blueprint: **`ai-context.txt`**. The agent resolves your inputs into one of four execution paradigms:
 
-* **No Session (Direct suggestions)**: Typing custom commands or shortcuts prompts a local, rarity-weighted sparse search matrix to suggest options instantly without querying an LLM.
+* **No Session (Direct selections)**: Typing custom commands or shortcuts prompts a local, rarity-weighted sparse search matrix to select options instantly without querying an LLM.
 * **Single-Turn Agent (`ai <query>`)**: Typing `ai <query>` instantly answers a single question and returns you directly to your Bash prompt, silently running local diagnostic tools to gather context when your keywords are matched.
 * **Multi-Turn Chat (`ai` alone)**: Typing `ai` alone initiates an interactive, persistent conversation session with local state preservation and multi-turn context memory.
 * **Workspace Agents (`ai init <path>`)**: Compiles a path-specific structural tree of your repository, launching a dedicated, codebase-aware co-pilot session.
@@ -35,8 +35,8 @@ All configurations, automations, and custom project workspaces are managed throu
 
 ## TUI Carousel Controls
 
-* **`Up` / `Down` Arrow Keys:** Cycle through available ranked suggestions
-* **`Enter`:** Execute the highlighted command (or initialize a workspace if the suggestion is a directory path)
+* **`Up` / `Down` Arrow Keys:** Cycle through available ranked selections
+* **`Enter`:** Execute the highlighted command (or initialize a workspace if the selection is a directory path)
 * **`Esc` / `Ctrl+C` / `Any Key`:** Cancel menu (features an anti-spam buffer flush to prevent command line leakage)
 
 ---
