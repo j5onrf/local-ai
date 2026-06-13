@@ -333,13 +333,16 @@ if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
         query_parts = sys.argv[2:]
         system_context = ""
         SKILLS_DIR = os.path.join(CFG_DIR, "tools/skills")
-        if query_parts:
-            first_word = query_parts[0].lower()
-            skill_file = os.path.join(SKILLS_DIR, f"{first_word}.md")
+        
+        # Evaluate skills if the query or final parameter is formatted as a flag
+        if query_parts and query_parts[-1].startswith("-"):
+            skill_name = query_parts[-1].lstrip("-").lower()
+            skill_file = os.path.join(SKILLS_DIR, f"{skill_name}.md")
+            
             if os.path.exists(skill_file):
                 try:
                     with open(skill_file, "r") as f: system_context = f.read().strip() + "\n\n"
-                    query_parts = query_parts[1:]
+                    query_parts = query_parts[:-1]
                 except Exception as e:
                     sys.stderr.write(f"\033[1;31mError loading skill profile: {str(e)}\033[0m\n")
 

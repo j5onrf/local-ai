@@ -7,7 +7,7 @@
 
 ### Directional Syntax Guide
 1. **Directory Path**: Indexes workspace and launches standard AI Workspace.
-2. **'ai init' + Skill**: Indexes workspace and launches AI pre-primed with Skill.
+2. **'ai init' + --<skill>**: Indexes codebase workspace pre-primed with the specified skill.
 3. **'[TOOL] command'**: Runs local utility to inject dynamic Markdown context.
 4. **Raw Command**: Native terminal alias, interactive TUI, or document viewer.
 
@@ -31,7 +31,7 @@
 
 # --- Specialized Codebase Workspaces (Skill-Primed) ---
 # (Specialized project initializations primed with the "coder" Skill!)
-ai init ~/Projects/quickshell coder ---> projects quickshell, projects
+ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 ```
 
 ## 2. On-Demand System Prompts & Role Injections (Skills)
@@ -49,8 +49,8 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 ~/.config/local-ai/local-ai-agent/tools/agentic/aur-audit ---> audit package, audit pkg, check pkgbuild, aur audit, scan aur, verify pkgbuild, pre-install check
 
 # --- Host Security Surface & Vulnerability Intelligence (SECAUD) ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/security-audit ---> security audit, secaud, audit system security, scan for vulnerabilities
-~/.config/local-ai/local-ai-agent/tools/agentic/security-audit | leaf ---> security audit leaf, secaud, audit system security, scan for vulnerabilities
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/security-audit ---> security audit, secaud
+~/.config/local-ai/local-ai-agent/tools/agentic/security-audit | leaf ---> security audit leaf, secaud
 
 # --- System Optimization (mysys skill primed) ---
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system-optimize --->  system optimize, sysop, system optimization

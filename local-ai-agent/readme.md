@@ -13,7 +13,7 @@ All configurations, automations, and custom project workspaces are managed throu
 * **No Session (Direct selections)**: Typing custom commands or shortcuts prompts a local, rarity-weighted sparse search matrix to select options instantly without querying an LLM.
 * **Single-Turn Agent (`ai <query>`)**: Typing `ai <query>` instantly answers a single question and returns you directly to your Bash prompt, silently running local diagnostic tools to gather context when your keywords are matched.
 * **Multi-Turn Chat (`ai` alone)**: Typing `ai` alone initiates an interactive, persistent conversation session with local state preservation and multi-turn context memory.
-* **Workspace Agents (`ai init <path>`)**: Compiles a path-specific structural tree of your repository, launching a dedicated, codebase-aware co-pilot session.
+* **Workspace Agents (`ai init <path>`)**: Compiles a path-specific structural tree of your repository, launching a dedicated, codebase-aware agent session.
 
 ---
 
@@ -66,7 +66,7 @@ Add your shortcuts, dynamic tool integrations, and project workspaces to `~/.con
 
 # --- Specialized Codebase Workspaces (Skill-Primed) ---
 # (Specialized project initializations primed with the "coder" Skill!)
-ai init ~/Projects/quickshell coder ---> projects quickshell, projects
+ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 
 
 ## 4. Static Aliases & Shell Shortcuts

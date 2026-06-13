@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Local-Ai Agent Hook v0.8.4.0 [j5onrf] [06-12-26]
+# Local-Ai Agent Hook v0.8.3.3 [j5onrf] [06-12-26]
 
 # Exit immediately if the shell is non-interactive
 [[ $- != *i* ]] && return
@@ -42,6 +42,7 @@ ai() {
         local safe_name="${target_path//\//-}"
         local context_file="$projects_dir/${safe_name#-}.txt"
 
+        # Blind pass-through of raw arguments. No pre-processing hacks.
         "$tool_bin" "$target_path" "$skill_name" || return 1
         AI_ACTIVE_SKILL="$skill_name" "$_AI_PYTHON_BIN" "$_AI_SCRIPT_PATH" --talk-chat "$(cat "$context_file")"
     else
