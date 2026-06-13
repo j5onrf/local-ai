@@ -17,13 +17,13 @@
 
 ```properties
 # --- OpenCode Direct Terminal Launcher ---
-~/.config/local-ai/opencode-bridge/opencode-bridge ---> opencode bridge, ocb
+~/.config/local-ai/opencode-bridge/opencode-bridge ---> opencode bridge, bridge, ocb
 
 # --- Odysseus Direct Terminal Launcher ---
-~/.config/local-ai/odysseus-bridge/odysseus-bridge ---> odysseus bridge. ody, odb
+~/.config/local-ai/odysseus-bridge/odysseus-bridge ---> odysseus bridge. bridge, ody, odb
 
 # --- Hermes Direct Browser Workspace Launcher ---
-~/.config/local-ai/hermes-bridge/hermes-bridge ---> hermes bridge, hmb, herm
+~/.config/local-ai/hermes-bridge/hermes-bridge ---> hermes bridge, bridge, hmb, herm
 
 # --- Standard Codebase Workspaces (Dynamic Auto-Init) ---
 # (Triggers standard ai init on the directory tree when matched)
@@ -80,8 +80,8 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 
 ```properties
 # --- Local-Ai Agent Blueprint Map (CheatSheet) (Optional: leaf, glow) ---
-~/.config/local-ai/local-ai-agent/tools/blueprint | mdcat ---> cheatsheet, blueprint, bp, cs, map
-~/.config/local-ai/local-ai-agent/tools/blueprint | leaf ---> cheatsheet leaf, blueprint, bp, cs, map
+~/.config/local-ai/local-ai-agent/tools/blueprint | mdcat ---> cheatsheet, blueprint, cheatsheet, bp, cs, map
+~/.config/local-ai/local-ai-agent/tools/blueprint | leaf ---> cheatsheet leaf, blueprint, cheatsheet, bp, cs, map
 
 # --- AI-Generated Git Commits ---
 ~/.config/local-ai/local-ai-agent/tools/agentic/ai-commit ---> ai-commit, gc, git-commit, git commit
