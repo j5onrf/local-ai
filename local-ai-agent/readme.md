@@ -131,4 +131,3 @@ export OPENROUTER_API_KEY="sk-or-v1-YourOpenRouterKey"
 </div>
 
 *For detailed system architecture diagrams, custom tool development guidelines, and advanced prompt engineering, refer to the full **[documentation.md](documentation.md)**.*
-```

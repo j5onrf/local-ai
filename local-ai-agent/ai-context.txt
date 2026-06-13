@@ -57,17 +57,17 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system-optimize --->  system optimize, sysop,  system optimization, sysop optimize
 
 # --- System Logs & Diagnostics (Compressed Stream Triage) ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/ai-log-checker ---> log checker, ailog, log check, check errors, system crashed, events
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/log-checker ---> log checker, ailog, log check, check errors, system crashed, events
 
-# --- System Resources & Telemetry (Active Diagnostics) ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/ai-system-diagnosis ---> system health, health, system diagnosis, why is my system slow
+# --- System Resources & Diagnosis (System health) ---
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system-diagnosis ---> system health, sysd, health, system diagnosis, why is my system slow
 
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/update-inspector ---> update inspector, ui, check upgrades, what updates do i have, pending updates, what updates do i have pending
 
 [TOOL] df -h / ---> disk usage, nvme drive usage, check storage space
 
 # --- AI Status & Provider Diagnostics ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/ai-status ---> status, ai-status, aistat, aistatus,
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/ai-status ---> status, aistatus, aistat, ai-status
 
 # --- Weather & Live Networking ---
 [TOOL] curl -s "wttr.in/?format=3" ---> weather simple, weather, rain forecast simple
