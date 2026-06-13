@@ -46,7 +46,7 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 
 ```properties
 # --- Pre-Install Zero-Trust AUR Package & PKGBUILD Auditor ---
-~/.config/local-ai/local-ai-agent/tools/agentic/aur-audit ---> audit package, audit pkg, check pkgbuild, aur audit, scan aur, verify pkgbuild, pre-install check
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/aur-audit ---> audit package, audit pkg, check pkgbuild, aur audit, scan aur, verify pkgbuild, pre-install check
 
 # --- Host Security Surface & Vulnerability Intelligence (SECAUD) ---
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/security-audit ---> security audit, secaud
@@ -136,6 +136,7 @@ nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-sp
 ~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/work ---> hyprstate work, work, hyprstate, workspace
 ~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/clean ---> hyprstate clean, clean, hyprstate, workspace
 ~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/gitcom ---> hyprstate gitcom, gitcom, hyprstate, workspace
+~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/media ---> hyprstate media, media, hyprstate, workspace
 ```
 
 ## 8. Continual Learning

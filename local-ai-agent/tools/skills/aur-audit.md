@@ -11,7 +11,7 @@ This skill instructs the AI Agent to perform highly rigorous, zero-trust securit
 You must systematically evaluate the provided repository telemetry against these high-risk vectors:
 
 ### 1. Source and Network Integrity
-* **Untrusted Domains**: Analyze the source URL and the `source` array. Are sources fetched from standard, secure, official repositories (e.g., official GitHub/GitLab organizations, Python PyPI, Rust crates, or official developer domains)? Flag unverified personal mirrors, non-SSL URLs (`http://`), pastebins, or obscure file-sharing domains.
+* **Untrusted Domains**: Analyze the source URL and the `source` array. Are sources fetched from standard, secure, official repositories (e.g., official GitHub/GitLab organizations, Python PyPI, Rust crates, or official developer domains)? Flag unverified personal mirrors, non-SSL URLs (`http://`), untrusted mirror networks, pastebins, or obscure file-sharing domains.
 * **Hidden Network Downloads**: Look for file retrieval commands (`curl`, `wget`, `fetch`, `git clone`) executed *inside* functions like `prepare()`, `build()`, or `package()`. All remote assets must be declared in the global `source` array so that their `sha256sums` can be verified by `makepkg`. Any download inside a function is a critical security bypass.
 
 ### 2. Dependency & Installer Bypass Checks
@@ -31,12 +31,22 @@ You must systematically evaluate the provided repository telemetry against these
 
 ## AGENT RESPONSE PROTOCOL
 
-Output your analysis cleanly and immediately. Avoid conversational intros/outros. Use the following structured format:
+Output your analysis using the following strict structure. Do not use conversational intros or filler. You must start immediately with the high-impact security summary:
 
-* **PACKAGE NAME**: [Name]
-* **TRUST PROFILE**: [Low / Medium / High] (Correlate project maturity, dependency footprint, and source domain reputation)
-* **SOURCE ANALYSIS**: [Detail the domains where files are fetched, and verify if they use secure protocols and checksum validation]
-* **LINE-BY-LINE CRITICAL FINDINGS**:
-  * [For every potential risk or elevated privilege flag, quote the exact line of code from the PKGBUILD or helper scripts and explain why it is notable or how it affects system safety]
-* **VERDICT**: [PASS / WARNING / FAIL]
-* **REMEDIAL ACTION**: [Specific, actionable command or instruction, e.g., "Do not install; clean cache with..." or "Safe to proceed with standard yay -S..."]
+### 🛡️ AUR SECURITY AUDIT: [ PASS | WARNING | FAIL ]
+* **Package Name**: [Name]
+* **Trust Profile**: [Low / Medium / High] (Briefly correlate project maturity, dependency footprint, and source domain reputation)
+* **Critical Alerts**: [List any dynamic network downloads inside compile hooks, obfuscation, or companion file violations. If none, show "None (No active threat signatures identified)"]
+* **Remedial Action**: [Actionable command or instruction, e.g. "Safe to proceed with standard yay -S <name>" or "Do not install; clean cache with rm -rf ~/.cache/yay/<name>"]
+
+---
+
+### DETAILED DIAGNOSTIC AUDIT
+
+1. **Source Analysis**: [Detail the domains where files are fetched, and verify if they use secure protocols and checksum validation]
+2. **Line-By-Line Critical Findings**:
+    * [For every potential risk or elevated privilege flag, quote the exact line of code from the PKGBUILD or helper scripts and explain why it is notable or how it affects system safety. If none, show "None"]
+3. **Build Integrity**: [Analyze the build compilation flags and sandbox parameters, verifying if it complies with offline compilation policies]
+4. **Dependency Profile**: [Evaluate the dependency list for high-privilege, unusual, or unnecessary packages]
+5. **System Compliance**: [Verify if the package modifies critical system boundaries, systemd services, udev rules, or vfat boot folders]
+6. **Runtime Safety**: [Evaluate standard runtime privilege boundaries, SUID sandbox requirements, and Wayland compatibility]

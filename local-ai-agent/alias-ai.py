@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.3.3 [j5onrf] [06-12-26]
+# Local-Ai Agent v0.8.3.4 [j5onrf] [06-12-26]
 
 import sys, re, os, json, threading, time, math, subprocess, shutil
 import urllib.request as urlreq, urllib.error as urlerr
@@ -133,7 +133,7 @@ def matrix_search(query, threshold=0.55):
     for _, cmd, primary in candidates:
         if cmd not in seen:
             seen.add(cmd); top.append(f"{primary}|||{check_danger(cmd)}")
-            if len(top) == 3: break
+            if len(top) == 5: break
     return "\n".join(top)
 
 def get_key():
@@ -167,20 +167,23 @@ def clean_tool_prefix(cmd):
 def get_system_context(query):
     context, q_tokens = "", tokenize(query)
     if not q_tokens: return ""
-    idfs, entries = load_vector_index()
-    matched_cmd, matched_intent = None, None
-    for entry in entries:
-        ent_tokens = entry.get("tokens", [])
-        if len(q_tokens) >= len(ent_tokens) and q_tokens[:len(ent_tokens)] == ent_tokens:
-            matched_cmd, matched_intent = entry.get("cmd"), entry.get("intent")
-            break
-    if matched_cmd and matched_cmd.startswith("[TOOL]"):
-        tool_cmd = matched_cmd.replace("[TOOL]", "").strip()
-        intent_tokens = set(tokenize(matched_intent))
-        args = " ".join([w for w in query.split() if tokenize(w) and tokenize(w)[0] not in intent_tokens])
-        if args: tool_cmd = f"{tool_cmd} {args}"
-        sys.stderr.write(f"\033[90m[sys] Executing: {tool_cmd}\033[0m\n"); sys.stderr.flush()
-        context = run_local_tool(tool_cmd)
+    
+    if "\n" not in query.strip():
+        idfs, entries = load_vector_index()
+        matched_cmd, matched_intent = None, None
+        for entry in entries:
+            ent_tokens = entry.get("tokens", [])
+            if len(q_tokens) >= len(ent_tokens) and q_tokens[:len(ent_tokens)] == ent_tokens:
+                matched_cmd, matched_intent = entry.get("cmd"), entry.get("intent")
+                break
+        if matched_cmd and matched_cmd.startswith("[TOOL]"):
+            tool_cmd = matched_cmd.replace("[TOOL]", "").strip()
+            intent_tokens = set(tokenize(matched_intent))
+            args = " ".join([w for w in query.split() if tokenize(w) and tokenize(w)[0] not in intent_tokens])
+            if args: tool_cmd = f"{tool_cmd} {args}"
+            sys.stderr.write(f"\033[90m[sys] Executing: {tool_cmd}\033[0m\n"); sys.stderr.flush()
+            context = run_local_tool(tool_cmd)
+            
     if set(q_tokens) & get_active_system_keywords():
         profile_path = os.path.join(CFG_DIR, "tools/skills/mysys.md")
         if os.path.exists(profile_path):

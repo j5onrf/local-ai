@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# aur-audit - Interactive Zero-Trust AUR Package Auditor v1.1.1
+# aur-audit - Interactive Zero-Trust AUR Package Auditor v1.1.4
 
 set -euo pipefail
 
-SKILLS_DIR="$HOME/.config/local-ai/local-ai-agent/tools/skills"
-AUDIT_SKILL_FILE="$SKILLS_DIR/aur-audit.md"
+AUDIT_SKILL_FILE="$HOME/.config/local-ai/local-ai-agent/tools/skills/aur-audit.md"
 ALIAS_AI_SCRIPT="$HOME/.config/local-ai/local-ai-agent/alias-ai.py"
 
 # 1. Print Dedicated AUR Audit Skill Profile (if available)
@@ -40,14 +39,16 @@ fi
 # Compile metadata locally
 METADATA=""
 if [ -f "$TEMP_DIR/.SRCINFO" ]; then
-    while IFS=' = ' read -r key val; do
-        key=$(echo "$key" | xargs 2>/dev/null || echo "$key")
-        val=$(echo "$val" | xargs 2>/dev/null || echo "$val")
+    while IFS='=' read -r key val; do
+        # Cleanly strip leading/trailing spaces and tabs from .SRCINFO keys and values
+        key=$(echo "$key" | tr -d ' \t' 2>/dev/null || echo "$key")
+        val=$(echo "$val" | sed -e 's/^[ \t]*//' -e 's/[ \t]*$//' 2>/dev/null || echo "$val")
+        
         if [ -n "$key" ] && [ -n "$val" ]; then
             case "$key" in
                 pkgdesc) METADATA="$METADATA* **Description**: $val"$'\n' ;;
                 pkgver) METADATA="$METADATA* **Version**: $val"$'\n' ;;
-                url) METADATA="$METADATA* **Upstream URL**: \$val"$'\n' ;;
+                url) METADATA="$METADATA* **Upstream URL**: \`$val\`"$'\n' ;;
                 license) METADATA="$METADATA* **License**: $val"$'\n' ;;
                 depends) METADATA="$METADATA* **Dependency**: \`$val\`"$'\n' ;;
             esac
@@ -81,5 +82,11 @@ $METADATA
 $PKGBUILD_CONTENT
 \`\`\`"
 
-# 5. Handoff directly to the AI Agent primed with your skill directives
-python3 "$ALIAS_AI_SCRIPT" --talk aur-audit "$PROMPT"
+# 5. Handoff to AI Agent or output raw data depending on active context
+if [ "${AI_CONTEXT_RUN:-0}" -eq 1 ]; then
+    # If running as background context, output the raw compiled prompt and exit
+    echo "$PROMPT"
+else
+    # If running directly in the terminal, handoff to AI to stream the audit
+    python3 "$ALIAS_AI_SCRIPT" --talk "$PROMPT" --aur-audit
+fi
