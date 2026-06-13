@@ -50,6 +50,7 @@ ai init ~/Projects/quickshell coder ---> projects quickshell, projects
 
 # --- Host Security Surface & Vulnerability Intelligence (SECAUD) ---
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/security-audit ---> security audit, secaud, audit system security, scan for vulnerabilities
+~/.config/local-ai/local-ai-agent/tools/agentic/security-audit | leaf ---> security audit leaf, secaud, audit system security, scan for vulnerabilities
 
 # --- System Optimization (mysys skill primed) ---
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system-optimize --->  system optimize, sysop, system optimization

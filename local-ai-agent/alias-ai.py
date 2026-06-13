@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.4.0 [j5onrf] [06-12-26]
+# Local-Ai Agent v0.8.3.3 [j5onrf] [06-12-26]
 
 import sys, re, os, json, threading, time, math, subprocess, shutil
 import urllib.request as urlreq, urllib.error as urlerr
@@ -217,7 +217,10 @@ def run_interactive_selection(intent):
                 if key.lower() == 'y': sys.stdout.write(cmd_to_show); sys.stdout.flush()
                 else: sys.stderr.write("Aborted safely.\n")
                 break
-            if key in ('\r', ''): sys.stdout.write(cmd_to_show); sys.stdout.flush(); break
+            if key in ('\r', ''): 
+                # Cleanly advance cursor to a new line before executing confirmed commands
+                sys.stderr.write("\n"); sys.stderr.flush()
+                sys.stdout.write(cmd_to_show); sys.stdout.flush(); break
             elif key == '\x1b[A':
                 current_idx = (current_idx - 1 + num_opts) % num_opts
                 sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
