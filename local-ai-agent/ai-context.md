@@ -1,13 +1,13 @@
 # Local-AI Agent Blueprint
 
-> **Syntax**: `[command / execution] ---\> [intent1], [intent2], [intent3]`  
+> **Syntax**: `[command / execution] ---> [intent1], [intent2], [intent3]`  
 > **Delimiter**: `" ---> "` (Three-dash arrow with a trailing space)
 
 ---
 
 ### Directional Syntax Guide
 1. **Directory Path**: Indexes workspace and launches standard AI Workspace.
-2. **'ai init' + --<skill>**: Indexes codebase workspace pre-primed with the specified skill.
+2. **'ai init' + --<skill>**: Indexes codebase workspace pre-primed with skill.
 3. **'[TOOL] command'**: Runs local utility to inject dynamic Markdown context.
 4. **Raw Command**: Native terminal alias, interactive TUI, or document viewer.
 
@@ -20,17 +20,15 @@
 ~/.config/local-ai/opencode-bridge/opencode-bridge ---> opencode bridge, bridge, ocb
 
 # --- Odysseus Direct Terminal Launcher ---
-~/.config/local-ai/odysseus-bridge/odysseus-bridge ---> odysseus bridge. bridge, ody, odb
+~/.config/local-ai/odysseus-bridge/odysseus-bridge ---> odysseus bridge, bridge, ody, odb
 
 # --- Hermes Direct Browser Workspace Launcher ---
 ~/.config/local-ai/hermes-bridge/hermes-bridge ---> hermes bridge, bridge, hmb, herm
 
 # --- Standard Codebase Workspaces (Dynamic Auto-Init) ---
-# (Triggers standard ai init on the directory tree when matched)
 ~/Projects/qwen-hypr ---> projects qwen, projects
 
 # --- Specialized Codebase Workspaces (Skill-Primed) ---
-# (Specialized project initializations primed with the "coder" Skill!)
 ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 ```
 
@@ -53,7 +51,7 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 ~/.config/local-ai/local-ai-agent/tools/agentic/security-audit | leaf ---> security audit leaf, secaud
 
 # --- System Optimization (Improve System Performance) ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system-optimize --->  system optimize, sysop, system optimization
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system-optimize ---> system optimize, sysop, system optimization
 
 # --- System Logs & Diagnostics (Compressed Stream Triage) ---
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/log-checker ---> log checker, ailog, log check, check errors, system crashed, events
@@ -62,12 +60,15 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system-health ---> system health, sysh, health, system diagnosis, why is my system slow
 ~/.config/local-ai/local-ai-agent/tools/agentic/system-health | leaf ---> system health leaf, sysh, system health, system diagnosis
 
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/update-inspector ---> update inspector, ui, check upgrades, what updates do i have, pending updates, what updates do i have pending
+# --- Pending Updates ---
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/update-inspector ---> update inspector, ui, check upgrades, what updates do i have, pending updates
 
+# --- Disk Usage ---
 [TOOL] df -h / ---> disk usage, nvme drive usage, check storage space
 
 # --- AI Status & Provider Diagnostics ---
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/ai-status ---> status, aistatus, aistat, ai-status
+~/.config/local-ai/local-ai-agent/tools/agentic/ai-status | leaf ---> status leaf, aistatus, aistat, ai-status
 
 # --- Weather & Live Networking ---
 [TOOL] curl -s "wttr.in/?format=3" ---> weather simple, wttr, weather, rain forecast simple
@@ -80,9 +81,9 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 ## 4. Static Aliases & Shell Shortcuts
 
 ```properties
-# --- Local-Ai Agent Blueprint Map (CheatSheet) (Optional: leaf, glow) ---
+# --- Local-Ai Agent Blueprint Map (CheatSheet) ---
 ~/.config/local-ai/local-ai-agent/tools/blueprint | mdcat ---> cheatsheet, blueprint, bp, cs, map
-~/.config/local-ai/local-ai-agent/tools/blueprint | leaf ---> cheatsheet leaf, blueprint, cheatsheet, bp, cs, map
+~/.config/local-ai/local-ai-agent/tools/blueprint | leaf ---> cheatsheet leaf, blueprint, bp, cs, map
 
 # --- AI-Generated Git Commits ---
 ~/.config/local-ai/local-ai-agent/tools/agentic/ai-commit ---> ai-commit, gc, git-commit, git commit
@@ -95,7 +96,7 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 
 ```properties
 # --- AI Deep Research TUI ---
-/home/j5/.config/local-ai/research-tui/deep-research ---> deep research, research, dr
+~/.config/local-ai/research-tui/deep-research ---> deep research, research, dr
 
 # --- Custom TUI Applications ---
 ~/.config/local-ai/basepage-tui/basepage.py ---> basepage, base, basepage tui, rss
@@ -112,14 +113,13 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 
 ```properties
 # --- Local-Ai Tablet Voice Bridge ---
-/home/j5/.config/local-ai/voice/voice-query ---> voice, voice query, voice bridge
+~/.config/local-ai/voice/voice-query ---> voice, voice query, voice bridge
 
 # --- System App Launcher (Ultra-Light Rofi-TUI) ---
 ~/.config/local-ai/local-ai-agent/tools/subsec/app-launcher/app-launcher.py ---> app launcher, app
 
 # --- Native Webapp Wrappers & Browsers ---
-omarchy-launch-webapp https://music.youtube.com/ ---> youtube music, yt, yt music, youtube
-
+omarchy-launch-webapp https://music.youtube.com/ ---> youtube music, yt, music, youtube
 nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-spotify-bunker" --app=https://open.spotify.com/ >/dev/null 2>&1 & ---> spotify music, spotify, music
 ```
 
@@ -144,5 +144,7 @@ nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-sp
 
 ```properties
 # --- Learned System Shortcuts ---
-ss -tuln ---> how do i view active network ports
-hostnamectl ---> how do i see my system information
+ss -tuln ---> how do i view active network ports, active ports, network ports
+hostnamectl ---> how do i see my system information, system info, hostname
+```
+

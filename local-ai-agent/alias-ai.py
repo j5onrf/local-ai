@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.3.4 [j5onrf] [06-12-26]
+# Local-Ai Agent v0.8.3.4 [j5onrf] [06-14-26]
 
 import sys, re, os, json, threading, time, math, subprocess, shutil
 import urllib.request as urlreq, urllib.error as urlerr
@@ -18,7 +18,6 @@ DESTRUCTIVE_KEYWORDS = ["rm ", "dd ", "mkfs", "shred", "chmod -R 777", "> /dev/s
 TOKEN_RE = re.compile(r"[^\w\s]")
 
 STOP_WORDS = {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "show", "get", "run", "check", "please", "can", "could", "would", "tell", "find", "list", "are", "about", "in", "next", "few", "days", "going", "soon", "anytime", "day", "week"}
-UNIVERSAL_SYSTEM_KEYWORDS = {"system", "sys", "os", "linux", "kernel", "cpu", "gpu", "hardware", "motherboard", "memory", "ram", "storage", "disk", "drive", "nvme", "port", "network", "wifi", "ip", "dns", "log", "error", "specs", "hostname", "crash", "slow", "performance", "driver", "package", "status", "health", "window", "manager", "sddm", "gdm", "bootloader", "grub"}
 
 class InlineSpinner:
     def __init__(self):
@@ -46,15 +45,6 @@ def sanitize_input(text):
 
 def tokenize(text):
     return [w for w in TOKEN_RE.sub(" ", text.lower()).split() if len(w) > 1 and w not in STOP_WORDS]
-
-def get_active_system_keywords():
-    keywords = set(UNIVERSAL_SYSTEM_KEYWORDS)
-    p_path = os.path.join(CFG_DIR, "tools/skills/mysys.md")
-    if os.path.exists(p_path):
-        try:
-            with open(p_path, "r") as f: keywords.update(t for t in tokenize(f.read()) if len(t) > 2)
-        except: pass
-    return keywords
 
 def print_stock_error(cmd_name):
     shell = os.path.basename(os.environ.get("SHELL", "/bin/bash"))
@@ -184,12 +174,6 @@ def get_system_context(query):
             sys.stderr.write(f"\033[90m[sys] Executing: {tool_cmd}\033[0m\n"); sys.stderr.flush()
             context = run_local_tool(tool_cmd)
             
-    if set(q_tokens) & get_active_system_keywords():
-        profile_path = os.path.join(CFG_DIR, "tools/skills/mysys.md")
-        if os.path.exists(profile_path):
-            try:
-                with open(profile_path, "r") as f: context = f.read().strip() + "\n\n" + context
-            except: pass
     return context
 
 def run_interactive_selection(intent):
