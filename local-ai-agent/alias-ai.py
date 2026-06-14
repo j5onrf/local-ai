@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.3.9 [j5onrf] [06-14-26]
+# Local-Ai Agent v0.8.3.10 [j5onrf] [06-14-26]
 
 import sys, re, os, json, threading, time, math, subprocess, shutil
 import urllib.request as urlreq, urllib.error as urlerr
@@ -9,7 +9,7 @@ except ImportError: pass
 
 sys.argv = [arg for arg in sys.argv if arg != ""]
 
-# Standard, unified absolute paths (Updated to point to root skills folder)
+# Standard, unified absolute paths (Pointed to root skills folder)
 CONTEXT_FILE = os.path.expanduser("~/.config/local-ai/local-ai-agent/ai-context.md")
 INDEX_FILE = os.path.expanduser("~/.config/local-ai/local-ai-agent/ai-context.idx")
 CFG_DIR = os.path.dirname(CONTEXT_FILE)
@@ -70,7 +70,7 @@ def print_stock_error(cmd_name):
     sys.stderr.write(f"zsh: command not found: {cmd_name}\n" if "zsh" in shell else f"bash: {cmd_name}: command not found\n")
 
 def run_local_tool(cmd):
-    cleaned = re.sub(r'\|\s*(leaf|mdcat|cat)\b.*$', '', cmd.strip()).strip()
+    cleaned = re.sub(r'\|\s*(leaf|mdcat|cat|glow)\b.*$', '', cmd.strip()).strip()
     try:
         env_copy = os.environ.copy(); env_copy["AI_CONTEXT_RUN"] = "1"
         out = subprocess.check_output(cleaned, shell=True, text=True, timeout=15, env=env_copy).strip()
@@ -135,8 +135,9 @@ def matrix_search(query, threshold=0.55):
     seen, top = set(), []
     for _, cmd, primary in candidates:
         if cmd not in seen:
-            seen.add(cmd); top.append(f"{primary}|||{check_danger(cmd)}")
-            if len(top) == 5: break
+            seen.add(cmd)
+            top.append(f"{primary}|||{check_danger(cmd)}")
+            if len(top) >= 5: break
     return "\n".join(top)
 
 def get_key():
@@ -160,12 +161,44 @@ def clean_tool_prefix(cmd):
         inner = cleaned.replace("DANGER_FLAGGED:", "", 1)
         is_tool = inner.startswith("[TOOL]")
         cleaned = f"DANGER_FLAGGED:{inner.replace('[TOOL]', '', 1).strip()}" if is_tool else cleaned
+        
+    has_glow = bool(shutil.which("glow"))
     has_mdcat = bool(shutil.which("mdcat"))
+    has_leaf = bool(shutil.which("leaf"))
+    
+    # Unified Modifier Flag Parsing: "--leaf" or "--glow"
+    use_leaf = cleaned.endswith(" --leaf")
+    use_glow = cleaned.endswith(" --glow")
+    
+    # Strip trailing flags so the binary execution path is correct
+    if use_leaf: cleaned = cleaned[:-7].strip()
+    if use_glow: cleaned = cleaned[:-7].strip()
+    
+    # Self-healing fallback: strip leaf if we are executing a leaf shortcut on a headless host
+    if use_leaf and not has_leaf:
+        use_leaf = False
+        
     if is_tool:
-        # Optimized: skip mdcat if standard cat is explicitly piped
-        if "mdcat" not in cleaned and "cat" not in cleaned: cleaned = f"{cleaned} | {'mdcat' if has_mdcat else 'cat'}"
-    elif "mdcat" in cleaned and not has_mdcat:
-        cleaned = re.sub(r'\|\s*mdcat\b.*$', '', cleaned).strip()
+        # Resolve best execution output based on explicit request and environment
+        if use_leaf and has_leaf:
+            cleaned = f"{cleaned} | leaf"
+        elif use_glow and has_glow:
+            cleaned = f"{cleaned} | glow"
+        else:
+            if has_glow: cleaned = f"{cleaned} | glow"
+            elif has_mdcat: cleaned = f"{cleaned} | mdcat"
+            else: cleaned = f"{cleaned} | cat"
+    else:
+        # For non-tool commands, append the requested viewer if specified
+        if use_leaf and has_leaf:
+            cleaned = f"{cleaned} | leaf"
+        elif use_glow and has_glow:
+            cleaned = f"{cleaned} | glow"
+        else:
+            # Fallback mdcat parsing for non-tool commands
+            if "mdcat" in cleaned and not has_mdcat:
+                cleaned = re.sub(r'\|\s*mdcat\b.*$', '', cleaned).strip()
+                if has_glow: cleaned = f"{cleaned} | glow"
     return cleaned
 
 def get_system_context(query):
@@ -317,7 +350,8 @@ try:
             query_parts = sys.argv[2:]
             system_context = ""
             if query_parts and query_parts[-1].startswith("-"):
-                skill_file = find_skill_file(SKILLS_DIR, query_parts[-1].lstrip("-").lower())
+                skill_name = query_parts[-1].lstrip("-").lower()
+                skill_file = find_skill_file(SKILLS_DIR, skill_name)
                 if skill_file:
                     if "skills/system/" in skill_file.replace("\\", "/"): ensure_mysys_exists()
                     try:
@@ -338,13 +372,9 @@ try:
         out_lines = []
         for line in matched_base.split("\n"):
             intent, cmd = line.split("|||", 1)
-            is_tool = cmd.startswith("[TOOL]")
-            cleaned = cmd.replace('[TOOL]', '', 1).strip() if is_tool else cmd
-            has_mdcat = bool(shutil.which("mdcat"))
-            # Skip auto-appending mdcat if standard cat is explicitly piped in the command
-            if is_tool and "mdcat" not in cleaned and "cat" not in cleaned: cleaned = f"{cleaned} | {'mdcat' if has_mdcat else 'cat'}"
-            elif not is_tool and "mdcat" in cleaned and not has_mdcat: cleaned = re.sub(r'\|\s*mdcat\b.*$', '', cleaned).strip()
-            out_lines.append(f"{intent}|||{cleaned}")
+            # Route through unified clean_tool_prefix to apply on-demand fallbacks and page formatting
+            cleaned_cmd = clean_tool_prefix(cmd)
+            out_lines.append(f"{intent}|||{cleaned_cmd}")
         print("\n".join(out_lines)); sys.exit(0)
     else: print_stock_error(user_input); sys.exit(127)
 except KeyboardInterrupt:

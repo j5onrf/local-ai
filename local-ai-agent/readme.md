@@ -1,4 +1,4 @@
-# Local-AI Agent (v0.8.3.5)
+# Local-AI Agent (v0.8.3.10)
 
 <img alt="Image_5e1xpv5e1xpv5e1x-3" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" />
 
@@ -29,7 +29,7 @@ All configurations, automations, and custom project workspaces are managed throu
 | | **Voice Bridge Extension** | Optional mobile-to-tablet bridge that processes voice input natively on mobile devices with 0% PC CPU load, designed to pipe transcripts straight into the deterministic CLI. |
 | | **Dynamic Viewer Pipeline** | Intercepts manual `[TOOL]` calls, automatically piping them to `mdcat` for terminal rendering while translating them to standard output for AI context tasks. |
 | **Portability** | **Multi-Depth Skill Trees** | Supports highly clean workspace directories, recursively scanning the skills directory up to 3 subfolders deep (e.g., `skills/coding/coder.md`). |
-| | **Auditable Codebase** | Designed with full transparency in under 400 lines of highly clean, standard-library Python code. |
+| | **Auditable Codebase** | Designed with full transparency in under 300 lines of highly clean, standard-library Python code. |
 
 ---
 
@@ -73,9 +73,9 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 
 ## 4. Static Aliases & Shell Shortcuts
 
-# --- Local-Ai Agent Blueprint Map (CheatSheet) (Optional: leaf, glow) ---
-~/.config/local-ai/local-ai-agent/tools/blueprint | mdcat ---> cheatsheet, blueprint, bp, cs, map
-~/.config/local-ai/local-ai-agent/tools/blueprint | leaf ---> cheatsheet leaf, blueprint, bp, cs, map
+# --- Local-Ai Agent Blueprint Map (CheatSheet) ---
+# (Uses standard double-dash modifiers like --leaf or --glow to control visual output on demand)
+~/.config/local-ai/local-ai-agent/tools/blueprint --leaf ---> cheatsheet, blueprint, bp, cs, map
 ```
 
 ---

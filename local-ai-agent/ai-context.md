@@ -37,7 +37,7 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 ```properties
 # --- Skills (Prompt & Role Injection) ---
 [TOOL] cat ~/.config/local-ai/local-ai-agent/skills/system/sysadmin.md ---> sysadmin, show sysadmin, sysadmin manual
-[TOOL] cat ~/.config/local-ai/local-ai-agent/skills/system/mysys.md ---> mysys, show mysys, view mysys, mysys doc
+[TOOL] cat ~/.config/local-ai/local-ai-agent/skills/system/mysys.md ---> mysys, show mysys, view sys, mysys doc
 ```
 
 ## 3. Dynamic Context-Injected Tools (RAG)
@@ -47,28 +47,25 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/aur-audit ---> audit package, audit pkg, check pkgbuild, aur audit, scan aur, verify pkgbuild, pre-install check
 
 # --- Host Security Surface & Vulnerability Intelligence (SECAUD) ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/security-audit ---> security audit, secaud, system audit
-~/.config/local-ai/local-ai-agent/tools/agentic/security-audit | leaf ---> security audit leaf, secaud, system audit
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/security-audit --leaf ---> security audit, secaud, system audit
 
 # --- System Optimization (Improve System Performance) ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system-optimize ---> system optimize, sysop, system optimization
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system-optimize --leaf ---> system optimize, sysop, system optimization
 
 # --- System Logs & Diagnostics (Compressed Stream Triage) ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/log-checker ---> log checker, ailog, log check, check errors, system crashed, events
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/log-checker --leaf ---> log checker, ailog, log check, check errors, system crashed, events
 
 # --- System Resources & Diagnosis (System Health) ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system-health ---> system health, sysh, health, system diagnosis, why is my system slow
-~/.config/local-ai/local-ai-agent/tools/agentic/system-health | leaf ---> system health leaf, sysh, system health, system diagnosis
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system-health --leaf ---> system health, sysh, health, system diagnosis, why is my system slow
 
 # --- Pending Updates ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/update-inspector ---> update inspector, ui, check upgrades, what updates do i have, pending updates
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/update-inspector --leaf ---> update inspector, ui, check upgrades, what updates do i have, pending updates
 
 # --- Disk Usage ---
 [TOOL] df -h / ---> disk usage, nvme drive usage, check storage space
 
 # --- AI Status & Provider Diagnostics ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/ai-status ---> status, aistatus, aistat, ai-status
-~/.config/local-ai/local-ai-agent/tools/agentic/ai-status | leaf ---> status leaf, aistatus, aistat, ai-status
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/ai-status --leaf ---> status, aistatus, aistat, ai-status
 
 # --- Weather & Live Networking ---
 [TOOL] curl -s "wttr.in/?format=3" | cat ---> weather simple, wttr, weather, rain forecast simple
@@ -82,8 +79,7 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 
 ```properties
 # --- Local-Ai Agent Blueprint Map (CheatSheet) ---
-~/.config/local-ai/local-ai-agent/tools/blueprint | mdcat ---> cheatsheet, blueprint, bp, cs, map
-~/.config/local-ai/local-ai-agent/tools/blueprint | leaf ---> cheatsheet leaf, blueprint, bp, cs, map
+~/.config/local-ai/local-ai-agent/tools/blueprint --leaf ---> cheatsheet, blueprint, bp, cs, map
 
 # --- AI-Generated Git Commits ---
 ~/.config/local-ai/local-ai-agent/tools/agentic/ai-commit ---> ai-commit, gc, git-commit, git commit
