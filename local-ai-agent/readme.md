@@ -29,7 +29,7 @@ All configurations, automations, and custom project workspaces are managed throu
 | | **Voice Bridge Extension** | Optional mobile-to-tablet bridge that processes voice input natively on mobile devices with 0% PC CPU load, designed to pipe transcripts straight into the deterministic CLI. |
 | | **Dynamic Viewer Pipeline** | Intercepts manual `[TOOL]` calls, automatically piping them to `mdcat` for terminal rendering while translating them to standard output for AI context tasks. |
 | **Portability** | **Multi-Depth Skill Trees** | Supports highly clean workspace directories, recursively scanning the skills directory up to 3 subfolders deep (e.g., `skills/coding/coder.md`). |
-| | **Auditable Codebase** | Designed with full transparency in under 300 lines of highly clean, standard-library Python code. |
+| | **Auditable Codebase** | Designed with full transparency in under 400 lines of highly clean, standard-library Python code. |
 
 ---
 

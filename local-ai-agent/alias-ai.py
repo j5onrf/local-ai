@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.3.10 [j5onrf] [06-14-26]
+# Local-Ai Agent v0.8.3.13 [j5onrf] [06-14-26]
 
 import sys, re, os, json, threading, time, math, subprocess, shutil
 import urllib.request as urlreq, urllib.error as urlerr
@@ -10,64 +10,57 @@ except ImportError: pass
 sys.argv = [arg for arg in sys.argv if arg != ""]
 
 # Standard, unified absolute paths (Pointed to root skills folder)
-CONTEXT_FILE = os.path.expanduser("~/.config/local-ai/local-ai-agent/ai-context.md")
-INDEX_FILE = os.path.expanduser("~/.config/local-ai/local-ai-agent/ai-context.idx")
-CFG_DIR = os.path.dirname(CONTEXT_FILE)
-MYSYS_FILE = os.path.join(CFG_DIR, "skills/system/mysys.md")
-SKILLS_DIR = os.path.join(CFG_DIR, "skills")
+CFG_DIR = os.path.expanduser("~/.config/local-ai/local-ai-agent")
+CONTEXT_FILE = f"{CFG_DIR}/ai-context.md"
+INDEX_FILE = f"{CFG_DIR}/ai-context.idx"
+MYSYS_FILE = f"{CFG_DIR}/skills/system/mysys.md"
+SKILLS_DIR = f"{CFG_DIR}/skills"
 
 DESTRUCTIVE_KEYWORDS = ["rm ", "dd ", "mkfs", "shred", "chmod -R 777", "> /dev/sda"]
 TOKEN_RE = re.compile(r"[^\w\s]")
 STOP_WORDS = {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "show", "get", "run", "check", "please", "can", "could", "would", "tell", "find", "list", "are", "about", "in", "next", "few", "days", "going", "soon", "anytime", "day", "week"}
 
+# Dense, high-focus system instructions (Optimized for token efficiency and constraint retention)
 BASE_PROMPT = (
-    "You are a helpful, conversational local AI shell assistant with read-only terminal access.\n"
-    "Use the provided real-time system context (if available) to answer the user's question clearly, concisely, and directly.\n"
-    "Do not use markdown formatting like bold asterisks (**) or header hashes (#) in your response, as the output is rendered directly in a raw terminal.\n"
-    "Do not state that you cannot access their system, as the data has already been provided to you.\n\n"
+    "Conversational local shell AI (read-only access).\n"
+    "Answer concisely and directly using any provided system context.\n"
+    "No markdown (no bold asterisks, no header hashes); output must be raw terminal.\n"
+    "Never claim you lack system access. Never reply with blank text or lone punctuation; write full sentences.\n\n"
 )
 
 class InlineSpinner:
     def __init__(self):
-        self.chars, self.active, self.thread = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"], False, None
-
+        self.chars, self.active = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"], False
     def _spin(self):
         idx = 0
         while self.active:
-            sys.stderr.write(f"\r\033[1;32m{self.chars[idx % 10]}\033[0m ")
-            sys.stderr.flush(); idx, _ = idx + 1, time.sleep(0.08)
+            sys.stderr.write(f"\r\033[1;32m{self.chars[idx % 10]}\033[0m "); sys.stderr.flush()
+            idx, _ = idx + 1, time.sleep(0.08)
         sys.stderr.write("\r\x1b[2K\r"); sys.stderr.flush()
-
     def start(self):
-        self.active, self.thread = True, threading.Thread(target=self._spin, daemon=True)
-        self.thread.start()
+        self.active = True; threading.Thread(target=self._spin, daemon=True).start()
+    def stop(self): self.active = False
 
-    def stop(self):
-        self.active = False
-
-def sanitize_input(text):
-    return re.sub(r"[`$]", "", text).strip() if text else ""
-
-def tokenize(text):
-    return [w for w in TOKEN_RE.sub(" ", text.lower()).split() if len(w) > 1 and w not in STOP_WORDS]
+def sanitize_input(text): return re.sub(r"[`$]", "", text).strip() if text else ""
+def tokenize(text): return [w for w in TOKEN_RE.sub(" ", text.lower()).split() if len(w) > 1 and w not in STOP_WORDS]
 
 def ensure_mysys_exists():
     if not os.path.exists(MYSYS_FILE):
-        p = os.path.join(CFG_DIR, "tools/generate-profile")
+        p = f"{CFG_DIR}/tools/generate-profile"
         if os.path.exists(p):
             try: subprocess.run([p], check=True)
             except Exception as e: sys.stderr.write(f"\033[1;31m[Warning] Failed to lazy-generate system profile: {e}\033[0m\n")
 
 def find_skill_file(skills_dir, skill_name, max_depth=3):
     target = f"{skill_name.lower()}.md"
-    for root, _, files in os.walk(skills_dir):
-        if root.replace(skills_dir, "").count(os.sep) <= max_depth:
-            if target in (f.lower() for f in files): return os.path.join(root, target)
+    for r, _, files in os.walk(skills_dir):
+        if r.replace(skills_dir, "").count(os.sep) <= max_depth:
+            if target in (f.lower() for f in files): return os.path.join(r, target)
     return None
 
-def print_stock_error(cmd_name):
-    shell = os.path.basename(os.environ.get("SHELL", "/bin/bash"))
-    sys.stderr.write(f"zsh: command not found: {cmd_name}\n" if "zsh" in shell else f"bash: {cmd_name}: command not found\n")
+def print_stock_error(n):
+    sh = os.path.basename(os.environ.get("SHELL", "/bin/bash"))
+    sys.stderr.write(f"zsh: command not found: {n}\n" if "zsh" in sh else f"bash: {n}: command not found\n")
 
 def run_local_tool(cmd):
     cleaned = re.sub(r'\|\s*(leaf|mdcat|cat|glow)\b.*$', '', cmd.strip()).strip()
@@ -86,7 +79,8 @@ def load_vector_index():
         if os.path.exists(INDEX_FILE) and os.path.getmtime(CONTEXT_FILE) <= os.path.getmtime(INDEX_FILE):
             with open(INDEX_FILE) as f:
                 data = json.load(f)
-                return data.get("idfs", {}), data.get("entries", [])
+                idfs, entries = data.get("idfs", {}), data.get("entries", [])
+                if entries: return idfs, entries
     except: pass
     try:
         with open(CONTEXT_FILE) as f: lines = f.read().splitlines()
@@ -94,10 +88,10 @@ def load_vector_index():
         for line in [l.strip() for l in lines if l.strip() and not l.startswith("#") and "----->" not in l and "--->" in l]:
             cmd, intents = line.split("----->" if "----->" in line else "--->", 1)
             intent_list = [i.strip() for i in intents.split(",")]
-            primary_intent = intent_list[0] if intent_list else ""
+            primary = intent_list[0] if intent_list else ""
             for intent in intent_list:
                 tokens = tokenize(intent)
-                if tokens: index_data.append({"cmd": cmd.strip(), "intent": intent, "primary": primary_intent, "tokens": tokens, "len": len(tokens)})
+                if tokens: index_data.append({"cmd": cmd.strip(), "intent": intent, "primary": primary, "tokens": tokens, "len": len(tokens)})
         from collections import defaultdict
         df = defaultdict(int)
         for entry in index_data:
@@ -108,8 +102,7 @@ def load_vector_index():
     except Exception as e:
         sys.stderr.write(f"\033[1;31mError compiling index: {e}\033[0m\n"); return {}, []
 
-def check_danger(cmd):
-    return f"DANGER_FLAGGED:{cmd}" if cmd and any(kw in cmd.lower() for kw in DESTRUCTIVE_KEYWORDS) else cmd
+def check_danger(cmd): return f"DANGER_FLAGGED:{cmd}" if cmd and any(kw in cmd.lower() for kw in DESTRUCTIVE_KEYWORDS) else cmd
 
 def matrix_search(query, threshold=0.55):
     query_tokens = tokenize(query)
@@ -135,8 +128,7 @@ def matrix_search(query, threshold=0.55):
     seen, top = set(), []
     for _, cmd, primary in candidates:
         if cmd not in seen:
-            seen.add(cmd)
-            top.append(f"{primary}|||{check_danger(cmd)}")
+            seen.add(cmd); top.append(f"{primary}|||{check_danger(cmd)}")
             if len(top) >= 5: break
     return "\n".join(top)
 
@@ -158,47 +150,22 @@ def clean_tool_prefix(cmd):
     is_tool = cmd.startswith("[TOOL]")
     cleaned = cmd.replace("[TOOL]", "", 1).strip() if is_tool else cmd
     if cleaned.startswith("DANGER_FLAGGED:"):
-        inner = cleaned.replace("DANGER_FLAGGED:", "", 1)
-        is_tool = inner.startswith("[TOOL]")
-        cleaned = f"DANGER_FLAGGED:{inner.replace('[TOOL]', '', 1).strip()}" if is_tool else cleaned
-        
-    has_glow = bool(shutil.which("glow"))
-    has_mdcat = bool(shutil.which("mdcat"))
-    has_leaf = bool(shutil.which("leaf"))
-    
-    # Unified Modifier Flag Parsing: "--leaf" or "--glow"
-    use_leaf = cleaned.endswith(" --leaf")
-    use_glow = cleaned.endswith(" --glow")
-    
-    # Strip trailing flags so the binary execution path is correct
+        cleaned = f"DANGER_FLAGGED:{cleaned.replace('DANGER_FLAGGED:', '').replace('[TOOL]', '').strip()}"
+    use_leaf, use_glow, use_cat = cleaned.endswith(" --leaf"), cleaned.endswith(" --glow"), cleaned.endswith(" --cat")
     if use_leaf: cleaned = cleaned[:-7].strip()
     if use_glow: cleaned = cleaned[:-7].strip()
+    if use_cat: cleaned = cleaned[:-6].strip()
+    if use_leaf and not shutil.which("leaf"): use_leaf = False
+    if use_glow and not shutil.which("glow"): use_glow = False
     
-    # Self-healing fallback: strip leaf if we are executing a leaf shortcut on a headless host
-    if use_leaf and not has_leaf:
-        use_leaf = False
-        
-    if is_tool:
-        # Resolve best execution output based on explicit request and environment
-        if use_leaf and has_leaf:
-            cleaned = f"{cleaned} | leaf"
-        elif use_glow and has_glow:
-            cleaned = f"{cleaned} | glow"
-        else:
-            if has_glow: cleaned = f"{cleaned} | glow"
-            elif has_mdcat: cleaned = f"{cleaned} | mdcat"
-            else: cleaned = f"{cleaned} | cat"
-    else:
-        # For non-tool commands, append the requested viewer if specified
-        if use_leaf and has_leaf:
-            cleaned = f"{cleaned} | leaf"
-        elif use_glow and has_glow:
-            cleaned = f"{cleaned} | glow"
-        else:
-            # Fallback mdcat parsing for non-tool commands
-            if "mdcat" in cleaned and not has_mdcat:
-                cleaned = re.sub(r'\|\s*mdcat\b.*$', '', cleaned).strip()
-                if has_glow: cleaned = f"{cleaned} | glow"
+    pager = ""
+    if use_leaf: pager = "leaf"
+    elif use_glow: pager = "glow"
+    elif use_cat: pager = "cat"
+    elif is_tool: pager = "mdcat" if shutil.which("mdcat") else "cat"
+
+    if pager: cleaned = f"{cleaned} | {pager}"
+    elif "mdcat" in cleaned and not shutil.which("mdcat"): cleaned = re.sub(r'\|\s*mdcat\b.*$', '', cleaned).strip()
     return cleaned
 
 def get_system_context(query):
@@ -327,7 +294,7 @@ try:
                 if skill_file and "skills/system/" in skill_file.replace("\\", "/"): ensure_mysys_exists()
             clean_name = active_skill.lstrip("-") if active_skill else ""
             print(f"\033[1;36mAI Agent Session Initialized | Context Loaded{f' [{clean_name}]' if clean_name else ''} | Ctrl+C to exit.\033[0m\n" if is_agent else "\033[1;34mLocal AI Conversation Mode. Ctrl+C to quit.\033[0m\n")
-            pending_query, chat_history = " ".join(sys.argv[2:]) if len(sys.argv) > 2 else None, []
+            pending_query, chat_history = " ".join(sys.argv[2:]) if len(sys.argv) > 2 else None, [{"role": "system", "content": BASE_PROMPT}]
             try:
                 while True:
                     if pending_query: query, pending_query = pending_query, None
@@ -338,7 +305,7 @@ try:
                         query = raw_query.strip()
                         if query.lower() in ("exit", "quit", "q"): print("\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
                     system_context = get_system_context(query)
-                    prompt = BASE_PROMPT + (f"### Real-time System Context:\n{system_context}\n\n" if system_context else "") + f"User Question: {query}"
+                    prompt = (f"### Real-time System Context:\n{system_context}\n\n" if system_context else "") + f"User Question: {query}"
                     chat_history.append({"role": "user", "content": prompt})
                     ans = stream_llm_response(chat_history, prefix="Agent:" if is_agent else "AI:")
                     if ans: chat_history.append({"role": "assistant", "content": ans})
@@ -360,8 +327,11 @@ try:
                     except Exception as e: sys.stderr.write(f"\033[1;31mError loading skill: {e}\033[0m\n")
             query = " ".join(query_parts)
             system_context += get_system_context(query)
-            prompt = BASE_PROMPT + (f"### Real-time System Context:\n{system_context}\n\n" if system_context else "") + f"User Question: {query}"
-            stream_llm_response([{"role": "user", "content": prompt}], prefix="AI:")
+            messages = [
+                {"role": "system", "content": BASE_PROMPT},
+                {"role": "user", "content": (f"### Real-time System Context:\n{system_context}\n\n" if system_context else "") + f"User Question: {query}"}
+            ]
+            stream_llm_response(messages, prefix="AI:")
             sys.exit(0)
 
     user_input = sanitize_input(" ".join(sys.argv[1:])) if len(sys.argv) > 1 else ""

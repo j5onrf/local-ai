@@ -68,8 +68,9 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/ai-status --leaf ---> status, aistatus, aistat, ai-status
 
 # --- Weather & Live Networking ---
-[TOOL] curl -s "wttr.in/?format=3" | cat ---> weather simple, wttr, weather, rain forecast simple
-[TOOL] curl -s wttr.in | cat ---> weather full, wttr, weather, rain forecast full
+# (Uses standard on-demand flags like --leaf, --glow, --mdcat, or --cat)
+[TOOL] curl -s "wttr.in/?format=3" --cat ---> weather simple, wttr, weather, rain forecast simple
+[TOOL] curl -s wttr.in --cat ---> weather full, wttr, weather, rain forecast full
 
 # --- System Time & Date (Real-time Clock Context) ---
 [TOOL] date ---> time, date, current time, what time is it, system date, system time
