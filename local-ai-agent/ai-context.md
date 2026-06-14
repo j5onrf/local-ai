@@ -6,10 +6,10 @@
 ---
 
 ### Directional Syntax Guide
-1. `~/path`: Indexes workspace and launches standard AI Workspace.
-2. `ai init --<skill>`: Indexes codebase workspace pre-primed with a skill.
-3. `[TOOL] <command>`: Runs local utility to inject dynamic Markdown context.
-4. `<command>`: Launches a native terminal alias, interactive TUI, or document viewer.
+1. `~/path`: Indexes workspace and launches a standard AI Workspace.
+2. `ai init --<skill>`: Indexes codebase workspace pre-primed with a chosen `--<skill>` (e.g., `--coder` or `--sysadmin`).
+3. `[TOOL] <command>`: Runs a local utility (like `cat`, `curl`, or `date`) to inject dynamic Markdown context.
+4. `<command>`: Launches a native terminal alias, interactive TUI, or document viewer (using `mdcat`, `leaf`, or `glow`).
 
 ---
 
@@ -147,4 +147,3 @@ nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-sp
 ss -tuln ---> how do i view active network ports, active ports, network ports
 hostnamectl ---> how do i see my system information, system info, hostname
 ```
-
