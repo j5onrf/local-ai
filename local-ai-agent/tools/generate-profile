@@ -110,12 +110,23 @@ if os.path.exists("/proc/mounts"):
     except Exception: 
         pass
 
-# 8. GPU Hardware identification
-gpu = "Unknown"
+# 8. GPU Hardware identification (Optimized for Multi-GPU/Hybrid Laptop support)
+gpu_list = []
 if os.path.exists("/usr/bin/lspci"):
-    gpu = run("lspci | grep -i -E 'vga|3d|display' | head -n 1 | cut -d':' -f3")
-if not gpu or gpu == "Unknown":
-    gpu = "Integrated Graphics"
+    try:
+        # Fetch all lines containing graphics controllers
+        pci_output = run("lspci | grep -i -E 'vga|3d|display'")
+        if pci_output and pci_output != "Unknown":
+            for line in pci_output.splitlines():
+                parts = line.split(":")
+                if len(parts) >= 3:
+                    gpu_name = parts[2].strip()
+                    if gpu_name not in gpu_list:
+                        gpu_list.append(gpu_name)
+    except Exception:
+        pass
+
+gpu = " + ".join(gpu_list) if gpu_list else "Integrated Graphics"
 
 # 9. WM / Compositor Detection with process-table fallback for headless/service executions
 wm = os.environ.get("XDG_CURRENT_DESKTOP", "")
