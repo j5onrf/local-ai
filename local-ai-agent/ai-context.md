@@ -47,8 +47,8 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/aur-audit ---> audit package, audit pkg, check pkgbuild, aur audit, scan aur, verify pkgbuild, pre-install check
 
 # --- Host Security Surface & Vulnerability Intelligence (SECAUD) ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/security-audit ---> security audit, secaud
-~/.config/local-ai/local-ai-agent/tools/agentic/security-audit | leaf ---> security audit leaf, secaud
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/security-audit ---> security audit, secaud, system audit
+~/.config/local-ai/local-ai-agent/tools/agentic/security-audit | leaf ---> security audit leaf, secaud, system audit
 
 # --- System Optimization (Improve System Performance) ---
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system-optimize ---> system optimize, sysop, system optimization
