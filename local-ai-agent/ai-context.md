@@ -37,7 +37,7 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 ```properties
 # --- Skills (Prompt & Role Injection) ---
 [TOOL] cat ~/.config/local-ai/local-ai-agent/skills/system/sysadmin.md ---> sysadmin, show sysadmin, sysadmin manual
-[TOOL] cat ~/.config/local-ai/local-ai-agent/skills/system/mysys.md ---> mysys, show mysys, view sys, mysys doc
+[TOOL] cat ~/.config/local-ai/local-ai-agent/skills/system/mysys.md --leaf ---> mysys, show mysys, view sys, mysys doc
 ```
 
 ## 3. Dynamic Context-Injected Tools (RAG)

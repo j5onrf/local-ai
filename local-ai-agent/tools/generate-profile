@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sysctl-aware system profiler for local-ai-agent v1.2.5
+# sysctl-aware system profiler for local-ai-agent v1.2.6
 
 import glob
 import os
@@ -27,7 +27,7 @@ try:
 except Exception:
     hostname_str = run("hostname")
 
-# 2. OS and CPU detection
+# 2. OS and CPU detection (Optimized to detect actual Max Turbo Frequency)
 cpu_threads = os.cpu_count() or "Unknown"
 os_name, cpu = "Unknown Linux", "Unknown"
 if os.path.exists("/etc/os-release"):
@@ -39,6 +39,17 @@ if os.path.exists("/proc/cpuinfo"):
     with open("/proc/cpuinfo") as f:
         m = re.search(r'^model name\s*:\s*(.+)', f.read(), re.M)
         if m: cpu = m.group(1)
+
+# Dynamically fetch true hardware max limit (converts kHz to GHz)
+max_freq = ""
+max_freq_path = "/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq"
+if os.path.exists(max_freq_path):
+    try:
+        with open(max_freq_path) as f:
+            # CPU max freq is in kHz, divide by 1000000 to get GHz
+            max_freq = f" (Max: {float(f.read().strip()) / 1000000:.2f} GHz)"
+    except Exception:
+        pass
 
 # 3. Dynamic active graphics driver detection via DRM sysfs
 drivers = []
@@ -163,7 +174,7 @@ Host Profile context for local AI shell executions.
 * **Static Hostname**: `{hostname_str}`
 * **Operating System**: `{os_name}`
 * **Linux Kernel**: `{kernel_ver}{arch_v}`
-* **CPU Hardware**: `{cpu}`
+* **CPU Hardware**: `{cpu}{max_freq}`
 * **CPU Threads (Logical)**: `{cpu_threads}`
 * **GPU Hardware**: `{gpu}`
 * **Active Driver**: `{driver}`

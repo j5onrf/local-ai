@@ -5,7 +5,7 @@ Host Profile context for local AI shell executions.
 * **Static Hostname**: `omarchy`
 * **Operating System**: `Arch Linux`
 * **Linux Kernel**: `7.0.11-1-cachyos (v4)`
-* **CPU Hardware**: `11th Gen Intel(R) Core(TM) i5-11400 @ 2.60GHz`
+* **CPU Hardware**: `11th Gen Intel(R) Core(TM) i5-11400 @ 2.60GHz (Max: 4.40 GHz)`
 * **CPU Threads (Logical)**: `12`
 * **GPU Hardware**: `Intel Corporation RocketLake-S GT1 [UHD Graphics 730] (rev 04)`
 * **Active Driver**: `xe`

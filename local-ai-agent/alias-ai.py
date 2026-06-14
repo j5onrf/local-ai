@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.3.14 [j5onrf] [06-14-26]
+# Local-Ai Agent v0.8.3.15 [j5onrf] [06-14-26]
 
 import sys, re, os, json, threading, time, math, subprocess, shutil
 import urllib.request as urlreq, urllib.error as urlerr
@@ -44,6 +44,10 @@ def sanitize_input(text): return re.sub(r"[`$]", "", text).strip() if text else 
 def tokenize(text): return [w for w in TOKEN_RE.sub(" ", text.lower()).split() if len(w) > 1 and w not in STOP_WORDS]
 
 def ensure_mysys_exists():
+    """
+    On-Demand Profiler Trigger.
+    Compiles system specifications only when a system-dependent task is initiated.
+    """
     if not os.path.exists(f"{SKILLS_DIR}/system/mysys.md"):
         p = f"{CFG_DIR}/tools/generate-profile"
         if os.path.exists(p):
@@ -177,7 +181,8 @@ def get_system_context(query):
             matched_cmd, matched_intent = entry.get("cmd"), entry.get("intent")
             if matched_cmd and matched_cmd.startswith("[TOOL]"):
                 tool_cmd = matched_cmd.replace("[TOOL]", "").strip()
-                if "tools/agentic/" in tool_cmd: ensure_mysys_exists()
+                # Central Junction B: Single-turn background context injection
+                if "tools/agentic/" in tool_cmd or "skills/system/" in tool_cmd: ensure_mysys_exists()
                 intent_tokens = set(tokenize(matched_intent))
                 args = " ".join([w for w in query.split() if tokenize(w) and tokenize(w)[0] not in intent_tokens])
                 if args: tool_cmd = f"{tool_cmd} {args}"
@@ -211,13 +216,13 @@ def run_interactive_selection(intent):
             if is_danger:
                 sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K\x1b[1A\r\x1b[K"); sys.stderr.flush()
                 if key.lower() == 'y':
-                    if "tools/agentic/" in cmd_to_show: ensure_mysys_exists()
+                    if "tools/agentic/" in cmd_to_show or "skills/system/" in cmd_to_show: ensure_mysys_exists()
                     sys.stdout.write(cmd_to_show); sys.stdout.flush()
                 else: sys.stderr.write("Aborted safely.\n")
                 break
             if key in ('\r', ''):
                 sys.stderr.write("\n"); sys.stderr.flush()
-                if "tools/agentic/" in cmd_to_show: ensure_mysys_exists()
+                if "tools/agentic/" in cmd_to_show or "skills/system/" in cmd_to_show: ensure_mysys_exists()
                 sys.stdout.write(cmd_to_show); sys.stdout.flush(); break
             elif key in ('\x1b[A', '\x1b[B'):
                 current_idx = (current_idx + (1 if key == '\x1b[B' else -1) + num_opts) % num_opts
