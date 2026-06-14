@@ -6,10 +6,10 @@
 ---
 
 ### Directional Syntax Guide
-1. **Directory Path**: Indexes workspace and launches standard AI Workspace.
-2. **'ai init' + --<skill>**: Indexes codebase workspace pre-primed with skill.
-3. **'[TOOL] command'**: Runs local utility to inject dynamic Markdown context.
-4. **Raw Command**: Native terminal alias, interactive TUI, or document viewer.
+1. `~/path`: Indexes workspace and launches standard AI Workspace.
+2. `ai init --<skill>`: Indexes codebase workspace pre-primed with a skill.
+3. `[TOOL] <command>`: Runs local utility to inject dynamic Markdown context.
+4. `<command>`: Launches a native terminal alias, interactive TUI, or document viewer.
 
 ---
 
