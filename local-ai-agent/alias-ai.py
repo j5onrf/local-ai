@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.3.4 [j5onrf] [06-14-26]
+# Local-Ai Agent v0.8.3.5 [j5onrf] [06-14-26]
 
 import sys, re, os, json, threading, time, math, subprocess, shutil
 import urllib.request as urlreq, urllib.error as urlerr
@@ -45,6 +45,30 @@ def sanitize_input(text):
 
 def tokenize(text):
     return [w for w in TOKEN_RE.sub(" ", text.lower()).split() if len(w) > 1 and w not in STOP_WORDS]
+
+def find_skill_file(skills_dir, skill_name, max_depth=4):
+    """
+    Recursively scans the skills directory for <skill_name>.md up to max_depth deep.
+    max_depth=4 allows root + 3 levels of nested subdirectories.
+    """
+    target_name = f"{skill_name.lower()}.md"
+    
+    def search_dir(current_dir, current_depth):
+        if current_depth > max_depth:
+            return None
+        try:
+            for entry in os.scandir(current_dir):
+                if entry.is_file() and entry.name.lower() == target_name:
+                    return entry.path
+                elif entry.is_dir() and not entry.name.startswith('.'):
+                    res = search_dir(entry.path, current_depth + 1)
+                    if res:
+                        return res
+        except Exception:
+            pass
+        return None
+
+    return search_dir(skills_dir, 1)
 
 def print_stock_error(cmd_name):
     shell = os.path.basename(os.environ.get("SHELL", "/bin/bash"))
@@ -289,7 +313,9 @@ if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
         is_agent = (sys.argv[1] == "--talk-chat")
         if is_agent:
             active_skill = os.environ.get("AI_ACTIVE_SKILL")
-            print(f"\033[1;36mAI Agent Session Initialized | Context Loaded{f' [{active_skill}]' if active_skill else ''} | Ctrl+C to exit.\033[0m\n")
+            # Strip leading flags if printed directly for cleaner UI output
+            clean_active_name = active_skill.lstrip("-") if active_skill else ""
+            print(f"\033[1;36mAI Agent Session Initialized | Context Loaded{f' [{clean_active_name}]' if clean_active_name else ''} | Ctrl+C to exit.\033[0m\n")
         else:
             print("\033[1;34mLocal AI Conversation Mode. Ctrl+C to quit.\033[0m\n")
         pending_query, chat_history = " ".join(sys.argv[2:]) if len(sys.argv) > 2 else None, []
@@ -329,9 +355,11 @@ if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
         # Evaluate skills if the query or final parameter is formatted as a flag
         if query_parts and query_parts[-1].startswith("-"):
             skill_name = query_parts[-1].lstrip("-").lower()
-            skill_file = os.path.join(SKILLS_DIR, f"{skill_name}.md")
             
-            if os.path.exists(skill_file):
+            # Use deep nested search for skills (up to 3 directories deep)
+            skill_file = find_skill_file(SKILLS_DIR, skill_name)
+            
+            if skill_file:
                 try:
                     with open(skill_file, "r") as f: system_context = f.read().strip() + "\n\n"
                     query_parts = query_parts[:-1]
