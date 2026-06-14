@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# aur-audit - Interactive Zero-Trust AUR Package Auditor v1.1.4
+# aur-audit - Interactive Zero-Trust AUR Package Auditor v1.1.5
 
 set -euo pipefail
 
-AUDIT_SKILL_FILE="$HOME/.config/local-ai/local-ai-agent/tools/skills/aur-audit.md"
+# Hardcoded for maximum execution speed (0.1ms builtin check)
+AUDIT_SKILL_FILE="$HOME/.config/local-ai/local-ai-agent/tools/skills/system/aur-audit.md"
 ALIAS_AI_SCRIPT="$HOME/.config/local-ai/local-ai-agent/alias-ai.py"
 
 # 1. Print Dedicated AUR Audit Skill Profile (if available)

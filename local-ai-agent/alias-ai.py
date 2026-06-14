@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.3.5 [j5onrf] [06-14-26]
+# Local-Ai Agent v0.8.3.4 [j5onrf] [06-12-26]
 
 import sys, re, os, json, threading, time, math, subprocess, shutil
 import urllib.request as urlreq, urllib.error as urlerr
@@ -13,6 +13,18 @@ sys.argv = [arg for arg in sys.argv if arg != ""]
 CONTEXT_FILE = os.path.expanduser("~/.config/local-ai/local-ai-agent/ai-context.md")
 INDEX_FILE = os.path.expanduser("~/.config/local-ai/local-ai-agent/ai-context.idx")
 CFG_DIR = os.path.dirname(CONTEXT_FILE)
+
+# --- AUTO-PROFILE BOOTSTRAP ---
+# Checks for missing mysys.md and auto-generates it on first-run
+MYSYS_FILE = os.path.join(CFG_DIR, "tools/skills/system/mysys.md")
+if not os.path.exists(MYSYS_FILE):
+    p_script = os.path.join(CFG_DIR, "tools/generate-profile")
+    if os.path.exists(p_script):
+        try:
+            # Run the executable directly allowing console progress logs to display
+            subprocess.run([p_script], check=True)
+        except Exception as e:
+            sys.stderr.write(f"\033[1;31m[Warning] Failed to auto-generate system profile: {str(e)}\033[0m\n")
 
 DESTRUCTIVE_KEYWORDS = ["rm ", "dd ", "mkfs", "shred", "chmod -R 777", "> /dev/sda"]
 TOKEN_RE = re.compile(r"[^\w\s]")
@@ -100,7 +112,7 @@ def load_vector_index():
     try:
         with open(CONTEXT_FILE, "r") as f: lines = f.read().splitlines()
         index_data = []
-        for line in [l.strip() for l in lines if l.strip() and not l.startswith("#") and "--->" in l and "----->" not in l]:
+        for line in [l.strip() for l in lines if l.strip() and not l.startswith("#") and "----->" not in l and "--->" in l]:
             cmd, intents = line.split("----->" if "----->" in line else "--->", 1)
             intent_list = [i.strip() for i in intents.split(",")]
             primary_intent = intent_list[0] if intent_list else ""
