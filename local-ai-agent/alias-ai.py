@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.3.8 [j5onrf] [06-14-26]
+# Local-Ai Agent v0.8.3.9 [j5onrf] [06-14-26]
 
 import sys, re, os, json, threading, time, math, subprocess, shutil
 import urllib.request as urlreq, urllib.error as urlerr
@@ -9,12 +9,12 @@ except ImportError: pass
 
 sys.argv = [arg for arg in sys.argv if arg != ""]
 
-# Standard, unified absolute paths
+# Standard, unified absolute paths (Updated to point to root skills folder)
 CONTEXT_FILE = os.path.expanduser("~/.config/local-ai/local-ai-agent/ai-context.md")
 INDEX_FILE = os.path.expanduser("~/.config/local-ai/local-ai-agent/ai-context.idx")
 CFG_DIR = os.path.dirname(CONTEXT_FILE)
-MYSYS_FILE = os.path.join(CFG_DIR, "tools/skills/system/mysys.md")
-SKILLS_DIR = os.path.join(CFG_DIR, "tools/skills")
+MYSYS_FILE = os.path.join(CFG_DIR, "skills/system/mysys.md")
+SKILLS_DIR = os.path.join(CFG_DIR, "skills")
 
 DESTRUCTIVE_KEYWORDS = ["rm ", "dd ", "mkfs", "shred", "chmod -R 777", "> /dev/sda"]
 TOKEN_RE = re.compile(r"[^\w\s]")
@@ -162,7 +162,8 @@ def clean_tool_prefix(cmd):
         cleaned = f"DANGER_FLAGGED:{inner.replace('[TOOL]', '', 1).strip()}" if is_tool else cleaned
     has_mdcat = bool(shutil.which("mdcat"))
     if is_tool:
-        if "mdcat" not in cleaned: cleaned = f"{cleaned} | {'mdcat' if has_mdcat else 'cat'}"
+        # Optimized: skip mdcat if standard cat is explicitly piped
+        if "mdcat" not in cleaned and "cat" not in cleaned: cleaned = f"{cleaned} | {'mdcat' if has_mdcat else 'cat'}"
     elif "mdcat" in cleaned and not has_mdcat:
         cleaned = re.sub(r'\|\s*mdcat\b.*$', '', cleaned).strip()
     return cleaned
@@ -231,7 +232,7 @@ def stream_llm_response(messages, prefix="AI: "):
     if gkey: configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Content-Type": "application/json", "Authorization": f"Bearer {gkey}"}, os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"), {}))
     if okey:
         m = os.environ.get("OPENROUTER_MODEL", "poolside/laguna-m.1:free")
-        configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Content-Type": "application/json", "Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"}, m, {"models": [m, "qwen/qwen3-coder:free", "openrouter/free"]}))
+        configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Content-Type": "application/json", "Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/ai-suggestion"}, m, {"models": [m, "qwen/qwen3-coder:free", "openrouter/free"]}))
     if ckey and curl: configs.append((curl, {"Content-Type": "application/json", "Authorization": f"Bearer {ckey}"}, os.environ.get("CLOUD_MODEL"), {}))
     configs.append(("http://localhost:8080/v1/chat/completions", {"Content-Type": "application/json"}, None, {}))
     spinner = InlineSpinner()
@@ -340,7 +341,8 @@ try:
             is_tool = cmd.startswith("[TOOL]")
             cleaned = cmd.replace('[TOOL]', '', 1).strip() if is_tool else cmd
             has_mdcat = bool(shutil.which("mdcat"))
-            if is_tool and "mdcat" not in cleaned: cleaned = f"{cleaned} | {'mdcat' if has_mdcat else 'cat'}"
+            # Skip auto-appending mdcat if standard cat is explicitly piped in the command
+            if is_tool and "mdcat" not in cleaned and "cat" not in cleaned: cleaned = f"{cleaned} | {'mdcat' if has_mdcat else 'cat'}"
             elif not is_tool and "mdcat" in cleaned and not has_mdcat: cleaned = re.sub(r'\|\s*mdcat\b.*$', '', cleaned).strip()
             out_lines.append(f"{intent}|||{cleaned}")
         print("\n".join(out_lines)); sys.exit(0)

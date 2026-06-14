@@ -36,8 +36,8 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 
 ```properties
 # --- Skills (Prompt & Role Injection) ---
-[TOOL] cat ~/.config/local-ai/local-ai-agent/tools/skills/system/sysadmin.md ---> sysadmin, show sysadmin, sysadmin manual
-[TOOL] cat ~/.config/local-ai/local-ai-agent/tools/skills/system/mysys.md ---> mysys, show mysys, view mysys, mysys doc
+[TOOL] cat ~/.config/local-ai/local-ai-agent/skills/system/sysadmin.md ---> sysadmin, show sysadmin, sysadmin manual
+[TOOL] cat ~/.config/local-ai/local-ai-agent/skills/system/mysys.md ---> mysys, show mysys, view mysys, mysys doc
 ```
 
 ## 3. Dynamic Context-Injected Tools (RAG)
@@ -71,8 +71,8 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 ~/.config/local-ai/local-ai-agent/tools/agentic/ai-status | leaf ---> status leaf, aistatus, aistat, ai-status
 
 # --- Weather & Live Networking ---
-[TOOL] curl -s "wttr.in/?format=3" ---> weather simple, wttr, weather, rain forecast simple
-[TOOL] curl -s wttr.in ---> weather full, wttr, weather, rain forecast full
+[TOOL] curl -s "wttr.in/?format=3" | cat ---> weather simple, wttr, weather, rain forecast simple
+[TOOL] curl -s wttr.in | cat ---> weather full, wttr, weather, rain forecast full
 
 # --- System Time & Date (Real-time Clock Context) ---
 [TOOL] date ---> time, date, current time, what time is it, system date, system time

@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-PRINT_MYSYS_BIN="$HOME/.config/local-ai/local-ai-agent/tools/agentic/print-mysys"
+PRINT_MYSYS_BIN="$HOME/.config/local-ai/local-ai-agent/agentic/print-mysys"
 
 # 1. Print General System Profile with dynamic, context-aware title override
 if [ -f "$PRINT_MYSYS_BIN" ]; then
