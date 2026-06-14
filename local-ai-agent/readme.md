@@ -1,4 +1,4 @@
-# Local-AI Agent (v0.8.3.2)
+# Local-AI Agent (v0.8.3.5)
 
 <img alt="Image_5e1xpv5e1xpv5e1x-3" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" />
 
@@ -10,10 +10,10 @@
 
 All configurations, automations, and custom project workspaces are managed through a single markdown master blueprint: **`ai-context.md`**. The agent resolves your inputs into one of four execution paradigms:
 
-* **No Session (Direct selections)**: Typing custom commands or shortcuts prompts a local, rarity-weighted sparse search matrix to select options instantly without querying an LLM.
-* **Single-Turn Agent (`ai <query>`)**: Typing `ai <query>` instantly answers a single question and returns you directly to your Bash prompt, silently running local diagnostic tools to gather context when your keywords are matched.
+* **No Session (Direct selections)**: Typing custom commands or shortcuts prompts a local, rarity-weighted sparse search matrix to select options instantly, routing them directly to your local terminal or pager without querying an LLM.
+* **Single-Turn Agent (`ai <query>`)**: Typing `ai <query>` answers a single question and returns you directly to your Bash prompt, executing explicitly mapped diagnostic tools and skills deterministically to supply live context only when requested.
 * **Multi-Turn Chat (`ai` alone)**: Typing `ai` alone initiates an interactive, persistent conversation session with local state preservation and multi-turn context memory.
-* **Workspace Agents (`ai init <path>`)**: Compiles a path-specific structural tree of your repository, launching a dedicated, codebase-aware agent session.
+* **Workspace Agents (`ai init <path>`)**: Compiles a path-specific structural tree of your repository, launching a dedicated, codebase-aware agent session primed with your chosen skill file.
 
 ---
 
@@ -25,19 +25,21 @@ All configurations, automations, and custom project workspaces are managed throu
 | | **Rarity-Weighted Search** | Upgraded log-scale TF-IDF/BM25 sparse indexing weights rare terms (like `hyprctl`) over noise to eliminate conflicts. |
 | **Resiliency** | **Cascading Fallback Chain** | Seamlessly cascades from Gemini $\rightarrow$ OpenRouter $\rightarrow$ Custom Cloud down to local servers if an endpoint drops offline. |
 | | **OpenRouter Failover** | Sends a prioritized model array payload to automatically route around free-tier model congestion on the server side. |
-| **Integration** | **Zero-Bloat Auto-Routing** | Automatically injects your system specs (`mysys.md`) *only* when queries contain system keywords (e.g. `gpu`, `kernel`). |
-| | **Voice Query Bridge** | Connects any Wi-Fi tablet or phone over local HTTPS/HTTP to record audio, transcribing natively on the cloud with 0% PC CPU load. |
-| | **Dynamic Viewer Pipeline** | Intercepts manual `[TOOL]` calls, automatically piping them to `mdcat` for terminal rendering while translating them to `cat` for AI context tasks. |
-| **Portability** | **Zero-Config Bootstrap** | Silent local diagnostics query your CPU, GPU, and window manager on first-run, auto-generating your system profile. |
+| **Integration** | **Deterministic Context** | Prevents prompt bloat and token waste by loading system profiles (`mysys.md`) and custom tools strictly through defined triggers rather than heuristic keyword matching. |
+| | **Voice Bridge Extension** | Optional mobile-to-tablet bridge that processes voice input natively on mobile devices with 0% PC CPU load, designed to pipe transcripts straight into the deterministic CLI. |
+| | **Dynamic Viewer Pipeline** | Intercepts manual `[TOOL]` calls, automatically piping them to `mdcat` for terminal rendering while translating them to standard output for AI context tasks. |
+| **Portability** | **Multi-Depth Skill Trees** | Supports highly clean workspace directories, recursively scanning the skills directory up to 3 subfolders deep (e.g., `skills/coding/coder.md`). |
 | | **Auditable Codebase** | Designed with full transparency in under 400 lines of highly clean, standard-library Python code. |
 
 ---
 
 ## TUI Carousel Controls
 
-* **`Up` / `Down` Arrow Keys:** Cycle through available ranked selections
-* **`Enter`:** Execute the highlighted command (or initialize a workspace if the selection is a directory path)
-* **`Esc` / `Ctrl+C` / `Any Key`:** Cancel menu (features an anti-spam buffer flush to prevent command line leakage)
+* **`Up` / `Down` Arrow Keys:** Cycle through available ranked selections.
+* **`Enter`:** Execute the highlighted command (or initialize a workspace if the selection is a directory path).
+* **`Esc` / `Ctrl+C` / `Any Key`:** Cancel menu (features an anti-spam buffer flush to prevent command line leakage).
+
+> **Namespace & Directory Grouping:** Because the carousel displays up to 5 ranked candidates, identical keywords act as dynamic folders. For example, assigning `weather` to both a 1-line tool and a detailed chart does not cause a collision; instead, it generates an interactive menu to select the specific tool you want.
 
 ---
 
@@ -46,7 +48,7 @@ All configurations, automations, and custom project workspaces are managed throu
 * `ai`: Launch an interactive, multi-turn conversation session. Press `Ctrl+C` or type `exit`/`quit` to quit.
 * `ai init <path>`: Index a directory and launch an interactive workspace agent primed with your codebase structure.
 * `ai <query>`: Instantly answer a single question and return directly to your Bash prompt.
-* `voice`: Launch your high-speed, local-network tablet voice bridge on port 9999.
+* `voice`: Launch your high-speed, local-network tablet voice bridge on port 9999 (optional add-on layer).
 
 ---
 
@@ -128,3 +130,4 @@ export OPENROUTER_API_KEY="sk-or-v1-YourOpenRouterKey"
 </div>
 
 *For detailed system architecture diagrams, custom tool development guidelines, and advanced prompt engineering, refer to the full **[documentation.md](documentation.md)**.*
+
