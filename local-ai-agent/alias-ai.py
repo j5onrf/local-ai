@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.3.13 [j5onrf] [06-14-26]
+# Local-Ai Agent v0.8.3.14 [j5onrf] [06-14-26]
 
 import sys, re, os, json, threading, time, math, subprocess, shutil
 import urllib.request as urlreq, urllib.error as urlerr
@@ -13,7 +13,6 @@ sys.argv = [arg for arg in sys.argv if arg != ""]
 CFG_DIR = os.path.expanduser("~/.config/local-ai/local-ai-agent")
 CONTEXT_FILE = f"{CFG_DIR}/ai-context.md"
 INDEX_FILE = f"{CFG_DIR}/ai-context.idx"
-MYSYS_FILE = f"{CFG_DIR}/skills/system/mysys.md"
 SKILLS_DIR = f"{CFG_DIR}/skills"
 
 DESTRUCTIVE_KEYWORDS = ["rm ", "dd ", "mkfs", "shred", "chmod -R 777", "> /dev/sda"]
@@ -25,7 +24,7 @@ BASE_PROMPT = (
     "Conversational local shell AI (read-only access).\n"
     "Answer concisely and directly using any provided system context.\n"
     "No markdown (no bold asterisks, no header hashes); output must be raw terminal.\n"
-    "Never claim you lack system access. Never reply with blank text or lone punctuation; write full sentences.\n\n"
+    "Never claim you lack system access. Never reply with single digits, or lone punctuation; write full, complete sentences.\n\n"
 )
 
 class InlineSpinner:
@@ -45,7 +44,7 @@ def sanitize_input(text): return re.sub(r"[`$]", "", text).strip() if text else 
 def tokenize(text): return [w for w in TOKEN_RE.sub(" ", text.lower()).split() if len(w) > 1 and w not in STOP_WORDS]
 
 def ensure_mysys_exists():
-    if not os.path.exists(MYSYS_FILE):
+    if not os.path.exists(f"{SKILLS_DIR}/system/mysys.md"):
         p = f"{CFG_DIR}/tools/generate-profile"
         if os.path.exists(p):
             try: subprocess.run([p], check=True)
