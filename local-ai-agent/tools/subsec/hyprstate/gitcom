@@ -14,8 +14,9 @@ if pgrep -f "lazygit" > /dev/null; then
     hyprctl dispatch movetoworkspacesilent "${CURRENT_WS},class:^(lazygit)$" >/dev/null 2>&1
 else
     # Inject a dynamic rule targeting your active workspace
-    hyprctl keyword windowrulev2 "workspace ${CURRENT_WS} silent,class:^(lazygit)$" >/dev/null 2>&1
-    hyprctl dispatch exec "kitty --class lazygit lazygit" >/dev/null 2>&1
+    hyprctl keyword windowrule "workspace ${CURRENT_WS} silent,class:^(lazygit)$" >/dev/null 2>&1
+    # Launch Kitty directly in the local-ai config directory
+    hyprctl dispatch exec "kitty --class lazygit --directory $HOME/.config/local-ai lazygit" >/dev/null 2>&1
     # Small pause to guarantee chronological split (ensures lazygit tiles first/left)
     sleep 0.2
 fi
@@ -26,8 +27,13 @@ if pgrep -f "local-ai-terminal" > /dev/null; then
     hyprctl dispatch movetoworkspacesilent "${CURRENT_WS},class:^(local-ai-terminal)$" >/dev/null 2>&1
 else
     # Inject a dynamic rule targeting your active workspace
-    hyprctl keyword windowrulev2 "workspace ${CURRENT_WS} silent,class:^(local-ai-terminal)$" >/dev/null 2>&1
-    hyprctl dispatch exec "kitty --class local-ai-terminal --directory $HOME/.config/local-ai --title '~/.config/local-ai'" >/dev/null 2>&1
+    hyprctl keyword windowrule "workspace ${CURRENT_WS} silent,class:^(local-ai-terminal)$" >/dev/null 2>&1
+    
+    # Store the interactive bash commands (which automatically loads your .bashrc and expands aliases)
+    INNER_CMD='cd '"$HOME"'/.config/local-ai; if read -e -p "${PS1@P}" -i "ai-commit"; then history -s "$REPLY"; history -a; eval "$REPLY"; fi; exec bash'
+    
+    # Launch Kitty with interactive bash (-i) to run the isolated command string
+    hyprctl dispatch exec "kitty --class local-ai-terminal --directory $HOME/.config/local-ai --title '~/.config/local-ai' bash -i -c '$INNER_CMD'" >/dev/null 2>&1
 fi
 
 echo "Workspace reset complete: State --GitCom (Active WS: ${CURRENT_WS})"
