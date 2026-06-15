@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.3.15 [j5onrf] [06-14-26]
+# Local-Ai Agent v0.8.3.16 [j5onrf] [06-15-26]
 
 import sys, re, os, json, threading, time, math, subprocess, shutil
 import urllib.request as urlreq, urllib.error as urlerr
@@ -13,6 +13,7 @@ sys.argv = [arg for arg in sys.argv if arg != ""]
 CFG_DIR = os.path.expanduser("~/.config/local-ai/local-ai-agent")
 CONTEXT_FILE = f"{CFG_DIR}/ai-context.md"
 INDEX_FILE = f"{CFG_DIR}/ai-context.idx"
+MYSYS_FILE = f"{CFG_DIR}/skills/system/mysys.md"
 SKILLS_DIR = f"{CFG_DIR}/skills"
 
 DESTRUCTIVE_KEYWORDS = ["rm ", "dd ", "mkfs", "shred", "chmod -R 777", "> /dev/sda"]
@@ -88,7 +89,8 @@ def load_vector_index():
     try:
         with open(CONTEXT_FILE) as f: lines = f.read().splitlines()
         index_data = []
-        for line in [l.strip() for l in lines if l.strip() and not l.startswith("#") and "----->" not in l and "--->" in l]:
+        # Optimized: Single-pass strip operation using Python 3.8+ Walrus Operator
+        for line in [s for l in lines if (s := l.strip()) and not s.startswith("#") and "----->" not in s and "--->" in s]:
             cmd, intents = line.split("----->" if "----->" in line else "--->", 1)
             intent_list = [i.strip() for i in intents.split(",")]
             primary = intent_list[0] if intent_list else ""

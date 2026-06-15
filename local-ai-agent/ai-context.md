@@ -36,8 +36,10 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 
 ```properties
 # --- Skills (Prompt & Role Injection) ---
-[TOOL] cat ~/.config/local-ai/local-ai-agent/skills/system/sysadmin.md ---> sysadmin, show sysadmin, sysadmin manual
 [TOOL] cat ~/.config/local-ai/local-ai-agent/skills/system/mysys.md --leaf ---> mysys, show mysys, view sys, mysys doc
+# [TOOL] cat ~/.config/local-ai/local-ai-agent/skills/identity/business/mybiz.md --leaf ---> mybiz, show business profile, view mybiz
+# [TOOL] cat ~/.config/local-ai/local-ai-agent/skills/identity/marketing/strategy.md --leaf ---> marketing strategy, growth strategy, view marketing
+# [TOOL] cat ~/.config/local-ai/local-ai-agent/skills/identity/workout/routine.md --leaf ---> routine, fitness profile, workout routine
 ```
 
 ## 3. Dynamic Context-Injected Tools (RAG)
@@ -74,6 +76,10 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 
 # --- System Time & Date (Real-time Clock Context) ---
 [TOOL] date ---> time, date, current time, what time is it, system date, system time
+
+# [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/identity/business/mybiz ---> run business tool, execution biz
+# [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/identity/marketing/marketing ---> run marketing tool, execute growth
+# [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/identity/workout/routine ---> run workout tool, routine metrics
 ```
 
 ## 4. Static Aliases & Shell Shortcuts
