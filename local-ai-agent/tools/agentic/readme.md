@@ -1,4 +1,4 @@
-# Identity Layer (`skills/identity/`)
+# Identity Layer (`agentic/identity/`)
 
 <img alt="Adaptive Identity Layer for AI Agents" src="https://github.com/user-attachments/assets/67553dc5-f348-48ff-9c82-7368bc5b758b" />
 
