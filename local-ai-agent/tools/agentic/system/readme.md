@@ -1,6 +1,6 @@
-# System [TOOLS]
+# Agentic System [TOOLS]
 
-<img alt="Image_oys2m2oys2m2oys2" src="https://github.com/user-attachments/assets/91f2f3ab-3baf-434b-af61-15544d72fa0f" />
+<img alt="Image_oys2m2oys2m2oys2-2" src="https://github.com/user-attachments/assets/4482a4c6-aed3-4c34-80fc-4774c4dcbbed" />
 
 ---
 
@@ -11,5 +11,4 @@
 > **Paired with `hyprstate gitcom` the agent sets the stage for `ai-commit`**
 
 ---
-
 
