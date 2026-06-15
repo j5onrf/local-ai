@@ -46,28 +46,28 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 
 ```properties
 # --- Pre-Install Zero-Trust AUR Package & PKGBUILD Auditor ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/aur-audit ---> audit package, audit pkg, check pkgbuild, aur audit, scan aur, verify pkgbuild, pre-install check
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system/aur-audit ---> audit package, audit pkg, check pkgbuild, aur audit, scan aur, verify pkgbuild, pre-install check
 
 # --- Host Security Surface & Vulnerability Intelligence (SECAUD) ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/security-audit --leaf ---> security audit, secaud, system audit
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system/security-audit --leaf ---> security audit, secaud, system audit
 
 # --- System Optimization (Improve System Performance) ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system-optimize --leaf ---> system optimize, sysop, system optimization
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system/system-optimize --leaf ---> system optimize, sysop, system optimization
 
 # --- System Logs & Diagnostics (Compressed Stream Triage) ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/log-checker --leaf ---> log checker, ailog, log check, check errors, system crashed, events
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system/log-checker --leaf ---> log checker, ailog, log check, check errors, system crashed, events
 
 # --- System Resources & Diagnosis (System Health) ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system-health --leaf ---> system health, sysh, health, system diagnosis, why is my system slow
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system/system-health --leaf ---> system health, sysh, health, system diagnosis, why is my system slow
 
 # --- Pending Updates ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/update-inspector --leaf ---> update inspector, ui, check upgrades, what updates do i have, pending updates
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system/update-inspector --leaf ---> update inspector, ui, check upgrades, what updates do i have, pending updates
 
 # --- Disk Usage ---
 [TOOL] df -h / ---> disk usage, nvme drive usage, check storage space
 
 # --- AI Status & Provider Diagnostics ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/ai-status --leaf ---> status, aistatus, aistat, ai-status
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system/ai-status --leaf ---> status, aistatus, aistat, ai-status
 
 # --- Weather & Live Networking ---
 # (Uses standard on-demand flags like --leaf, --glow, --mdcat, or --cat)
@@ -89,7 +89,7 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 ~/.config/local-ai/local-ai-agent/tools/blueprint --leaf ---> cheatsheet, blueprint, bp, cs, map
 
 # --- AI-Generated Git Commits ---
-~/.config/local-ai/local-ai-agent/tools/agentic/ai-commit ---> ai-commit, gc, git-commit, git commit
+~/.config/local-ai/local-ai-agent/tools/agentic/system/ai-commit ---> ai-commit, gc, git-commit, git commit
 
 # --- Server Lifecycle Management ---
 ~/.config/local-ai/local-ai-agent/tools/kill-ai-servers ---> killserver, ks

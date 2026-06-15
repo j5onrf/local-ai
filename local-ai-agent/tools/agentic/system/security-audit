@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-PRINT_MYSYS_BIN="$HOME/.config/local-ai/local-ai-agent/tools/agentic/print-mysys"
+PRINT_MYSYS_BIN="$HOME/.config/local-ai/local-ai-agent/tools/agentic/system/print-mysys"
 SECAUD_FILE="$HOME/.config/local-ai/local-ai-agent/skills/system/secaud.md"
 
 # 1. Print General System Profile with dynamic title override

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.3.16 [j5onrf] [06-15-26]
+# Local-Ai Agent v0.8.4.1 [j5onrf] [06-15-26]
 
 import sys, re, os, json, threading, time, math, subprocess, shutil
 import urllib.request as urlreq, urllib.error as urlerr
@@ -13,7 +13,6 @@ sys.argv = [arg for arg in sys.argv if arg != ""]
 CFG_DIR = os.path.expanduser("~/.config/local-ai/local-ai-agent")
 CONTEXT_FILE = f"{CFG_DIR}/ai-context.md"
 INDEX_FILE = f"{CFG_DIR}/ai-context.idx"
-MYSYS_FILE = f"{CFG_DIR}/skills/system/mysys.md"
 SKILLS_DIR = f"{CFG_DIR}/skills"
 
 DESTRUCTIVE_KEYWORDS = ["rm ", "dd ", "mkfs", "shred", "chmod -R 777", "> /dev/sda"]
@@ -25,7 +24,7 @@ BASE_PROMPT = (
     "Conversational local shell AI (read-only access).\n"
     "Answer concisely and directly using any provided system context.\n"
     "No markdown (no bold asterisks, no header hashes); output must be raw terminal.\n"
-    "Never claim you lack system access. Never reply with single digits, or lone punctuation; write full, complete sentences.\n\n"
+    "Never claim you lack system access. Reply in standard paragraphs; never use bullet lists, single digits, or leading symbols.\n\n"
 )
 
 class InlineSpinner:
@@ -183,8 +182,14 @@ def get_system_context(query):
             matched_cmd, matched_intent = entry.get("cmd"), entry.get("intent")
             if matched_cmd and matched_cmd.startswith("[TOOL]"):
                 tool_cmd = matched_cmd.replace("[TOOL]", "").strip()
-                # Central Junction B: Single-turn background context injection
-                if "tools/agentic/" in tool_cmd or "skills/system/" in tool_cmd: ensure_mysys_exists()
+                
+                # Dynamic Trigger: Only trigger profiling on system-related tools [1]
+                if "tools/agentic/system/" in tool_cmd or "skills/system/" in tool_cmd: ensure_mysys_exists()
+                
+                # Optimized: Strip trailing presentation flags before running background tool context
+                for flag in [" --leaf", " --glow", " --cat"]:
+                    if tool_cmd.endswith(flag): tool_cmd = tool_cmd[:-len(flag)].strip()
+                    
                 intent_tokens = set(tokenize(matched_intent))
                 args = " ".join([w for w in query.split() if tokenize(w) and tokenize(w)[0] not in intent_tokens])
                 if args: tool_cmd = f"{tool_cmd} {args}"
@@ -218,13 +223,13 @@ def run_interactive_selection(intent):
             if is_danger:
                 sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K\x1b[1A\r\x1b[K"); sys.stderr.flush()
                 if key.lower() == 'y':
-                    if "tools/agentic/" in cmd_to_show or "skills/system/" in cmd_to_show: ensure_mysys_exists()
+                    if "tools/agentic/system/" in cmd_to_show or "skills/system/" in cmd_to_show: ensure_mysys_exists()
                     sys.stdout.write(cmd_to_show); sys.stdout.flush()
                 else: sys.stderr.write("Aborted safely.\n")
                 break
             if key in ('\r', ''):
                 sys.stderr.write("\n"); sys.stderr.flush()
-                if "tools/agentic/" in cmd_to_show or "skills/system/" in cmd_to_show: ensure_mysys_exists()
+                if "tools/agentic/system/" in cmd_to_show or "skills/system/" in cmd_to_show: ensure_mysys_exists()
                 sys.stdout.write(cmd_to_show); sys.stdout.flush(); break
             elif key in ('\x1b[A', '\x1b[B'):
                 current_idx = (current_idx + (1 if key == '\x1b[B' else -1) + num_opts) % num_opts
