@@ -2,7 +2,7 @@
 import os
 import sys
 
-SKILL_PATH = "/home/j5/.config/local-ai/local-ai-agent/skills/identity/business/mybiz.md"
+SKILL_PATH = "$HOME/.config/local-ai/local-ai-agent/skills/identity/business/mybiz.md"
 
 def main():
     if not os.path.exists(SKILL_PATH):
