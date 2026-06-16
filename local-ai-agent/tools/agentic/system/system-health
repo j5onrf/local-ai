@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # system-health - Context-Aware Real-time Hardware Inspector v1.4.0
-# Path: /home/j5/.config/local-ai/local-ai-agent/tools/agentic/system/system-health
+# Path: ~/.config/local-ai/local-ai-agent/tools/agentic/system/system-health
 
 set -euo pipefail
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.4.1 [j5onrf] [06-15-26]
+# Local-Ai Agent v0.8.5.1 [j5onrf] [06-16-26]
 
 import sys, re, os, json, threading, time, math, subprocess, shutil
 import urllib.request as urlreq, urllib.error as urlerr
@@ -60,6 +60,32 @@ def find_skill_file(skills_dir, skill_name, max_depth=3):
         if r.replace(skills_dir, "").count(os.sep) <= max_depth:
             if target in (f.lower() for f in files): return os.path.join(r, target)
     return None
+
+def load_skill_content(skill_name):
+    """
+    Universally loads skill file content, triggers system profiling if needed,
+    and interpolates environment placeholders for any active skill.
+    """
+    if not skill_name: return ""
+    skill_file = find_skill_file(SKILLS_DIR, skill_name)
+    if skill_file:
+        if "skills/system/" in skill_file.replace("\\", "/"): 
+            ensure_mysys_exists()
+        try:
+            with open(skill_file) as f:
+                content = f.read().strip()
+            
+            # Universal environment interpolation (any skill can use these)
+            detected_shell = os.path.basename(os.environ.get("SHELL", "bash"))
+            detected_os = subprocess.check_output("uname -sr", shell=True, text=True).strip() if shutil.which("uname") else "Standard"
+            
+            content = content.replace("{{ENV_DETAILS}}", f"{detected_os}, Shell: {detected_shell}")
+            content = content.replace("{{LANGUAGE_OR_FRAMEWORK}}", "Python/Bash")
+            content = content.replace("{{FILE_PATH}}", "Current Workspace")
+            return content
+        except Exception as e:
+            sys.stderr.write(f"\033[1;31mError loading skill '{skill_name}': {e}\033[0m\n")
+    return ""
 
 def print_stock_error(n):
     sh = os.path.basename(os.environ.get("SHELL", "/bin/bash"))
@@ -300,12 +326,17 @@ try:
         is_agent = (sys.argv[1] == "--talk-chat")
         if is_agent or len(sys.argv) == 2:
             active_skill = os.environ.get("AI_ACTIVE_SKILL")
-            if active_skill:
-                skill_file = find_skill_file(SKILLS_DIR, active_skill.lstrip("-"))
-                if skill_file and "skills/system/" in skill_file.replace("\\", "/"): ensure_mysys_exists()
+            
+            # Universal: Resolve and load active skill context into the system prompt
+            skill_content = load_skill_content(active_skill.lstrip("-")) if active_skill else ""
+            active_system_prompt = BASE_PROMPT
+            if skill_content:
+                active_system_prompt += f"\n\n### Active Skill/Role Instructions:\n{skill_content}\n"
+                
             clean_name = active_skill.lstrip("-") if active_skill else ""
             print(f"\033[1;36mAI Agent Session Initialized | Context Loaded{f' [{clean_name}]' if clean_name else ''} | Ctrl+C to exit.\033[0m\n" if is_agent else "\033[1;34mLocal AI Conversation Mode. Ctrl+C to quit.\033[0m\n")
-            pending_query, chat_history = " ".join(sys.argv[2:]) if len(sys.argv) > 2 else None, [{"role": "system", "content": BASE_PROMPT}]
+            
+            pending_query, chat_history = " ".join(sys.argv[2:]) if len(sys.argv) > 2 else None, [{"role": "system", "content": active_system_prompt}]
             try:
                 while True:
                     if pending_query: query, pending_query = pending_query, None
@@ -327,19 +358,22 @@ try:
         elif len(sys.argv) > 2:
             query_parts = sys.argv[2:]
             system_context = ""
+            active_system_prompt = BASE_PROMPT
+            
             if query_parts and query_parts[-1].startswith("-"):
                 skill_name = query_parts[-1].lstrip("-").lower()
-                skill_file = find_skill_file(SKILLS_DIR, skill_name)
-                if skill_file:
-                    if "skills/system/" in skill_file.replace("\\", "/"): ensure_mysys_exists()
-                    try:
-                        with open(skill_file) as f: system_context = f.read().strip() + "\n\n"
-                        query_parts = query_parts[:-1]
-                    except Exception as e: sys.stderr.write(f"\033[1;31mError loading skill: {e}\033[0m\n")
+                
+                # Universal: Resolve and load active skill context into system prompt
+                skill_content = load_skill_content(skill_name)
+                if skill_content:
+                    active_system_prompt += f"\n\n### Active Skill/Role Instructions:\n{skill_content}\n"
+                
+                query_parts = query_parts[:-1]
+            
             query = " ".join(query_parts)
             system_context += get_system_context(query)
             messages = [
-                {"role": "system", "content": BASE_PROMPT},
+                {"role": "system", "content": active_system_prompt},
                 {"role": "user", "content": (f"### Real-time System Context:\n{system_context}\n\n" if system_context else "") + f"User Question: {query}"}
             ]
             stream_llm_response(messages, prefix="AI:")
