@@ -37,6 +37,7 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 ```properties
 # --- Skills (Prompt & Role Injection) ---
 [TOOL] cat ~/.config/local-ai/local-ai-agent/skills/system/mysys.md --leaf ---> mysys, show mysys, view sys, mysys doc
+
 # [TOOL] cat ~/.config/local-ai/local-ai-agent/skills/identity/business/mybiz.md --leaf ---> mybiz, show business profile, view mybiz
 # [TOOL] cat ~/.config/local-ai/local-ai-agent/skills/identity/marketing/strategy.md --leaf ---> marketing strategy, growth strategy, view marketing
 # [TOOL] cat ~/.config/local-ai/local-ai-agent/skills/identity/workout/routine.md --leaf ---> routine, fitness profile, workout routine
