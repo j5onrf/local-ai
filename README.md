@@ -2,12 +2,17 @@
 
 <div align="center">
 <img alt="local-ai-agent" src="https://github.com/user-attachments/assets/395d627f-5d08-4c04-82ab-def73c1bf860" width="800" />
+</div>
+
+---
+
+<br>
   
 Agentic [Tools] | Hyprland, Omarchy, Odysseus, and Hermes | Custom Integrated
 
 ### [Local-AI Agent](./local-ai-agent)
 
-</div>
+
 
 <br>
 
@@ -25,3 +30,4 @@ git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai
 cd ~/.config/local-ai && git pull
 
 ```
+
