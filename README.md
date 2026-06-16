@@ -1,12 +1,10 @@
 # local-ai
 
 <div align="center">
-<img alt="local-ai-agent" src="https://github.com/user-attachments/assets/395d627f-5d08-4c04-82ab-def73c1bf860" width="800" />
+<img alt="local-ai-agent" src="https://github.com/user-attachments/assets/395d627f-5d08-4c04-82ab-def73c1bf860" width="300" />
 </div>
 
 ---
-
-<br>
   
 Agentic [Tools] | Hyprland, Omarchy, Odysseus, and Hermes | Custom Integrated
 
