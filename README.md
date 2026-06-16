@@ -9,6 +9,7 @@ Agentic [Tools] | Hyprland, Omarchy, Odysseus, and Hermes | Custom Integrated
 
 </div>
 
+<br>
 
 ## Install
 
