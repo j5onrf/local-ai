@@ -41,8 +41,6 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 * **`Enter`:** Execute the highlighted command (or initialize a workspace if the selection is a directory path).
 * **`Esc` / `Ctrl+C` / `Any Key`:** Cancel menu (features an anti-spam buffer flush to prevent command line leakage).
 
-> **Namespace & Directory Grouping:** Because the carousel displays up to 5 ranked candidates, identical keywords act as dynamic folders. For example, assigning `weather` to both a 1-line tool and a detailed chart does not cause a collision; instead, it generates an interactive menu to select the specific tool you want.
-
 ---
 
 ## Command Reference
