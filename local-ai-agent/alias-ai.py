@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.5.1 [j5onrf] [06-16-26]
+# Local-Ai Agent v0.8.5.4 [j5onrf] [06-16-26]
 
 import sys, re, os, json, threading, time, math, subprocess, shutil
 import urllib.request as urlreq, urllib.error as urlerr
@@ -19,17 +19,17 @@ DESTRUCTIVE_KEYWORDS = ["rm ", "dd ", "mkfs", "shred", "chmod -R 777", "> /dev/s
 TOKEN_RE = re.compile(r"[^\w\s]")
 STOP_WORDS = {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "show", "get", "run", "check", "please", "can", "could", "would", "tell", "find", "list", "are", "about", "in", "next", "few", "days", "going", "soon", "anytime", "day", "week"}
 
-# Dense, high-focus system instructions (Optimized for token efficiency and constraint retention)
+# Dense, high-focus system instructions (Optimized for standard sentence structure)
 BASE_PROMPT = (
-    "Conversational local shell AI (read-only access).\n"
-    "Answer concisely and directly using any provided system context.\n"
-    "No markdown (no bold asterisks, no header hashes); output must be raw terminal.\n"
-    "Never claim you lack system access. Reply in standard paragraphs; never use bullet lists, single digits, or leading symbols.\n\n"
+    "Local shell AI assistant (read-only access).\n"
+    "Provide direct, natural plain-text answers using any provided system context.\n"
+    "No markdown (no bolding, no headers, no bullet lists).\n"
+    "Always write full, complete, and helpful sentences.\n\n"
 )
 
 class InlineSpinner:
     def __init__(self):
-        self.chars, self.active = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"], False
+        self.chars, self.active, self.thread = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"], False, None
     def _spin(self):
         idx = 0
         while self.active:
@@ -37,8 +37,12 @@ class InlineSpinner:
             idx, _ = idx + 1, time.sleep(0.08)
         sys.stderr.write("\r\x1b[2K\r"); sys.stderr.flush()
     def start(self):
-        self.active = True; threading.Thread(target=self._spin, daemon=True).start()
-    def stop(self): self.active = False
+        self.active, self.thread = True, threading.Thread(target=self._spin, daemon=True)
+        self.thread.start()
+    def stop(self):
+        self.active = False
+        if self.thread:
+            self.thread.join() # Synchronize thread exit to prevent stderr erasure of stdout
 
 def sanitize_input(text): return re.sub(r"[`$]", "", text).strip() if text else ""
 def tokenize(text): return [w for w in TOKEN_RE.sub(" ", text.lower()).split() if len(w) > 1 and w not in STOP_WORDS]
@@ -115,7 +119,7 @@ def load_vector_index():
         with open(CONTEXT_FILE) as f: lines = f.read().splitlines()
         index_data = []
         # Optimized: Single-pass strip operation using Python 3.8+ Walrus Operator
-        for line in [s for l in lines if (s := l.strip()) and not s.startswith("#") and "----->" not in s and "--->" in s]:
+        for line in [s for l in lines if (s := l.strip()) and not s.startswith("#") and "----->" not in l and "--->" in l]:
             cmd, intents = line.split("----->" if "----->" in line else "--->", 1)
             intent_list = [i.strip() for i in intents.split(",")]
             primary = intent_list[0] if intent_list else ""
@@ -286,8 +290,10 @@ def stream_llm_response(messages, prefix="AI: "):
                         first, acc = True, []
                         for line in response:
                             dec = line.decode("utf-8").strip()
-                            if dec.startswith("data: "): dec = dec[6:].strip()
-                            if not dec or dec == "[DONE]": continue
+                            if not dec: continue
+                            # Optimized: Handle both "data:" and "data: " dynamically to prevent JSONDecodeError truncation
+                            if dec.startswith("data:"): dec = dec[5:].strip()
+                            if dec == "[DONE]": continue
                             try:
                                 data = json.loads(dec)
                                 content = ""
@@ -346,9 +352,43 @@ try:
                         if not raw_query.strip(): continue
                         query = raw_query.strip()
                         if query.lower() in ("exit", "quit", "q"): print("\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
+                    
+                    # Unified /think interceptor for dynamic, non-mutating brainstorm generation
+                    if query.lower() in ("/think", "think"):
+                        think_file = find_skill_file(SKILLS_DIR, "think")
+                        think_prompt = ""
+                        if think_file:
+                            try:
+                                with open(think_file) as f: think_prompt = f.read().strip()
+                            except Exception: pass
+                        if not think_prompt:
+                            think_prompt = (
+                                "Analyze history and output exactly 3 next-step brainstorming triggers.\n"
+                                "Each option must be strictly 6 to 9 words long.\n"
+                                "No markdown bullets, no filler. Output exactly this format:\n\n"
+                                "🧠 Brainstorm Triggers:\n"
+                                "   ├── [Option 1]\n"
+                                "   ├── [Option 2]\n"
+                                "   └── [Option 3]"
+                            )
+                        temp_history = chat_history.copy()
+                        temp_history.append({"role": "system", "content": think_prompt})
+                        
+                        # Explicitly add "/think" query to standard-library readline history
+                        try: readline.add_history(query)
+                        except: pass
+                        
+                        stream_llm_response(temp_history, prefix="Brainstorm:")
+                        continue
+
                     system_context = get_system_context(query)
                     prompt = (f"### Real-time System Context:\n{system_context}\n\n" if system_context else "") + f"User Question: {query}"
                     chat_history.append({"role": "user", "content": prompt})
+                    
+                    # Explicitly add query to standard-library readline history
+                    try: readline.add_history(query)
+                    except: pass
+                    
                     ans = stream_llm_response(chat_history, prefix="Agent:" if is_agent else "AI:")
                     if ans: chat_history.append({"role": "assistant", "content": ans})
                     else: chat_history.pop()
