@@ -1,38 +1,37 @@
-# Local-AI Agent (v0.8.4.1)
+# Local-AI Agent <kbd>v0.8.4.1</kbd>
 
 <div align="center">
-<img alt="Image_5e1xpv5e1xpv5e1x-3" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" width="800" />
+  <img alt="Local-AI Agent" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" width="800" />
 
-`Laguna-M.1` `Qwen3-Coder` `Gemini-3.1-Flash-Lite`
-
+  <p>
+    <code>Laguna-M.1</code>  <code>Qwen3-Coder</code>  <code>Gemini-3.1-Flash-Lite</code>
+  </p>
 </div>
 
 ---
 
 ## How the Agent Works
 
-All configurations, automations, and custom project workspaces are managed through a single markdown master blueprint: **`ai-context.md`**. The agent resolves your inputs into one of four execution paradigms:
+All configurations are managed through your master blueprint: `ai-context.md`.
 
-* **No Session (Direct selections)**: Typing custom commands or shortcuts prompts a local, rarity-weighted sparse search matrix to select options instantly, routing them directly to your local terminal or pager without querying an LLM.
-* **Single-Turn Agent (`ai <query>`)**: Typing `ai <query>` answers a single question and returns you directly to your Bash prompt, executing explicitly mapped diagnostic tools and skills deterministically to supply live context only when requested.
-* **Multi-Turn Chat (`ai` alone)**: Typing `ai` alone initiates an interactive, persistent conversation session with local state preservation and multi-turn context memory.
-* **Workspace Agents (`ai init <path>`)**: Compiles a path-specific structural tree of your repository, launching a dedicated, codebase-aware agent session primed with your chosen skill file.
+> **Routing Logic:** The agent automatically determines the optimal execution path based on your input pattern, ensuring zero wasted tokens.
+
+* **No Session (Direct selections):** Typing custom commands or shortcuts prompts a local, rarity-weighted sparse search matrix to select options instantly, routing them directly to your local terminal or pager.
+* **Single-Turn Agent (`ai <query>`):** Answers a single question and returns you to Bash, executing explicitly mapped diagnostic tools and skills only when requested.
+* **Multi-Turn Chat (`ai` alone):** Initiates an interactive, persistent conversation with local state preservation and multi-turn context memory.
+* **Workspace Agents (`ai init <path>`):** Compiles a path-specific structural tree of your repository, launching a dedicated, codebase-aware agent session primed with your chosen skill file.
 
 ---
 
 ## Core Features
 
 | Pillar | Capability | Description |
-| :--- | :--- | :--- |
-| **Performance** | **Zero-Daemon Footprint** | Consumes 0% idle CPU and 0% idle RAM with absolutely no background processes or active polling threads. |
-| | **Rarity-Weighted Search** | Upgraded log-scale TF-IDF/BM25 sparse indexing weights rare terms (like `hyprctl`) over noise to eliminate conflicts. |
-| **Resiliency** | **Cascading Fallback Chain** | Seamlessly cascades from Gemini $\rightarrow$ OpenRouter $\rightarrow$ Custom Cloud down to local servers if an endpoint drops offline. |
-| | **OpenRouter Failover** | Sends a prioritized model array payload to automatically route around free-tier model congestion on the server side. |
-| **Integration** | **Deterministic Context** | Prevents prompt bloat and token waste by loading system profiles (`mysys.md`) and custom tools strictly through defined triggers rather than heuristic keyword matching. |
-| | **Voice Bridge Extension** | Optional mobile-to-tablet bridge that processes voice input natively on mobile devices with 0% PC CPU load, designed to pipe transcripts straight into the deterministic CLI. |
-| | **Dynamic Viewer Pipeline** | Intercepts manual `[TOOL]` calls, automatically piping them to `mdcat` for terminal rendering while translating them to standard output for AI context tasks. |
-| **Portability** | **Multi-Depth Skill Trees** | Supports highly clean workspace directories, recursively scanning the skills directory up to 3 subfolders deep (e.g., `skills/coding/coder.md`). |
-| | **Auditable Codebase** | Designed with full transparency in under 400 lines of highly clean, standard-library Python code. |
+| --- | --- | --- |
+| **Performance** | **Zero-Daemon** | 0% idle CPU/RAM usage. No background polling threads. |
+| **Resiliency** | **Cascading Fallback** | Automatically cascades: Gemini $\rightarrow$ OpenRouter $\rightarrow$ Local. |
+| **Integration** | **Deterministic Context** | Uses `mysys.md` & custom tools only via defined triggers. |
+| **Portability** | **Multi-Depth Skills** | Scans skills directories up to 3 levels deep recursively. |
+| **Auditable** | **Clean Codebase** | Under 400 lines of standard-library Python. |
 
 ---
 
@@ -48,62 +47,54 @@ All configurations, automations, and custom project workspaces are managed throu
 
 ## Command Reference
 
-* `ai`: Launch an interactive, multi-turn conversation session. Press `Ctrl+C` or type `exit`/`quit` to quit.
-* `ai init <path>`: Index a directory and launch an interactive workspace agent primed with your codebase structure.
-* `ai <query>`: Instantly answer a single question and return directly to your Bash prompt.
-* `voice`: Launch your high-speed, local-network tablet voice bridge on port 9999 (optional add-on layer).
+| Command | Description |
+| --- | --- |
+| `ai` | Launch interactive, multi-turn conversation session. |
+| `ai init <path>` | Index directory & launch codebase-aware agent. |
+| `ai <query>` | Instant answer; returns directly to Bash prompt. |
+| `voice` | Launch local-network tablet voice bridge (Port 9999). |
 
 ---
 
 ## The Brain: Configuration (`ai-context.md`)
 
-Add your shortcuts, dynamic tool integrations, and project workspaces to `~/.config/local-ai/local-ai-agent/ai-context.md`. The search index automatically compiles in under 2ms on your next execution.
+Add your shortcuts and workspaces to `~/.config/local-ai/local-ai-agent/ai-context.md`.
 
 ```markdown
-## 1. Workspace Initializers & Bridges
-
-# --- OpenCode Direct Terminal Launcher ---
-~/.config/local-ai/opencode-bridge/opencode-bridge ---> opencode bridge, ocb
-
-# --- Standard Codebase Workspaces (Dynamic Auto-Init) ---
-# (Triggers standard ai init on the directory tree when matched)
+# --- Standard Codebase Workspaces ---
 ~/Projects/qwen-hypr ---> projects qwen, projects
 
-# --- Specialized Codebase Workspaces (Skill-Primed) ---
-# (Specialized project initializations primed with the "coder" Skill!)
-ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
+# --- Blueprint Map (CheatSheet) ---
+~/.config/local-ai/local-ai-agent/tools/blueprint --leaf ---> cheatsheet, blueprint, bp
 
-
-## 4. Static Aliases & Shell Shortcuts
-
-# --- Local-Ai Agent Blueprint Map (CheatSheet) ---
-# (Uses standard double-dash modifiers like --leaf or --glow to control visual output on demand)
-~/.config/local-ai/local-ai-agent/tools/blueprint --leaf ---> cheatsheet, blueprint, bp, cs, map
 ```
 
 ---
 
 ## Setup & Prerequisites
 
-### 1. Install optional rendering utilities
+### 1. Optional: Terminal Markdown Rendering
 
-To render Markdown files (`.md` skills, system profiles, and diagnostic logs) cleanly inside your terminal using your **native terminal theme colors**, it is recommended to install **`mdcat`** (Rust-based Markdown CLI viewer):
+For the best experience, install `mdcat` to render Markdown files with your native terminal colors:
 
 ```bash
 yay mdcat
+
 ```
 
-*Note: If `mdcat` is missing from the system, the Python agent automatically falls back to standard `cat` using standard-library path checks, keeping the entire pipeline fully portable.*
+### 2. Install Project
 
-### 2. Install the Project Files
 ```bash
 git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai
+
 ```
 
-### 3. Append the Hook to Your `~/.bashrc`
+### 3. Bash Hook
+
 ```bash
 echo '[ -f "$HOME/.config/local-ai/local-ai-agent/ai-hook.sh" ] && source "$HOME/.config/local-ai/local-ai-agent/ai-hook.sh"' >> ~/.bashrc
 source ~/.bashrc
+
 ```
 
 *(Optional)* Export your cloud API keys to activate cloud routing and fallback logic:
@@ -116,21 +107,17 @@ export OPENROUTER_API_KEY="sk-or-v1-YourOpenRouterKey"
 
 ```text
     ║
-  ═ █ ═                                                          ██╗
-    ║                                                            ██║
-                                                                ███║
-               ╔══╗                                           ██╔██║
-             ══╝  ╚══                                       ██╔╝ ██║
-                                                          ██╔╝   ██║
-                                                        █████████████████████████╗
-                                                        ╚███████████████████████╔╝   ~ > A H O Y _
-                                                    ═══╝╚════╝╚════╝╚════╝╚════╝═══
+  ═ █ ═                                                  ██╗
+    ║                                                    ██║
+                                                        ███║
+               ╔══╗                                   ██╔██║
+             ══╝  ╚══                               ██╔╝ ██║
+                                                  ██╔╝   ██║
+                                                █████████████████████████╗
+                                                ╚███████████████████████╔╝   ~ > A H O Y _
+                                            ═══╝╚════╝╚════╝╚════╝╚════╝═══
 
 ```
 
----
 
-</div>
-
-*For detailed system architecture diagrams, custom tool development guidelines, and advanced prompt engineering, refer to the full **[documentation.md](documentation.md)**.*
 
