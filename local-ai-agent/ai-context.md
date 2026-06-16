@@ -69,6 +69,10 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 # --- AI Status & Provider Diagnostics ---
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system/ai-status --leaf ---> status, aistatus, aistat, ai-status
 
+# [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/identity/business/mybiz ---> run business tool, execution biz
+# [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/identity/marketing/marketing ---> run marketing tool, execute growth
+# [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/identity/workout/routine ---> run workout tool, routine metrics
+
 # --- Weather & Live Networking ---
 # (Uses standard on-demand flags like --leaf, --glow, --mdcat, or --cat)
 [TOOL] curl -s "wttr.in/?format=3" --cat ---> weather simple, wttr, weather, rain forecast simple
@@ -76,10 +80,6 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 
 # --- System Time & Date (Real-time Clock Context) ---
 [TOOL] date ---> time, date, current time, what time is it, system date, system time
-
-# [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/identity/business/mybiz ---> run business tool, execution biz
-# [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/identity/marketing/marketing ---> run marketing tool, execute growth
-# [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/identity/workout/routine ---> run workout tool, routine metrics
 ```
 
 ## 4. Static Aliases & Shell Shortcuts
