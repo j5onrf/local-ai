@@ -56,7 +56,7 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 
 ## The Brain: Configuration (`ai-context.md`)
 
-Add your shortcuts and workspaces to `~/.config/local-ai/local-ai-agent/ai-context.md`.
+Add your shortcuts and workspaces to `ai-context.md`.
 
 ```markdown
 # --- Standard Codebase Workspaces ---
