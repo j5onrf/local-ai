@@ -1,7 +1,7 @@
 # local-ai
 
 <div align="center">
-<img  alt="Image_5e1xpv5e1xpv5e1x-4" src="https://github.com/user-attachments/assets/dad36212-a464-40ed-af58-abc4943ba38a" width="250" />
+<img alt="Image_5e1xpv5e1xpv5e1x-5" src="https://github.com/user-attachments/assets/f5ee8451-ce80-4e52-842f-7aefbdf1a348" width="800" />
 </div>
 
 ---
@@ -28,5 +28,6 @@ git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai
 cd ~/.config/local-ai && git pull
 
 ```
+
 
 
