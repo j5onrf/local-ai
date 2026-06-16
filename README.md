@@ -1,13 +1,14 @@
 # local-ai
 
-<img alt="local-ai-agent" src="https://github.com/user-attachments/assets/395d627f-5d08-4c04-82ab-def73c1bf860" />
+<div align="center">
+<img alt="local-ai-agent" src="https://github.com/user-attachments/assets/395d627f-5d08-4c04-82ab-def73c1bf860" width="800" />
+  
 Agentic [Tools] | Hyprland, Omarchy, Odysseus, and Hermes | Custom Integrated
-
-<br>
 
 ### [Local-AI Agent](./local-ai-agent)
 
-<br>
+</div>
+
 
 ## Install
 

@@ -1,8 +1,11 @@
 # Local-AI Agent (v0.8.4.1)
 
-<img alt="Image_5e1xpv5e1xpv5e1x-3" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" />
+<div align="center">
+<img alt="Image_5e1xpv5e1xpv5e1x-3" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" width="800" />
 
 `Laguna-M.1` `Qwen3-Coder` `Gemini-3.1-Flash-Lite`
+
+</div>
 
 ---
 
