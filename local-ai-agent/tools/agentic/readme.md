@@ -1,6 +1,10 @@
 # Identity Layer (`agentic/identity/`)
 
-<img alt="Adaptive Identity Layer for AI Agents" src="https://github.com/user-attachments/assets/67553dc5-f348-48ff-9c82-7368bc5b758b" />
+<div align="center">
+<img alt="Adaptive Identity Layer for AI Agents" src="https://github.com/user-attachments/assets/67553dc5-f348-48ff-9c82-7368bc5b758b" width="800" />
+</div>
+
+<br>
 
 This directory houses domain personas, situational roles, and behavioral guardrails. It decouples raw programmatic execution (what a script *does*) from contextual translation (how the agent *behaves*).
 
@@ -17,4 +21,5 @@ You can create any number of custom subdirectories here to organize your domains
 3. **Contextual Output (Presentation):** The inference engine handles the final generation, streaming a response filtered through the target identity's constraints and formatting rules.
 
 ---
+
 
