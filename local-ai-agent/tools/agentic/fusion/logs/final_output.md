@@ -1,0 +1,3 @@
+Baking soda (sodium bicarbonate) is a pure base requiring an acidic ingredient (e.g., buttermilk, cocoa, citrus) to trigger an immediate CO₂ release. It must be baked promptly to prevent gas loss and metallic off-flavors.
+
+Baking powder is a pre-mixed blend of baking soda, dry acid, and starch. It is typically "double-acting," releasing CO₂ upon contact with moisture and again when heated. Use baking soda for acidic batters to achieve a strong rise and browning; use baking powder for neutral recipes to ensure a controlled, consistent lift without requiring additional acidic components.
