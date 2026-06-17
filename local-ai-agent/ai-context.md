@@ -73,6 +73,11 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 # --- AI Status & Provider Diagnostics ---
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system/ai-status --leaf ---> status, aistatus, aistat, ai-status
 
+# --- Fusion-Research Engine (Compound MoA / Self-Fusion) ---
+# ~/.config/local-ai/local-ai-agent/tools/agentic/fusion/f_research.py --mode research ---> fusion research, fusion, trade-off evaluation, fusion research, deep research
+# ~/.config/local-ai/local-ai-agent/tools/agentic/fusion/f_research.py --mode coder ---> fusion coder, fusion, fusion research, compound coder, fusion coder, coder fusion
+
+# --- Adaptive Identity Layer for AI Agents (agentic/identity) ---
 # [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/identity/business/mybiz ---> run business tool, execution biz
 # [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/identity/marketing/marketing ---> run marketing tool, execute growth
 # [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/identity/workout/routine ---> run workout tool, routine metrics

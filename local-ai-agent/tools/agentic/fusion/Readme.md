@@ -35,7 +35,7 @@ A compound Mixture-of-Agents (MoA) pipeline designed to maximize free-tier API e
 **Files & Directories:**
 ```text
 ~/.config/local-ai/local-ai-agent/tools/agentic/fusion/
-├── fusion_research.py
+├── f_research.py
 ├── README.md
 └── logs/
 ```
@@ -52,12 +52,12 @@ export GEMINI_API_KEY="your_gemini_key"
 
 **Coding Tasks:**
 ```bash
-python3 fusion_research.py --mode coder "Create an async fastAPI middleware catching custom exceptions"
+python3 f_research.py --mode coder "Create an async fastAPI middleware catching custom exceptions"
 ```
 
 **Analytical Tasks:**
 ```bash
-python3 fusion_research.py --mode research "Analyze the trade-offs of solid-state batteries vs lithium-ion"
+python3 f_research.py --mode research "Analyze the trade-offs of solid-state batteries vs lithium-ion"
 ```
 
 ---
