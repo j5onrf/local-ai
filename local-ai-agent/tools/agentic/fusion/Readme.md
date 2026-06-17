@@ -1,6 +1,6 @@
 # Fusion Research Engine (Free Tier)
 
-A compound Mixture-of-Agents (MoA) pipeline designed to maximize free-tier API endpoints. It parallelizes specialized free models—including temperature-diverse Self-Fusion paths—and synthesizes responses using Gemini 3.5 Flash as a Draco-aligned Judge.
+A compound Mixture-of-Agents (MoA) pipeline designed to maximize free-tier API endpoints. It parallelizes specialized free models—including temperature-diverse Self-Fusion paths—and synthesizes responses using a native, cascading Gemini Flash Judge.
 
 ---
 
@@ -13,8 +13,8 @@ A compound Mixture-of-Agents (MoA) pipeline designed to maximize free-tier API e
          ▼ (coder: -c / --coder)                      ▼ (research: -r / --research)
     ├── Poolside Laguna M.1                      ├── GPT-OSS 120B (Temp 0.2) ┐ [Self-Fusion
     ├── GPT-OSS 20B                              ├── GPT-OSS 120B (Temp 0.8) ┘  Pathway]
-    └── Llama 3.3 70B                            ├── Llama 3.3 70B
-                                                 └── Mistral Small 24B
+    └── Qwen3 Coder                              ├── DeepSeek R1
+                                                 └── Llama 3.3 70B
                                                       │
          └─────────────────────┬──────────────────────┘
                                ▼
@@ -25,7 +25,7 @@ A compound Mixture-of-Agents (MoA) pipeline designed to maximize free-tier API e
                  (Draco Benchmark Synthesis)
                                │
                                ▼
-                        [Final Response]
+                        [Final Response] ──> logs/final_output.md
 ```
 
 ---
@@ -38,6 +38,7 @@ A compound Mixture-of-Agents (MoA) pipeline designed to maximize free-tier API e
 ├── f_research (executable)
 ├── README.md
 └── logs/
+    └── final_output.md (most recent synthesis)
 ```
 
 **Environment Variables:**
@@ -63,7 +64,7 @@ Ensure the script has execution permissions (`chmod +x f_research`).
 ```
 
 ### Interactive Mode (On-Demand)
-Launch the script with only a flag to trigger the interactive CLI prompt:
+To input your prompt on the fly with safe cursor containment, run the script with only a flag:
 ```bash
 ./f_research -r
 ```
@@ -79,22 +80,19 @@ In `-r` mode, the engine queries the high-reasoning `openai/gpt-oss-120b:free` m
 To combat free-tier provider instability, the script implements three defensive layers:
 * **Cloud-Failover Arrays:** For OpenRouter calls, the script passes a prioritized array of fallback models (e.g., Llama 3.3 70B, Gemini 2.5 Flash). If the primary specialist is down or rate-limited, OpenRouter automatically routes the query to the next available model in the cloud.
 * **Parameter Soft-Recovery:** If a restricted free-tier provider rejects custom temperature settings with an HTTP 400 Bad Request, the query interceptor automatically strips the `temperature` parameter and retries the request instantly.
-* **Specialist Isolation:** Thread pool execution isolates specialist connection errors. If a specialist fails completely, the engine logs the error and allows the Judge to proceed with the successful responses rather than halting.
+* **Specialist Isolation:** Thread pool execution isolates specialist connection errors, preserving successful runs to write to disk.
 
-### 3. Strict Judge Lock (Fail-Fast)
-To prevent output quality degradation, the synthesis phase is locked exclusively to **Gemini 3.5 Flash** (via native Google AI Studio or OpenRouter). If Gemini 3.5 Flash is unavailable or rate-limited, the pipeline intentionally aborts rather than falling back to legacy models that cannot handle the large context and Draco-alignment constraints.
+### 3. Cascading Native Judge (Fail-Safe)
+The synthesis phase is locked strictly to your native Google key (`GEMINI_API_KEY`), removing OpenRouter dependencies to prevent payment-required (402) errors. To ensure stable completion, the Judge implements a cascading native fallback chain:
+* **Primary:** `gemini-3.5-flash`
+* **Fallback:** `gemini-3.1-flash-lite` (if 3.5 suffers a transient 503 or 429 outage)
 
-### 4. Draco-Aligned Synthesis
-The Gemini 3.5 Flash Judge synthesizes specialist reports based on four weighted criteria adapted from Perplexity's Draco Deep Research Benchmark:
+### 4. Draco-Aligned Synthesis & Export
+The Judge synthesizes reports based on four weighted criteria adapted from Perplexity's Draco Deep Research Benchmark:
 * **Factual Accuracy (50%):** Validates claims, removes contradictions, and filters hallucinations.
 * **Breadth, Depth & Trade-offs (25%):** Weighs opposing data to produce actionable guidance.
 * **Presentation Quality (15%):** Strips conversational text and formats output cleanly.
 * **Citation & Technical Integrity (10%):** Preserves specific parameters and configuration blocks.
 
----
+Upon completion, the final synthesized Markdown response is written directly to **`logs/final_output.md`**, ready for on-demand paging.
 
-## Capabilities & Limitations
-
-* **Capabilities:** Highly effective at minimizing blind spots, validating cross-model logical conflicts, and acting as a cost-free daily research utility.
-* **Limitations:** Not designed for deeply sequential or long-horizon tasks where multi-step memory and strict state tracking are required across multiple files.
-```
