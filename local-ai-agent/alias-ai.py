@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.5.4 [j5onrf] [06-16-26]
+# Local-Ai Agent v0.8.5.8 [j5onrf] [06-16-26]
 
 import sys, re, os, json, threading, time, math, subprocess, shutil
 import urllib.request as urlreq, urllib.error as urlerr
@@ -55,7 +55,7 @@ def ensure_mysys_exists():
     if not os.path.exists(f"{SKILLS_DIR}/system/mysys.md"):
         p = f"{CFG_DIR}/tools/generate-profile"
         if os.path.exists(p):
-            try: subprocess.run([p], check=True)
+            try: subprocess.run([sys.executable, p], check=True)
             except Exception as e: sys.stderr.write(f"\033[1;31m[Warning] Failed to lazy-generate system profile: {e}\033[0m\n")
 
 def find_skill_file(skills_dir, skill_name, max_depth=3):
@@ -119,7 +119,7 @@ def load_vector_index():
         with open(CONTEXT_FILE) as f: lines = f.read().splitlines()
         index_data = []
         # Optimized: Single-pass strip operation using Python 3.8+ Walrus Operator
-        for line in [s for l in lines if (s := l.strip()) and not s.startswith("#") and "----->" not in l and "--->" in l]:
+        for line in [s for l in lines if (s := l.strip()) and not s.startswith("#") and "----->" not in s and "--->" in s]:
             cmd, intents = line.split("----->" if "----->" in line else "--->", 1)
             intent_list = [i.strip() for i in intents.split(",")]
             primary = intent_list[0] if intent_list else ""
@@ -308,7 +308,8 @@ def stream_llm_response(messages, prefix="AI: "):
                                         first = False
                                     print(content, end="", flush=True); acc.append(content)
                             except: pass
-                        print("\n"); return "".join(acc)
+                        # Optimized: Print exactly one trailing newline on completion to prevent visual stacking
+                        print(""); return "".join(acc)
                 except urlerr.HTTPError as e:
                     spinner.stop()
                     if e.code == 429 and retries > 0:
@@ -353,32 +354,29 @@ try:
                         query = raw_query.strip()
                         if query.lower() in ("exit", "quit", "q"): print("\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
                     
-                    # Unified /think interceptor for dynamic, non-mutating brainstorm generation
-                    if query.lower() in ("/think", "think"):
-                        think_file = find_skill_file(SKILLS_DIR, "think")
-                        think_prompt = ""
-                        if think_file:
+                    # Unified /f or /think interceptor supporting trailing arguments and auto-toggling
+                    q_lower = query.lower().strip()
+                    if q_lower in ("/f", "f") or q_lower.startswith(("/f ", "f ")):
+                        # Clean check: Handle automatic toggle state
+                        auto_f_file = f"{CFG_DIR}/.auto-f"
+                        if "toggle" in q_lower:
+                            if os.path.exists(auto_f_file):
+                                os.remove(auto_f_file)
+                                print("\033[1;33mAutomatic follow-ups disabled.\033[0m")
+                            else:
+                                open(auto_f_file, 'a').close()
+                                print("\033[1;32mAutomatic follow-ups enabled.\033[0m")
+                            continue
+                            
+                        think_bin = f"{CFG_DIR}/tools/follow-up"
+                        if os.path.exists(think_bin):
                             try:
-                                with open(think_file) as f: think_prompt = f.read().strip()
-                            except Exception: pass
-                        if not think_prompt:
-                            think_prompt = (
-                                "Analyze history and output exactly 3 next-step brainstorming triggers.\n"
-                                "Each option must be strictly 6 to 9 words long.\n"
-                                "No markdown bullets, no filler. Output exactly this format:\n\n"
-                                "🧠 Brainstorm Triggers:\n"
-                                "   ├── [Option 1]\n"
-                                "   ├── [Option 2]\n"
-                                "   └── [Option 3]"
-                            )
-                        temp_history = chat_history.copy()
-                        temp_history.append({"role": "system", "content": think_prompt})
-                        
-                        # Explicitly add "/think" query to standard-library readline history
-                        try: readline.add_history(query)
-                        except: pass
-                        
-                        stream_llm_response(temp_history, prefix="Brainstorm:")
+                                # Optimized: Run the think tool via sys.executable passing raw "query" as a CLI parameter [1]
+                                subprocess.run([sys.executable, think_bin, query], input=json.dumps(chat_history), text=True)
+                            except Exception as e:
+                                sys.stderr.write(f"\033[1;31m[Warning] Think tool failed: {e}\033[0m\n")
+                        else:
+                            sys.stderr.write("\033[1;31mError: Think tool not found at tools/follow-up\033[0m\n")
                         continue
 
                     system_context = get_system_context(query)
@@ -390,8 +388,17 @@ try:
                     except: pass
                     
                     ans = stream_llm_response(chat_history, prefix="Agent:" if is_agent else "AI:")
-                    if ans: chat_history.append({"role": "assistant", "content": ans})
-                    else: chat_history.pop()
+                    if ans: 
+                        chat_history.append({"role": "assistant", "content": ans})
+                        
+                        # Automated Trigger: If .auto-f toggle exists, automatically trigger follow-up execution [1]
+                        if os.path.exists(f"{CFG_DIR}/.auto-f"):
+                            think_bin = f"{CFG_DIR}/tools/follow-up"
+                            if os.path.exists(think_bin):
+                                try: subprocess.run([sys.executable, think_bin, "/f"], input=json.dumps(chat_history), text=True)
+                                except Exception: pass
+                    else: 
+                        chat_history.pop()
             except KeyboardInterrupt:
                 print("\n\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
 
