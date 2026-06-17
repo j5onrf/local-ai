@@ -11,7 +11,7 @@ THINK_FILE = f"{CFG_DIR}/skills/meta/follow-up.md"
 try:
     history = json.loads(sys.stdin.read())
 except Exception:
-    sys.stderr.write("Error: No valid chat history passed to think tool.\n")
+    sys.stderr.write("Error: No valid chat history passed to follow-up tool.\n")
     sys.exit(1)
 
 # 2. Extract dynamic option count from CLI arguments
@@ -47,7 +47,7 @@ else:
     # Dynamically inject the requested option count into the markdown template
     prompt = prompt.replace("exactly 3", f"exactly {option_count}")
 
-# 4. Append the dynamic think system prompt to the temporary history
+# 4. Append the dynamic follow-up system prompt to the temporary history
 history.append({"role": "system", "content": prompt})
 
 # 5. First-turn Safeguard: Ensure at least one user-role message is present on the stack to prevent API 400 Errors
