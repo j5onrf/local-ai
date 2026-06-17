@@ -36,7 +36,7 @@ if os.path.exists(THINK_FILE):
 if not prompt:
     prompt = (
         "Analyze history and output exactly 3 next-step follow-up questions or commands.\n"
-        "Each option must be strictly 6 to 9 words long.\n"
+        "Each option must be strictly 6 to 10 words long.\n"
         "No conversational filler. Output exactly this format:\n\n"
         "Follow-ups\n"
         "[Option 1]\n"

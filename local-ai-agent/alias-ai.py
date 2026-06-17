@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.5.8 [j5onrf] [06-16-26]
+# Local-Ai Agent v0.8.5.9 [j5onrf] [06-16-26]
 
 import sys, re, os, json, threading, time, math, subprocess, shutil
 import urllib.request as urlreq, urllib.error as urlerr
@@ -67,8 +67,7 @@ def find_skill_file(skills_dir, skill_name, max_depth=3):
 
 def load_skill_content(skill_name):
     """
-    Universally loads skill file content, triggers system profiling if needed,
-    and interpolates environment placeholders for any active skill.
+    Universally loads skill file content and triggers system profiling if needed.
     """
     if not skill_name: return ""
     skill_file = find_skill_file(SKILLS_DIR, skill_name)
@@ -77,16 +76,7 @@ def load_skill_content(skill_name):
             ensure_mysys_exists()
         try:
             with open(skill_file) as f:
-                content = f.read().strip()
-            
-            # Universal environment interpolation (any skill can use these)
-            detected_shell = os.path.basename(os.environ.get("SHELL", "bash"))
-            detected_os = subprocess.check_output("uname -sr", shell=True, text=True).strip() if shutil.which("uname") else "Standard"
-            
-            content = content.replace("{{ENV_DETAILS}}", f"{detected_os}, Shell: {detected_shell}")
-            content = content.replace("{{LANGUAGE_OR_FRAMEWORK}}", "Python/Bash")
-            content = content.replace("{{FILE_PATH}}", "Current Workspace")
-            return content
+                return f.read().strip()
         except Exception as e:
             sys.stderr.write(f"\033[1;31mError loading skill '{skill_name}': {e}\033[0m\n")
     return ""
@@ -374,9 +364,9 @@ try:
                                 # Optimized: Run the think tool via sys.executable passing raw "query" as a CLI parameter [1]
                                 subprocess.run([sys.executable, think_bin, query], input=json.dumps(chat_history), text=True)
                             except Exception as e:
-                                sys.stderr.write(f"\033[1;31m[Warning] Think tool failed: {e}\033[0m\n")
+                                sys.stderr.write(f"\033[1;31m[Warning] follow-up tool failed: {e}\033[0m\n")
                         else:
-                            sys.stderr.write("\033[1;31mError: Think tool not found at tools/follow-up\033[0m\n")
+                            sys.stderr.write("\033[1;31mError: follow-up not found at tools/follow-up\033[0m\n")
                         continue
 
                     system_context = get_system_context(query)

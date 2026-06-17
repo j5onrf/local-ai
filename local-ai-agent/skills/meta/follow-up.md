@@ -5,7 +5,7 @@ Analyze active history and generate exactly 3 general knowledge follow-up questi
 
 Constraints:
 - Prioritize the user's active query; derive all follow-ups directly from it.
-- Do not use markdown bolding, headers, list bullets, or option labels (like Option 1).
+- Do not use option labels (like Option 1).
 - Each option must be strictly between 6 and 10 words long.
 
 Template:
