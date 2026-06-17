@@ -7,7 +7,7 @@
 
 ### Directional Syntax Guide
 1. `~/path`: Indexes workspace and launches a standard AI Workspace.
-2. `ai init --<skill>`: Indexes codebase workspace pre-primed with a chosen `--<skill>` (e.g., `--coder` or `--sysadmin`).
+2. `ai init --<skill>`: Indexes codebase workspace pre-primed with a chosen `--<skill>` (e.g., `--coder` or `--prompt`).
 3. `[TOOL] <command>`: Runs a local utility (like `cat`, `curl`, or `date`) to inject dynamic Markdown context.
 4. `<command>`: Launches a native terminal alias, interactive TUI, or document viewer (using `mdcat`, `leaf`, or `glow`).
 
@@ -104,10 +104,11 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 ## 5. TUI (Terminal User Interface) Programs
 
 ```properties
+# --- Fusion-Research Engine (Compound MoA / Self-Fusion) ---
+~/.config/local-ai/local-ai-agent/tools/agentic/fusion/f_research -r ---> fusion research, fusion, fr, deep research
 # --- AI Deep Research TUI ---
 ~/.config/local-ai/research-tui/deep-research ---> deep research, research, dr
-# --- Fusion-Research Engine (Compound MoA / Self-Fusion) ---
-~/.config/local-ai/local-ai-agent/tools/agentic/fusion/f_research -r ---> fusion research, fusion, deep research
+
 
 # --- Custom TUI Applications ---
 ~/.config/local-ai/basepage-tui/basepage.py ---> basepage, base, basepage tui, rss
@@ -117,15 +118,15 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 ~/.config/local-ai/local-ai-agent/tools/subsec/media/media.py ---> tuiamp, winamp, media
 
 # --- Article Summarizers ---
-~/.config/local-ai/ai-summary/llmsum.py ---> llmsum, ytsum, summary
+~/.config/local-ai/ai-summary/llmsum.py ---> llmsum, ytsum, summary, sum
+
+# --- Local-Ai Tablet Voice Bridge ---
+~/.config/local-ai/voice/voice-query ---> voice, voice query, voice bridge
 ```
 
 ## 6. Graphical Applications & Webapps
 
 ```properties
-# --- Local-Ai Tablet Voice Bridge ---
-~/.config/local-ai/voice/voice-query ---> voice, voice query, voice bridge
-
 # --- System App Launcher (Ultra-Light Rofi-TUI) ---
 ~/.config/local-ai/local-ai-agent/tools/subsec/app-launcher/app-launcher.py ---> app launcher, app
 

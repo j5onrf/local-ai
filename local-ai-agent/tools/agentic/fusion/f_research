@@ -173,7 +173,7 @@ def run_research_engine(mode, prompt):
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {openrouter_key}",
-        "HTTP-Referer": "https://github.com/j5onrf/ai-suggestion"
+        "HTTP-Referer": "https://github.com/j5onrf/local-ai"
     }
     url = "https://openrouter.ai/api/v1/chat/completions"
     
