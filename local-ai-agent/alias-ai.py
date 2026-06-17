@@ -344,7 +344,7 @@ try:
                         query = raw_query.strip()
                         if query.lower() in ("exit", "quit", "q"): print("\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
                     
-                    # Unified /f or /think interceptor supporting trailing arguments and auto-toggling
+                    # Unified /f interceptor supporting trailing arguments and auto-toggling
                     q_lower = query.lower().strip()
                     if q_lower in ("/f", "f") or q_lower.startswith(("/f ", "f ")):
                         # Clean check: Handle automatic toggle state
@@ -361,7 +361,7 @@ try:
                         think_bin = f"{CFG_DIR}/tools/follow-up"
                         if os.path.exists(think_bin):
                             try:
-                                # Optimized: Run the think tool via sys.executable passing raw "query" as a CLI parameter [1]
+                                # Optimized: Run the follow-up tool via sys.executable passing raw "query" as a CLI parameter [1]
                                 subprocess.run([sys.executable, think_bin, query], input=json.dumps(chat_history), text=True)
                             except Exception as e:
                                 sys.stderr.write(f"\033[1;31m[Warning] follow-up tool failed: {e}\033[0m\n")
