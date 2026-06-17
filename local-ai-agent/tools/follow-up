@@ -99,9 +99,6 @@ for url, headers, model, extra in configs:
             # 7. Safe In-Memory Post-Processing
             full_text = "".join(chunks).strip()
             
-            # Clean up any duplicate prefixes the model might have generated (e.g. AI:, 💡, or 🧠)
-            full_text = re.sub(r'^(AI:\s*|💡\s*|🧠\s*|Brainstorm:\s*)*', '', full_text, flags=re.IGNORECASE).strip()
-            
             lines = full_text.splitlines()
             if lines:
                 # If the first line is some variation of "Follow-ups", remove it so we can print it cleanly
@@ -112,12 +109,9 @@ for url, headers, model, extra in configs:
                 cleaned_options = []
                 for line in lines:
                     s_line = line.strip()
-                    # Strip any accidental bullet characters, pointers (❯), or horizontal lines, leaving your brackets intact
-                    s_line = re.sub(r'^(\s*[-*❯•│├──└──\d+])*\s*', '', s_line).strip()
                     if s_line:
                         cleaned_options.append(s_line)
                 
-                # Print with standard green AI: prefix followed by the options (completely flush left!)
                 # (Prints exactly ONE leading newline of breathing space)
                 sys.stdout.write(f"\n\033[1;32mAI:\033[0m Follow-ups\n")
                 for opt in cleaned_options[:option_count]:
