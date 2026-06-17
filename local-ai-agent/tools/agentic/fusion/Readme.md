@@ -10,7 +10,7 @@ A compound Mixture-of-Agents (MoA) pipeline designed to maximize free-tier API e
        [User Prompt] ──> Mode Dispatcher
                                │
          ┌─────────────────────┴─────────────────────┐
-         ▼ (coder: -c / --coder)                      ▼ (research: -r / --research)
+         ▼ (coder: -c )                      ▼ (research: -r )
     ├── Poolside Laguna M.1                      ├── GPT-OSS 120B (Temp 0.2) ┐ [Self-Fusion
     ├── GPT-OSS 20B                              ├── GPT-OSS 120B (Temp 0.8) ┘  Pathway]
     └── Qwen3 Coder                              ├── DeepSeek R1
