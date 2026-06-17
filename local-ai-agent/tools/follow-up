@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # follow-up - Standalone Agentic Brainstorm Engine v1.5.3
-# Path: /home/j5/.config/local-ai/local-ai-agent/tools/follow-up
+# Path: ~/.config/local-ai/local-ai-agent/tools/follow-up
 
 import sys, os, json, re, urllib.request as urlreq
 
