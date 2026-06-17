@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# follow-up - Standalone Agentic Brainstorm Engine v1.5.3
-# Path: ~/.config/local-ai/local-ai-agent/tools/follow-up
+# follow-up - Standalone Agentic Brainstorm Engine v1.5.4
+# Path: /home/j5/.config/local-ai/local-ai-agent/tools/follow-up
 
 import sys, os, json, re, urllib.request as urlreq
 
@@ -36,8 +36,8 @@ if os.path.exists(THINK_FILE):
 if not prompt:
     prompt = (
         "Analyze history and output exactly 3 next-step follow-up questions or commands.\n"
-        "Each option must be strictly 6 to 9 words long. Do not use conversational filler.\n"
-        "Do not use markdown. Output exactly this format:\n\n"
+        "Each option must be strictly 6 to 9 words long.\n"
+        "No conversational filler. Output exactly this format:\n\n"
         "Follow-ups\n"
         "[Option 1]\n"
         "[Option 2]\n"
@@ -99,12 +99,6 @@ for url, headers, model, extra in configs:
             # 7. Safe In-Memory Post-Processing
             full_text = "".join(chunks).strip()
             
-            # Deterministically convert the very last T-junction (├──) to an elbow (└──)
-            if "├──" in full_text:
-                last_idx = full_text.rfind("├──")
-                if last_idx != -1:
-                    full_text = full_text[:last_idx] + "└──" + full_text[last_idx + 3:]
-            
             # Clean up any duplicate prefixes the model might have generated (e.g. AI:, 💡, or 🧠)
             full_text = re.sub(r'^(AI:\s*|💡\s*|🧠\s*|Brainstorm:\s*)*', '', full_text, flags=re.IGNORECASE).strip()
             
@@ -118,8 +112,8 @@ for url, headers, model, extra in configs:
                 cleaned_options = []
                 for line in lines:
                     s_line = line.strip()
-                    # Strip any accidental bullet characters, pointers (❯), brackets, or numbers
-                    s_line = re.sub(r'^(\s*[-*❯•│├──└──\[\]\d+])*\s*', '', s_line).strip()
+                    # Strip any accidental bullet characters, pointers (❯), or horizontal lines, leaving your brackets intact
+                    s_line = re.sub(r'^(\s*[-*❯•│├──└──\d+])*\s*', '', s_line).strip()
                     if s_line:
                         cleaned_options.append(s_line)
                 
