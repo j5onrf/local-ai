@@ -78,7 +78,7 @@ In `-r` mode, the engine queries the high-reasoning `openai/gpt-oss-120b:free` m
 
 ### 2. Multi-Level Fault Tolerance & Fallbacks
 To combat free-tier provider instability, the script implements three defensive layers:
-* **Cloud-Failover Arrays:** For OpenRouter calls, the script passes a prioritized array of fallback models (e.g., Llama 3.3 70B, Gemini 2.5 Flash). If the primary specialist is down or rate-limited, OpenRouter automatically routes the query to the next available model in the cloud.
+* **Cloud-Failover Arrays:** For OpenRouter calls, the script passes a prioritized array of fallback models (e.g., Llama 3.3 70B). If the primary specialist is down or rate-limited, OpenRouter automatically routes the query to the next available model in the cloud.
 * **Parameter Soft-Recovery:** If a restricted free-tier provider rejects custom temperature settings with an HTTP 400 Bad Request, the query interceptor automatically strips the `temperature` parameter and retries the request instantly.
 * **Specialist Isolation:** Thread pool execution isolates specialist connection errors, preserving successful runs to write to disk.
 
