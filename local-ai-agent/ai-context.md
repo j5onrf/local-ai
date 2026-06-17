@@ -73,10 +73,6 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 # --- AI Status & Provider Diagnostics ---
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system/ai-status --leaf ---> status, aistatus, aistat, ai-status
 
-# --- Fusion-Research Engine (Compound MoA / Self-Fusion) ---
-# ~/.config/local-ai/local-ai-agent/tools/agentic/fusion/f_research.py --mode research ---> fusion research, fusion, trade-off evaluation, fusion research, deep research
-# ~/.config/local-ai/local-ai-agent/tools/agentic/fusion/f_research.py --mode coder ---> fusion coder, fusion, fusion research, compound coder, fusion coder, coder fusion
-
 # --- Adaptive Identity Layer for AI Agents (agentic/identity) ---
 # [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/identity/business/mybiz ---> run business tool, execution biz
 # [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/identity/marketing/marketing ---> run marketing tool, execute growth
@@ -102,6 +98,7 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 
 # --- Server Lifecycle Management ---
 ~/.config/local-ai/local-ai-agent/tools/kill-ai-servers ---> killserver, ks
+
 ```
 
 ## 5. TUI (Terminal User Interface) Programs
@@ -109,6 +106,8 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 ```properties
 # --- AI Deep Research TUI ---
 ~/.config/local-ai/research-tui/deep-research ---> deep research, research, dr
+# --- Fusion-Research Engine (Compound MoA / Self-Fusion) ---
+~/.config/local-ai/local-ai-agent/tools/agentic/fusion/f_research -r ---> fusion research, fusion, deep research
 
 # --- Custom TUI Applications ---
 ~/.config/local-ai/basepage-tui/basepage.py ---> basepage, base, basepage tui, rss

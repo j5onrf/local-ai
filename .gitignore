@@ -4,6 +4,7 @@ local-ai-agent/skills/system/mysys.md
 voice/server.pem
 local-ai-agent/.auto-f
 local-ai-agent/ai-history
+local-ai-agent/tools/agentic/fusion/logs
 
 # Ignore Python cache directories and bytecode
 __pycache__/
