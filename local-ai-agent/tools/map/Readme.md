@@ -2,7 +2,7 @@
 
 Maps your project's code structure into a lightweight semantic index, saving **95% to 99% in token overhead** compared to raw code ingestion. 
 
-Instead of feeding full files to an AI, this tool uses Abstract Syntax Tree (AST) parsing to extract classes, functions, and markdown headers. Your agent uses this map first, then requests only the specific files it needs to modify.
+Instead of feeding full files to an AI, this tool uses Abstract Syntax Tree (AST) parsing to extract Python classes, functions, and root-level imports, compiles Markdown documentation headers, and parses comment purpose summaries in Shell scripts (`.sh`). Your agent uses this map first, then requests only the specific files it needs to modify.
 
 ---
 
@@ -23,13 +23,14 @@ Scan target [.]:
 
 ### Token Savings Math
 
-* **Code (~98% Saved):** A 400-line Python file (~3,000 tokens) is reduced to a ~40-token JSON outline.
-* **Docs (~99% Saved):** A 1,500-token Markdown file is reduced to a ~15-token title summary.
+* **Code (~98% Saved):** A 400-line Python file (~3,000 tokens) is reduced to a ~50-token JSON outline (including root imports).
+* **Docs & Shell (~99% Saved):** A 1,500-token Markdown or Shell script is reduced to a ~15-token header summary.
 
 ---
 
 ### Output Schema (`skeleton.json`)
 
+```json
 {
   "README.md": {
     "type": "markdown",
@@ -94,7 +95,7 @@ Scan target [.]:
 
 ### Files
 
-* `skeleton-map`: Python 3 AST parser (features auto `.gitignore` support).
+* `skeleton-map`: Python 3 AST parser (features auto `.gitignore` and shell-script parsing).
 * `skeleton.json`: Auto-generated structural mapping database.
 * `readme.md`: This file.
 
