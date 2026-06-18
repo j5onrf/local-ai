@@ -56,7 +56,7 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system/security-audit --leaf ---> security audit, secaud, system audit
 
 # --- System Optimization (Improve System Performance) ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system/system-optimize --leaf ---> system optimize, sysop, system optimization
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system/system-optimize --leaf ---> system optimize, sysop
 
 # --- System Logs & Diagnostics (Compressed Stream Triage) ---
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system/log-checker --leaf ---> log checker, ailog, log check, check errors, system crashed, events
@@ -79,7 +79,6 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 # [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/identity/workout/routine ---> run workout tool, routine metrics
 
 # --- Weather & Live Networking ---
-# (Uses standard on-demand flags like --leaf, --glow, --mdcat, or --cat)
 [TOOL] curl -s "wttr.in/?format=3" --cat ---> weather simple, wttr, weather, rain forecast simple
 [TOOL] curl -s wttr.in --cat ---> weather full, wttr, weather, rain forecast full
 
