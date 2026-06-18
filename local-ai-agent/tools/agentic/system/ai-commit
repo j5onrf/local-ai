@@ -24,15 +24,14 @@ changes=$(git diff --cached -U0 -- \
     | grep -v -E '^[+-]\s*(#|//|/\*|\*|\s*$)' \
     | head -n 15 || true)
 
-# Structure the prompt for a 2B model: 
-# Data first, directive last. This leverages the attention mechanism of smaller models.
+# Strict, minimal instructions that force a 3-5 word limit
 PROMPT="Files:
 $stats
 
 Diff:
 $changes
 
-Instruction: Write a 6-10 word imperative git commit message for the changes above. Start directly with an action verb (e.g., Fix, Add, Refactor, Update). Return ONLY the message. No quotes, intro, or headers."
+Instruction: Write a 3-5 word git commit message for these changes. Start with an action verb (e.g., Fix, Add, Refactor, Update). Be extremely direct. Do not use 'by', 'and', or descriptive fluff. Output ONLY the message."
 
 # Query the universal Python gateway
 message=$("$_AI_PYTHON_BIN" "$_AI_SCRIPT_PATH" --talk "$PROMPT")
