@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-# skeleton-map [Local Map Compiler] [j5onrf] v1.5.1
+# skeleton-map [Local Map Compiler] [j5onrf] v1.7.1
 
 import os
+import re
 import ast
 import json
 import fnmatch
@@ -86,6 +87,16 @@ def should_ignore(rel_path, is_dir, gitignore_patterns, default_ignored_dirs):
                             return True
     return False
 
+def is_binary(filepath):
+    """
+    Safely checks if a file is binary by scanning the first 1024 bytes for a null byte.
+    """
+    try:
+        with open(filepath, 'rb') as f:
+            return b'\x00' in f.read(1024)
+    except Exception:
+        return True  # Handle permission errors safely by treating as binary/unreadable
+
 def analyze_python_file(filepath):
     """
     Parses Python code using AST to extract functions, classes, and root-level imports.
@@ -95,7 +106,6 @@ def analyze_python_file(filepath):
             content = f.read()
         
         tree = ast.parse(content, filename=filepath)
-        
         functions = []
         classes = []
         imports = set()
@@ -123,6 +133,73 @@ def analyze_python_file(filepath):
     except Exception as e:
         return {"type": "python", "error": f"Unreadable: {str(e)}"}
 
+def analyze_rust_file(filepath):
+    """
+    Strips comments and extracts struct and function signatures from Rust code.
+    """
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            content = f.read()
+        content = re.sub(r'//.*|/\*.*?\*/', '', content, flags=re.DOTALL)
+        structs = re.findall(r'\bstruct\s+(\w+)', content)
+        functions = re.findall(r'\bfn\s+(\w+)', content)
+        return {"type": "rust", "classes": structs, "functions": functions}
+    except Exception as e:
+        return {"type": "rust", "error": f"Unreadable: {str(e)}"}
+
+def analyze_go_file(filepath):
+    """
+    Strips comments and extracts structs and functions (including receivers) from Go code.
+    """
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            content = f.read()
+        content = re.sub(r'//.*|/\*.*?\*/', '', content, flags=re.DOTALL)
+        structs = re.findall(r'\btype\s+(\w+)\s+struct\b', content)
+        functions = re.findall(r'\bfunc\s+(?:\([^)]+\)\s+)?(\w+)', content)
+        return {"type": "go", "classes": structs, "functions": functions}
+    except Exception as e:
+        return {"type": "go", "error": f"Unreadable: {str(e)}"}
+
+def analyze_lua_file(filepath):
+    """
+    Extracts global and local function definitions from Lua code.
+    """
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            content = f.read()
+        content = re.sub(r'--.*', '', content)
+        functions = re.findall(r'\bfunction\s+([\w.:]+)', content)
+        return {"type": "lua", "classes": [], "functions": functions}
+    except Exception as e:
+        return {"type": "lua", "error": f"Unreadable: {str(e)}"}
+
+def analyze_json_file(filepath):
+    """
+    Extracts top-level structural keys of JSON files.
+    """
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            data = json.load(f)
+        keys = list(data.keys()) if isinstance(data, dict) else []
+        return {"type": "json", "keys": keys}
+    except Exception:
+        return {"type": "json", "error": "Malformed JSON"}
+
+def analyze_qml_file(filepath):
+    """
+    Extracts custom properties and function definitions from QML.
+    """
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            content = f.read()
+        content = re.sub(r'//.*|/\*.*?\*/', '', content, flags=re.DOTALL)
+        properties = re.findall(r'\bproperty\s+\w+\s+(\w+)', content)
+        functions = re.findall(r'\bfunction\s+(\w+)', content)
+        return {"type": "qml", "properties": properties, "functions": functions}
+    except Exception as e:
+        return {"type": "qml", "error": f"Unreadable: {str(e)}"}
+
 def analyze_markdown_file(filepath):
     try:
         with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
@@ -148,9 +225,6 @@ def analyze_markdown_file(filepath):
         return {"type": "markdown", "error": f"Unreadable: {str(e)}"}
 
 def analyze_shell_file(filepath):
-    """
-    Parses a shell script to extract the first functional comment line.
-    """
     try:
         with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
             purpose = None
@@ -167,6 +241,30 @@ def analyze_shell_file(filepath):
             return {"type": "shell", "summary": purpose or "Shell Script / Hook Module"}
     except Exception as e:
         return {"type": "shell", "error": f"Unreadable: {str(e)}"}
+
+def analyze_generic_file(filepath):
+    """
+    Universal fallback for unrecognized text/code files (including .txt, .yaml, .toml, .env, etc.).
+    Extracts the first non-empty text line up to 120 characters as a summary.
+    """
+    try:
+        ext = os.path.splitext(filepath)[1].lstrip('.').lower() or "file"
+        if is_binary(filepath):
+            return {"type": f"binary/{ext}"}
+            
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            summary = ""
+            for _ in range(15):
+                line = f.readline()
+                if not line:
+                    break
+                stripped = line.strip()
+                if stripped:
+                    summary = stripped[:120]
+                    break
+            return {"type": ext, "summary": summary or "Empty file"}
+    except Exception as e:
+        return {"type": "file", "error": f"Unreadable: {str(e)}"}
 
 def generate_skeleton(target_dir):
     skeleton = {}
@@ -196,12 +294,26 @@ def generate_skeleton(target_dir):
             if should_ignore(rel_path, False, patterns, default_ignored):
                 continue
             
+            # Map extensions natively to their respective lightweight analyzers
             if file.endswith('.py'):
                 skeleton[rel_path] = analyze_python_file(filepath)
             elif file.endswith('.md') or file.endswith('.MD'):
                 skeleton[rel_path] = analyze_markdown_file(filepath)
             elif file.endswith('.sh') or file.endswith('.bash'):
                 skeleton[rel_path] = analyze_shell_file(filepath)
+            elif file.endswith('.rs'):
+                skeleton[rel_path] = analyze_rust_file(filepath)
+            elif file.endswith('.go'):
+                skeleton[rel_path] = analyze_go_file(filepath)
+            elif file.endswith('.lua'):
+                skeleton[rel_path] = analyze_lua_file(filepath)
+            elif file.endswith('.json'):
+                skeleton[rel_path] = analyze_json_file(filepath)
+            elif file.endswith('.qml'):
+                skeleton[rel_path] = analyze_qml_file(filepath)
+            else:
+                # Universal fallback for all other extensions (including .txt, .yaml, .toml, .ini, .env, etc.)
+                skeleton[rel_path] = analyze_generic_file(filepath)
                 
     return skeleton
 
