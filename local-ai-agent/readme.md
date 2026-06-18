@@ -67,6 +67,9 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 Add your shortcuts, commands, and workspaces to `ai-context.md`.
 
 ```markdown
+# --- Local-Ai Agent Blueprint Map (CheatSheet) ---
+~/.config/local-ai/local-ai-agent/tools/blueprint --leaf ---> cheatsheet, blueprint, bp, cs, map
+
 # --- Specialized Codebase Workspaces (Skill-Primed) ---
 ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 
