@@ -26,7 +26,7 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 | Pillar | Capability | Description |
 | --- | --- | --- |
 | **Performance** | **Zero-Daemon** | 0% idle CPU/RAM. Ultra-lite execution. |
-| **Resiliency** | **CFallbacks** | Automatically cascades: Gemini $\rightarrow$ OpenRouter $\rightarrow$ Local. |
+| **Resiliency** | **Fallbacks** | Automatically cascades: Gemini $\rightarrow$ OpenRouter $\rightarrow$ Local. |
 | **Safety** | **Zero-Trust Guardrails** | Intercepts destructive commands before shell execution. |
 | **Integration** | **Dynamic Context** | On-demand compilation of system specs and tool outputs. |
 | **Optimization** | **Token-Slasher** | Custom tool and skill integration built for minimal token use. |
