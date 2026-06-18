@@ -71,7 +71,7 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 [TOOL] df -h / ---> disk usage, nvme drive usage, check storage space
 
 # --- AI Status & Provider Diagnostics ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system/ai-status --leaf ---> status, aistatus, aistat, ai-status
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system/ai-status --leaf ---> ai status, aistatus, aistat, status
 
 # --- Weather & Live Networking ---
 [TOOL] curl -s "wttr.in/?format=3" --cat ---> weather simple, wttr, weather, rain forecast simple

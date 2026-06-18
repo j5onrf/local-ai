@@ -1,96 +1,77 @@
 #!/usr/bin/env bash
-# ai-status - Diagnostics for Local-AI Agent Stack v1.0.0
+# ai-status - Diagnostics for Local-AI Agent Stack v1.3.0
 
 set -euo pipefail
 
 # Helper to mask API keys safely
 mask_key() {
-    local key="${1:-}"
-    if [[ -z "$key" ]]; then
-        echo "*Not Exported*"
-    else
-        echo "Enabled (\`${key:0:6}...${key: -4}\`)"
-    fi
+    [[ -z "${1:-}" ]] && echo "*Not Exported*" || echo "Enabled (\`${1:0:6}...${1: -4}\`)"
 }
 
-# Helper to check endpoint connectivity
-check_online() {
-    local url="$1"
-    if curl -s -I --connect-timeout 1.5 "$url" >/dev/null; then
-        echo "**Online**"
-    else
-        echo "*Offline / Unreachable*"
-    fi
+# Unified 1-line connection and key-existence checker
+check_conn() {
+    [[ -n "${1:-}" ]] && curl -s -I --connect-timeout 1.5 "$2" >/dev/null && echo 0 || echo 1
 }
 
-echo "# ACTIVE AI ROUTING DIAGNOSTICS"
-echo ""
-echo "> **Instructions for AI:**"
-echo "> 1. Inform the user which AI provider is currently active and which model is selected."
-echo "> 2. If a key is disabled or an endpoint is offline (forcing a fallback to OpenRouter or Local), clearly explain why the current provider was chosen."
-echo "> 3. Keep your explanation to 2 sentences max."
-echo ""
-echo "---"
-echo ""
-echo "## CREDENTIALS & CONFIGURATION"
+# Evaluate all three connections in 3 lines of code
+gemini_status=$(check_conn "${GEMINI_API_KEY:-}" "https://generativelanguage.googleapis.com")
+or_status=$(check_conn "${OPENROUTER_API_KEY:-}" "https://openrouter.ai")
+local_status=$(curl -s -I --connect-timeout 1.0 "http://localhost:8080" >/dev/null && echo 0 || echo 1)
+
+# Fetch OpenRouter key metadata (usage, limits, tier) on-demand
+or_meta="*Not Available*"
+if [[ $or_status -eq 0 ]]; then
+    # Direct query to OpenRouter's auth/key endpoint with local zero-dependency python JSON parser
+    or_meta=$(curl -s -H "Authorization: Bearer $OPENROUTER_API_KEY" "https://openrouter.ai/api/v1/auth/key" | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin).get('data', {})
+    limit = f'\${d.get(\"limit\")}' if d.get('limit') is not None else 'Unlimited'
+    free = ' (Free Tier)' if d.get('is_free_tier') else ' (Paid)'
+    print(f'Used: \${d.get(\"usage\", 0):.4f} | Limit: {limit}{free}')
+except Exception:
+    print('Failed to parse metadata')
+" || echo "API Unreachable")
+fi
+
+# Fetch Local Server active model dynamically if online
+local_model="Local Server"
+if [[ $local_status -eq 0 ]]; then
+    local_model=$(curl -s "http://localhost:8080/v1/models" | python3 -c "
+import sys, json
+try:
+    models = json.load(sys.stdin).get('data', [])
+    if models: print(models[0].get('id', 'Local Server'))
+    else: print('Local Server')
+except:
+    print('Local Server')
+" || echo "Local Server")
+fi
+
+echo -e "# ACTIVE AI ROUTING DIAGNOSTICS\n\n> **Instructions for AI:**\n> 1. Inform the user which AI provider is currently active and which model is selected.\n> 2. If a key is disabled or an endpoint is offline (forcing a fallback to OpenRouter or Local), clearly explain why the current provider was chosen.\n> 3. Keep your explanation to 2 sentences max.\n\n---\n\n## CREDENTIALS & CONFIGURATION"
 echo "* **GEMINI_API_KEY**  : $(mask_key "${GEMINI_API_KEY:-}")"
-echo "* **CLOUD_MODEL**     : \`${CLOUD_MODEL:-gemini-3.1-flash-lite}\`"
+echo "* **CLOUD_MODEL**     : \`${CLOUD_MODEL:-gemini-3.1-flash-lite}\` (Free Limits: 15 RPM / 1,500 RPD)"
 echo ""
 echo "* **OPENROUTER_KEY**  : $(mask_key "${OPENROUTER_API_KEY:-}")"
-echo "* **OPENROUTER_MODEL**: \`${OPENROUTER_MODEL:-poolside/laguna-m.1:free}\`"
-echo ""
-echo "---"
-echo ""
-echo "## ENDPOINT STATUS"
+echo "* **OPENROUTER_MODEL**: \`${OPENROUTER_MODEL:-openrouter/free}\`"
+echo "* **OPENROUTER_USAGE**: \`${or_meta}\`" # Prints: Used: $X.XXXX | Limit: $Y (Free/Paid)
+echo -e "\n---\n\n## ENDPOINT STATUS"
 
-# Evaluate connections
-gemini_conn=1
-if [[ -n "${GEMINI_API_KEY:-}" ]]; then
-    if curl -s -I --connect-timeout 1.5 "https://generativelanguage.googleapis.com" >/dev/null; then
-        gemini_conn=0
-    fi
-fi
+# Compact 1-line status printers
+[[ -n "${GEMINI_API_KEY:-}" ]] && echo "* **Google APIs**   : $([[ $gemini_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")" || echo "* **Google APIs**   : *Skipped (No Key)*"
+[[ -n "${OPENROUTER_API_KEY:-}" ]] && echo "* **OpenRouter API** : $([[ $or_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")" || echo "* **OpenRouter API** : *Skipped (No Key)*"
+echo -e "* **Local Server**   : $([[ $local_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")\n\n---\n\n## ACTIVE RUNTIME ROUTE"
 
-or_conn=1
-if [[ -n "${OPENROUTER_API_KEY:-}" ]]; then
-    if curl -s -I --connect-timeout 1.5 "https://openrouter.ai" >/dev/null; then
-        or_conn=0
-    fi
-fi
-
-local_conn=1
-if curl -s -I --connect-timeout 1.0 "http://localhost:8080" >/dev/null; then
-    local_conn=0
-fi
-
-# Print Status
-if [[ -n "${GEMINI_API_KEY:-}" ]]; then
-    echo "* **Google APIs**   : $([[ $gemini_conn -eq 0 ]] && echo "**Online**" || echo "*Offline*")"
-else
-    echo "* **Google APIs**   : *Skipped (No Key)*"
-fi
-
-if [[ -n "${OPENROUTER_API_KEY:-}" ]]; then
-    echo "* **OpenRouter API** : $([[ $or_conn -eq 0 ]] && echo "**Online**" || echo "*Offline*")"
-else
-    echo "* **OpenRouter API** : *Skipped (No Key)*"
-fi
-
-echo "* **Local Server**   : $([[ $local_conn -eq 0 ]] && echo "**Online**" || echo "*Offline*")"
-echo ""
-echo "---"
-echo ""
-echo "## ACTIVE RUNTIME ROUTE"
-
-if [[ -n "${GEMINI_API_KEY:-}" && $gemini_conn -eq 0 ]]; then
+# Route evaluation matching runtime alias-ai.py exactly
+if [[ -n "${GEMINI_API_KEY:-}" && $gemini_status -eq 0 ]]; then
     echo "* **Selected Provider**: **Gemini Cloud API**"
     echo "* **Active Model**     : \`${CLOUD_MODEL:-gemini-3.1-flash-lite}\`"
-elif [[ -n "${OPENROUTER_API_KEY:-}" && $or_conn -eq 0 ]]; then
+elif [[ -n "${OPENROUTER_API_KEY:-}" && $or_status -eq 0 ]]; then
     echo "* **Selected Provider**: **OpenRouter API**"
-    echo "* **Active Model**     : \`${OPENROUTER_MODEL:-poolside/laguna-m.1:free}\`"
-elif [[ $local_conn -eq 0 ]]; then
+    echo "* **Active Model**     : \`${OPENROUTER_MODEL:-openrouter/free}\`"
+elif [[ $local_status -eq 0 ]]; then
     echo "* **Selected Provider**: **Local AI Server**"
-    echo "* **Active Model**     : \`Local Server\`"
+    echo "* **Active Model**     : \`${local_model}\`" # Shows discovered model name (e.g. qwen2.5-coder)
 else
     echo "* **Selected Provider**: *None / All Offline*"
 fi
