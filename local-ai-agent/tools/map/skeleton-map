@@ -4,60 +4,192 @@
 import os
 import ast
 import json
+import fnmatch
 
-# Saves the compiled skeleton.json strictly alongside this script file
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+# Fallback to current working directory if __file__ is unavailable (e.g., interactive shells)
+try:
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+except NameError:
+    SCRIPT_DIR = os.getcwd()
+
 OUTPUT_FILE = os.path.join(SCRIPT_DIR, "skeleton.json")
+
+def load_gitignore_patterns(target_dir):
+    """
+    Parses a .gitignore file if present in the target directory.
+    Returns a list of active pattern strings.
+    """
+    gitignore_path = os.path.join(target_dir, ".gitignore")
+    patterns = []
+    if os.path.isfile(gitignore_path):
+        try:
+            with open(gitignore_path, 'r', encoding='utf-8', errors='ignore') as f:
+                for line in f:
+                    line = line.strip()
+                    # Skip empty lines, comments, and negation rules (!) for simplicity
+                    if not line or line.startswith('#') or line.startswith('!'):
+                        continue
+                    patterns.append(line)
+        except Exception:
+            pass
+    return patterns
+
+def should_ignore(rel_path, is_dir, gitignore_patterns, default_ignored_dirs):
+    """
+    Determines if a given relative path matches either the built-in hardcoded rules
+    or the project's custom .gitignore rules.
+    """
+    # Standardize path separators for cross-platform pattern matching
+    norm_path = rel_path.replace(os.sep, '/')
+    parts = norm_path.split('/')
+    
+    # 1. Fallback to default blocklist (acts as a backup/safety net)
+    for part in parts:
+        if part in default_ignored_dirs:
+            return True
+
+    # 2. Process .gitignore rules
+    for pattern in gitignore_patterns:
+        pat = pattern
+        dir_only = False
+        
+        # Check if the rule is directory-specific
+        if pat.endswith('/'):
+            pat = pat[:-1]
+            dir_only = True
+            
+        if dir_only and not is_dir:
+            continue
+            
+        # Check if rule is anchored to the root directory
+        anchored = False
+        if pat.startswith('/'):
+            pat = pat[1:]
+            anchored = True
+            
+        if anchored:
+            # Match directly from the root of the scanned workspace
+            target_match_path = norm_path if not dir_only else norm_path.rstrip('/')
+            if fnmatch.fnmatchcase(target_match_path, pat):
+                return True
+            # Check if directory pattern matches a parent sequence (e.g. pattern '/dist' matching 'dist/sub/file')
+            pat_parts = pat.split('/')
+            if len(parts) >= len(pat_parts):
+                candidate = '/'.join(parts[:len(pat_parts)])
+                if fnmatch.fnmatchcase(candidate, pat):
+                    return True
+        else:
+            # Match rules anywhere within the path depth (e.g., "temp.txt" or "*.log")
+            for i, part in enumerate(parts):
+                if dir_only and i == len(parts) - 1 and not is_dir:
+                    continue
+                if fnmatch.fnmatchcase(part, pat):
+                    return True
+                # Handle multi-depth sub-paths (e.g., "build/logs" in the path)
+                if '/' in pat:
+                    pat_len = len(pat.split('/'))
+                    for j in range(len(parts) - pat_len + 1):
+                        sub_path = '/'.join(parts[j:j+pat_len])
+                        if fnmatch.fnmatchcase(sub_path, pat):
+                            return True
+    return False
 
 def analyze_python_file(filepath):
     try:
-        with open(filepath, 'r', encoding='utf-8') as f:
-            tree = ast.parse(f.read())
-        functions = [node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]
-        classes = [node.name for node in ast.walk(tree) if isinstance(node, ast.ClassDef)]
+        with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
+            content = f.read()
+        
+        tree = ast.parse(content, filename=filepath)
+        
+        functions = []
+        classes = []
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                functions.append(node.name)
+            elif isinstance(node, ast.ClassDef):
+                classes.append(node.name)
+                
         return {"type": "python", "classes": classes, "functions": functions}
-    except Exception:
-        return {"type": "python", "error": "Unparseable"}
+    except SyntaxError:
+        return {"type": "python", "error": "Syntax Error / Unparseable"}
+    except Exception as e:
+        return {"type": "python", "error": f"Unreadable: {str(e)}"}
 
 def analyze_markdown_file(filepath):
     try:
-        with open(filepath, 'r', encoding='utf-8') as f:
-            first_line = f.readline().strip()
-        purpose = first_line.lstrip('#').strip() if first_line.startswith('#') else "Agent Documentation Module"
-        return {"type": "markdown", "summary": purpose}
-    except Exception:
-        return {"type": "markdown", "error": "Unreadable"}
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            heading = None
+            first_non_empty = None
+            for _ in range(15):
+                line = f.readline()
+                if not line:
+                    break
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                if not first_non_empty:
+                    first_non_empty = stripped
+                if stripped.startswith('#'):
+                    heading = stripped.lstrip('#').strip()
+                    break
+            
+            purpose = heading or first_non_empty or "Agent Documentation Module"
+            purpose = purpose.lstrip('#*` ').rstrip(' *`').strip()
+            return {"type": "markdown", "summary": purpose or "Agent Documentation Module"}
+    except Exception as e:
+        return {"type": "markdown", "error": f"Unreadable: {str(e)}"}
 
 def generate_skeleton(target_dir):
     skeleton = {}
-    for root, _, files in os.walk(target_dir):
-        # Portable exclusion filters for common repository clutter
-        if any(ignored in root for ignored in ['.git', '__pycache__', 'logs', '.auto-f', 'node_modules', 'venv']):
-            continue
+    
+    # Standard safety-net exclusions if no .gitignore is found or for critical system clutter
+    default_ignored = {
+        '.git', '__pycache__', 'logs', '.auto-f', 'node_modules', 
+        'venv', '.venv', 'env', '.env', 'build', 'dist', 
+        '.egg-info', '.pytest_cache', '.mypy_cache', '.vscode', '.idea'
+    }
+    
+    patterns = load_gitignore_patterns(target_dir)
+    if patterns:
+        print(f"ℹ Loaded {len(patterns)} rules from .gitignore.")
+    
+    for root, dirs, files in os.walk(target_dir):
+        # Optimization: Filter directories in-place to prevent os.walk recursion 
+        new_dirs = []
+        for d in dirs:
+            dir_rel_path = os.path.relpath(os.path.join(root, d), target_dir)
+            if not should_ignore(dir_rel_path, True, patterns, default_ignored):
+                new_dirs.append(d)
+        dirs[:] = new_dirs
             
         for file in files:
             filepath = os.path.join(root, file)
             rel_path = os.path.relpath(filepath, target_dir)
             
+            # File-level check against .gitignore patterns
+            if should_ignore(rel_path, False, patterns, default_ignored):
+                continue
+            
             if file.endswith('.py'):
                 skeleton[rel_path] = analyze_python_file(filepath)
-            elif file.endswith('.md'):
+            elif file.endswith('.md') or file.endswith('.MD'):
                 skeleton[rel_path] = analyze_markdown_file(filepath)
                 
     return skeleton
 
 def main():
     try:
-        user_input = input("Target directory (Press Enter for current directory): ").strip()
+        # A shorter prompt to maximize space for long absolute paths
+        user_input = input("Scan target [.]: ").strip()
     except (KeyboardInterrupt, EOFError):
         print("\n✕ Operation cancelled.")
         return
 
-    # Dynamic fallback to current terminal working directory
     if not user_input:
         target_dir = os.getcwd()
     else:
-        target_dir = os.path.abspath(os.path.expanduser(user_input))
+        expanded = os.path.expanduser(os.path.expandvars(user_input))
+        target_dir = os.path.abspath(expanded)
 
     if not os.path.isdir(target_dir):
         print(f"❌ Error: '{target_dir}' is not a valid directory.")
@@ -65,10 +197,18 @@ def main():
 
     skeleton = generate_skeleton(target_dir)
     
-    with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
-        json.dump(skeleton, f, indent=2)
-        
-    print("✔ Skeleton map compiled successfully.")
+    try:
+        with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
+            json.dump(skeleton, f, indent=2)
+        print(f"✔ Skeleton map compiled successfully at: {OUTPUT_FILE}")
+    except (IOError, OSError):
+        fallback_file = os.path.join(os.getcwd(), "skeleton.json")
+        try:
+            with open(fallback_file, 'w', encoding='utf-8') as f:
+                json.dump(skeleton, f, indent=2)
+            print(f"⚠ SCRIPT_DIR is read-only. Map saved to fallback: {fallback_file}")
+        except Exception as e:
+            print(f"❌ Error: Failed to write skeleton map. {e}")
 
 if __name__ == "__main__":
     main()
