@@ -26,7 +26,7 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 | Pillar | Capability | Description |
 | --- | --- | --- |
 | **Performance** | **Zero-Daemon** | 0% idle CPU/RAM. Ultra-lite execution. |
-| **Search Engine** | **Jaccard Similarity** | Sub-millisecond keyword and partial-word matching with 0ms prefill lag. |
+| **Search Engine** | **Jaccard Similarity** | Sub-millisecond keyword and partial-word matching. |
 | **Resiliency** | **Fallbacks** | Automatically cascades: Gemini $\rightarrow$ OpenRouter $\rightarrow$ Local. |
 | **Safety** | **Zero-Trust Guardrails** | Intercepts destructive commands before shell execution. |
 | **Integration** | **Dynamic Context** | On-demand compilation of system specs and tool outputs. |
