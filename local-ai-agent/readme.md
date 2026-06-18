@@ -1,4 +1,4 @@
-# Local-AI Agent <kbd>v0.8.5.1</kbd>
+# Local-AI Agent <kbd>v0.8.6.1</kbd>
 
 <div align="center">
   <img alt="Local-AI Agent" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" width="800" />
@@ -31,7 +31,7 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 | **Integration** | **Dynamic Context** | On-demand compilation of system specs and tool outputs. |
 | **Optimization** | **Token-Slasher** | Custom tool and skill integration built for minimal token use. |
 | **Interface** | **Conversational TUI** | Rich, multi-turn chat sessions directly in the terminal. |
-| **Auditability** | **Zero-Dependency** | Under 400 lines of standard-library Python. |
+| **Auditability** | **Zero-Dependency** | Under 350 lines of standard-library Python. |
 
 ---
 

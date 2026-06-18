@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.5.6 [j5onrf] [06-17-26]
+# Local-Ai Agent v0.8.6.1 [j5onrf] [06-18-26]
 
 import sys, re, os, json, threading, time, subprocess, shutil
 import urllib.request as urlreq, urllib.error as urlerr
@@ -16,7 +16,7 @@ _CACHED_ENTRIES, _LAST_M_TIME = None, 0
 BASE_PROMPT = "Local shell AI assistant (read-only access).\nProvide direct, natural plain-text answers using any provided system context.\nNo markdown (no bolding, no headers, no bullet lists).\nAlways write full, complete, and helpful sentences.\n\n"
 
 class InlineSpinner:
-    def __init__(self): self.chars, self.active, self.thread = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"], False, None
+    def __init__(self): self.chars, self.active, self.thread = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏", False, None
     def _spin(self):
         idx = 0
         while self.active:
@@ -24,30 +24,28 @@ class InlineSpinner:
             idx, _ = idx + 1, time.sleep(0.08)
         sys.stderr.write("\r\x1b[2K\r"); sys.stderr.flush()
     def start(self): self.active, self.thread = True, threading.Thread(target=self._spin, daemon=True); self.thread.start()
-    def stop(self):
-        self.active = False
-        if self.thread: self.thread.join()
+    def stop(self): self.active = False; self.thread.join() if self.thread else None
 
 def sanitize_input(text): return re.sub(r"[`$]", "", text).strip() if text else ""
 def tokenize(text): return [w for w in TOKEN_RE.sub(" ", text.lower()).split() if len(w) > 1 and w not in STOP_WORDS]
 def check_danger(cmd): return f"DANGER_FLAGGED:{cmd}" if cmd and any(kw in cmd.lower() for kw in DESTRUCTIVE_KEYWORDS) else cmd
 
+# On-demand profile generation helper
 def ensure_mysys_exists():
-    if not os.path.exists(f"{SKILLS_DIR}/system/mysys.md") and os.path.exists(f"{CFG_DIR}/tools/generate-profile"):
-        try: subprocess.run([sys.executable, f"{CFG_DIR}/tools/generate-profile"], check=True)
-        except Exception as e: sys.stderr.write(f"\033[1;31m[Warning] Failed to lazy-generate system profile: {e}\033[0m\n")
+    if not os.path.exists(f"{SKILLS_DIR}/system/mysys.md"):
+        try: subprocess.run([sys.executable, f"{CFG_DIR}/tools/generate-profile"])
+        except Exception: pass
 
 def find_skill_file(skills_dir, skill_name, max_depth=3):
     t = f"{skill_name.lower()}.md"
     for r, _, files in os.walk(skills_dir):
-        if r.replace(skills_dir, "").count(os.sep) <= max_depth and t in (f.lower() for f in files): return os.path.join(r, t)
+        if r[len(skills_dir):].count(os.sep) <= max_depth and t in (f.lower() for f in files): return os.path.join(r, t)
     return None
 
 def load_skill_content(skill_name):
-    if not skill_name: return ""
-    sf = find_skill_file(SKILLS_DIR, skill_name)
+    sf = find_skill_file(SKILLS_DIR, skill_name) if skill_name else None
     if sf:
-        if "skills/system/" in sf.replace("\\", "/"): ensure_mysys_exists()
+        if "system" in skill_name.lower(): ensure_mysys_exists()
         try:
             with open(sf) as f: return f.read().strip()
         except Exception as e: sys.stderr.write(f"\033[1;31mError loading skill '{skill_name}': {e}\033[0m\n")
@@ -58,10 +56,9 @@ def print_stock_error(n):
     sys.stderr.write(f"zsh: command not found: {n}\n" if "zsh" in sh else f"bash: {n}: command not found\n")
 
 def run_local_tool(cmd):
-    cleaned = re.sub(r'\|\s*(leaf|mdcat|cat|glow)\b.*$', '', cmd.strip()).strip()
     try:
-        env = os.environ.copy(); env["AI_CONTEXT_RUN"] = "1"
-        out = subprocess.check_output(cleaned, shell=True, text=True, timeout=15, env=env).strip()
+        env = {**os.environ, "AI_CONTEXT_RUN": "1"}
+        out = subprocess.check_output(re.sub(r'\|\s*(leaf|mdcat|cat|glow)\b.*$', '', cmd.strip()).strip(), shell=True, text=True, timeout=15, env=env).strip()
         return f"{out}\n" if out else "Action executed successfully.\n"
     except Exception as e:
         sys.stderr.write(f"\033[1;31mTool execution failed: {e}\033[0m\n")
@@ -70,51 +67,42 @@ def run_local_tool(cmd):
 def load_context_entries():
     global _CACHED_ENTRIES, _LAST_M_TIME
     if not os.path.exists(CONTEXT_FILE):
-        sys.stderr.write(f"\n\033[1;31m[CRITICAL ERROR]: ai-context.md not found at: {CONTEXT_FILE}\033[0m\n"); return []
+        sys.stderr.write(f"\n\033[1;31m[CRITICAL ERROR]: ai-context.md not found: {CONTEXT_FILE}\033[0m\n"); return []
     try:
         mtime = os.path.getmtime(CONTEXT_FILE)
         if _CACHED_ENTRIES is not None and mtime <= _LAST_M_TIME: return _CACHED_ENTRIES
-        with open(CONTEXT_FILE) as f: lines = f.read().splitlines()
+        with open(CONTEXT_FILE) as f:
+            lines = [s for l in f.read().splitlines() if (s := l.strip()) and not s.startswith("#") and "--->" in s]
         entries = []
-        for line in [s for l in lines if (s := l.strip()) and not s.startswith("#") and "--->" in s]:
+        for line in lines:
             cmd, intents = line.split("--->", 1)
             intent_list = [i.strip() for i in intents.split(",")]
             primary = intent_list[0] if intent_list else ""
             for intent in intent_list:
-                tokens = tokenize(intent)
-                if tokens: entries.append({"cmd": cmd.strip(), "intent": intent, "primary": primary, "tokens": tokens})
+                if tokens := tokenize(intent):
+                    entries.append({"cmd": cmd.strip(), "intent": intent, "primary": primary, "tokens": tokens})
         _CACHED_ENTRIES, _LAST_M_TIME = entries, mtime
         return entries
     except Exception as e: sys.stderr.write(f"\033[1;31mError parsing context map: {e}\033[0m\n"); return []
 
-def matrix_search(query, threshold=0.55):
-    clean_query = query.strip().lower()
-    query_tokens = tokenize(query)
-    if not query_tokens: return None
-    entries = load_context_entries()
-    if not entries: return None
-    candidates, q_set = [], set(query_tokens)
+def matrix_search(query, threshold=0.45):
+    q_clean, q_tokens = query.strip().lower(), set(tokenize(query))
+    if not q_tokens or not (entries := load_context_entries()): return None
+    candidates = []
     for entry in entries:
-        clean_intent = entry["intent"].strip().lower()
-        if clean_query == clean_intent:
-            candidates.append((3.0, entry["cmd"], entry.get("primary", entry["intent"])))
-            continue
-        ent_tokens = entry.get("tokens")
-        if len(query_tokens) >= len(ent_tokens) and query_tokens[:len(ent_tokens)] == ent_tokens:
-            candidates.append((2.0, entry["cmd"], entry.get("primary", entry["intent"])))
-            continue
-        intersect = q_set & set(ent_tokens)
-        if not intersect or (len(query_tokens) == 1 and query_tokens[0] != clean_intent): continue
-        overlap_ratio = len(intersect) / len(ent_tokens)
-        query_ratio = len(intersect) / len(query_tokens)
-        score = (overlap_ratio + query_ratio) / 2.0
+        ent_tokens, ent_clean = set(entry["tokens"]), entry["intent"].strip().lower()
+        score = len(q_tokens & ent_tokens) / len(q_tokens | ent_tokens) if (q_tokens & ent_tokens) else 0.0
+        if q_clean in ent_clean: score = max(score, 0.8)
+        if q_clean == ent_clean: score = 3.0
         if score >= threshold: candidates.append((score, entry["cmd"], entry.get("primary", entry["intent"])))
     if not candidates: return None
+    for _, cmd, _ in candidates:
+        if "system" in cmd.lower(): ensure_mysys_exists(); break
     candidates.sort(key=lambda x: (-x[0], len(x[2])))
     seen, top = set(), []
     for _, cmd, primary in candidates:
         if cmd not in seen:
-            seen.add(cmd); top.append(f"{primary}|||{check_danger(cmd)}")
+            seen.add(cmd); top.append(f"{primary}|||{clean_tool_prefix(cmd)}")
             if len(top) >= 5: break
     return "\n".join(top)
 
@@ -136,35 +124,30 @@ def clean_tool_prefix(cmd):
     c = cmd.replace("[TOOL]", "", 1).strip() if is_tool else cmd
     if c.startswith("DANGER_FLAGGED:"):
         c = f"DANGER_FLAGGED:{c.replace('DANGER_FLAGGED:', '').replace('[TOOL]', '').strip()}"
-    use_leaf, use_glow, use_cat = c.endswith(" --leaf"), c.endswith(" --glow"), c.endswith(" --cat")
-    c = c[:-7].strip() if (use_leaf or use_glow) else (c[:-6].strip() if use_cat else c)
     pager = ""
-    if use_leaf and shutil.which("leaf"): pager = "leaf"
-    elif use_glow and shutil.which("glow"): pager = "glow"
-    elif use_cat: pager = "cat"
-    elif is_tool: pager = "mdcat" if shutil.which("mdcat") else "cat"
-    if pager: c = f"{c} | {pager}"
-    elif "mdcat" in c and not shutil.which("mdcat"): c = re.sub(r'\|\s*mdcat\b.*$', '', c).strip()
+    for f, p in [(" --leaf", "leaf"), (" --glow", "glow"), (" --cat", "cat")]:
+        if c.endswith(f): c, pager = c[:-len(f)].strip(), p; break
+    if not pager and is_tool: pager = "mdcat" if shutil.which("mdcat") else "cat"
+    if pager: c = f"{c} | {pager}" if pager != "mdcat" or shutil.which("mdcat") else c
     return c
 
 def get_system_context(query):
-    context, q_tokens = "", tokenize(query)
+    q_tokens = tokenize(query)
     if not q_tokens or "\n" in query.strip(): return ""
-    entries = load_context_entries()
-    for entry in entries:
+    for entry in load_context_entries():
         ent_tokens = entry.get("tokens", [])
         if len(q_tokens) >= len(ent_tokens) and q_tokens[:len(ent_tokens)] == ent_tokens:
-            matched_cmd, matched_intent = entry.get("cmd"), entry.get("intent")
-            if matched_cmd and matched_cmd.startswith("[TOOL]"):
-                tool_cmd = matched_cmd.replace("[TOOL]", "").strip()
-                if "tools/agentic/system/" in tool_cmd or "skills/system/" in tool_cmd: ensure_mysys_exists()
-                for flag in [" --leaf", " --glow", " --cat"]:
-                    if tool_cmd.endswith(flag): tool_cmd = tool_cmd[:-len(flag)].strip()
-                intent_tokens = set(tokenize(matched_intent))
+            cmd = entry.get("cmd", "")
+            if cmd.startswith("[TOOL]"):
+                tool = cmd.replace("[TOOL]", "").strip()
+                if "system" in tool.lower(): ensure_mysys_exists()
+                for f in [" --leaf", " --glow", " --cat"]:
+                    if tool.endswith(f): tool = tool[:-len(f)].strip()
+                intent_tokens = set(tokenize(entry.get("intent", "")))
                 args = " ".join([w for w in query.split() if tokenize(w) and tokenize(w)[0] not in intent_tokens])
-                if args: tool_cmd = f"{tool_cmd} {args}"
-                sys.stderr.write(f"\033[90m[sys] Executing: {tool_cmd}\033[0m\n"); sys.stderr.flush()
-                return run_local_tool(tool_cmd)
+                if args: tool = f"{tool} {args}"
+                sys.stderr.write(f"\033[90m[sys] Executing: {tool}\033[0m\n"); sys.stderr.flush()
+                return run_local_tool(tool)
     return ""
 
 def run_interactive_selection(intent):
@@ -193,13 +176,13 @@ def run_interactive_selection(intent):
             if is_danger:
                 sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K\x1b[1A\r\x1b[K"); sys.stderr.flush()
                 if key.lower() == 'y':
-                    if "tools/agentic/system/" in cmd_to_show or "skills/system/" in cmd_to_show: ensure_mysys_exists()
+                    if "system" in cmd_to_show: ensure_mysys_exists()
                     sys.stdout.write(cmd_to_show); sys.stdout.flush()
                 else: sys.stderr.write("Aborted safely.\n")
                 break
             if key in ('\r', ''):
                 sys.stderr.write("\n"); sys.stderr.flush()
-                if "tools/agentic/system/" in cmd_to_show or "skills/system/" in cmd_to_show: ensure_mysys_exists()
+                if "system" in cmd_to_show: ensure_mysys_exists()
                 sys.stdout.write(cmd_to_show); sys.stdout.flush(); break
             elif key in ('\x1b[A', '\x1b[B'):
                 current_idx = (current_idx + (1 if key == '\x1b[B' else -1) + num_opts) % num_opts
@@ -210,18 +193,18 @@ def run_interactive_selection(intent):
 
 def stream_llm_response(messages, prefix="AI: "):
     configs, gkey, okey, ckey, curl = [], os.environ.get("GEMINI_API_KEY"), os.environ.get("OPENROUTER_API_KEY"), os.environ.get("CLOUD_API_KEY"), os.environ.get("CLOUD_API_URL")
-    if gkey: configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Content-Type": "application/json", "Authorization": f"Bearer {gkey}"}, os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"), {}))
+    if gkey: configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Authorization": f"Bearer {gkey}"}, os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"), {}))
     if okey:
         m = os.environ.get("OPENROUTER_MODEL", "poolside/laguna-m.1:free")
-        configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Content-Type": "application/json", "Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/ai-suggestion"}, m, {"models": [m, "qwen/qwen3-coder:free", "openrouter/free"]}))
-    if ckey and curl: configs.append((curl, {"Content-Type": "application/json", "Authorization": f"Bearer {ckey}"}, os.environ.get("CLOUD_MODEL"), {}))
-    configs.append(("http://localhost:8080/v1/chat/completions", {"Content-Type": "application/json"}, None, {}))
+        configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/ai-suggestion"}, m, {"models": [m, "qwen/qwen3-coder:free", "openrouter/free"]}))
+    if ckey and curl: configs.append((curl, {"Authorization": f"Bearer {ckey}"}, os.environ.get("CLOUD_MODEL"), {}))
+    configs.append(("http://localhost:8080/v1/chat/completions", {}, None, {}))
     spinner = InlineSpinner()
     try:
         for url, headers, model, extra in configs:
             body = {"messages": messages, "stream": True, **extra}
             if model: body["model"] = model
-            req = urlreq.Request(url, data=json.dumps(body).encode("utf-8"), headers=headers, method="POST")
+            req = urlreq.Request(url, data=json.dumps(body).encode("utf-8"), headers={"Content-Type": "application/json", **headers}, method="POST")
             retries, backoff = 2, 1.5
             while retries >= 0:
                 try:
@@ -288,15 +271,6 @@ try:
                         if query.lower() in ("exit", "quit", "q"): print("\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
                     q_lower = query.lower().strip()
                     if q_lower in ("/f", "f") or q_lower.startswith(("/f ", "f ")):
-                        auto_f_file = f"{CFG_DIR}/.auto-f"
-                        if "toggle" in q_lower:
-                            if os.path.exists(auto_f_file):
-                                os.remove(auto_f_file)
-                                print("\033[1;33mAutomatic follow-ups disabled.\033[0m")
-                            else:
-                                open(auto_f_file, 'a').close()
-                                print("\033[1;32mAutomatic follow-ups enabled.\033[0m")
-                            continue
                         think_bin = f"{CFG_DIR}/tools/follow-up"
                         if os.path.exists(think_bin):
                             try: subprocess.run([sys.executable, think_bin, query], input=json.dumps(chat_history), text=True)
@@ -311,12 +285,6 @@ try:
                     ans = stream_llm_response(chat_history, prefix="Agent:" if is_agent else "AI:")
                     if ans: 
                         chat_history.append({"role": "assistant", "content": ans})
-                        if os.path.exists(f"{CFG_DIR}/.auto-f"):
-                            think_bin = f"{CFG_DIR}/tools/follow-up"
-                            if os.path.exists(think_bin):
-                                try: subprocess.run([sys.executable, think_bin, "/f"], input=json.dumps(chat_history), text=True)
-                                except Exception: pass
-                    else: chat_history.pop()
             except KeyboardInterrupt: print("\n\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
 
         elif len(sys.argv) > 2:

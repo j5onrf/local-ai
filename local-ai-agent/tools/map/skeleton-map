@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# skeleton-map [Local Map Compiler]
+# skeleton-map [Local Map Compiler] v1.4
 
 import os
 import ast
