@@ -30,17 +30,64 @@ Scan target [.]:
 
 ### Output Schema (`skeleton.json`)
 
-```json
-"tools/subsec/media/media.py": {
-  "type": "python",
-  "classes": [],
-  "functions": [
-    "trigger_robust_toggle",
-    "get_system_volume",
-    "adjust_system_volume",
-    "run_media_control"
-  ]
-}
+{
+  "README.md": {
+    "type": "markdown",
+    "summary": "local-ai"
+  },
+  "local-ai-agent/ai-context.md": {
+    "type": "markdown",
+    "summary": "Local-AI Agent Blueprint"
+  },
+  "local-ai-agent/alias-ai.py": {
+    "type": "python",
+    "imports": [
+      "json",
+      "os",
+      "re",
+      "readline",
+      "select",
+      "shutil",
+      "subprocess",
+      "sys",
+      "termios",
+      "threading",
+      "time",
+      "tty",
+      "urllib"
+    ],
+    "classes": [
+      "InlineSpinner"
+    ],
+    "functions": [
+      "sanitize_input",
+      "tokenize",
+      "check_danger",
+      "ensure_mysys_exists",
+      "find_skill_file",
+      "load_skill_content",
+      "print_stock_error",
+      "run_local_tool",
+      "load_context_entries",
+      "jaccard_search",
+      "get_key",
+      "clean_tool_prefix",
+      "get_system_context",
+      "run_interactive_selection",
+      "stream_llm_response",
+      "__init__",
+      "_spin",
+      "start",
+      "stop"
+    ]
+  },
+  "local-ai-agent/readme.md": {
+    "type": "markdown",
+    "summary": "Local-AI Agent <kbd>v0.8.6.1</kbd>"
+  },
+  "local-ai-agent/ai-hook.sh": {
+    "type": "shell",
+    "summary": "Local-Ai Agent Hook v0.8.6.2 [j5onrf] [06-18-26]"
 ```
 
 ---
