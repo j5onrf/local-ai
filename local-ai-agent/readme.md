@@ -70,9 +70,6 @@ Add your shortcuts, commands, and workspaces to `ai-context.md`.
 # --- Local-Ai Agent Blueprint Map (CheatSheet) ---
 ~/.config/local-ai/local-ai-agent/tools/blueprint --leaf ---> cheatsheet, blueprint, bp, cs, map
 
-# --- Specialized Codebase Workspaces (Skill-Primed) ---
-ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
-
 # --- System Optimization (Improve System Performance) ---
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system/system-optimize --leaf ---> system optimize, sysop
 ```
