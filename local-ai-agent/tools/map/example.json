@@ -1,0 +1,190 @@
+{
+  "alias-ai.py": {
+    "type": "python",
+    "classes": [
+      "InlineSpinner"
+    ],
+    "functions": [
+      "sanitize_input",
+      "tokenize",
+      "check_danger",
+      "ensure_mysys_exists",
+      "find_skill_file",
+      "load_skill_content",
+      "print_stock_error",
+      "run_local_tool",
+      "load_context_entries",
+      "matrix_search",
+      "get_key",
+      "clean_tool_prefix",
+      "get_system_context",
+      "run_interactive_selection",
+      "stream_llm_response",
+      "__init__",
+      "_spin",
+      "start",
+      "stop"
+    ]
+  },
+  "readme.md": {
+    "type": "markdown",
+    "summary": "Local-AI Agent <kbd>v0.8.5.1</kbd>"
+  },
+  "ai-context.md": {
+    "type": "markdown",
+    "summary": "Local-AI Agent Blueprint"
+  },
+  "tools/agentic/identity/readme.md": {
+    "type": "markdown",
+    "summary": "Identity Layer (`agentic/identity/`)"
+  },
+  "tools/agentic/system/readme.md": {
+    "type": "markdown",
+    "summary": "Agentic System [TOOLS]"
+  },
+  "tools/agentic/fusion/Readme.md": {
+    "type": "markdown",
+    "summary": "Fusion Research Engine (Free Tier)"
+  },
+  "tools/subsec/stopwatch/stopwatch.py": {
+    "type": "python",
+    "classes": [],
+    "functions": [
+      "strip_ansi",
+      "get_key_non_blocking",
+      "fmt_time_high_res",
+      "get_elapsed",
+      "generate_visualizer",
+      "draw_row_raw",
+      "run_stopwatch_tui"
+    ]
+  },
+  "tools/subsec/media/readme.md": {
+    "type": "markdown",
+    "summary": "media.py"
+  },
+  "tools/subsec/media/media.py": {
+    "type": "python",
+    "classes": [],
+    "functions": [
+      "strip_ansi",
+      "get_key_non_blocking",
+      "get_prioritized_player",
+      "run_pctl_for_player",
+      "trigger_robust_toggle",
+      "get_system_volume",
+      "adjust_system_volume",
+      "fmt_time",
+      "generate_cliamp_spectrogram",
+      "generate_dynamic_cava",
+      "generate_visualizer_panel",
+      "draw_row_raw",
+      "run_media_control"
+    ]
+  },
+  "tools/subsec/app-launcher/readme.md": {
+    "type": "markdown",
+    "summary": "app-launcher.py"
+  },
+  "tools/subsec/app-launcher/app-launcher.py": {
+    "type": "python",
+    "classes": [],
+    "functions": [
+      "get_apps",
+      "get_key",
+      "main"
+    ]
+  },
+  "projects/Readme.md": {
+    "type": "markdown",
+    "summary": "Agent Documentation Module"
+  },
+  "skills/notes/readme.md": {
+    "type": "markdown",
+    "summary": "Agent Documentation Module"
+  },
+  "skills/research/readme.md": {
+    "type": "markdown",
+    "summary": "Agent Documentation Module"
+  },
+  "skills/research/brief.md": {
+    "type": "markdown",
+    "summary": "ECOSYSTEM CHANGELOG & RELEASE SUMMARIZER"
+  },
+  "skills/sub-agents/readme.md": {
+    "type": "markdown",
+    "summary": "Agent Documentation Module"
+  },
+  "skills/coding/architect.md": {
+    "type": "markdown",
+    "summary": "Agent Documentation Module"
+  },
+  "skills/coding/coder.md": {
+    "type": "markdown",
+    "summary": "SOFTWARE DEVELOPER ACTIVE SKILL"
+  },
+  "skills/coding/tui.md": {
+    "type": "markdown",
+    "summary": "TERMINAL UI (TUI) DESIGNER SKILL"
+  },
+  "skills/coding/refactor.md": {
+    "type": "markdown",
+    "summary": "SURGICAL AST REFACTORING SKILL"
+  },
+  "skills/system/sysop.md": {
+    "type": "markdown",
+    "summary": "GENERAL LINUX DESKTOP OPTIMIZATION SKILL"
+  },
+  "skills/system/secaud.md": {
+    "type": "markdown",
+    "summary": "SYSTEM SECURITY AUDIT DIRECTIVES"
+  },
+  "skills/system/harden.md": {
+    "type": "markdown",
+    "summary": "SYSTEM HARDENING & SAFETY AUDITOR"
+  },
+  "skills/system/aur-audit.md": {
+    "type": "markdown",
+    "summary": "AUR PRE-INSTALL SECURITY AUDIT SKILL"
+  },
+  "skills/system/audit.md": {
+    "type": "markdown",
+    "summary": "SYSTEM AUDIT & LOG TRIAGE SKILL"
+  },
+  "skills/system/mysys.md": {
+    "type": "markdown",
+    "summary": "SYSTEM ARCHITECTURE BLUEPRINT"
+  },
+  "skills/identity/business/mybiz.md": {
+    "type": "markdown",
+    "summary": "IDENTITY: BUSINESS SYSTEM ENGINEER"
+  },
+  "skills/identity/workout/routine.md": {
+    "type": "markdown",
+    "summary": "IDENTITY: ATHLETIC PERFORMANCE & ROUTINE OPTIMIZER"
+  },
+  "skills/identity/marketing/strategy.md": {
+    "type": "markdown",
+    "summary": "IDENTITY: MARKETING STRATEGIST & CONTENT ENGINE"
+  },
+  "skills/meta/cot.md": {
+    "type": "markdown",
+    "summary": "Agent Documentation Module"
+  },
+  "skills/meta/eval.md": {
+    "type": "markdown",
+    "summary": "Agent Documentation Module"
+  },
+  "skills/meta/prompt.md": {
+    "type": "markdown",
+    "summary": "Role & Objective"
+  },
+  "skills/meta/follow-up.md": {
+    "type": "markdown",
+    "summary": "Agent Documentation Module"
+  },
+  "skills/meta/think.md": {
+    "type": "markdown",
+    "summary": "Agent Documentation Module"
+  }
+}

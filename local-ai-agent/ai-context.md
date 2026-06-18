@@ -98,6 +98,9 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 ## 5. TUI (Terminal User Interface) Programs
 
 ```properties
+# --- Skeleton Map (Structural Repo Profile Compiler) ---
+~/.config/local-ai/local-ai-agent/tools/map/skeleton-map ---> skeleton map, smap, map, sm
+
 # --- Fusion-Research Engine (Compound MoA / Self-Fusion) ---
 ~/.config/local-ai/local-ai-agent/tools/agentic/fusion/f_research -r ---> fusion research, fusion, fr, deep research
 # --- AI Deep Research TUI ---
