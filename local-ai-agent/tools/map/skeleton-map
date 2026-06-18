@@ -1,335 +1,166 @@
 #!/usr/bin/env python3
-# skeleton-map [Local Map Compiler] [j5onrf] v1.7.1
+# skeleton-map [Local Map Compiler] [j5onrf] v1.8
 
-import os
-import re
-import ast
-import json
-import fnmatch
+import os, re, ast, json, fnmatch
 
 # Fallback to current working directory if __file__ is unavailable (e.g., interactive shells)
-try:
-    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-except NameError:
-    SCRIPT_DIR = os.getcwd()
+try: SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+except NameError: SCRIPT_DIR = os.getcwd()
 
 OUTPUT_FILE = os.path.join(SCRIPT_DIR, "skeleton.json")
 
 def load_gitignore_patterns(target_dir):
-    """
-    Parses a .gitignore file if present in the target directory.
-    Returns a list of active pattern strings.
-    """
-    gitignore_path = os.path.join(target_dir, ".gitignore")
-    patterns = []
-    if os.path.isfile(gitignore_path):
+    """Parses a .gitignore file if present in the target directory."""
+    path = os.path.join(target_dir, ".gitignore")
+    if os.path.isfile(path):
         try:
-            with open(gitignore_path, 'r', encoding='utf-8', errors='ignore') as f:
-                for line in f:
-                    line = line.strip()
-                    if not line or line.startswith('#') or line.startswith('!'):
-                        continue
-                    patterns.append(line)
-        except Exception:
-            pass
-    return patterns
+            with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+                return [line.strip() for line in f if line.strip() and not line.strip().startswith(('#', '!'))]
+        except Exception: pass
+    return []
 
 def should_ignore(rel_path, is_dir, gitignore_patterns, default_ignored_dirs):
-    """
-    Determines if a given relative path matches either the built-in hardcoded rules
-    or the project's custom .gitignore rules.
-    """
+    """Determines if a given relative path matches exclusions."""
     norm_path = rel_path.replace(os.sep, '/')
     parts = norm_path.split('/')
+    if any(p in default_ignored_dirs for p in parts): return True
     
-    # 1. Fallback to default blocklist (acts as a backup/safety net)
-    for part in parts:
-        if part in default_ignored_dirs:
-            return True
-
-    # 2. Process .gitignore rules
     for pattern in gitignore_patterns:
-        pat = pattern
-        dir_only = False
+        pat, dir_only = pattern.rstrip('/'), pattern.endswith('/')
+        if dir_only and not is_dir: continue
         
-        if pat.endswith('/'):
-            pat = pat[:-1]
-            dir_only = True
-            
-        if dir_only and not is_dir:
-            continue
-            
         anchored = False
-        if pat.startswith('/'):
-            pat = pat[1:]
-            anchored = True
-            
+        if pat.startswith('/'): pat, anchored = pat[1:], True
+        
         if anchored:
-            target_match_path = norm_path if not dir_only else norm_path.rstrip('/')
-            if fnmatch.fnmatchcase(target_match_path, pat):
-                return True
+            target = norm_path if not dir_only else norm_path.rstrip('/')
+            if fnmatch.fnmatchcase(target, pat): return True
             pat_parts = pat.split('/')
-            if len(parts) >= len(pat_parts):
-                candidate = '/'.join(parts[:len(pat_parts)])
-                if fnmatch.fnmatchcase(candidate, pat):
-                    return True
+            if len(parts) >= len(pat_parts) and fnmatch.fnmatchcase('/'.join(parts[:len(pat_parts)]), pat):
+                return True
         else:
             for i, part in enumerate(parts):
-                if dir_only and i == len(parts) - 1 and not is_dir:
-                    continue
-                if fnmatch.fnmatchcase(part, pat):
-                    return True
+                if dir_only and i == len(parts) - 1 and not is_dir: continue
+                if fnmatch.fnmatchcase(part, pat): return True
                 if '/' in pat:
-                    pat_len = len(pat.split('/'))
-                    for j in range(len(parts) - pat_len + 1):
-                        sub_path = '/'.join(parts[j:j+pat_len])
-                        if fnmatch.fnmatchcase(sub_path, pat):
-                            return True
+                    p_len = len(pat.split('/'))
+                    for j in range(len(parts) - p_len + 1):
+                        if fnmatch.fnmatchcase('/'.join(parts[j:j+p_len]), pat): return True
     return False
 
 def is_binary(filepath):
-    """
-    Safely checks if a file is binary by scanning the first 1024 bytes for a null byte.
-    """
+    """Checks if a file is binary by scanning the first 1024 bytes for a null byte."""
     try:
-        with open(filepath, 'rb') as f:
-            return b'\x00' in f.read(1024)
-    except Exception:
-        return True  # Handle permission errors safely by treating as binary/unreadable
+        with open(filepath, 'rb') as f: return b'\x00' in f.read(1024)
+    except Exception: return True
+
+def get_text_summary(filepath, limit=15, is_shell=False, strip_hash=True):
+    """Centralized text summary reader used for comments, headers, and plain text."""
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            for _ in range(limit):
+                line = f.readline()
+                if not line: break
+                stripped = line.strip()
+                if not stripped or (is_shell and stripped.startswith('#!')): continue
+                if not strip_hash: return stripped[:120]
+                if stripped.startswith('#'): return stripped.lstrip('# ').strip()[:120]
+                if not is_shell: return stripped[:120]
+        return ""
+    except Exception: return ""
 
 def analyze_python_file(filepath):
-    """
-    Parses Python code using AST to extract functions, classes, and root-level imports.
-    """
+    """Parses Python code using AST to extract functions, classes, and imports."""
     try:
         with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
-            content = f.read()
-        
-        tree = ast.parse(content, filename=filepath)
-        functions = []
-        classes = []
-        imports = set()
-        
+            tree = ast.parse(f.read(), filename=filepath)
+        funcs, classes, imports = [], [], set()
         for node in ast.walk(tree):
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                functions.append(node.name)
-            elif isinstance(node, ast.ClassDef):
-                classes.append(node.name)
-            elif isinstance(node, ast.Import):
-                for alias in node.names:
-                    imports.add(alias.name.split('.')[0])
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)): funcs.append(node.name)
+            elif isinstance(node, ast.ClassDef): classes.append(node.name)
+            elif isinstance(node, ast.Import): imports.update(n.name.split('.')[0] for n in node.names)
             elif isinstance(node, ast.ImportFrom):
-                if node.module:
-                    imports.add(node.module.split('.')[0])
-                
-        return {
-            "type": "python", 
-            "imports": sorted(list(imports)), 
-            "classes": classes, 
-            "functions": functions
-        }
-    except SyntaxError:
-        return {"type": "python", "error": "Syntax Error / Unparseable"}
-    except Exception as e:
-        return {"type": "python", "error": f"Unreadable: {str(e)}"}
+                if node.module: imports.add(node.module.split('.')[0])
+        return {"type": "python", "imports": sorted(list(imports)), "classes": classes, "functions": funcs}
+    except SyntaxError: return {"type": "python", "error": "Syntax Error / Unparseable"}
+    except Exception as e: return {"type": "python", "error": f"Unreadable: {str(e)}"}
 
 def analyze_rust_file(filepath):
-    """
-    Strips comments and extracts struct and function signatures from Rust code.
-    """
     try:
-        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-            content = f.read()
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f: content = f.read()
         content = re.sub(r'//.*|/\*.*?\*/', '', content, flags=re.DOTALL)
-        structs = re.findall(r'\bstruct\s+(\w+)', content)
-        functions = re.findall(r'\bfn\s+(\w+)', content)
-        return {"type": "rust", "classes": structs, "functions": functions}
-    except Exception as e:
-        return {"type": "rust", "error": f"Unreadable: {str(e)}"}
+        return {"type": "rust", "classes": re.findall(r'\bstruct\s+(\w+)', content), "functions": re.findall(r'\bfn\s+(\w+)', content)}
+    except Exception as e: return {"type": "rust", "error": str(e)}
 
 def analyze_go_file(filepath):
-    """
-    Strips comments and extracts structs and functions (including receivers) from Go code.
-    """
     try:
-        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-            content = f.read()
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f: content = f.read()
         content = re.sub(r'//.*|/\*.*?\*/', '', content, flags=re.DOTALL)
-        structs = re.findall(r'\btype\s+(\w+)\s+struct\b', content)
-        functions = re.findall(r'\bfunc\s+(?:\([^)]+\)\s+)?(\w+)', content)
-        return {"type": "go", "classes": structs, "functions": functions}
-    except Exception as e:
-        return {"type": "go", "error": f"Unreadable: {str(e)}"}
+        return {"type": "go", "classes": re.findall(r'\btype\s+(\w+)\s+struct\b', content), "functions": re.findall(r'\bfunc\s+(?:\([^)]+\)\s+)?(\w+)', content)}
+    except Exception as e: return {"type": "go", "error": str(e)}
 
 def analyze_lua_file(filepath):
-    """
-    Extracts global and local function definitions from Lua code.
-    """
     try:
-        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-            content = f.read()
-        content = re.sub(r'--.*', '', content)
-        functions = re.findall(r'\bfunction\s+([\w.:]+)', content)
-        return {"type": "lua", "classes": [], "functions": functions}
-    except Exception as e:
-        return {"type": "lua", "error": f"Unreadable: {str(e)}"}
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f: content = f.read()
+        return {"type": "lua", "classes": [], "functions": re.findall(r'\bfunction\s+([\w.:]+)', re.sub(r'--.*', '', content))}
+    except Exception as e: return {"type": "lua", "error": str(e)}
 
 def analyze_json_file(filepath):
-    """
-    Extracts top-level structural keys of JSON files.
-    """
     try:
-        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-            data = json.load(f)
-        keys = list(data.keys()) if isinstance(data, dict) else []
-        return {"type": "json", "keys": keys}
-    except Exception:
-        return {"type": "json", "error": "Malformed JSON"}
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f: data = json.load(f)
+        return {"type": "json", "keys": list(data.keys()) if isinstance(data, dict) else []}
+    except Exception: return {"type": "json", "error": "Malformed JSON"}
 
 def analyze_qml_file(filepath):
-    """
-    Extracts custom properties and function definitions from QML.
-    """
     try:
-        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-            content = f.read()
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f: content = f.read()
         content = re.sub(r'//.*|/\*.*?\*/', '', content, flags=re.DOTALL)
-        properties = re.findall(r'\bproperty\s+\w+\s+(\w+)', content)
-        functions = re.findall(r'\bfunction\s+(\w+)', content)
-        return {"type": "qml", "properties": properties, "functions": functions}
-    except Exception as e:
-        return {"type": "qml", "error": f"Unreadable: {str(e)}"}
+        return {"type": "qml", "properties": re.findall(r'\bproperty\s+\w+\s+(\w+)', content), "functions": re.findall(r'\bfunction\s+(\w+)', content)}
+    except Exception as e: return {"type": "qml", "error": str(e)}
 
 def analyze_markdown_file(filepath):
-    try:
-        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-            heading = None
-            first_non_empty = None
-            for _ in range(15):
-                line = f.readline()
-                if not line:
-                    break
-                stripped = line.strip()
-                if not stripped:
-                    continue
-                if not first_non_empty:
-                    first_non_empty = stripped
-                if stripped.startswith('#'):
-                    heading = stripped.lstrip('#').strip()
-                    break
-            
-            purpose = heading or first_non_empty or "Agent Documentation Module"
-            purpose = purpose.lstrip('#*` ').rstrip(' *`').strip()
-            return {"type": "markdown", "summary": purpose or "Agent Documentation Module"}
-    except Exception as e:
-        return {"type": "markdown", "error": f"Unreadable: {str(e)}"}
+    return {"type": "markdown", "summary": get_text_summary(filepath, 15, False, True) or "Agent Documentation Module"}
 
 def analyze_shell_file(filepath):
-    try:
-        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-            purpose = None
-            for _ in range(10):
-                line = f.readline()
-                if not line:
-                    break
-                stripped = line.strip()
-                if not stripped or stripped.startswith('#!'):
-                    continue
-                if stripped.startswith('#'):
-                    purpose = stripped.lstrip('# ').strip()
-                    break
-            return {"type": "shell", "summary": purpose or "Shell Script / Hook Module"}
-    except Exception as e:
-        return {"type": "shell", "error": f"Unreadable: {str(e)}"}
+    return {"type": "shell", "summary": get_text_summary(filepath, 10, True, True) or "Shell Script / Hook Module"}
 
 def analyze_generic_file(filepath):
-    """
-    Universal fallback for unrecognized text/code files (including .txt, .yaml, .toml, .env, etc.).
-    Extracts the first non-empty text line up to 120 characters as a summary.
-    """
-    try:
-        ext = os.path.splitext(filepath)[1].lstrip('.').lower() or "file"
-        if is_binary(filepath):
-            return {"type": f"binary/{ext}"}
-            
-        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-            summary = ""
-            for _ in range(15):
-                line = f.readline()
-                if not line:
-                    break
-                stripped = line.strip()
-                if stripped:
-                    summary = stripped[:120]
-                    break
-            return {"type": ext, "summary": summary or "Empty file"}
-    except Exception as e:
-        return {"type": "file", "error": f"Unreadable: {str(e)}"}
+    ext = os.path.splitext(filepath)[1].lstrip('.').lower() or "file"
+    if is_binary(filepath): return {"type": f"binary/{ext}"}
+    return {"type": ext, "summary": get_text_summary(filepath, 15, False, False) or "Empty file"}
 
 def generate_skeleton(target_dir):
     skeleton = {}
+    default_ignored = {'.git', '__pycache__', 'logs', '.auto-f', 'node_modules', 'venv', '.venv', 'env', '.env', 'build', 'dist', '.egg-info', '.pytest_cache', '.mypy_cache', '.vscode', '.idea'}
+    patterns = load_gitignore_patterns(target_dir)
+    if patterns: print(f"ℹ Loaded {len(patterns)} rules from .gitignore.")
     
-    default_ignored = {
-        '.git', '__pycache__', 'logs', '.auto-f', 'node_modules', 
-        'venv', '.venv', 'env', '.env', 'build', 'dist', 
-        '.egg-info', '.pytest_cache', '.mypy_cache', '.vscode', '.idea'
+    dispatch = {
+        '.py': analyze_python_file, '.md': analyze_markdown_file,
+        '.sh': analyze_shell_file, '.bash': analyze_shell_file,
+        '.rs': analyze_rust_file, '.go': analyze_go_file,
+        '.lua': analyze_lua_file, '.json': analyze_json_file, '.qml': analyze_qml_file
     }
     
-    patterns = load_gitignore_patterns(target_dir)
-    if patterns:
-        print(f"ℹ Loaded {len(patterns)} rules from .gitignore.")
-    
     for root, dirs, files in os.walk(target_dir):
-        new_dirs = []
-        for d in dirs:
-            dir_rel_path = os.path.relpath(os.path.join(root, d), target_dir)
-            if not should_ignore(dir_rel_path, True, patterns, default_ignored):
-                new_dirs.append(d)
-        dirs[:] = new_dirs
-            
+        dirs[:] = [d for d in dirs if not should_ignore(os.path.relpath(os.path.join(root, d), target_dir), True, patterns, default_ignored)]
         for file in files:
             filepath = os.path.join(root, file)
             rel_path = os.path.relpath(filepath, target_dir)
+            if should_ignore(rel_path, False, patterns, default_ignored): continue
             
-            if should_ignore(rel_path, False, patterns, default_ignored):
-                continue
-            
-            # Map extensions natively to their respective lightweight analyzers
-            if file.endswith('.py'):
-                skeleton[rel_path] = analyze_python_file(filepath)
-            elif file.endswith('.md') or file.endswith('.MD'):
-                skeleton[rel_path] = analyze_markdown_file(filepath)
-            elif file.endswith('.sh') or file.endswith('.bash'):
-                skeleton[rel_path] = analyze_shell_file(filepath)
-            elif file.endswith('.rs'):
-                skeleton[rel_path] = analyze_rust_file(filepath)
-            elif file.endswith('.go'):
-                skeleton[rel_path] = analyze_go_file(filepath)
-            elif file.endswith('.lua'):
-                skeleton[rel_path] = analyze_lua_file(filepath)
-            elif file.endswith('.json'):
-                skeleton[rel_path] = analyze_json_file(filepath)
-            elif file.endswith('.qml'):
-                skeleton[rel_path] = analyze_qml_file(filepath)
-            else:
-                # Universal fallback for all other extensions (including .txt, .yaml, .toml, .ini, .env, etc.)
-                skeleton[rel_path] = analyze_generic_file(filepath)
+            ext = os.path.splitext(file)[1].lower()
+            skeleton[rel_path] = dispatch.get(ext, analyze_generic_file)(filepath)
                 
     return skeleton
 
 def main():
-    try:
-        user_input = input("Scan target [.]: ").strip()
+    try: user_input = input("Scan target [.]: ").strip()
     except (KeyboardInterrupt, EOFError):
         print("\n✕ Operation cancelled.")
         return
 
-    if not user_input:
-        target_dir = os.getcwd()
-    else:
-        expanded = os.path.expanduser(os.path.expandvars(user_input))
-        target_dir = os.path.abspath(expanded)
-
+    target_dir = os.path.abspath(os.path.expanduser(os.path.expandvars(user_input))) if user_input else os.getcwd()
     if not os.path.isdir(target_dir):
         print(f"❌ Error: '{target_dir}' is not a valid directory.")
         return
@@ -337,17 +168,14 @@ def main():
     skeleton = generate_skeleton(target_dir)
     
     try:
-        with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
-            json.dump(skeleton, f, indent=2)
+        with open(OUTPUT_FILE, 'w', encoding='utf-8') as f: json.dump(skeleton, f, indent=2)
         print(f"✔ Skeleton map compiled successfully at: {OUTPUT_FILE}")
     except (IOError, OSError):
         fallback_file = os.path.join(os.getcwd(), "skeleton.json")
         try:
-            with open(fallback_file, 'w', encoding='utf-8') as f:
-                json.dump(skeleton, f, indent=2)
+            with open(fallback_file, 'w', encoding='utf-8') as f: json.dump(skeleton, f, indent=2)
             print(f"⚠ SCRIPT_DIR is read-only. Map saved to fallback: {fallback_file}")
-        except Exception as e:
-            print(f"❌ Error: Failed to write skeleton map. {e}")
+        except Exception as e: print(f"❌ Error: Failed to write skeleton map. {e}")
 
 if __name__ == "__main__":
     main()
