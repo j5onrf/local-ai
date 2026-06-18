@@ -110,7 +110,7 @@ export CLOUD_MODEL="gemini-3.1-flash-lite"
 
 # Fallback: OpenRouter Configuration
 export OPENROUTER_API_KEY="sk-or-v1-YourFullOpenRouterKeyHere"
-export OPENROUTER_MODEL="poolside/laguna-m.1:free"
+export OPENROUTER_MODEL="openrouter/free"
 ```
 
 ---

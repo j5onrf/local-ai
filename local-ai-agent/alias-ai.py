@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.6.4 [j5onrf] [06-18-26]
+# Local-Ai Agent v0.8.6.5 [j5onrf] [06-18-26]
 
 import sys, re, os, json, threading, time, subprocess, shutil
 import urllib.request as urlreq, urllib.error as urlerr
@@ -195,8 +195,8 @@ def stream_llm_response(messages, prefix="AI: "):
     configs, gkey, okey, ckey, curl = [], os.environ.get("GEMINI_API_KEY"), os.environ.get("OPENROUTER_API_KEY"), os.environ.get("CLOUD_API_KEY"), os.environ.get("CLOUD_API_URL")
     if gkey: configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Authorization": f"Bearer {gkey}"}, os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"), {}))
     if okey:
-        m = os.environ.get("OPENROUTER_MODEL", "poolside/laguna-m.1:free")
-        configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"}, m, {"models": [m, "qwen/qwen3-coder:free", "openrouter/free"]}))
+        m = os.environ.get("OPENROUTER_MODEL", "openrouter/free")
+        configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"}, m, {}))
     if ckey and curl: configs.append((curl, {"Authorization": f"Bearer {ckey}"}, os.environ.get("CLOUD_MODEL"), {}))
     configs.append(("http://localhost:8080/v1/chat/completions", {}, None, {}))
     spinner = InlineSpinner()
@@ -273,6 +273,7 @@ try:
                     # Secure regex to prevent collisions with words starting with f/t/b (e.g. "format", "to", "build")
                     cmd_match = re.match(r'^/?([ftba])(?:\s+(\d+))?$', q_lower)
                     if cmd_match:
+                        # Updated path: pointing to tools/chat
                         think_bin = f"{CFG_DIR}/tools/chat"
                         if os.path.exists(think_bin):
                             try: subprocess.run([sys.executable, think_bin, query], input=json.dumps(chat_history), text=True)
@@ -310,6 +311,7 @@ try:
     user_input = sanitize_input(" ".join(sys.argv[1:])) if len(sys.argv) > 1 else ""
     if not user_input or sys.argv[1].startswith("--"): sys.exit(0)
     if re.search(r'[\[\]{}()=\'"",;|<>#]', user_input): print_stock_error(user_input); sys.exit(127)
+    # Updated: Calling renamed jaccard_search
     matched_base = jaccard_search(user_input)
     if matched_base:
         out_lines = []

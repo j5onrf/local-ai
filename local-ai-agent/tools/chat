@@ -45,7 +45,7 @@ elif is_all_cmd:
     fallback_term = "all"
 else:
     skill_file = "follow-up.md"
-    output_header = "Follow-up"  # Updated to singular Follow-up
+    output_header = "Follow-up"
     fallback_term = "follow-up"
 
 THINK_FILE = f"{CFG_DIR}/skills/meta/{skill_file}"
@@ -80,7 +80,7 @@ elif os.path.exists(THINK_FILE):
         pass
 
 if not prompt:
-    # Zero-config fallback prompts
+    # Zero-config standard fallback
     if is_all_cmd:
         prompt = (
             "Analyze history and output exactly three sections: Follow-up, Thinking, and Brainstorm.\n"
@@ -109,14 +109,14 @@ history.append({"role": "system", "content": prompt})
 if not any(msg.get("role") == "user" for msg in history):
     history.append({"role": "user", "content": "Generate triggers."})
 
-# 5. Cascading API Fallbacks
+# 5. Simplified Fallbacks (Standardized on openrouter/free)
 configs = []
 gkey, okey = os.environ.get("GEMINI_API_KEY"), os.environ.get("OPENROUTER_API_KEY")
 if gkey:
     configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Authorization": f"Bearer {gkey}"}, os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"), {}))
 if okey:
-    m = os.environ.get("OPENROUTER_MODEL", "poolside/laguna-m.1:free")
-    configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"}, m, {"models": [m, "qwen/qwen3-coder:free", "openrouter/free"]}))
+    m = os.environ.get("OPENROUTER_MODEL", "openrouter/free")
+    configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"}, m, {}))
 configs.append(("http://localhost:8080/v1/chat/completions", {}, None, {}))
 
 for url, headers, model, extra in configs:
@@ -161,10 +161,7 @@ for url, headers, model, extra in configs:
                     "brainstorming": "Brainstorm"
                 }
                 
-                # Single leading newline of breathing space
                 sys.stdout.write("\n")
-                
-                # Safety-net pre-print: If the LLM skipped outputting a header, pre-print the default
                 first_line_clean = lines[0].lower().rstrip('s:') if lines else ""
                 if first_line_clean not in headers_map:
                     sys.stdout.write(f"\033[1;32mAI:\033[0m {output_header}\n")
