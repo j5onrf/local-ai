@@ -9,7 +9,7 @@ Constraints:
 - Each option must be strictly between 6 and 10 words long.
 
 Template:
-Follow-ups
+Follow-up
  [Option 1]
  [Option 2]
  [Option 3]

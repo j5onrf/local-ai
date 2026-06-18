@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.6.2 [j5onrf] [06-18-26]
+# Local-Ai Agent v0.8.6.4 [j5onrf] [06-18-26]
 
 import sys, re, os, json, threading, time, subprocess, shutil
 import urllib.request as urlreq, urllib.error as urlerr
@@ -85,7 +85,6 @@ def load_context_entries():
         return entries
     except Exception as e: sys.stderr.write(f"\033[1;31mError parsing context map: {e}\033[0m\n"); return []
 
-# Renamed to jaccard_search to reflect Jaccard Similarity matching
 def jaccard_search(query, threshold=0.45):
     q_clean, q_tokens = query.strip().lower(), set(tokenize(query))
     if not q_tokens or not (entries := load_context_entries()): return None
@@ -153,7 +152,6 @@ def get_system_context(query):
 
 def run_interactive_selection(intent):
     if re.search(r'[\[\]{}()=\'"",;|<>#]', intent): print_stock_error(intent); sys.exit(127)
-    # Updated: Calling renamed jaccard_search
     matched_base = jaccard_search(intent)
     if not matched_base: print_stock_error(intent); sys.exit(127)
     options = matched_base.split("\n")
@@ -272,12 +270,14 @@ try:
                         query = raw_query.strip()
                         if query.lower() in ("exit", "quit", "q"): print("\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
                     q_lower = query.lower().strip()
-                    if q_lower in ("/f", "f") or q_lower.startswith(("/f ", "f ")):
-                        think_bin = f"{CFG_DIR}/tools/follow-up"
+                    # Secure regex to prevent collisions with words starting with f/t/b (e.g. "format", "to", "build")
+                    cmd_match = re.match(r'^/?([ftba])(?:\s+(\d+))?$', q_lower)
+                    if cmd_match:
+                        think_bin = f"{CFG_DIR}/tools/chat"
                         if os.path.exists(think_bin):
                             try: subprocess.run([sys.executable, think_bin, query], input=json.dumps(chat_history), text=True)
-                            except Exception as e: sys.stderr.write(f"\033[1;31m[Warning] follow-up tool failed: {e}\033[0m\n")
-                        else: sys.stderr.write("\033[1;31mError: follow-up not found at tools/follow-up\033[0m\n")
+                            except Exception as e: sys.stderr.write(f"\033[1;31m[Warning] chat tool failed: {e}\033[0m\n")
+                        else: sys.stderr.write("\033[1;31mError: chat tool not found at tools/chat\033[0m\n")
                         continue
                     system_context = get_system_context(query)
                     prompt = (f"### Real-time System Context:\n{system_context}\n\n" if system_context else "") + f"User Question: {query}"
@@ -310,7 +310,6 @@ try:
     user_input = sanitize_input(" ".join(sys.argv[1:])) if len(sys.argv) > 1 else ""
     if not user_input or sys.argv[1].startswith("--"): sys.exit(0)
     if re.search(r'[\[\]{}()=\'"",;|<>#]', user_input): print_stock_error(user_input); sys.exit(127)
-    # Updated: Calling renamed jaccard_search
     matched_base = jaccard_search(user_input)
     if matched_base:
         out_lines = []
