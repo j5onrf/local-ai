@@ -51,7 +51,7 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 | `ai init <path>` | Index directory & launch codebase-aware agent. |
 | `ai <query>` | Instant answer; returns directly to Bash prompt. |
 | `voice` | Launch local-network tablet voice bridge (Port 9999). |
-| `/f` `/f toggle` | Activate Follow-ups, in multi-turn chat session. |
+| `/f` `/f toggle` | Launch Follow-ups, in multi-turn chat session. |
 
 ---
 
@@ -60,12 +60,11 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 Add your shortcuts and workspaces to `ai-context.md`.
 
 ```markdown
-# --- Standard Codebase Workspaces ---
-~/Projects/qwen-hypr ---> projects qwen, projects
+# --- Specialized Codebase Workspaces (Skill-Primed) ---
+ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 
-# --- Blueprint Map (CheatSheet) ---
-~/.config/local-ai/local-ai-agent/tools/blueprint --leaf ---> cheatsheet, blueprint, bp
-
+# --- System Optimization (Improve System Performance) ---
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system/system-optimize --leaf ---> system optimize, sysop, system optimization
 ```
 
 ---
