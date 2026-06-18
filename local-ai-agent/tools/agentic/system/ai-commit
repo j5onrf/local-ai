@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ai-commit - Automate Git Commits with AI Context v1.0.8
+# ai-commit - Automate Git Commits with AI Context v1.1.0
 
 set -euo pipefail
 
@@ -13,21 +13,28 @@ fi
 _AI_SCRIPT_PATH="$HOME/.config/local-ai/local-ai-agent/alias-ai.py"
 _AI_PYTHON_BIN=$(command -v python3 2>/dev/null || type -p python3 2>/dev/null || echo "python3")
 
-# Compress the diff payload: 
-# 1. Gather file-change statistics
-# 2. Extract strictly modified/added lines (+/-), capping at 100 lines to prevent token bloat
-stats=$(git diff --cached --stat)
-changes=$(git diff --cached | grep -E '^\+[^+]|^-[^-]' | head -n 100 || true)
+# Compress payload to the limit (Crucial for 2B models and local latency)
+# 1. Gather short file names with change status (A/M/D)
+# 2. Extract strictly modified/added lines with ZERO surrounding context lines (-U0)
+# 3. Exclude lockfiles, large graphic assets, and skip comment modifications
+stats=$(git diff --cached --name-status | head -n 8 || true)
+changes=$(git diff --cached -U0 -- \
+    ':(exclude)*lock*' ':(exclude)*.svg' ':(exclude)*.png' ':(exclude)*.jpg' ':(exclude)*.gif' \
+    | grep -E '^\+[^+]|^-[^-]' \
+    | grep -v -E '^[+-]\s*(#|//|/\*|\*|\s*$)' \
+    | head -n 15 || true)
 
-PROMPT="Write a highly concise, imperative git commit message (max 6-10 words) describing these staged changes. Start directly with an action verb (e.g. Update, Fix, Add, Refactor). CRITICAL: Do not include labels, headers, prefixes, or introductions like 'Commit message:'.
-
-### Staged File Stats:
+# Structure the prompt for a 2B model: 
+# Data first, directive last. This leverages the attention mechanism of smaller models.
+PROMPT="Files:
 $stats
 
-### Modified Lines:
-$changes"
+Diff:
+$changes
 
-# Query the Python script directly to generate the message
+Instruction: Write a 6-10 word imperative git commit message for the changes above. Start directly with an action verb (e.g., Fix, Add, Refactor, Update). Return ONLY the message. No quotes, intro, or headers."
+
+# Query the universal Python gateway
 message=$("$_AI_PYTHON_BIN" "$_AI_SCRIPT_PATH" --talk "$PROMPT")
 
 # Clean up trailing quotes, spaces, and strip accidental LLM labeling prefixes
