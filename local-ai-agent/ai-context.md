@@ -141,10 +141,10 @@ nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-sp
 ~/.config/local-ai/local-ai-agent/tools/subsec/notes/notes.sh ---> notes, open notes, add to notes
 
 # --- State & Workflow Management ---
-~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/work ---> hyprstate work, work, hyprstate
-~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/clean ---> hyprstate clean, clean, hyprstate
-~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/gitcom ---> hyprstate gitcom, gitcom, hyprstate
-~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/media ---> hyprstate media, media, hyprstate
+~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/work ---> hyprstate work, work, hs, hyprstate
+~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/clean ---> hyprstate clean, clean, hs, hyprstate
+~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/gitcom ---> hyprstate gitcom, gitcom, hs, hyprstate
+~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/media ---> hyprstate media, media, hs, hyprstate
 ```
 
 ## 8. Continual Learning
