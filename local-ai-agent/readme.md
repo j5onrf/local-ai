@@ -64,7 +64,7 @@ Add your shortcuts, commands, and workspaces to `ai-context.md`.
 ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 
 # --- System Optimization (Improve System Performance) ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system/system-optimize --leaf ---> system optimize, sysop, system optimization
+[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system/system-optimize --leaf ---> system optimize, sysop
 ```
 
 ---
