@@ -42,6 +42,12 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 * **`Enter`:** Execute the highlighted command (or initialize a workspace if the selection is a directory path).
 * **`Esc` / `Ctrl+C` / `Any Key`:** Cancel menu (features an anti-spam buffer flush to prevent command line leakage).
 
+```text
+~ ❯ hs
+[01/04] ❯ [hyprstate work] ~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/work
+:: ↵ run  any skip: 
+```
+
 ---
 
 ## Command Reference
