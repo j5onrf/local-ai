@@ -35,11 +35,11 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 ## 2. On-Demand System Prompts & Role Injections (Skills)
 
 ```properties
-# --- Prompt Engineering & Optimization Engine ---
-[TOOL] cat ~/.config/local-ai/local-ai-agent/skills/meta/prompt.md ---> prompt builder, prompt, optimize prompt
-
 # --- Skills (Prompt & Role Injection) ---
 [TOOL] cat ~/.config/local-ai/local-ai-agent/skills/system/mysys.md --leaf ---> mysys, show mysys, view sys, mysys doc
+
+# --- Prompt Engineering & Optimization Engine ---
+[TOOL] cat ~/.config/local-ai/local-ai-agent/skills/meta/prompt.md ---> prompt builder, prompt, optimize prompt
 
 # [TOOL] cat ~/.config/local-ai/local-ai-agent/skills/identity/business/mybiz.md --leaf ---> mybiz, show business profile, view mybiz
 # [TOOL] cat ~/.config/local-ai/local-ai-agent/skills/identity/marketing/strategy.md --leaf ---> marketing strategy, growth strategy, view marketing
@@ -73,11 +73,6 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 # --- AI Status & Provider Diagnostics ---
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system/ai-status --leaf ---> status, aistatus, aistat, ai-status
 
-# --- Adaptive Identity Layer for AI Agents (agentic/identity) ---
-# [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/identity/business/mybiz ---> run business tool, execution biz
-# [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/identity/marketing/marketing ---> run marketing tool, execute growth
-# [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/identity/workout/routine ---> run workout tool, routine metrics
-
 # --- Weather & Live Networking ---
 [TOOL] curl -s "wttr.in/?format=3" --cat ---> weather simple, wttr, weather, rain forecast simple
 [TOOL] curl -s wttr.in --cat ---> weather full, wttr, weather, rain forecast full
@@ -107,7 +102,6 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 ~/.config/local-ai/local-ai-agent/tools/agentic/fusion/f_research -r ---> fusion research, fusion, fr, deep research
 # --- AI Deep Research TUI ---
 ~/.config/local-ai/research-tui/deep-research ---> deep research, research, dr
-
 
 # --- Custom TUI Applications ---
 ~/.config/local-ai/basepage-tui/basepage.py ---> basepage, base, basepage tui, rss
