@@ -23,15 +23,15 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 
 ---
 
-## Core Features
-
 | Pillar | Capability | Description |
 | --- | --- | --- |
-| **Performance** | **Zero-Daemon** | 0% idle CPU/RAM usage. No background polling threads. |
-| **Resiliency** | **Cascading Fallback** | Automatically cascades: Gemini $\rightarrow$ OpenRouter $\rightarrow$ Local. |
-| **Integration** | **Deterministic Context** | Uses `mysys.md` & custom tools only via defined triggers. |
-| **Portability** | **Multi-Depth Skills** | Scans skills directories up to 3 levels deep recursively. |
-| **Auditable** | **Clean Codebase** | Under 400 lines of standard-library Python. |
+| **Performance** | **Zero-Daemon** | 0% idle CPU/RAM. Ultra-lite execution. |
+| **Resiliency** | **CFallbacks** | Automatically cascades: Gemini $\rightarrow$ OpenRouter $\rightarrow$ Local. |
+| **Safety** | **Zero-Trust Guardrails** | Intercepts destructive commands before shell execution. |
+| **Integration** | **Dynamic Context** | On-demand compilation of system specs and tool outputs. |
+| **Optimization** | **Token-Slasher** | Custom tool and skill integration built for minimal token use. |
+| **Interface** | **Conversational TUI** | Rich, multi-turn chat sessions directly in the terminal. |
+| **Auditability** | **Zero-Dependency** | Under 400 lines of standard Python. No supply-chain risk. |
 
 ---
 
