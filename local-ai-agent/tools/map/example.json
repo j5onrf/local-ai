@@ -1,6 +1,29 @@
 {
-  "alias-ai.py": {
+  "README.md": {
+    "type": "markdown",
+    "summary": "local-ai"
+  },
+  "local-ai-agent/ai-context.md": {
+    "type": "markdown",
+    "summary": "Local-AI Agent Blueprint"
+  },
+  "local-ai-agent/alias-ai.py": {
     "type": "python",
+    "imports": [
+      "json",
+      "os",
+      "re",
+      "readline",
+      "select",
+      "shutil",
+      "subprocess",
+      "sys",
+      "termios",
+      "threading",
+      "time",
+      "tty",
+      "urllib"
+    ],
     "classes": [
       "InlineSpinner"
     ],
@@ -14,7 +37,7 @@
       "print_stock_error",
       "run_local_tool",
       "load_context_entries",
-      "matrix_search",
+      "jaccard_search",
       "get_key",
       "clean_tool_prefix",
       "get_system_context",
@@ -26,28 +49,39 @@
       "stop"
     ]
   },
-  "readme.md": {
+  "local-ai-agent/readme.md": {
     "type": "markdown",
-    "summary": "Local-AI Agent <kbd>v0.8.5.1</kbd>"
+    "summary": "Local-AI Agent <kbd>v0.8.6.1</kbd>"
   },
-  "ai-context.md": {
-    "type": "markdown",
-    "summary": "Local-AI Agent Blueprint"
+  "local-ai-agent/ai-hook.sh": {
+    "type": "shell",
+    "summary": "Local-Ai Agent Hook v0.8.6.2 [j5onrf] [06-18-26]"
   },
-  "tools/agentic/identity/readme.md": {
+  "local-ai-agent/tools/agentic/identity/readme.md": {
     "type": "markdown",
     "summary": "Identity Layer (`agentic/identity/`)"
   },
-  "tools/agentic/system/readme.md": {
+  "local-ai-agent/tools/agentic/system/readme.md": {
     "type": "markdown",
     "summary": "Agentic System [TOOLS]"
   },
-  "tools/agentic/fusion/Readme.md": {
+  "local-ai-agent/tools/agentic/fusion/Readme.md": {
     "type": "markdown",
     "summary": "Fusion Research Engine (Free Tier)"
   },
-  "tools/subsec/stopwatch/stopwatch.py": {
+  "local-ai-agent/tools/subsec/stopwatch/stopwatch.py": {
     "type": "python",
+    "imports": [
+      "math",
+      "os",
+      "re",
+      "select",
+      "shutil",
+      "sys",
+      "termios",
+      "time",
+      "tty"
+    ],
     "classes": [],
     "functions": [
       "strip_ansi",
@@ -59,12 +93,33 @@
       "run_stopwatch_tui"
     ]
   },
-  "tools/subsec/media/readme.md": {
+  "local-ai-agent/tools/subsec/stopwatch/stopwatch.sh": {
+    "type": "shell",
+    "summary": "Minimalist Pure Bash High-Resolution Stopwatch"
+  },
+  "local-ai-agent/tools/subsec/media/readme.md": {
     "type": "markdown",
     "summary": "media.py"
   },
-  "tools/subsec/media/media.py": {
+  "local-ai-agent/tools/subsec/media/media.sh": {
+    "type": "shell",
+    "summary": "Functional Inline Media Controller (Pure Reactive)"
+  },
+  "local-ai-agent/tools/subsec/media/media.py": {
     "type": "python",
+    "imports": [
+      "math",
+      "os",
+      "random",
+      "re",
+      "select",
+      "shutil",
+      "subprocess",
+      "sys",
+      "termios",
+      "time",
+      "tty"
+    ],
     "classes": [],
     "functions": [
       "strip_ansi",
@@ -82,12 +137,26 @@
       "run_media_control"
     ]
   },
-  "tools/subsec/app-launcher/readme.md": {
+  "local-ai-agent/tools/subsec/notes/notes.sh": {
+    "type": "shell",
+    "summary": "Ensure the directory exists"
+  },
+  "local-ai-agent/tools/subsec/app-launcher/readme.md": {
     "type": "markdown",
     "summary": "app-launcher.py"
   },
-  "tools/subsec/app-launcher/app-launcher.py": {
+  "local-ai-agent/tools/subsec/app-launcher/app-launcher.py": {
     "type": "python",
+    "imports": [
+      "glob",
+      "os",
+      "re",
+      "select",
+      "subprocess",
+      "sys",
+      "termios",
+      "tty"
+    ],
     "classes": [],
     "functions": [
       "get_apps",
@@ -95,96 +164,285 @@
       "main"
     ]
   },
-  "projects/Readme.md": {
+  "local-ai-agent/tools/map/Readme.md": {
+    "type": "markdown",
+    "summary": "Skeleton Map"
+  },
+  "local-ai-agent/projects/Readme.md": {
     "type": "markdown",
     "summary": "Agent Documentation Module"
   },
-  "skills/notes/readme.md": {
+  "local-ai-agent/skills/notes/readme.md": {
     "type": "markdown",
     "summary": "Agent Documentation Module"
   },
-  "skills/research/readme.md": {
+  "local-ai-agent/skills/research/readme.md": {
     "type": "markdown",
     "summary": "Agent Documentation Module"
   },
-  "skills/research/brief.md": {
+  "local-ai-agent/skills/research/brief.md": {
     "type": "markdown",
     "summary": "ECOSYSTEM CHANGELOG & RELEASE SUMMARIZER"
   },
-  "skills/sub-agents/readme.md": {
+  "local-ai-agent/skills/sub-agents/readme.md": {
     "type": "markdown",
     "summary": "Agent Documentation Module"
   },
-  "skills/coding/architect.md": {
+  "local-ai-agent/skills/coding/architect.md": {
     "type": "markdown",
     "summary": "Agent Documentation Module"
   },
-  "skills/coding/coder.md": {
+  "local-ai-agent/skills/coding/coder.md": {
     "type": "markdown",
     "summary": "SOFTWARE DEVELOPER ACTIVE SKILL"
   },
-  "skills/coding/tui.md": {
+  "local-ai-agent/skills/coding/tui.md": {
     "type": "markdown",
     "summary": "TERMINAL UI (TUI) DESIGNER SKILL"
   },
-  "skills/coding/refactor.md": {
+  "local-ai-agent/skills/coding/refactor.md": {
     "type": "markdown",
     "summary": "SURGICAL AST REFACTORING SKILL"
   },
-  "skills/system/sysop.md": {
+  "local-ai-agent/skills/system/sysop.md": {
     "type": "markdown",
     "summary": "GENERAL LINUX DESKTOP OPTIMIZATION SKILL"
   },
-  "skills/system/secaud.md": {
+  "local-ai-agent/skills/system/secaud.md": {
     "type": "markdown",
     "summary": "SYSTEM SECURITY AUDIT DIRECTIVES"
   },
-  "skills/system/harden.md": {
+  "local-ai-agent/skills/system/harden.md": {
     "type": "markdown",
     "summary": "SYSTEM HARDENING & SAFETY AUDITOR"
   },
-  "skills/system/aur-audit.md": {
+  "local-ai-agent/skills/system/aur-audit.md": {
     "type": "markdown",
     "summary": "AUR PRE-INSTALL SECURITY AUDIT SKILL"
   },
-  "skills/system/audit.md": {
+  "local-ai-agent/skills/system/audit.md": {
     "type": "markdown",
     "summary": "SYSTEM AUDIT & LOG TRIAGE SKILL"
   },
-  "skills/system/mysys.md": {
-    "type": "markdown",
-    "summary": "SYSTEM ARCHITECTURE BLUEPRINT"
-  },
-  "skills/identity/business/mybiz.md": {
+  "local-ai-agent/skills/identity/business/mybiz.md": {
     "type": "markdown",
     "summary": "IDENTITY: BUSINESS SYSTEM ENGINEER"
   },
-  "skills/identity/workout/routine.md": {
+  "local-ai-agent/skills/identity/workout/routine.md": {
     "type": "markdown",
     "summary": "IDENTITY: ATHLETIC PERFORMANCE & ROUTINE OPTIMIZER"
   },
-  "skills/identity/marketing/strategy.md": {
+  "local-ai-agent/skills/identity/marketing/strategy.md": {
     "type": "markdown",
     "summary": "IDENTITY: MARKETING STRATEGIST & CONTENT ENGINE"
   },
-  "skills/meta/cot.md": {
+  "local-ai-agent/skills/meta/cot.md": {
     "type": "markdown",
-    "summary": "Agent Documentation Module"
+    "summary": "chain-of-thought"
   },
-  "skills/meta/eval.md": {
+  "local-ai-agent/skills/meta/eval.md": {
     "type": "markdown",
-    "summary": "Agent Documentation Module"
+    "summary": "evaluation"
   },
-  "skills/meta/prompt.md": {
+  "local-ai-agent/skills/meta/prompt.md": {
     "type": "markdown",
     "summary": "Role & Objective"
   },
-  "skills/meta/follow-up.md": {
+  "local-ai-agent/skills/meta/follow-up.md": {
     "type": "markdown",
-    "summary": "Agent Documentation Module"
+    "summary": "Analyze active history and generate exactly 3 general knowledge follow-up questions:"
   },
-  "skills/meta/think.md": {
+  "local-ai-agent/skills/meta/think.md": {
     "type": "markdown",
-    "summary": "Agent Documentation Module"
+    "summary": "Analyze history and generate 3 diverse, actionable developer follow-up questions or commands:"
+  },
+  "ai-summary/llmsum.py": {
+    "type": "python",
+    "imports": [
+      "json",
+      "os",
+      "re",
+      "select",
+      "shutil",
+      "subprocess",
+      "sys",
+      "termios",
+      "time",
+      "tty",
+      "urllib"
+    ],
+    "classes": [],
+    "functions": [
+      "get_key",
+      "flush_input_buffer",
+      "get_input_with_back_button",
+      "check_server_status",
+      "print_header",
+      "print_robot_header",
+      "clean_markdown",
+      "run_menu",
+      "call_llm",
+      "render_and_read_summary",
+      "main"
+    ]
+  },
+  "ai-summary/readme.md": {
+    "type": "markdown",
+    "summary": "llmsum.py"
+  },
+  "basepage-tui/readme.md": {
+    "type": "markdown",
+    "summary": "basepage.py"
+  },
+  "basepage-tui/basepage.py": {
+    "type": "python",
+    "imports": [
+      "html",
+      "json",
+      "os",
+      "random",
+      "re",
+      "shutil",
+      "subprocess",
+      "sys",
+      "termios",
+      "time",
+      "tty",
+      "urllib",
+      "webbrowser"
+    ],
+    "classes": [],
+    "functions": [
+      "get_working_redlib_instance",
+      "map_to_redlib",
+      "open_in_browser",
+      "fully_unescape",
+      "get_key",
+      "get_text_input",
+      "highlight_matches",
+      "count_keyword_matches",
+      "print_header",
+      "draw_metadata_table",
+      "fetch_feed_instant",
+      "render_page",
+      "main"
+    ]
+  },
+  "basepage-tui/basetracker.py": {
+    "type": "python",
+    "imports": [
+      "datetime",
+      "json",
+      "os",
+      "shutil",
+      "sys",
+      "termios",
+      "tty",
+      "urllib"
+    ],
+    "classes": [],
+    "functions": [
+      "get_key",
+      "print_header",
+      "parse_iso_time",
+      "fetch_hf_data",
+      "render_target_view",
+      "main"
+    ]
+  },
+  "basepage-tui/archived/basepage.py": {
+    "type": "python",
+    "imports": [
+      "html",
+      "json",
+      "os",
+      "random",
+      "re",
+      "shutil",
+      "subprocess",
+      "sys",
+      "termios",
+      "time",
+      "tty",
+      "urllib",
+      "webbrowser"
+    ],
+    "classes": [],
+    "functions": [
+      "get_working_redlib_instance",
+      "map_to_redlib",
+      "open_in_browser",
+      "fully_unescape",
+      "get_key",
+      "get_text_input",
+      "highlight_matches",
+      "count_keyword_matches",
+      "print_header",
+      "fetch_feed_instant",
+      "render_page",
+      "main"
+    ]
+  },
+  "basepage-tui/archived/basetracker.py": {
+    "type": "python",
+    "imports": [
+      "datetime",
+      "json",
+      "os",
+      "sys",
+      "termios",
+      "tty",
+      "urllib"
+    ],
+    "classes": [],
+    "functions": [
+      "get_key",
+      "print_header",
+      "parse_iso_time",
+      "fetch_hf_data",
+      "render_target_view",
+      "main"
+    ]
+  },
+  "cloud/antigravity-cli/readme.md": {
+    "type": "markdown",
+    "summary": "ytsum.py"
+  },
+  "cloud/antigravity-cli/ytsum.py": {
+    "type": "python",
+    "imports": [
+      "json",
+      "os",
+      "select",
+      "shutil",
+      "subprocess",
+      "sys",
+      "termios",
+      "tty",
+      "urllib"
+    ],
+    "classes": [],
+    "functions": [
+      "get_key",
+      "flush_input_buffer",
+      "get_input_or_escape",
+      "print_header",
+      "run_menu",
+      "call_gemini",
+      "speak_text",
+      "main"
+    ]
+  },
+  "opencode-bridge/readme.md": {
+    "type": "markdown",
+    "summary": "OpenCode Bridge Orchestrator"
+  },
+  "research-tui/readme.md": {
+    "type": "markdown",
+    "summary": "DeepResearch-TUI"
+  },
+  "voice/readme.md": {
+    "type": "markdown",
+    "summary": "Local-AI Tablet Voice Bridge"
   }
 }

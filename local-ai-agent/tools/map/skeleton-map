@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# skeleton-map [Local Map Compiler] v1.4
+# skeleton-map [Local Map Compiler] [j5onrf] v1.5.1
 
 import os
 import ast
@@ -26,7 +26,6 @@ def load_gitignore_patterns(target_dir):
             with open(gitignore_path, 'r', encoding='utf-8', errors='ignore') as f:
                 for line in f:
                     line = line.strip()
-                    # Skip empty lines, comments, and negation rules (!) for simplicity
                     if not line or line.startswith('#') or line.startswith('!'):
                         continue
                     patterns.append(line)
@@ -39,7 +38,6 @@ def should_ignore(rel_path, is_dir, gitignore_patterns, default_ignored_dirs):
     Determines if a given relative path matches either the built-in hardcoded rules
     or the project's custom .gitignore rules.
     """
-    # Standardize path separators for cross-platform pattern matching
     norm_path = rel_path.replace(os.sep, '/')
     parts = norm_path.split('/')
     
@@ -53,7 +51,6 @@ def should_ignore(rel_path, is_dir, gitignore_patterns, default_ignored_dirs):
         pat = pattern
         dir_only = False
         
-        # Check if the rule is directory-specific
         if pat.endswith('/'):
             pat = pat[:-1]
             dir_only = True
@@ -61,31 +58,26 @@ def should_ignore(rel_path, is_dir, gitignore_patterns, default_ignored_dirs):
         if dir_only and not is_dir:
             continue
             
-        # Check if rule is anchored to the root directory
         anchored = False
         if pat.startswith('/'):
             pat = pat[1:]
             anchored = True
             
         if anchored:
-            # Match directly from the root of the scanned workspace
             target_match_path = norm_path if not dir_only else norm_path.rstrip('/')
             if fnmatch.fnmatchcase(target_match_path, pat):
                 return True
-            # Check if directory pattern matches a parent sequence (e.g. pattern '/dist' matching 'dist/sub/file')
             pat_parts = pat.split('/')
             if len(parts) >= len(pat_parts):
                 candidate = '/'.join(parts[:len(pat_parts)])
                 if fnmatch.fnmatchcase(candidate, pat):
                     return True
         else:
-            # Match rules anywhere within the path depth (e.g., "temp.txt" or "*.log")
             for i, part in enumerate(parts):
                 if dir_only and i == len(parts) - 1 and not is_dir:
                     continue
                 if fnmatch.fnmatchcase(part, pat):
                     return True
-                # Handle multi-depth sub-paths (e.g., "build/logs" in the path)
                 if '/' in pat:
                     pat_len = len(pat.split('/'))
                     for j in range(len(parts) - pat_len + 1):
@@ -95,6 +87,9 @@ def should_ignore(rel_path, is_dir, gitignore_patterns, default_ignored_dirs):
     return False
 
 def analyze_python_file(filepath):
+    """
+    Parses Python code using AST to extract functions, classes, and root-level imports.
+    """
     try:
         with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
             content = f.read()
@@ -103,13 +98,26 @@ def analyze_python_file(filepath):
         
         functions = []
         classes = []
+        imports = set()
+        
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 functions.append(node.name)
             elif isinstance(node, ast.ClassDef):
                 classes.append(node.name)
+            elif isinstance(node, ast.Import):
+                for alias in node.names:
+                    imports.add(alias.name.split('.')[0])
+            elif isinstance(node, ast.ImportFrom):
+                if node.module:
+                    imports.add(node.module.split('.')[0])
                 
-        return {"type": "python", "classes": classes, "functions": functions}
+        return {
+            "type": "python", 
+            "imports": sorted(list(imports)), 
+            "classes": classes, 
+            "functions": functions
+        }
     except SyntaxError:
         return {"type": "python", "error": "Syntax Error / Unparseable"}
     except Exception as e:
@@ -139,10 +147,30 @@ def analyze_markdown_file(filepath):
     except Exception as e:
         return {"type": "markdown", "error": f"Unreadable: {str(e)}"}
 
+def analyze_shell_file(filepath):
+    """
+    Parses a shell script to extract the first functional comment line.
+    """
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            purpose = None
+            for _ in range(10):
+                line = f.readline()
+                if not line:
+                    break
+                stripped = line.strip()
+                if not stripped or stripped.startswith('#!'):
+                    continue
+                if stripped.startswith('#'):
+                    purpose = stripped.lstrip('# ').strip()
+                    break
+            return {"type": "shell", "summary": purpose or "Shell Script / Hook Module"}
+    except Exception as e:
+        return {"type": "shell", "error": f"Unreadable: {str(e)}"}
+
 def generate_skeleton(target_dir):
     skeleton = {}
     
-    # Standard safety-net exclusions if no .gitignore is found or for critical system clutter
     default_ignored = {
         '.git', '__pycache__', 'logs', '.auto-f', 'node_modules', 
         'venv', '.venv', 'env', '.env', 'build', 'dist', 
@@ -154,7 +182,6 @@ def generate_skeleton(target_dir):
         print(f"ℹ Loaded {len(patterns)} rules from .gitignore.")
     
     for root, dirs, files in os.walk(target_dir):
-        # Optimization: Filter directories in-place to prevent os.walk recursion 
         new_dirs = []
         for d in dirs:
             dir_rel_path = os.path.relpath(os.path.join(root, d), target_dir)
@@ -166,7 +193,6 @@ def generate_skeleton(target_dir):
             filepath = os.path.join(root, file)
             rel_path = os.path.relpath(filepath, target_dir)
             
-            # File-level check against .gitignore patterns
             if should_ignore(rel_path, False, patterns, default_ignored):
                 continue
             
@@ -174,12 +200,13 @@ def generate_skeleton(target_dir):
                 skeleton[rel_path] = analyze_python_file(filepath)
             elif file.endswith('.md') or file.endswith('.MD'):
                 skeleton[rel_path] = analyze_markdown_file(filepath)
+            elif file.endswith('.sh') or file.endswith('.bash'):
+                skeleton[rel_path] = analyze_shell_file(filepath)
                 
     return skeleton
 
 def main():
     try:
-        # A shorter prompt to maximize space for long absolute paths
         user_input = input("Scan target [.]: ").strip()
     except (KeyboardInterrupt, EOFError):
         print("\n✕ Operation cancelled.")
