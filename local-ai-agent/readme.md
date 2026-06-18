@@ -57,7 +57,7 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 
 ## The Brain: Configuration (`ai-context.md`)
 
-Add your shortcuts and workspaces to `ai-context.md`.
+Add your shortcuts, commands, and workspaces to `ai-context.md`.
 
 ```markdown
 # --- Specialized Codebase Workspaces (Skill-Primed) ---
