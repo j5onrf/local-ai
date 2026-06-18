@@ -1,6 +1,6 @@
 # Skeleton Map
 
-Give your AI agent a complete semantic index of your repository while saving up to **90% in token overhead**.
+Give your AI agent a complete semantic index of your repository or project while saving up to **90% in token overhead**.
 
 Unlike standard file listings (`ls -R`), this utility leverages Abstract Syntax Tree (AST) parsing to map the actual internal interfaces (classes and functions) of your codebase without exposing raw, token-heavy code logic.
 
@@ -45,5 +45,4 @@ The script outputs a structured `skeleton.json` directly into this folder. When 
 * `skeleton.json`: The latest compiled structural mapping database (auto-generated).
 * `readme.md`: This file.
 
-```
 
