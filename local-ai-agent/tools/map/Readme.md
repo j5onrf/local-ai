@@ -1,4 +1,3 @@
-```markdown
 # Skeleton Map
 
 Maps your project's code structure into a lightweight semantic index, saving **95% to 99% in token overhead** compared to raw code ingestion. 
