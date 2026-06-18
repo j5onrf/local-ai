@@ -104,8 +104,13 @@ source ~/.bashrc
 
 *(Optional)* Export your cloud API keys to activate cloud routing and fallback logic:
 ```bash
-export GEMINI_API_KEY="AIzaSyYourGeminiKey"
-export OPENROUTER_API_KEY="sk-or-v1-YourOpenRouterKey"
+# Primary: Google Gemini Cloud API Configuration
+export GEMINI_API_KEY="AIzaSyYourFullGeminiApiKeyHere"
+export CLOUD_MODEL="gemini-3.1-flash-lite"
+
+# Fallback: OpenRouter Configuration
+export OPENROUTER_API_KEY="sk-or-v1-YourFullOpenRouterKeyHere"
+export OPENROUTER_MODEL="poolside/laguna-m.1:free"
 ```
 
 ---
