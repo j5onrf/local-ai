@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.6.1 [j5onrf] [06-18-26]
+# Local-Ai Agent v0.8.5.9 [j5onrf] [06-18-26]
 
 import sys, re, os, json, threading, time, subprocess, shutil
 import urllib.request as urlreq, urllib.error as urlerr
@@ -85,7 +85,8 @@ def load_context_entries():
         return entries
     except Exception as e: sys.stderr.write(f"\033[1;31mError parsing context map: {e}\033[0m\n"); return []
 
-def matrix_search(query, threshold=0.45):
+# Renamed to jaccard_search to reflect Jaccard Similarity matching
+def jaccard_search(query, threshold=0.45):
     q_clean, q_tokens = query.strip().lower(), set(tokenize(query))
     if not q_tokens or not (entries := load_context_entries()): return None
     candidates = []
@@ -152,7 +153,8 @@ def get_system_context(query):
 
 def run_interactive_selection(intent):
     if re.search(r'[\[\]{}()=\'"",;|<>#]', intent): print_stock_error(intent); sys.exit(127)
-    matched_base = matrix_search(intent)
+    # Updated: Calling renamed jaccard_search
+    matched_base = jaccard_search(intent)
     if not matched_base: print_stock_error(intent); sys.exit(127)
     options = matched_base.split("\n")
     num_opts, current_idx = len(options), 0
@@ -308,7 +310,8 @@ try:
     user_input = sanitize_input(" ".join(sys.argv[1:])) if len(sys.argv) > 1 else ""
     if not user_input or sys.argv[1].startswith("--"): sys.exit(0)
     if re.search(r'[\[\]{}()=\'"",;|<>#]', user_input): print_stock_error(user_input); sys.exit(127)
-    matched_base = matrix_search(user_input)
+    # Updated: Calling renamed jaccard_search
+    matched_base = jaccard_search(user_input)
     if matched_base:
         out_lines = []
         for line in matched_base.split("\n"):

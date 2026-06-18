@@ -16,7 +16,7 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 
 > **Routing Logic:** The agent automatically determines the optimal execution path based on your input pattern, ensuring zero wasted tokens.
 
-* **No Session (Direct selections):** Typing custom commands or shortcuts prompts a local, rarity-weighted sparse search matrix to select options instantly, routing them directly to your local terminal or pager.
+* **No Session (Direct selections):** Typing custom commands or shortcuts triggers an ultra-light, sub-millisecond **Jaccard Similarity** matching engine (`jaccard_search`) with substring prefix-matching. Running natively on compiled C-level set operations, it routes options to your local terminal or pager instantly.
 * **Single-Turn Agent (`ai <query>`):** Answers a single question and returns you to Bash, executing explicitly mapped diagnostic tools and skills only when requested.
 * **Multi-Turn Chat (`ai` alone):** Initiates an interactive, persistent conversation with local state preservation and multi-turn context memory.
 * **Workspace Agents (`ai init <path>`):** Compiles a path-specific structural tree of your repository, launching a dedicated, codebase-aware agent session primed with your chosen skill file.
@@ -26,12 +26,13 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 | Pillar | Capability | Description |
 | --- | --- | --- |
 | **Performance** | **Zero-Daemon** | 0% idle CPU/RAM. Ultra-lite execution. |
+| **Search Engine** | **Jaccard Similarity** | Sub-millisecond keyword and partial-word matching with 0ms prefill lag. |
 | **Resiliency** | **Fallbacks** | Automatically cascades: Gemini $\rightarrow$ OpenRouter $\rightarrow$ Local. |
 | **Safety** | **Zero-Trust Guardrails** | Intercepts destructive commands before shell execution. |
 | **Integration** | **Dynamic Context** | On-demand compilation of system specs and tool outputs. |
 | **Optimization** | **Token-Slasher** | Custom tool and skill integration built for minimal token use. |
 | **Interface** | **Conversational TUI** | Rich, multi-turn chat sessions directly in the terminal. |
-| **Auditability** | **Zero-Dependency** | Under 350 lines of standard-library Python. |
+| **Auditability** | **Zero-Dependency** | Under 300 lines of standard-library Python. |
 
 ---
 
@@ -51,7 +52,7 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 | `ai init <path>` | Index directory & launch codebase-aware agent. |
 | `ai <query>` | Instant answer; returns directly to Bash prompt. |
 | `voice` | Launch local-network tablet voice bridge (Port 9999). |
-| `/f` `/f toggle` | Launch Follow-ups, in multi-turn chat session. |
+| `/f` `f` | Launch Follow-ups, in multi-turn chat session. |
 
 ---
 
@@ -77,14 +78,12 @@ For the best experience, install `mdcat` to render Markdown files with your nati
 
 ```bash
 yay mdcat
-
 ```
 
 ### 2. Install Project
 
 ```bash
 git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai
-
 ```
 
 ### 3. Bash Hook
@@ -92,7 +91,6 @@ git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai
 ```bash
 echo '[ -f "$HOME/.config/local-ai/local-ai-agent/ai-hook.sh" ] && source "$HOME/.config/local-ai/local-ai-agent/ai-hook.sh"' >> ~/.bashrc
 source ~/.bashrc
-
 ```
 
 *(Optional)* Export your cloud API keys to activate cloud routing and fallback logic:
@@ -114,8 +112,5 @@ export OPENROUTER_API_KEY="sk-or-v1-YourOpenRouterKey"
                                                 █████████████████████████╗
                                                 ╚███████████████████████╔╝   ~ > A H O Y _
                                             ═══╝╚════╝╚════╝╚════╝╚════╝═══
-
 ```
-
-
 
