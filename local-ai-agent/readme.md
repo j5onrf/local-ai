@@ -48,7 +48,6 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 ~ ❯ weather
 [01/02] ❯ [weather full] curl -s wttr.in | cat
 :: ↵ run  any skip: 
-
 ```
 
 ---
@@ -82,43 +81,23 @@ Add your shortcuts, commands, and workspaces to `ai-context.md`.
 
 <h2 align="center">Setup & Prerequisites</h2>
 
-### 1. Optional: Terminal Markdown Rendering
-
-For the best experience, install `mdcat` to render Markdown files with your native terminal colors:
-
 ```bash
+# 1. Optional: Install mdcat for native terminal Markdown rendering
 yay mdcat
 
-```
-
-### 2. Install Project
-
-```bash
+# 2. Clone the repository locally
 git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai
 
-```
-
-### 3. Bash Hook
-
-```bash
-echo '[ -f "$HOME/.config/local-ai/local-ai-agent/ai-hook.sh" ] && source "$HOME/.config/local-ai/local-ai-agent/ai-hook.sh"' >> ~/.bashrc
+# 3. Inject the environment hook into Bash & reload your profile
+AI_SRC='$HOME/.config/local-ai/local-ai-agent/ai-hook.sh'
+printf '[ -f "%s" ] && source "%s"\n' "$AI_SRC" "$AI_SRC" >> ~/.bashrc
 source ~/.bashrc
 
-```
-
-*(Optional)* Export your cloud API keys to activate cloud routing and fallback logic:
-
-```bash
-# Primary: Google Gemini Cloud API Configuration
+# 4. Optional: Export cloud API keys to enable remote fallback routing
 export GEMINI_API_KEY="AIzaSyYourFullGeminiApiKeyHere"
 export CLOUD_MODEL="gemini-3.1-flash-lite"
-
-# Fallback: OpenRouter Configuration
 export OPENROUTER_API_KEY="sk-or-v1-YourFullOpenRouterKeyHere"
 export OPENROUTER_MODEL="openrouter/free"
 
-
 ```
-
-
 
