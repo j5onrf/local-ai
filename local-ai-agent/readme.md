@@ -53,6 +53,8 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 
 ---
 
+<h2 align="center">Command Reference</h2>
+
 | Command | Description |
 | --- | --- |
 | `ai` | Launch interactive, multi-turn conversation session. |
