@@ -136,7 +136,8 @@ def get_system_context(query):
     if not q_tokens or "\n" in query.strip(): return ""
     for entry in load_context_entries():
         ent_tokens = entry.get("tokens", [])
-        if len(q_tokens) >= len(ent_tokens) and q_tokens[:len(ent_tokens)] == ent_tokens:
+        # 1. Advanced Subsequence Match: Matches keyword anywhere in your natural language sentence
+        if any(q_tokens[i:i+len(ent_tokens)] == ent_tokens for i in range(len(q_tokens) - len(ent_tokens) + 1)):
             cmd = entry.get("cmd", "")
             if cmd.startswith("[TOOL]"):
                 tool = cmd.replace("[TOOL]", "").strip()
@@ -145,7 +146,11 @@ def get_system_context(query):
                     if tool.endswith(f): tool = tool[:-len(f)].strip()
                 intent_tokens = set(tokenize(entry.get("intent", "")))
                 args = " ".join([w for w in query.split() if tokenize(w) and tokenize(w)[0] not in intent_tokens])
-                if args: tool = f"{tool} {args}"
+                
+                # 2. Optimized Argument Handling: Merged into a clean, 2-line check
+                if "$1" in tool or "{}" in tool:
+                    tool = tool.replace("$1", args).replace("{}", args).strip()
+                
                 sys.stderr.write(f"\033[90m[sys] Executing: {tool}\033[0m\n"); sys.stderr.flush()
                 return run_local_tool(tool)
     return ""
