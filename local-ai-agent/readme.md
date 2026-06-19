@@ -1,16 +1,16 @@
-# Local-AI Agent <kbd>v0.8.6.5</kbd>
-
-<div align="center">
+<p align="center">
   <img alt="Local-AI Agent" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" width="800" />
+</p>
 
-  <p>
-    <code>Laguna-M.1</code>  <code>Qwen3-Coder</code>  <code>Gemini-3.1-Flash-Lite</code>
-  </p>
-</div>
+<h1 align="center">Local-AI Agent <kbd>v0.8.6.5</kbd></h1>
+
+<p align="center">
+  <code>Laguna-M.1</code> &nbsp;&bull;&nbsp; <code>Qwen3-Coder</code> &nbsp;&bull;&nbsp; <code>Gemini-3.1-Flash-Lite</code>
+</p>
 
 ---
 
-## How the Agent Works
+<h2 align="center">How the Agent Works</h2>
 
 All configurations are managed through your master blueprint: `ai-context.md`.
 
@@ -23,11 +23,13 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 
 ---
 
+<h2 align="center">Core Pillars & Capabilities</h2>
+
 | Pillar | Capability | Description |
-| --- | --- | --- |
+| :---: | :---: | :--- |
 | **Performance** | **Zero-Daemon** | 0% idle CPU/RAM. Ultra-lite execution. |
 | **Search Engine** | **Jaccard Similarity** | Sub-millisecond keyword and partial-word matching. |
-| **Resiliency** | **Fallbacks** | Automatically cascades: Gemini $\rightarrow$ OpenRouter $\rightarrow$ Local. |
+| **Resiliency** | **Fallbacks** | Automatically cascades: Gemini → OpenRouter → Local. |
 | **Safety** | **Zero-Trust Guardrails** | Intercepts destructive commands before shell execution. |
 | **Integration** | **Dynamic Context** | On-demand compilation of system specs and tool outputs. |
 | **Optimization** | **Token-Slasher** | Custom tool and skill integration built for minimal token use. |
@@ -36,7 +38,7 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 
 ---
 
-## TUI Carousel Controls
+<h2 align="center">TUI Carousel Controls</h2>
 
 * **`Up` / `Down` Arrow Keys:** Cycle through available ranked selections.
 * **`Enter`:** Execute the highlighted command (or initialize a workspace if the selection is a directory path).
@@ -46,11 +48,10 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 ~ ❯ hs
 [01/04] ❯ [hyprstate work] ~/.config/local-ai/local-ai-agent/tools/subsec/hyprstate/work
 :: ↵ run  any skip: 
+
 ```
 
 ---
-
-## Command Reference
 
 | Command | Description |
 | --- | --- |
@@ -62,8 +63,6 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 
 ---
 
-## The Brain: Configuration (`ai-context.md`)
-
 Add your shortcuts, commands, and workspaces to `ai-context.md`.
 
 ```markdown
@@ -72,11 +71,10 @@ Add your shortcuts, commands, and workspaces to `ai-context.md`.
 
 # --- System Optimization (Improve System Performance) ---
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system/system-optimize --leaf ---> system optimize, sysop
+
 ```
 
 ---
-
-## Setup & Prerequisites
 
 ### 1. Optional: Terminal Markdown Rendering
 
@@ -84,12 +82,14 @@ For the best experience, install `mdcat` to render Markdown files with your nati
 
 ```bash
 yay mdcat
+
 ```
 
 ### 2. Install Project
 
 ```bash
-git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai
+git clone [https://github.com/j5onrf/local-ai.git](https://github.com/j5onrf/local-ai.git) ~/.config/local-ai
+
 ```
 
 ### 3. Bash Hook
@@ -97,9 +97,11 @@ git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai
 ```bash
 echo '[ -f "$HOME/.config/local-ai/local-ai-agent/ai-hook.sh" ] && source "$HOME/.config/local-ai/local-ai-agent/ai-hook.sh"' >> ~/.bashrc
 source ~/.bashrc
+
 ```
 
 *(Optional)* Export your cloud API keys to activate cloud routing and fallback logic:
+
 ```bash
 # Primary: Google Gemini Cloud API Configuration
 export GEMINI_API_KEY="AIzaSyYourFullGeminiApiKeyHere"
@@ -108,20 +110,9 @@ export CLOUD_MODEL="gemini-3.1-flash-lite"
 # Fallback: OpenRouter Configuration
 export OPENROUTER_API_KEY="sk-or-v1-YourFullOpenRouterKeyHere"
 export OPENROUTER_MODEL="openrouter/free"
+
+
 ```
 
----
 
-```text
-    ║
-  ═ █ ═                                                  ██╗
-    ║                                                    ██║
-                                                        ███║
-               ╔══╗                                   ██╔██║
-             ══╝  ╚══                               ██╔╝ ██║
-                                                  ██╔╝   ██║
-                                                █████████████████████████╗
-                                                ╚███████████████████████╔╝   ~ > A H O Y _
-                                            ═══╝╚════╝╚════╝╚════╝╚════╝═══
-```
 
