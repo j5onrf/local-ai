@@ -5,6 +5,7 @@ tools/subsec/voice/server.pem
 ai-history
 tools/agentic/fusion/logs
 tools/map/skeleton.json
+.request_log
 
 # Ignore Python cache directories and bytecode
 __pycache__/

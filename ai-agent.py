@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.6.7 [j5onrf] [06-19-26]
+# Local-Ai Agent v0.8.6.8 [j5onrf] [06-18-26]
 
 import sys, re, os, json, threading, time, subprocess, shutil
 import urllib.request as urlreq, urllib.error as urlerr
@@ -147,7 +147,7 @@ def get_system_context(query):
                 intent_tokens = set(tokenize(entry.get("intent", "")))
                 args = " ".join([w for w in query.split() if tokenize(w) and tokenize(w)[0] not in intent_tokens])
                 
-                # 2. Optimized Argument Handling: Merged into a clean, 2-line check
+                # 2. Programmatic Argument Handling via Placeholders
                 if "$1" in tool or "{}" in tool:
                     tool = tool.replace("$1", args).replace("{}", args).strip()
                 
@@ -215,7 +215,14 @@ def stream_llm_response(messages, prefix="AI: "):
                 try:
                     spinner.start()
                     with urlreq.urlopen(req, timeout=10) as response:
+                        # ULTRA-LITE: 3-line cloud logging (safely indented)
+                        try:
+                            p = "gemini" if "generativelanguage" in url else "openrouter" if "openrouter" in url else None
+                            p and open(os.path.join(CFG_DIR, ".request_log"), "a").write(f"{int(time.time())}|{p}\n")
+                        except: pass
+                        
                         first, acc = True, []
+                        resolved_model = None
                         for line in response:
                             dec = line.decode("utf-8").strip()
                             if not dec: continue
@@ -223,6 +230,8 @@ def stream_llm_response(messages, prefix="AI: "):
                             if dec == "[DONE]": continue
                             try:
                                 data = json.loads(dec)
+                                if "model" in data and not resolved_model:
+                                    resolved_model = data["model"]
                                 content = ""
                                 if "choices" in data and data["choices"]: content = data["choices"][0].get("delta", {}).get("content", "")
                                 elif "candidates" in data and data["candidates"]: content = data["candidates"][0].get("content", {}).get("parts", [{}])[0].get("text", "")
@@ -235,7 +244,11 @@ def stream_llm_response(messages, prefix="AI: "):
                                         first = False
                                     print(content, end="", flush=True); acc.append(content)
                             except: pass
-                        print(""); return "".join(acc)
+                        print("")
+                        if resolved_model and resolved_model != model:
+                            sys.stdout.write(f"\033[90m[via {resolved_model}]\033[0m\n")
+                            sys.stdout.flush()
+                        return "".join(acc)
                 except urlerr.HTTPError as e:
                     spinner.stop()
                     if e.code == 429 and retries > 0:

@@ -40,7 +40,7 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 | **Integration** | **Dynamic Context** | On-demand compilation of system specs and tool outputs. |
 | **Optimization** | **Token-Slasher** | Custom tool and skill integration built for minimal token use. |
 | **Interface** | **Conversational TUI** | Rich, multi-turn chat sessions directly in the terminal. |
-| **Auditability** | **Zero-Dependency** | Under 300 lines of standard-library Python. |
+| **Auditability** | **Zero-Dependency** | Under 350 lines of standard-library Python. |
 
 ---
 

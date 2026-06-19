@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ai-status - Diagnostics for Local-AI Agent Stack v1.3.0
+# ai-status - Diagnostics for Local-AI Agent Stack v1.3.3
 
 set -euo pipefail
 
@@ -18,6 +18,45 @@ gemini_status=$(check_conn "${GEMINI_API_KEY:-}" "https://generativelanguage.goo
 or_status=$(check_conn "${OPENROUTER_API_KEY:-}" "https://openrouter.ai")
 local_status=$(curl -s -I --connect-timeout 1.0 "http://localhost:8080" >/dev/null && echo 0 || echo 1)
 
+# Fetch cloud-only metrics and prune old logs in a single Python pass
+request_stats="0|0|0|0"
+log_file="$HOME/.config/local-ai/.request_log"
+if [[ -f "$log_file" ]]; then
+    request_stats=$(python3 -c "
+import os, time
+log_file = os.path.expanduser('~/.config/local-ai/.request_log')
+now = int(time.time())
+day_ago, min_ago = now - 86400, now - 60
+rpd = {'gemini': 0, 'openrouter': 0}
+rpm = {'gemini': 0, 'openrouter': 0}
+valid = []
+try:
+    with open(log_file, 'r') as f:
+        for line in f:
+            parts = line.strip().split('|')
+            if len(parts) == 2 and parts[0].isdigit():
+                ts, provider = int(parts[0]), parts[1]
+                if ts >= day_ago:
+                    valid.append(f'{ts}|{provider}')
+                    if provider in rpd:
+                        rpd[provider] += 1
+                        if ts >= min_ago:
+                            rpm[provider] += 1
+    # Auto-pruning: Keep only active rolling 24h timestamps
+    with open(log_file, 'w') as f:
+        for entry in valid:
+            f.write(f'{entry}\n')
+except:
+    pass
+print(f\"{rpd['gemini']}|{rpm['gemini']}|{rpd['openrouter']}|{rpm['openrouter']}\")
+" || echo "0|0|0|0")
+fi
+
+gemini_rpd=$(echo "$request_stats" | cut -d'|' -f1)
+gemini_rpm=$(echo "$request_stats" | cut -d'|' -f2)
+or_rpd=$(echo "$request_stats" | cut -d'|' -f3)
+or_rpm=$(echo "$request_stats" | cut -d'|' -f4)
+
 # Fetch OpenRouter key metadata (usage, limits, tier) on-demand
 or_meta="*Not Available*"
 if [[ $or_status -eq 0 ]]; then
@@ -32,6 +71,24 @@ try:
 except Exception:
     print('Failed to parse metadata')
 " || echo "API Unreachable")
+fi
+
+# Fetch active OpenRouter free models dynamically on-demand
+or_free_list="*Not Available*"
+if [[ $or_status -eq 0 && "${OPENROUTER_MODEL:-}" == *"free"* ]]; then
+    or_free_list=$(curl -s "https://openrouter.ai/api/v1/models" | python3 -c "
+import sys, json
+try:
+    models = json.load(sys.stdin).get('data', [])
+    free = [m.get('id') for m in models if m.get('id', '').endswith(':free')]
+    if free:
+        # Format and show top 5 active free models in the pool
+        print(', '.join(free[:5]) + '...')
+    else:
+        print('None found')
+except Exception:
+    print('Failed to parse free models')
+" || echo "Failed to fetch")
 fi
 
 # Fetch Local Server active model dynamically if online
@@ -51,10 +108,15 @@ fi
 echo -e "# ACTIVE AI ROUTING DIAGNOSTICS\n\n> **Instructions for AI:**\n> 1. Inform the user which AI provider is currently active and which model is selected.\n> 2. If a key is disabled or an endpoint is offline (forcing a fallback to OpenRouter or Local), clearly explain why the current provider was chosen.\n> 3. Keep your explanation to 2 sentences max.\n\n---\n\n## CREDENTIALS & CONFIGURATION"
 echo "* **GEMINI_API_KEY**  : $(mask_key "${GEMINI_API_KEY:-}")"
 echo "* **CLOUD_MODEL**     : \`${CLOUD_MODEL:-gemini-3.1-flash-lite}\` (Free Limits: 15 RPM / 1,500 RPD)"
+echo "* **GEMINI METRICS**  : \`RPM: ${gemini_rpm} | RPD: ${gemini_rpd}\` (Last 24h rolling)"
 echo ""
 echo "* **OPENROUTER_KEY**  : $(mask_key "${OPENROUTER_API_KEY:-}")"
 echo "* **OPENROUTER_MODEL**: \`${OPENROUTER_MODEL:-openrouter/free}\`"
+if [[ $or_status -eq 0 && "${OPENROUTER_MODEL:-}" == *"free"* ]]; then
+    echo "* **FREE POOL ROUTES**: \`${or_free_list}\`"
+fi
 echo "* **OPENROUTER_USAGE**: \`${or_meta}\`" # Prints: Used: $X.XXXX | Limit: $Y (Free/Paid)
+echo "* **OPENROUTER METRICS**: \`RPM: ${or_rpm} | RPD: ${or_rpd}\` (Last 24h rolling)"
 echo -e "\n---\n\n## ENDPOINT STATUS"
 
 # Compact 1-line status printers
