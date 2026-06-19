@@ -1,0 +1,181 @@
+#!/usr/bin/env python3
+# chat - Unified Agentic Brainstorm, Thinking & Follow-up Engine v2.5.0
+# Path: ~/.config/local-ai/tools/chat
+
+import sys, os, json, re, urllib.request as urlreq
+
+CFG_DIR = os.path.expanduser("~/.config/local-ai")
+
+# 1. Parse Serialized Chat History from Stdin
+try:
+    history = json.loads(sys.stdin.read())
+except Exception:
+    sys.stderr.write("Error: No valid chat history passed to brainstorm tool.\n")
+    sys.exit(1)
+
+# 2. Parse Query Mode and Dynamic Option Count via Secure Regex
+query_string = " ".join(sys.argv[1:]).lower().strip()
+cmd_match = re.match(r'^/?([ftba])(?:\s+(\d+))?$', query_string)
+
+# Extract parameters
+cmd_char = cmd_match.group(1) if cmd_match else "f"
+option_count = 3
+if cmd_match and cmd_match.group(2):
+    parsed_val = int(cmd_match.group(2))
+    if 1 <= parsed_val <= 10:
+        option_count = parsed_val
+
+is_brain_cmd = (cmd_char == "b")
+is_think_cmd = (cmd_char == "t")
+is_all_cmd = (cmd_char == "a")
+is_think_mode = is_brain_cmd or is_think_cmd
+
+# Determine active file and UI elements dynamically
+if is_brain_cmd:
+    skill_file = "brainstorm.md"
+    output_header = "Brainstorm"
+    fallback_term = "brainstorm"
+elif is_think_cmd:
+    skill_file = "thinking.md"
+    output_header = "Thinking"
+    fallback_term = "think"
+elif is_all_cmd:
+    skill_file = "all"
+    output_header = "Follow-up"
+    fallback_term = "all"
+else:
+    skill_file = "follow-up.md"
+    output_header = "Follow-up"
+    fallback_term = "follow-up"
+
+THINK_FILE = f"{CFG_DIR}/skills/meta/{skill_file}"
+
+# 3. Read Prompt with Dynamic Option/All-Mode Compilation
+prompt = ""
+if is_all_cmd:
+    # Compile a unified super-prompt from all three source files in one API call
+    prompts = []
+    for f_name, header in [("follow-up.md", "Follow-up"), ("thinking.md", "Thinking"), ("brainstorm.md", "Brainstorm")]:
+        path = f"{CFG_DIR}/skills/meta/{f_name}"
+        if os.path.exists(path):
+            try:
+                with open(path) as f:
+                    prompts.append(f.read().strip())
+            except Exception: pass
+    if prompts:
+        prompt = (
+            "Analyze history and output exactly three sections: Follow-up, Thinking, and Brainstorm.\n"
+            "Adhere strictly to the rules of each section below:\n\n"
+            + "\n\n---\n\n".join(prompts) +
+            "\n\nTemplate (Ensure headers are exact, flush left, with no empty lines between options):\n"
+            "Follow-up\n[Option 1]\n[Option 2]\n[Option 3]\n"
+            "Thinking\n[Option 1]\n[Option 2]\n[Option 3]\n"
+            "Brainstorm\n[Option 1]\n[Option 2]\n[Option 3]"
+        )
+elif os.path.exists(THINK_FILE):
+    try:
+        with open(THINK_FILE) as f:
+            prompt = f.read().strip()
+    except Exception:
+        pass
+
+if not prompt:
+    # Zero-config standard fallback
+    if is_all_cmd:
+        prompt = (
+            "Analyze history and output exactly three sections: Follow-up, Thinking, and Brainstorm.\n"
+            "Each section must have exactly 3 options, each strictly 6 to 10 words long.\n"
+            "No conversational filler. Output exactly this format:\n\n"
+            "Follow-up\n[Option 1]\n[Option 2]\n[Option 3]\n"
+            "Thinking\n[Option 1]\n[Option 2]\n[Option 3]\n"
+            "Brainstorm\n[Option 1]\n[Option 2]\n[Option 3]"
+        )
+    else:
+        prompt = (
+            f"Analyze history and output exactly 3 next-step {fallback_term} items.\n"
+            "Each option must be strictly 6 to 10 words long.\n"
+            "No conversational filler. Output exactly this format:\n\n"
+            f"{output_header}\n"
+            "[Option 1]\n"
+            "[Option 2]\n"
+            "[Option 3]"
+        )
+else:
+    # Inject user's specific requested counts
+    prompt = prompt.replace("exactly 3", f"exactly {option_count}")
+
+# 4. Safe Stack Insertion
+history.append({"role": "system", "content": prompt})
+if not any(msg.get("role") == "user" for msg in history):
+    history.append({"role": "user", "content": "Generate triggers."})
+
+# 5. Simplified Fallbacks (Standardized on openrouter/free)
+configs = []
+gkey, okey = os.environ.get("GEMINI_API_KEY"), os.environ.get("OPENROUTER_API_KEY")
+if gkey:
+    configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Authorization": f"Bearer {gkey}"}, os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"), {}))
+if okey:
+    m = os.environ.get("OPENROUTER_MODEL", "openrouter/free")
+    configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"}, m, {}))
+configs.append(("http://localhost:8080/v1/chat/completions", {}, None, {}))
+
+for url, headers, model, extra in configs:
+    body = {"messages": history, "stream": True, **extra}
+    if model: body["model"] = model
+    req = urlreq.Request(url, data=json.dumps(body).encode("utf-8"), headers={"Content-Type": "application/json", **headers}, method="POST")
+    try:
+        with urlreq.urlopen(req, timeout=10) as response:
+            first_token = True
+            chunks = []
+            for line in response:
+                dec = line.decode("utf-8").strip()
+                if not dec: continue
+                if dec.startswith("data:"): dec = dec[5:].strip()
+                if dec == "[DONE]": continue
+                try:
+                    data = json.loads(dec)
+                    content = ""
+                    if "choices" in data and data["choices"]:
+                        content = data["choices"][0].get("delta", {}).get("content", "")
+                    elif "candidates" in data and data["candidates"]:
+                        content = data["candidates"][0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                    if content:
+                        if first_token:
+                            content = content.lstrip()
+                            if not content: continue
+                            first_token = False
+                        chunks.append(content)
+                except Exception:
+                    pass
+            
+            # 6. Post-Processing Stream Clean
+            full_text = "".join(chunks).strip()
+            lines = [l.strip() for l in full_text.splitlines() if l.strip()]
+            if lines:
+                headers_map = {
+                    "follow-up": "Follow-up",
+                    "follow-ups": "Follow-up",
+                    "thinking": "Thinking",
+                    "think": "Thinking",
+                    "brainstorm": "Brainstorm",
+                    "brainstorming": "Brainstorm"
+                }
+                
+                sys.stdout.write("\n")
+                first_line_clean = lines[0].lower().rstrip('s:') if lines else ""
+                if first_line_clean not in headers_map:
+                    sys.stdout.write(f"\033[1;32mAI:\033[0m {output_header}\n")
+                
+                for line in lines:
+                    clean_line = line.lower().rstrip('s:')
+                    if clean_line in headers_map:
+                        sys.stdout.write(f"\033[1;32mAI:\033[0m {headers_map[clean_line]}\n")
+                    else:
+                        sys.stdout.write(f"{line}\n")
+                sys.stdout.flush()
+            sys.exit(0)
+    except Exception:
+        pass
+
+sys.stderr.write("Error: All brainstorm service fallbacks are offline.\n")
+sys.exit(1)

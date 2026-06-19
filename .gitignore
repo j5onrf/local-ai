@@ -1,10 +1,10 @@
 # Ignore the API usage JSON file
-local-ai-agent/skills/system/mysys.md
-voice/server.pem
-local-ai-agent/.auto-f
-local-ai-agent/ai-history
-local-ai-agent/tools/agentic/fusion/logs
-local-ai-agent/tools/map/skeleton.json
+skills/system/mysys.md
+tools/subsec/voice/server.pem
+.auto-f
+ai-history
+tools/agentic/fusion/logs
+tools/map/skeleton.json
 
 # Ignore Python cache directories and bytecode
 __pycache__/
