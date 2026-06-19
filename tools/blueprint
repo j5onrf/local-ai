@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Blueprint - High-Speed Markdown-Native Cheatsheet Generator v4.1.0
+# Blueprint - High-Speed Markdown-Native Cheatsheet Generator [j5onrf] v5.1.0
 
 import os
 import re
@@ -49,45 +49,56 @@ for line in lines:
         continue
 
     # Only process configuration lines inside code blocks
-    if not in_code_block:
-        continue
-
-    # Skip comments inside code blocks
-    if line_stripped.startswith("#"):
+    if not in_code_block or line_stripped.startswith("#"):
         continue
 
     # Parse command mappings strictly splitting on the "--->" delimiter
     if "--->" in line_stripped:
         cmd, intents = line_stripped.split("--->", 1)
         cmd = cmd.strip()
-        intents = intents.strip()
-
-        # Strip standard [TOOL] prefix if present
+        
+        # Clean [TOOL] prefix if present
         if cmd.startswith("[TOOL]"):
             cmd = cmd[6:].strip()
 
-        # Extract strictly the first primary keyword or trigger phrase
-        primary_intent = intents.split(",")[0].strip()
+        # Parse intents cleanly
+        intent_list = [i.strip() for i in intents.split(",") if i.strip()]
+        
+        if intent_list:
+            # 1. Find the shortest speed-key
+            shortest = min(intent_list, key=len)
+            
+            # 2. Extract a unique secondary alias (filter out the shortest key first)
+            secondary_candidates = [i for i in intent_list[1:] if i != shortest]
+            if secondary_candidates:
+                main_alias = secondary_candidates[0]
+            elif intent_list[0] != shortest:
+                main_alias = intent_list[0]
+            else:
+                main_alias = ""
+            
+            # 3. Format beautifully: " `shortest` / `main_alias` " with strict duplicate protection
+            if main_alias and main_alias != shortest:
+                shortcut_display = f"`{shortest}` / `{main_alias}`"
+            else:
+                shortcut_display = f"`{shortest}`"
+        else:
+            shortcut_display = ""
 
         # Clean command: If it contains a URL, extract and show JUST the URL
         url_match = url_re.search(cmd)
         if url_match:
             cleaned_cmd = url_match.group(1).replace('"', '').replace("'", "")
         else:
-            # Split command into words and strip paths down to base filenames
+            # Streamlined path-cleaning list comprehension
             words = cmd.split()
-            cleaned_words = []
-            for word in words:
-                if word.startswith(('/', '~', './', '../')):
-                    cleaned_words.append(os.path.basename(word))
-                else:
-                    cleaned_words.append(word)
+            cleaned_words = [os.path.basename(w) if w.startswith(('/', '~', './', '../')) else w for w in words]
             cleaned_cmd = " ".join(cleaned_words)
 
         # Escape pipes inside command strings to avoid breaking Markdown tables
         escaped_cmd = cleaned_cmd.replace("|", "\\|")
 
         # Print Markdown table row
-        print(f"| {primary_intent} | {escaped_cmd} |")
+        print(f"| {shortcut_display} | {escaped_cmd} |")
 
 print()
