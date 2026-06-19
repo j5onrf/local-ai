@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-# Spinner chars (10-step circular Braille sequence matching alias-ai.py)
+# Spinner chars (10-step circular Braille sequence matching ai-agent.py)
 spinner_chars=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
 SPINNER_PID=""
 

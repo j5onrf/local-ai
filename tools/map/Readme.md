@@ -41,7 +41,7 @@ Scan target [.]:
     "type": "markdown",
     "summary": "Local-AI Agent Blueprint"
   },
-  "alias-ai.py": {
+  "ai-agent.py": {
     "type": "python",
     "imports": [
       "json",

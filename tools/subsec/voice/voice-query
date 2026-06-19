@@ -152,7 +152,7 @@ class VoiceHandler(http.server.SimpleHTTPRequestHandler):
                     sys.stderr.write(f"\033[1;30m❯\033[0m {query}\n")
                     sys.stderr.flush()
                     
-                    agent_script = os.path.expanduser("~/.config/local-ai/alias-ai.py")
+                    agent_script = os.path.expanduser("~/.config/local-ai/ai-agent.py")
                     # Directly execute your agent script
                     subprocess.Popen([sys.executable, agent_script, "--talk", query])
                     

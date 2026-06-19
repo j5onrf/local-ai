@@ -5,7 +5,7 @@
 [[ $- != *i* ]] && return
 
 _AI_DIR="$HOME/.config/local-ai"
-_AI_SCRIPT_PATH="$_AI_DIR/alias-ai.py"
+_AI_SCRIPT_PATH="$_AI_DIR/ai-agent.py"
 [[ -f "$_AI_SCRIPT_PATH" ]] || return
 
 # Resolve python3 natively without spawning a subshell fork on shell startup

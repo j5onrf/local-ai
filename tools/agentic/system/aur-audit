@@ -5,7 +5,7 @@ set -euo pipefail
 
 # Hardcoded for maximum execution speed (0.1ms builtin check)
 AUDIT_SKILL_FILE="$HOME/.config/local-ai/skills/system/aur-audit.md"
-ALIAS_AI_SCRIPT="$HOME/.config/local-ai/alias-ai.py"
+ALIAS_AI_SCRIPT="$HOME/.config/local-ai/ai-agent.py"
 
 # 1. Print Dedicated AUR Audit Skill Profile (if available)
 if [ -f "$AUDIT_SKILL_FILE" ]; then

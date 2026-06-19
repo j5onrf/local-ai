@@ -62,7 +62,7 @@ echo -e "\n---\n\n## ENDPOINT STATUS"
 [[ -n "${OPENROUTER_API_KEY:-}" ]] && echo "* **OpenRouter API** : $([[ $or_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")" || echo "* **OpenRouter API** : *Skipped (No Key)*"
 echo -e "* **Local Server**   : $([[ $local_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")\n\n---\n\n## ACTIVE RUNTIME ROUTE"
 
-# Route evaluation matching runtime alias-ai.py exactly
+# Route evaluation matching runtime ai-agent.py exactly
 if [[ -n "${GEMINI_API_KEY:-}" && $gemini_status -eq 0 ]]; then
     echo "* **Selected Provider**: **Gemini Cloud API**"
     echo "* **Active Model**     : \`${CLOUD_MODEL:-gemini-3.1-flash-lite}\`"
