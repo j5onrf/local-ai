@@ -107,3 +107,18 @@ export OPENROUTER_MODEL="openrouter/free"
 
 ```
 
+---
+
+<h2 align="center">System Architecture</h2>
+
+```text
+local-ai/
+├── ai-agent.py          # Core orchestrator & Python gateway
+├── ai-hook.sh           # Shell integration env-hook
+├── ai-context.md        # Command & trigger mappings
+├── skills/              # Domain knowledge & instructional directives
+├── projects/            # Persistent workspace directories
+└── tools/               # Action layers
+    ├── agentic/         # Background context & RAG tools
+    └── subsec/          # Standalone utilities & bridges
+```
