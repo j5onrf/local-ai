@@ -74,8 +74,8 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 [TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system/ai-status --leaf ---> ai status, aistatus, aistat, status
 
 # --- Weather & Live Networking ---
-[TOOL] curl -s "wttr.in/?format=3" --cat ---> weather simple, wttr, weather, rain forecast simple
 [TOOL] curl -s wttr.in --cat ---> weather full, wttr, weather, rain forecast full
+[TOOL] curl -s "wttr.in/?format=3" --cat ---> weather simple, wttr, weather, rain forecast simple
 
 # --- System Time & Date (Real-time Clock Context) ---
 [TOOL] date ---> time, date, current time, what time is it
