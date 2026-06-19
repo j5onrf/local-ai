@@ -5,7 +5,7 @@
 <h1 align="center">Local-AI Agent <kbd>v0.8.6.5</kbd></h1>
 
 <p align="center">
-  <code>Laguna-M.1</code> &nbsp;&bull;&nbsp; <code>Qwen3-Coder</code> &nbsp;&bull;&nbsp; <code>Gemini-3.1-Flash-Lite</code>
+  <code>Laguna-M.1</code> &nbsp;&nbsp; <code>Qwen3-Coder</code> &nbsp;&nbsp; <code>Gemini-3.1-Flash-Lite</code>
 </p>
 
 ---
