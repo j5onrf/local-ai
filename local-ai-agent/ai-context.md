@@ -84,8 +84,8 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 ## 4. Static Aliases & Shell Shortcuts
 
 ```properties
-# --- Local-Ai Agent Blueprint Map (CheatSheet) ---
-~/.config/local-ai/local-ai-agent/tools/blueprint --leaf ---> cheatsheet, blueprint, bp, cs, map
+# --- Local-Ai Agent Blueprint (CheatSheet) ---
+~/.config/local-ai/local-ai-agent/tools/blueprint --leaf ---> cheatsheet, blueprint, bp, cs
 
 # --- AI-Generated Git Commits ---
 ~/.config/local-ai/local-ai-agent/tools/agentic/system/ai-commit ---> ai-commit, gc, git-commit, git commit

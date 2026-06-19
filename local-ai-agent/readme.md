@@ -70,8 +70,8 @@ Add your shortcuts, commands, and workspaces to `ai-context.md`.
 [TOOL] curl -s wttr.in --cat ---> weather full, wttr, weather, rain forecast full
 [TOOL] curl -s "wttr.in/?format=3" --cat ---> weather simple, wttr, weather, rain forecast simple
 
-# --- Local-Ai Agent Blueprint Map (CheatSheet) ---
-~/.config/local-ai/local-ai-agent/tools/blueprint --leaf ---> cheatsheet, blueprint, bp, cs, map
+# --- Local-Ai Agent Blueprint (CheatSheet) ---
+~/.config/local-ai/local-ai-agent/tools/blueprint --leaf ---> cheatsheet, blueprint, bp, cs
 ```
 
 ---
