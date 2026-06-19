@@ -78,7 +78,7 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 [TOOL] curl -s wttr.in --cat ---> weather full, wttr, weather, rain forecast full
 
 # --- System Time & Date (Real-time Clock Context) ---
-[TOOL] date ---> time, date, current time, what time is it, system date, system time
+[TOOL] date ---> time, date, current time, what time is it
 ```
 
 ## 4. Static Aliases & Shell Shortcuts

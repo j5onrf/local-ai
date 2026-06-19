@@ -66,12 +66,12 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 Add your shortcuts, commands, and workspaces to `ai-context.md`.
 
 ```markdown
+# --- Weather & Live Networking ---
+[TOOL] curl -s "wttr.in/?format=3" --cat ---> weather simple, wttr, weather
+[TOOL] curl -s wttr.in --cat ---> weather full, wttr, weather
+
 # --- Local-Ai Agent Blueprint Map (CheatSheet) ---
 ~/.config/local-ai/local-ai-agent/tools/blueprint --leaf ---> cheatsheet, blueprint, bp, cs, map
-
-# --- System Optimization (Improve System Performance) ---
-[TOOL] ~/.config/local-ai/local-ai-agent/tools/agentic/system/system-optimize --leaf ---> system optimize, sysop
-
 ```
 
 ---
