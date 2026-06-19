@@ -65,6 +65,8 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 
 ---
 
+<h2 align="center"> Agent Blueprint</h2>
+
 Add your shortcuts, commands, and workspaces to `ai-context.md`.
 
 ```markdown
