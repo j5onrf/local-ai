@@ -42,7 +42,7 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 
 * **`Up` / `Down` Arrow Keys:** Cycle through available ranked selections.
 * **`Enter`:** Execute the highlighted command (or initialize a workspace if the selection is a directory path).
-* **`Esc` / `Ctrl+C` / `Any Key`:** Cancel menu
+* **`Esc` / `Ctrl+C` / `Any Key`:** Cancel the menu.
 
 ```text
 ~ ❯ weather
