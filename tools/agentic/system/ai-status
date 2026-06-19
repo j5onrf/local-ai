@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ai-status - Diagnostics for Local-AI Agent Stack v1.3.3
+# ai-status - Diagnostics for Local-AI Agent Stack v1.3.4
 
 set -euo pipefail
 
@@ -111,7 +111,7 @@ echo "* **CLOUD_MODEL**     : \`${CLOUD_MODEL:-gemini-3.1-flash-lite}\` (Free Li
 echo "* **GEMINI METRICS**  : \`RPM: ${gemini_rpm} | RPD: ${gemini_rpd}\` (Last 24h rolling)"
 echo ""
 echo "* **OPENROUTER_KEY**  : $(mask_key "${OPENROUTER_API_KEY:-}")"
-echo "* **OPENROUTER_MODEL**: \`${OPENROUTER_MODEL:-openrouter/free}\`"
+echo "* **OPENROUTER_MODEL**: \`${OPENROUTER_MODEL:-openrouter/free}\` (Free Limits: 20 RPM / 200 RPD)"
 if [[ $or_status -eq 0 && "${OPENROUTER_MODEL:-}" == *"free"* ]]; then
     echo "* **FREE POOL ROUTES**: \`${or_free_list}\`"
 fi
