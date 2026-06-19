@@ -2,7 +2,7 @@
   <img alt="Local-AI Agent" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" width="800" />
 </p>
 
-<h1 align="center">Local-AI Agent <kbd>v0.8.6.5-beta</kbd></h1>
+<h1 align="center">Local-AI Agent <kbd>v0.8.6.7-beta</kbd></h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
@@ -107,18 +107,4 @@ export OPENROUTER_MODEL="openrouter/free"
 
 ```
 
----
 
-<h2 align="center">System Architecture</h2>
-
-```text
-local-ai/
-├── ai-agent.py          # Core orchestrator & Python gateway
-├── ai-hook.sh           # Shell integration env-hook
-├── ai-context.md        # Command & trigger mappings
-├── skills/              # Domain knowledge & instructional directives
-├── projects/            # Persistent workspace directories
-└── tools/               # Action layers
-    ├── agentic/         # Background context & RAG tools
-    └── subsec/          # Standalone utilities & bridges
-```
