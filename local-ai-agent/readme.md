@@ -88,7 +88,7 @@ yay mdcat
 ### 2. Install Project
 
 ```bash
-git clone [https://github.com/j5onrf/local-ai.git](https://github.com/j5onrf/local-ai.git) ~/.config/local-ai
+git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai
 
 ```
 
