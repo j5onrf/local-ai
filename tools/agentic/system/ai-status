@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ai-status - Diagnostics for Local-AI Agent Stack v1.3.4
+# ai-status - Diagnostics for Local-AI Agent Stack v1.3.5
 
 set -euo pipefail
 
@@ -105,7 +105,7 @@ except:
 " || echo "Local Server")
 fi
 
-echo -e "# ACTIVE AI ROUTING DIAGNOSTICS\n\n> **Instructions for AI:**\n> 1. Inform the user which AI provider is currently active and which model is selected.\n> 2. If a key is disabled or an endpoint is offline (forcing a fallback to OpenRouter or Local), clearly explain why the current provider was chosen.\n> 3. Keep your explanation to 2 sentences max.\n\n---\n\n## CREDENTIALS & CONFIGURATION"
+echo -e "# ACTIVE AI ROUTING DIAGNOSTICS\n\n> **AI Instructions:**\n> Summarize the active provider, model, and its 24h RPD count in 1-2 direct, unformatted sentences.\n> If fallback is active, briefly state why.\n\n---\n\n## CREDENTIALS & CONFIGURATION"
 echo "* **GEMINI_API_KEY**  : $(mask_key "${GEMINI_API_KEY:-}")"
 echo "* **CLOUD_MODEL**     : \`${CLOUD_MODEL:-gemini-3.1-flash-lite}\` (Free Limits: 15 RPM / 1,500 RPD)"
 echo "* **GEMINI METRICS**  : \`RPM: ${gemini_rpm} | RPD: ${gemini_rpd}\` (Last 24h rolling)"
