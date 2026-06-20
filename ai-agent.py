@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.6.8 [j5onrf] [06-18-26]
+# Local-Ai Agent v0.8.6.8 [j5onrf] [06-19-26]
 
 import sys, re, os, json, threading, time, subprocess, shutil
 import urllib.request as urlreq, urllib.error as urlerr
@@ -142,7 +142,7 @@ def get_system_context(query):
             if cmd.startswith("[TOOL]"):
                 tool = cmd.replace("[TOOL]", "").strip()
                 if "system" in tool.lower(): ensure_mysys_exists()
-                for f in [" --leaf", " --glow", " --cat"]:
+                for f in [" --leaf", " --glow", " --cat", " --mdcat"]:
                     if tool.endswith(f): tool = tool[:-len(f)].strip()
                 intent_tokens = set(tokenize(entry.get("intent", "")))
                 args = " ".join([w for w in query.split() if tokenize(w) and tokenize(w)[0] not in intent_tokens])
@@ -215,7 +215,7 @@ def stream_llm_response(messages, prefix="AI: "):
                 try:
                     spinner.start()
                     with urlreq.urlopen(req, timeout=10) as response:
-                        # ULTRA-LITE: 3-line cloud logging (safely indented)
+                        # 3. ULTRA-LITE: Log cloud requests only (ignoring local)
                         try:
                             p = "gemini" if "generativelanguage" in url else "openrouter" if "openrouter" in url else None
                             p and open(os.path.join(CFG_DIR, ".request_log"), "a").write(f"{int(time.time())}|{p}\n")
@@ -230,6 +230,7 @@ def stream_llm_response(messages, prefix="AI: "):
                             if dec == "[DONE]": continue
                             try:
                                 data = json.loads(dec)
+                                # 4. Stream-metadata parser: Captures resolved OpenRouter model names
                                 if "model" in data and not resolved_model:
                                     resolved_model = data["model"]
                                 content = ""
