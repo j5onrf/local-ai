@@ -50,7 +50,7 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 
 ```properties
 # --- Pre-Install Zero-Trust AUR Package & PKGBUILD Auditor ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/aur-audit ---> audit package, audit pkg, check pkgbuild, aur audit, scan aur, verify pkgbuild, pre-install check
+[TOOL] ~/.config/local-ai/tools/agentic/system/aur-audit ---> audit package, aur audiit
 
 # --- Host Security Surface & Vulnerability Intelligence (SECAUD) ---
 [TOOL] ~/.config/local-ai/tools/agentic/system/security-audit --leaf ---> security audit, secaud, system audit
@@ -65,13 +65,13 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 [TOOL] ~/.config/local-ai/tools/agentic/system/system-health --leaf ---> system health, sysh, health, system diagnosis, why is my system slow
 
 # --- Pending Updates ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/update-inspector --leaf ---> update inspector, ui, check upgrades, what updates do i have, pending updates
+[TOOL] ~/.config/local-ai/tools/agentic/system/update-inspector --leaf ---> update inspector, update inspect, ui
 
 # --- Disk Usage ---
-[TOOL] df -h / ---> disk usage, nvme drive usage, check storage space
+[TOOL] df -h / ---> disk usage, drive usage
 
 # --- AI Status & Provider Diagnostics ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/ai-status --leaf ---> ai status, aistatus, aistat, status
+[TOOL] ~/.config/local-ai/tools/agentic/system/ai-status --leaf ---> ai status, aistat, aistatus
 
 # --- Weather & Live Networking ---
 [TOOL] curl -s wttr.in --cat ---> weather full, wttr, weather, rain forecast full
@@ -91,7 +91,7 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 ~/.config/local-ai/tools/agentic/system/ai-commit ---> ai-commit, gc, git-commit, git commit
 
 # --- Skeleton Map (Structural Repo Profile Compiler) ---
-~/.config/local-ai/tools/map/skeleton-map ---> skeleton map, smap, map, sm
+~/.config/local-ai/tools/map/skeleton-map ---> skeleton map, sm,
 
 # --- Server Lifecycle Management ---
 ~/.config/local-ai/tools/kill-ai-servers ---> killserver, ks
