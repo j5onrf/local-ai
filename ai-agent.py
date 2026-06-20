@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.7.1 [j5onrf] [06-19-26]
+# Local-Ai Agent v0.8.7.2 [j5onrf] [06-20-26]
 
 import sys, re, os, json, threading, time, subprocess, shutil, tty, termios, select
 import urllib.request as urlreq, urllib.error as urlerr
@@ -159,7 +159,7 @@ def get_system_context(query):
     return ""
 
 def run_interactive_selection(intent):
-    if re.search(r'[\[\]{}()=\'"",;|<>#]', intent): print_stock_error(intent); sys.exit(127)
+    if re.search(r"[\[\]{}()='\",;|#<>]", intent): print_stock_error(intent); sys.exit(127)
     matched_base = jaccard_search(intent)
     if not matched_base: print_stock_error(intent); sys.exit(127)
     options = matched_base.split("\n")
@@ -321,7 +321,7 @@ try:
 
     user_input = sanitize_input(" ".join(args))
     if not user_input or args[0].startswith("--"): sys.exit(0)
-    if re.search(r'[\[\]{}()=\'"",;|<>#]', user_input): print_stock_error(user_input); sys.exit(127)
+    if re.search(r"[\[\]{}()='\",;|#<>]", user_input): print_stock_error(user_input); sys.exit(127)
     matched_base = jaccard_search(user_input)
     if matched_base:
         print("\n".join(f"{line.split('|||', 1)[0]}|||{clean_tool_prefix(line.split('|||', 1)[1])}" for line in matched_base.split("\n")))

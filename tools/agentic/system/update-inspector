@@ -1,108 +1,82 @@
 #!/usr/bin/env bash
-# AI Update Inspector v0.7.8
+# AI Update Inspector v0.8.3 [j5onrf] [06-20-26]
 
 set -euo pipefail
 
-# Spinner chars (10-step circular Braille sequence matching ai-agent.py)
 spinner_chars=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
 SPINNER_PID=""
 
 start_spinner() {
-    # Hide cursor
-    echo -ne "\033[?25l" >&2
-    
-    # Spawn background subshell loop
+    echo -ne "\033[?25l" >&2  # Hide cursor
     (
         local i=0
         while true; do
             printf "\r\033[1;32m%s\033[0m Checking for updates..." "${spinner_chars[i % 10]}" >&2
-            ((i++))
-            sleep 0.08
+            ((i++)); sleep 0.08
         done
     ) &
     SPINNER_PID=$!
 }
 
 stop_spinner() {
-    # If the spinner PID is active, terminate it
     if [ -n "${SPINNER_PID:-}" ]; then
         kill "$SPINNER_PID" 2>/dev/null || true
         wait "$SPINNER_PID" 2>/dev/null || true
         SPINNER_PID=""
     fi
-    # Wipe the spinner loading line and restore cursor
-    echo -ne "\r\033[2K\033[?25h" >&2
+    echo -ne "\r\033[2K\r\033[?25h" >&2  # Restore cursor
 }
 
-# Always ensure the cursor is restored and background spinner is killed on exit
+# DRY Helper: Process raw package outputs into count and wrapped comma-separated list
+parse_packages() {
+    local raw="$1"
+    [[ -z "$raw" ]] && echo "0|*None*" && return
+    local count; count=$(echo "$raw" | wc -l)
+    # Warning-free single-pass awk: uses octal \140 to print backticks cleanly
+    local pkgs; pkgs=$(echo "$raw" | awk '{printf "%s\140%s\140", (NR==1?"":", "), $1} END {print ""}')
+    echo "$count|$pkgs"
+}
+
 trap stop_spinner EXIT
 
-# 1. Start loading spinner in background
+# 1. Start loading spinner
 start_spinner
 
-# 2. Gather Native Repository Updates (Run checkupdates in memory)
+# 2. Gather Native Repository Updates
 repo_count="0"
 repo_packages="*None*"
 repo_error=""
 
 if command -v checkupdates >/dev/null 2>&1; then
-    # Capture raw output in memory. Allow exit code 1 (no updates) safely
-    raw_repo_updates=$(checkupdates 2>/dev/null || true)
-
-    if [ -n "$raw_repo_updates" ]; then
-        # Count lines of the raw string in memory
-        repo_count=$(echo "$raw_repo_updates" | wc -l)
-        # Parse package names, wrap in backticks, and join with commas
-        repo_packages=$(echo "$raw_repo_updates" | awk '{print "`"$1"`"}' | awk '{printf "%s%s", (NR==1?"":", "), $0} END {print ""}')
-    fi
+    raw_repo=$(checkupdates 2>/dev/null || true)
+    IFS='|' read -r repo_count repo_packages <<< "$(parse_packages "$raw_repo")"
 else
     repo_error="*Error: checkupdates utility missing*"
 fi
 
-# 3. Gather AUR Updates (Run helper -Qua in memory)
-aur_helper=""
-if command -v paru >/dev/null 2>&1; then
-    aur_helper="paru"
-elif command -v yay >/dev/null 2>&1; then
-    aur_helper="yay"
-fi
-
+# 3. Gather AUR Updates (Unified 1-line helper check)
+aur_helper=$(command -v paru >/dev/null && echo "paru" || { command -v yay >/dev/null && echo "yay"; } || echo "")
 aur_count="0"
 aur_packages="*None*"
 aur_error=""
 
 if [ -n "$aur_helper" ]; then
-    # -Qua pulls strictly from local sync cache; guaranteed 0ms timeout / no password prompt
-    raw_aur_updates=$($aur_helper -Qua 2>/dev/null || true)
-
-    if [ -n "$raw_aur_updates" ]; then
-        # Count lines of the raw string in memory
-        aur_count=$(echo "$raw_aur_updates" | wc -l)
-        # Parse package names, wrap in backticks, and join with commas
-        aur_packages=$(echo "$raw_aur_updates" | awk '{print "`"$1"`"}' | awk '{printf "%s%s", (NR==1?"":", "), $0} END {print ""}')
-    fi
+    raw_aur=$($aur_helper -Qua 2>/dev/null || true)
+    IFS='|' read -r aur_count aur_packages <<< "$(parse_packages "$raw_aur")"
 else
     aur_error="*None (No AUR helper detected)*"
 fi
 
-# 4. Stop loading spinner and clear stdout line before printing Markdown
+# 4. Stop loading spinner
 stop_spinner
 
-# 5. Output Markdown to stdout
-echo "# PENDING SYSTEM UPGRADES"
-echo ""
-echo "> **Instructions for AI:**"
-echo "> 1. Analyze the provided system update list and generate a response structured strictly under the following capitalized headers:"
-echo ">    - PENDING SYSTEM UPDATES: State the total count of packages pending in native repositories and AUR."
-echo ">    - PACKAGE LIST: Print the list of pending packages indented with a single tab."
-echo ">    - CRITICAL UPDATE ANALYSIS: State whether any core system components (e.g., Linux kernel, systemd, keyrings, audio drivers like ALSA/PipeWire) are present in the queue."
-echo ">    - IMPACT ASSESSMENT: Briefly explain if these updates affect active system stability, security, running processes, or if they are safe application-level changes."
-echo ">    - APPLICATION FEATURE SUMMARIES: If standalone user applications (e.g., browsers like brave-origin-bin, editors like opencode, terminal utilities, etc.) are present in the list, use your knowledge base (and active web search if available) to provide a 1-2 sentence summary of the major recent features, visual improvements, performance optimizations, or notable fixes included in the latest releases of each of those specific apps."
-echo "> 2. DO NOT explain how to run the update commands (the user already knows how to update)."
-echo "> 3. Format your output strictly for clean, plain-text terminal rendering. DO NOT use any Markdown formatting (such as bold asterisks ** or header hashes #) in your final response. Use simple capitalized headers, clean vertical line spaces, and tab indentation for lists."
-echo ""
-echo "---"
-echo ""
+# 5. Output AI Instructions and Raw Metrics to stdout
+SKILL_FILE="$HOME/.config/local-ai/skills/system/update-inspector.md"
+if [ -f "$SKILL_FILE" ]; then
+    cat "$SKILL_FILE"
+    echo ""
+fi
+
 echo "## NATIVE REPOSITORY UPDATES"
 
 if [ -n "$repo_error" ]; then
