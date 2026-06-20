@@ -50,7 +50,7 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 
 ```properties
 # --- Pre-Install Zero-Trust AUR Package & PKGBUILD Auditor ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/aur-audit ---> audit package, aur audit
+[TOOL] ~/.config/local-ai/tools/agentic/system/aur-audit ---> aur audit, audit package
 
 # --- Host Security Surface & Vulnerability Intelligence (SECAUD) ---
 [TOOL] ~/.config/local-ai/tools/agentic/system/security-audit --leaf ---> security audit, secaud, system audit
@@ -91,7 +91,7 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 ~/.config/local-ai/tools/agentic/system/ai-commit ---> ai-commit, gc, git-commit, git commit
 
 # --- Skeleton Map (Structural Repo Profile Compiler) ---
-~/.config/local-ai/tools/map/skeleton-map ---> skeleton map, sm,
+~/.config/local-ai/tools/map/skeleton-map ---> skeleton map, sm
 
 # --- Server Lifecycle Management ---
 ~/.config/local-ai/tools/kill-ai-servers ---> killserver, ks
@@ -112,7 +112,7 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 # --- Media & Volume Controllers (Pure Reactive) ---
 ~/.config/local-ai/tools/subsec/media/media.py ---> tuiamp, winamp, media
 
-# --- Article Summarizers ---
+# --- Article & YouTube Summarizers ---
 ~/.config/local-ai/tools/subsec/ai-summary/llmsum.py ---> llmsum, ytsum, summary, sum
 
 # --- Local-Ai Tablet Voice Bridge ---
