@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Local-Ai Agent Hook v0.8.6.8 [j5onrf] [06-18-26]
+# Local-Ai Agent Hook v0.8.6.8 [j5onrf] [06-19-26]
 
 # Exit immediately if the shell is non-interactive
 [[ $- != *i* ]] && return

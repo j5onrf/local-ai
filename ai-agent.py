@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.6.8 [j5onrf] [06-19-26]
+# Local-Ai Agent v0.8.6.9 [j5onrf] [06-19-26]
 
-import sys, re, os, json, threading, time, subprocess, shutil
+import sys, re, os, json, threading, time, subprocess, shutil, tty, termios, select
 import urllib.request as urlreq, urllib.error as urlerr
 
 try: import readline
@@ -30,26 +30,27 @@ def sanitize_input(text): return re.sub(r"[`$]", "", text).strip() if text else 
 def tokenize(text): return [w for w in TOKEN_RE.sub(" ", text.lower()).split() if len(w) > 1 and w not in STOP_WORDS]
 def check_danger(cmd): return f"DANGER_FLAGGED:{cmd}" if cmd and any(kw in cmd.lower() for kw in DESTRUCTIVE_KEYWORDS) else cmd
 
-# On-demand profile generation helper
 def ensure_mysys_exists():
     if not os.path.exists(f"{SKILLS_DIR}/system/mysys.md"):
         try: subprocess.run([sys.executable, f"{CFG_DIR}/tools/generate-profile"])
         except Exception: pass
 
-def find_skill_file(skills_dir, skill_name, max_depth=3):
-    t = f"{skill_name.lower()}.md"
+def find_skill_file(skills_dir, name):
     for r, _, files in os.walk(skills_dir):
-        if r[len(skills_dir):].count(os.sep) <= max_depth and t in (f.lower() for f in files): return os.path.join(r, t)
+        if r[len(skills_dir):].count(os.sep) <= 3:
+            for f in files:
+                if f.lower() == f"{name.lower()}.md": return os.path.join(r, f)
     return None
 
 def load_skill_content(skill_name):
     sf = find_skill_file(SKILLS_DIR, skill_name) if skill_name else None
-    if sf:
-        if "system" in skill_name.lower(): ensure_mysys_exists()
-        try:
-            with open(sf) as f: return f.read().strip()
-        except Exception as e: sys.stderr.write(f"\033[1;31mError loading skill '{skill_name}': {e}\033[0m\n")
-    return ""
+    if not sf: return ""
+    if "system" in skill_name.lower(): ensure_mysys_exists()
+    try:
+        with open(sf) as f: return f.read().strip()
+    except Exception as e:
+        sys.stderr.write(f"\033[1;31mError loading skill '{skill_name}': {e}\033[0m\n")
+        return ""
 
 def print_stock_error(n):
     sh = os.path.basename(os.environ.get("SHELL", "/bin/bash"))
@@ -61,7 +62,6 @@ def run_local_tool(cmd):
         out = subprocess.check_output(re.sub(r'\|\s*(leaf|mdcat|cat|glow)\b.*$', '', cmd.strip()).strip(), shell=True, text=True, timeout=15, env=env).strip()
         return f"{out}\n" if out else "Action executed successfully.\n"
     except Exception as e:
-        sys.stderr.write(f"\033[1;31mTool execution failed: {e}\033[0m\n")
         return f"[SYSTEM ERROR] Failed to run local tool: {e}\n"
 
 def load_context_entries():
@@ -107,7 +107,6 @@ def jaccard_search(query, threshold=0.45):
     return "\n".join(top)
 
 def get_key():
-    import tty, termios, select
     fd = sys.stdin.fileno()
     try: old = termios.tcgetattr(fd)
     except termios.error:
@@ -128,15 +127,13 @@ def clean_tool_prefix(cmd):
     for f, p in [(" --leaf", "leaf"), (" --glow", "glow"), (" --cat", "cat"), (" --mdcat", "mdcat")]:
         if c.endswith(f): c, pager = c[:-len(f)].strip(), p; break
     if not pager and is_tool: pager = "mdcat" if shutil.which("mdcat") else "cat"
-    if pager: c = f"{c} | {pager}" if pager != "mdcat" or shutil.which("mdcat") else c
-    return c
+    return f"{c} | {pager}" if pager and (pager != "mdcat" or shutil.which("mdcat")) else c
 
 def get_system_context(query):
     q_tokens = tokenize(query)
     if not q_tokens or "\n" in query.strip(): return ""
     for entry in load_context_entries():
         ent_tokens = entry.get("tokens", [])
-        # 1. Advanced Subsequence Match: Matches keyword anywhere in your natural language sentence
         if any(q_tokens[i:i+len(ent_tokens)] == ent_tokens for i in range(len(q_tokens) - len(ent_tokens) + 1)):
             cmd = entry.get("cmd", "")
             if cmd.startswith("[TOOL]"):
@@ -147,12 +144,21 @@ def get_system_context(query):
                 intent_tokens = set(tokenize(entry.get("intent", "")))
                 args = " ".join([w for w in query.split() if tokenize(w) and tokenize(w)[0] not in intent_tokens])
                 
-                # 2. Programmatic Argument Handling via Placeholders
                 if "$1" in tool or "{}" in tool:
                     tool = tool.replace("$1", args).replace("{}", args).strip()
                 
-                sys.stderr.write(f"\033[90m[sys] Executing: {tool}\033[0m\n"); sys.stderr.flush()
-                return run_local_tool(tool)
+                sys.stderr.write(f"\033[1;30m[sys] Run tool: \033[1;36m{tool}\033[1;30m? [Y/n]: \033[0m")
+                sys.stderr.flush()
+                key = get_key()
+                
+                if key in ('\r', '', 'y', 'Y'):
+                    sys.stderr.write(f"\r\x1b[K\033[2m[sys] Executing: {tool}\033[0m\n")
+                    sys.stderr.flush()
+                    return run_local_tool(tool)
+                else:
+                    sys.stderr.write("\r\x1b[K\033[2;31m[sys] Skipped tool execution.\033[0m\n")
+                    sys.stderr.flush()
+                    return ""
     return ""
 
 def run_interactive_selection(intent):
@@ -182,9 +188,9 @@ def run_interactive_selection(intent):
                 sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K\x1b[1A\r\x1b[K"); sys.stderr.flush()
                 if key.lower() == 'y':
                     if "system" in cmd_to_show: ensure_mysys_exists()
-                    sys.stdout.write(cmd_to_show); sys.stdout.flush()
+                    sys.stdout.write(cmd_to_show)
                 else: sys.stderr.write("Aborted safely.\n")
-                break
+                sys.stdout.flush(); break
             if key in ('\r', ''):
                 sys.stderr.write("\n"); sys.stderr.flush()
                 if "system" in cmd_to_show: ensure_mysys_exists()
@@ -215,7 +221,6 @@ def stream_llm_response(messages, prefix="AI: "):
                 try:
                     spinner.start()
                     with urlreq.urlopen(req, timeout=10) as response:
-                        # 3. ULTRA-LITE: Log cloud requests only (ignoring local)
                         try:
                             p = "gemini" if "generativelanguage" in url else "openrouter" if "openrouter" in url else None
                             p and open(os.path.join(CFG_DIR, ".request_log"), "a").write(f"{int(time.time())}|{p}\n")
@@ -230,7 +235,6 @@ def stream_llm_response(messages, prefix="AI: "):
                             if dec == "[DONE]": continue
                             try:
                                 data = json.loads(dec)
-                                # 4. Stream-metadata parser: Captures resolved OpenRouter model names
                                 if "model" in data and not resolved_model:
                                     resolved_model = data["model"]
                                 content = ""
@@ -265,79 +269,73 @@ def stream_llm_response(messages, prefix="AI: "):
     print("\033[1;31mError: All fallbacks/local servers are offline.\033[0m\n"); return None
 
 try:
-    if len(sys.argv) > 1 and sys.argv[1] == "--interactive":
-        if len(sys.argv) >= 3: run_interactive_selection(" ".join(sys.argv[2:]))
-        sys.exit(0)
-
-    if len(sys.argv) > 1 and sys.argv[1] in ("--talk", "--talk-chat"):
-        is_agent = (sys.argv[1] == "--talk-chat")
-        if is_agent or len(sys.argv) == 2:
-            active_skill = os.environ.get("AI_ACTIVE_SKILL")
-            skill_content = load_skill_content(active_skill.lstrip("-")) if active_skill else ""
-            active_system_prompt = BASE_PROMPT
-            if skill_content: active_system_prompt += f"\n\n### Active Skill/Role Instructions:\n{skill_content}\n"
-            clean_name = active_skill.lstrip("-") if active_skill else ""
-            print(f"\033[1;36mAI Agent Session Initialized | Context Loaded{f' [{clean_name}]' if clean_name else ''} | Ctrl+C to exit.\033[0m\n" if is_agent else "\033[1;34mLocal AI Conversation Mode. Ctrl+C to quit.\033[0m\n")
-            pending_query, chat_history = " ".join(sys.argv[2:]) if len(sys.argv) > 2 else None, [{"role": "system", "content": active_system_prompt}]
-            try:
-                while True:
-                    if pending_query: query, pending_query = pending_query, None
-                    else:
-                        try: raw_query = input("\033[1;30m❯\033[0m ")
-                        except EOFError: break
-                        if not raw_query.strip(): continue
-                        query = raw_query.strip()
-                        if query.lower() in ("exit", "quit", "q"): print("\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
-                    q_lower = query.lower().strip()
-                    # Secure regex to prevent collisions with words starting with f/t/b (e.g. "format", "to", "build")
-                    cmd_match = re.match(r'^/?([ftba])(?:\s+(\d+))?$', q_lower)
-                    if cmd_match:
-                        # Updated path: pointing to tools/chat
-                        think_bin = f"{CFG_DIR}/tools/chat"
-                        if os.path.exists(think_bin):
-                            try: subprocess.run([sys.executable, think_bin, query], input=json.dumps(chat_history), text=True)
-                            except Exception as e: sys.stderr.write(f"\033[1;31m[Warning] chat tool failed: {e}\033[0m\n")
-                        else: sys.stderr.write("\033[1;31mError: chat tool not found at tools/chat\033[0m\n")
-                        continue
-                    system_context = get_system_context(query)
-                    prompt = (f"### Real-time System Context:\n{system_context}\n\n" if system_context else "") + f"User Question: {query}"
-                    chat_history.append({"role": "user", "content": prompt})
-                    try: readline.add_history(query)
-                    except: pass
-                    ans = stream_llm_response(chat_history, prefix="Agent:" if is_agent else "AI:")
-                    if ans: 
-                        chat_history.append({"role": "assistant", "content": ans})
-            except KeyboardInterrupt: print("\n\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
-
-        elif len(sys.argv) > 2:
-            query_parts = sys.argv[2:]
-            system_context = ""
-            active_system_prompt = BASE_PROMPT
-            if query_parts and query_parts[-1].startswith("-"):
-                skill_name = query_parts[-1].lstrip("-").lower()
-                skill_content = load_skill_content(skill_name)
-                if skill_content: active_system_prompt += f"\n\n### Active Skill/Role Instructions:\n{skill_content}\n"
-                query_parts = query_parts[:-1]
-            query = " ".join(query_parts)
-            system_context += get_system_context(query)
-            messages = [
-                {"role": "system", "content": active_system_prompt},
-                {"role": "user", "content": (f"### Real-time System Context:\n{system_context}\n\n" if system_context else "") + f"User Question: {query}"}
-            ]
-            stream_llm_response(messages, prefix="AI:")
+    args = sys.argv[1:]
+    if args:
+        if args[0] == "--interactive":
+            if len(args) >= 2: run_interactive_selection(" ".join(args[1:]))
             sys.exit(0)
 
-    user_input = sanitize_input(" ".join(sys.argv[1:])) if len(sys.argv) > 1 else ""
-    if not user_input or sys.argv[1].startswith("--"): sys.exit(0)
+        if args[0] in ("--talk", "--talk-chat"):
+            is_agent = (args[0] == "--talk-chat")
+            if is_agent or len(args) == 1:
+                active_skill = os.environ.get("AI_ACTIVE_SKILL")
+                skill_content = load_skill_content(active_skill.lstrip("-")) if active_skill else ""
+                active_system_prompt = BASE_PROMPT
+                if skill_content: active_system_prompt += f"\n\n### Active Skill/Role Instructions:\n{skill_content}\n"
+                clean_name = active_skill.lstrip("-") if active_skill else ""
+                print(f"\033[1;36mAI Agent Session Initialized | Context Loaded{f' [{clean_name}]' if clean_name else ''} | Ctrl+C to exit.\033[0m\n" if is_agent else "\033[1;34mLocal AI Conversation Mode. Ctrl+C to quit.\033[0m\n")
+                pending_query, chat_history = " ".join(args[1:]) if len(args) > 1 else None, [{"role": "system", "content": active_system_prompt}]
+                try:
+                    while True:
+                        if pending_query: query, pending_query = pending_query, None
+                        else:
+                            try: raw_query = input("\033[1;30m❯\033[0m ")
+                            except EOFError: break
+                            if not raw_query.strip(): continue
+                            query = raw_query.strip()
+                            if query.lower() in ("exit", "quit", "q"): print("\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
+                        q_lower = query.lower().strip()
+                        cmd_match = re.match(r'^/?([ftba])(?:\s+(\d+))?$', q_lower)
+                        if cmd_match:
+                            think_bin = f"{CFG_DIR}/tools/chat"
+                            if os.path.exists(think_bin):
+                                try: subprocess.run([sys.executable, think_bin, query], input=json.dumps(chat_history), text=True)
+                                except Exception as e: sys.stderr.write(f"\033[1;31m[Warning] chat tool failed: {e}\033[0m\n")
+                            else: sys.stderr.write("\033[1;31mError: chat tool not found at tools/chat\033[0m\n")
+                            continue
+                        system_context = get_system_context(query)
+                        prompt = (f"### Real-time System Context:\n{system_context}\n\n" if system_context else "") + f"User Question: {query}"
+                        chat_history.append({"role": "user", "content": prompt})
+                        try: readline.add_history(query)
+                        except: pass
+                        ans = stream_llm_response(chat_history, prefix="Agent:" if is_agent else "AI:")
+                        if ans: 
+                            chat_history.append({"role": "assistant", "content": ans})
+                except KeyboardInterrupt: print("\n\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
+
+            elif len(args) > 1:
+                query_parts = args[1:]
+                active_system_prompt = BASE_PROMPT
+                if query_parts and query_parts[-1].startswith("-"):
+                    skill_name = query_parts[-1].lstrip("-").lower()
+                    skill_content = load_skill_content(skill_name)
+                    if skill_content: active_system_prompt += f"\n\n### Active Skill/Role Instructions:\n{skill_content}\n"
+                    query_parts = query_parts[:-1]
+                query = " ".join(query_parts)
+                system_context = get_system_context(query)
+                messages = [
+                    {"role": "system", "content": active_system_prompt},
+                    {"role": "user", "content": (f"### Real-time System Context:\n{system_context}\n\n" if system_context else "") + f"User Question: {query}"}
+                ]
+                stream_llm_response(messages, prefix="AI:")
+                sys.exit(0)
+
+    user_input = sanitize_input(" ".join(args))
+    if not user_input or args[0].startswith("--"): sys.exit(0)
     if re.search(r'[\[\]{}()=\'"",;|<>#]', user_input): print_stock_error(user_input); sys.exit(127)
-    # Updated: Calling renamed jaccard_search
     matched_base = jaccard_search(user_input)
     if matched_base:
-        out_lines = []
-        for line in matched_base.split("\n"):
-            intent, cmd = line.split("|||", 1)
-            cleaned_cmd = clean_tool_prefix(cmd)
-            out_lines.append(f"{intent}|||{cleaned_cmd}")
-        print("\n".join(out_lines)); sys.exit(0)
-    else: print_stock_error(user_input); sys.exit(127)
+        print("\n".join(f"{line.split('|||', 1)[0]}|||{clean_tool_prefix(line.split('|||', 1)[1])}" for line in matched_base.split("\n")))
+        sys.exit(0)
+    print_stock_error(user_input); sys.exit(127)
 except KeyboardInterrupt: sys.stderr.write("\nCancelled.\n"); sys.exit(130)
