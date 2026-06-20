@@ -22,7 +22,8 @@ IMPACT ASSESSMENT
 Briefly explain if these updates affect active system stability, security, or running processes. State if local script runtimes (like uv or python) will require virtual environment rebuilds.
 
 APPLICATION FEATURE SUMMARIES
-If standalone user applications (e.g., web browsers, text editors, terminal utilities, or server software) are present in the list, use your knowledge base to provide a 1-2 sentence summary of the major recent features, performance optimizations, or notable bug fixes included in the latest releases of each specific app.
+If standalone user applications (e.g., web browsers, text editors, terminal utilities, or server software) are present in the list, use your knowledge base to provide a 1-2 sentence summary of major features or fixes. Use this exact flat format (no leading bullet points, no dashes, no bolding):
+[AppName]: [1-2 sentence summary of key features, optimizations, or notable fixes]
 
 ---
 
