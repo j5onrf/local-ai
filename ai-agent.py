@@ -125,7 +125,7 @@ def clean_tool_prefix(cmd):
     if c.startswith("DANGER_FLAGGED:"):
         c = f"DANGER_FLAGGED:{c.replace('DANGER_FLAGGED:', '').replace('[TOOL]', '').strip()}"
     pager = ""
-    for f, p in [(" --leaf", "leaf"), (" --glow", "glow"), (" --cat", "cat")]:
+    for f, p in [(" --leaf", "leaf"), (" --glow", "glow"), (" --cat", "cat"), (" --mdcat", "mdcat")]:
         if c.endswith(f): c, pager = c[:-len(f)].strip(), p; break
     if not pager and is_tool: pager = "mdcat" if shutil.which("mdcat") else "cat"
     if pager: c = f"{c} | {pager}" if pager != "mdcat" or shutil.which("mdcat") else c
