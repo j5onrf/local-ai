@@ -1,7 +1,7 @@
 # Identity Layer (`agentic/identity/`)
 
 <div align="center">
-<img alt="Adaptive Identity Layer for AI Agents" src="https://github.com/user-attachments/assets/67553dc5-f348-48ff-9c82-7368bc5b758b" width="768" />
+<img alt="Adaptive Identity Layer for AI Agents" src="https://github.com/user-attachments/assets/67553dc5-f348-48ff-9c82-7368bc5b758b" width="800" />
 </div>
 
 <br>
