@@ -1,6 +1,8 @@
 # Local-AI Tablet Voice Bridge
 
+<div align="center">
 <img alt="Image_eva8fveva8fveva8" src="https://github.com/user-attachments/assets/9722a863-ca27-4ac4-9203-90fd5e682c7c" width="768" />
+</div>
 
 ---
 
