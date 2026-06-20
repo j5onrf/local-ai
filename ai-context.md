@@ -65,7 +65,7 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 [TOOL] ~/.config/local-ai/tools/agentic/system/system-health --leaf ---> system health, sysh, health, system diagnosis, why is my system slow
 
 # --- Pending Updates ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/update-inspector --leaf ---> update inspector, update inspect, ui
+[TOOL] ~/.config/local-ai/tools/agentic/system/update-inspector --leaf ---> update inspector, inspector, ui
 
 # --- Disk Usage ---
 [TOOL] df -h / ---> disk usage, drive usage
