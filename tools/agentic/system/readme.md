@@ -1,7 +1,7 @@
 # Agentic System [TOOLS]
 
 <div align="center">
-  <img alt="Agentic System Hero" src="https://github.com/user-attachments/assets/4482a4c6-aed3-4c34-80fc-4774c4dcbbed" width="800" />
+  <img alt="Agentic System Hero" src="https://github.com/user-attachments/assets/4482a4c6-aed3-4c34-80fc-4774c4dcbbed" width="708" />
 </div>
 
 ---
