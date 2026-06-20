@@ -1,5 +1,5 @@
 <p align="center">
-  <img alt="Local-AI Agent" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" width="800" />
+  <img alt="Local-AI Agent" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" width="768" />
 </p>
 
 <h1 align="center">Local-AI Agent <kbd>v0.8.6.7-beta</kbd></h1>
