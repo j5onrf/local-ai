@@ -256,11 +256,19 @@ def stream_llm_response(messages, prefix="AI: "):
                     if e.code == 429 and retries > 0: time.sleep(backoff); retries, backoff = retries - 1, backoff * 2
                     elif e.code == 400:
                         sys.stderr.write(f"\n\033[1;31m[API 400 Error]: {e.read().decode('utf-8')}\033[0m\n"); break
-                    else: break
-                except Exception: spinner.stop(); break
+                    else:
+                        # Print precise HTTP error code directly to stderr in gray
+                        sys.stderr.write(f"\033[90m[sys] {url.split('/')[2]} failed: HTTP {e.code}\033[0m\n")
+                        break
+                except Exception as e:
+                    spinner.stop()
+                    # Print precise network or socket error directly to stderr in gray
+                    sys.stderr.write(f"\033[90m[sys] {url.split('/')[2]} failed: {e}\033[0m\n")
+                    break
     except KeyboardInterrupt:
         spinner.stop(); sys.stderr.write("\n\r\x1b[2K\rCancelled.\n"); sys.stderr.flush(); sys.exit(130)
-    print("\033[1;31mError: All fallbacks/local servers are offline.\033[0m\n"); return None
+    # Direct final error safely to stderr (completely protecting ai-commit)
+    sys.stderr.write("\033[1;31mError: All fallbacks/local servers are offline.\033[0m\n\n"); return None
 
 try:
     args = sys.argv[1:]
