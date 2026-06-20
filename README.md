@@ -2,7 +2,7 @@
   <img alt="Local-AI Agent" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" width="800" />
 </p>
 
-<h1 align="center">Local-AI Agent <kbd>v0.8.7.2-beta</kbd></h1>
+<h1 align="center">Local-AI Agent <kbd>v0.8.7.3-beta</kbd></h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
@@ -53,7 +53,7 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 ```text
 ~ ❯ weather
 [01/02] ❯ [weather full] curl -s wttr.in | cat
-:: ↵ run  any skip: 
+:: ↵ run  Esc:
 ```
 
 ---

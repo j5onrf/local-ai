@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.7.2 [j5onrf] [06-20-26]
+# Local-Ai Agent v0.8.7.3 [j5onrf] [06-20-26]
 
 import sys, re, os, json, threading, time, subprocess, shutil, tty, termios, select
 import urllib.request as urlreq, urllib.error as urlerr
@@ -26,9 +26,9 @@ class InlineSpinner:
     def start(self): self.active, self.thread = True, threading.Thread(target=self._spin, daemon=True); self.thread.start()
     def stop(self): self.active = False; self.thread.join() if self.thread else None
 
-def sanitize_input(t): return re.sub(r"[`$]", "", t).strip() if t else ""
-def tokenize(t): return [w for w in TOKEN_RE.sub(" ", t.lower()).split() if len(w) > 1 and w not in STOP_WORDS]
-def check_danger(c): return f"DANGER_FLAGGED:{c}" if c and any(kw in c.lower() for kw in DESTRUCTIVE_KEYWORDS) else c
+def sanitize_input(text): return re.sub(r"[`$]", "", text).strip() if text else ""
+def tokenize(text): return [w for w in TOKEN_RE.sub(" ", text.lower()).split() if len(w) > 1 and w not in STOP_WORDS]
+def check_danger(cmd): return f"DANGER_FLAGGED:{cmd}" if cmd and any(kw in cmd.lower() for kw in DESTRUCTIVE_KEYWORDS) else cmd
 
 def ensure_mysys_exists():
     if not os.path.exists(f"{SKILLS_DIR}/system/mysys.md"):
@@ -42,14 +42,15 @@ def find_skill_file(skills_dir, name):
                 if f.lower() == f"{name.lower()}.md": return os.path.join(r, f)
     return None
 
-def load_skill_content(name):
-    sf = find_skill_file(SKILLS_DIR, name) if name else None
+def load_skill_content(skill_name):
+    sf = find_skill_file(SKILLS_DIR, skill_name) if skill_name else None
     if not sf: return ""
-    if "system" in name.lower(): ensure_mysys_exists()
+    if "system" in skill_name.lower(): ensure_mysys_exists()
     try:
         with open(sf) as f: return f.read().strip()
     except Exception as e:
-        sys.stderr.write(f"\033[1;31mError loading skill '{name}': {e}\033[0m\n"); return ""
+        sys.stderr.write(f"\033[1;31mError loading skill '{skill_name}': {e}\033[0m\n")
+        return ""
 
 def print_stock_error(n):
     sh = os.path.basename(os.environ.get("SHELL", "/bin/bash"))
@@ -88,12 +89,12 @@ def jaccard_search(query, threshold=0.45):
     q_clean, q_tokens = query.strip().lower(), set(tokenize(query))
     if not q_tokens or not (entries := load_context_entries()): return None
     candidates = []
-    for e in entries:
-        ent_tokens, ent_clean = set(e["tokens"]), e["intent"].strip().lower()
+    for entry in entries:
+        ent_tokens, ent_clean = set(entry["tokens"]), entry["intent"].strip().lower()
         score = len(q_tokens & ent_tokens) / len(q_tokens | ent_tokens) if (q_tokens & ent_tokens) else 0.0
         if q_clean in ent_clean: score = max(score, 0.8)
         if q_clean == ent_clean: score = 3.0
-        if score >= threshold: candidates.append((score, e["cmd"], e.get("primary", e["intent"])))
+        if score >= threshold: candidates.append((score, entry["cmd"], entry.get("primary", entry["intent"])))
     if not candidates: return None
     if any("system" in c[1].lower() for c in candidates): ensure_mysys_exists()
     candidates.sort(key=lambda x: (-x[0], len(x[2])))
@@ -149,17 +150,20 @@ def get_system_context(query):
                 if is_safe:
                     sys.stderr.write(f"\033[2m[sys] Executing: {tool}\033[0m\n"); sys.stderr.flush()
                     return run_local_tool(tool)
-                sys.stderr.write(f"\033[1;30m[sys] Run tool: \033[1;36m{tool}\033[1;30m? [Y/n]: \033[0m"); sys.stderr.flush()
+                
+                # 3-State Prompting: Consolidated into 7 clean lines (properly indented)
+                sys.stderr.write(f"\033[1;30m[sys] Run tool: \033[1;36m{tool}\033[1;30m? [↵ run  Esc]: \033[0m"); sys.stderr.flush()
                 key = get_key()
-                if key in ('\r', '\n', '', 'y', 'Y'):
-                    sys.stderr.write(f"\r\x1b[K\033[2m[sys] Executing: {tool}\033[0m\n"); sys.stderr.flush()
-                    return run_local_tool(tool)
-                sys.stderr.write("\r\x1b[K\033[2;31m[sys] Skipped tool execution.\033[0m\n"); sys.stderr.flush()
-                return ""
+                if key in ('\x03', '\x1b'):
+                    sys.stderr.write("\r\x1b[K\033[2;31m[sys] Cancelled.\033[0m\n"); sys.stderr.flush(); sys.exit(130)
+                is_run = key in ('\r', '\n', '', 'y', 'Y')
+                msg = f"\033[2m[sys] Executing: {tool}" if is_run else "\033[2;31m[sys] Skipped tool execution."
+                sys.stderr.write(f"\r\x1b[K{msg}\033[0m\n"); sys.stderr.flush()
+                return run_local_tool(tool) if is_run else ""
     return ""
 
 def run_interactive_selection(intent):
-    if re.search(r"[\[\]{}()='\",;|#<>]", intent): print_stock_error(intent); sys.exit(127)
+    if re.search(r'[\[\]{}()=\'"",;|<>#]', intent): print_stock_error(intent); sys.exit(127)
     matched_base = jaccard_search(intent)
     if not matched_base: print_stock_error(intent); sys.exit(127)
     options = matched_base.split("\n")
@@ -176,7 +180,7 @@ def run_interactive_selection(intent):
             if is_danger:
                 sys.stderr.write(f"\r\x1b[K\033[1;31m▲ WARNING: Destructive payload detected\033[0m\n\r\x1b[K\033[1;30m[\033[1;31m{idx_str}\033[1;30m]\033[0m ❯ \x1b[1;36m[{current_intent}]\x1b[0m {display_cmd}\n\r\x1b[K\033[1;30m::\033[0m execute payload? [y/N]: ")
             else:
-                sys.stderr.write(f"\r\x1b[K\033[1;30m[\033[1;32m{idx_str}\033[1;30m]\033[0m ❯ \x1b[1;36m[{current_intent}]\x1b[0m {display_cmd}\n\r\x1b[K\033[1;30m::\033[0m ↵ run  any skip: ")
+                sys.stderr.write(f"\r\x1b[K\033[1;30m[\033[1;32m{idx_str}\033[1;30m]\033[0m ❯ \x1b[1;36m[{current_intent}]\x1b[0m {display_cmd}\n\r\x1b[K\033[1;30m::\033[0m ↵ run  Esc: ")
             sys.stderr.flush()
             key = get_key()
             if key in ('\x03', '\x1b') or (not is_danger and key not in ('\r', '', '\x1b[A', '\x1b[B')):
@@ -291,7 +295,7 @@ try:
                             if os.path.exists(think_bin):
                                 try: subprocess.run([sys.executable, think_bin, query], input=json.dumps(chat_history), text=True)
                                 except Exception as e: sys.stderr.write(f"\033[1;31m[Warning] chat tool failed: {e}\033[0m\n")
-                            else: sys.stderr.write(f"\033[1;31mError: chat tool not found at tools/chat\033[0m\n")
+                            else: sys.stderr.write("\033[1;31mError: chat tool not found at tools/chat\033[0m\n")
                             continue
                         system_context = get_system_context(query)
                         prompt = (f"### Real-time System Context:\n{system_context}\n\n" if system_context else "") + f"User Question: {query}"
