@@ -96,8 +96,7 @@ def jaccard_search(query, threshold=0.45):
         if q_clean == ent_clean: score = 3.0
         if score >= threshold: candidates.append((score, entry["cmd"], entry.get("primary", entry["intent"])))
     if not candidates: return None
-    for _, cmd, _ in candidates:
-        if "system" in cmd.lower(): ensure_mysys_exists(); break
+    if any("system" in c[1].lower() for c in candidates): ensure_mysys_exists()
     candidates.sort(key=lambda x: (-x[0], len(x[2])))
     seen, top = set(), []
     for _, cmd, primary in candidates:
@@ -123,6 +122,10 @@ def clean_tool_prefix(cmd):
     c = cmd.replace("[TOOL]", "", 1).strip() if is_tool else cmd
     if c.startswith("DANGER_FLAGGED:"):
         c = f"DANGER_FLAGGED:{c.replace('DANGER_FLAGGED:', '').replace('[TOOL]', '').strip()}"
+    
+    # Strip the safety flag before running as an alias
+    c = c.replace(" --s", "").strip()
+    
     pager = ""
     for f, p in [(" --leaf", "leaf"), (" --glow", "glow"), (" --cat", "cat"), (" --mdcat", "mdcat")]:
         if c.endswith(f): c, pager = c[:-len(f)].strip(), p; break
@@ -139,19 +142,30 @@ def get_system_context(query):
             if cmd.startswith("[TOOL]"):
                 tool = cmd.replace("[TOOL]", "").strip()
                 if "system" in tool.lower(): ensure_mysys_exists()
+                
+                # Check, tag, and strip the --s (safe) flag
+                is_safe = " --s" in tool
+                if is_safe:
+                    tool = tool.replace(" --s", "").strip()
+                
                 for f in [" --leaf", " --glow", " --cat", " --mdcat"]:
                     if tool.endswith(f): tool = tool[:-len(f)].strip()
                 intent_tokens = set(tokenize(entry.get("intent", "")))
                 args = " ".join([w for w in query.split() if tokenize(w) and tokenize(w)[0] not in intent_tokens])
-                
                 if "$1" in tool or "{}" in tool:
                     tool = tool.replace("$1", args).replace("{}", args).strip()
                 
+                # Bypass prompt if explicitly marked as safe
+                if is_safe:
+                    sys.stderr.write(f"\033[2m[sys] Executing: {tool}\033[0m\n")
+                    sys.stderr.flush()
+                    return run_local_tool(tool)
+                
+                # Interactive Consent Prompt
                 sys.stderr.write(f"\033[1;30m[sys] Run tool: \033[1;36m{tool}\033[1;30m? [Y/n]: \033[0m")
                 sys.stderr.flush()
                 key = get_key()
-                
-                if key in ('\r', '', 'y', 'Y'):
+                if key in ('\r', '\n', '', 'y', 'Y'):
                     sys.stderr.write(f"\r\x1b[K\033[2m[sys] Executing: {tool}\033[0m\n")
                     sys.stderr.flush()
                     return run_local_tool(tool)

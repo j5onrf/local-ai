@@ -8,7 +8,7 @@
 ### Directional Syntax Guide
 1. `~/path`: Indexes workspace and launches a standard AI Workspace.
 2. `ai init --<skill>`: Indexes codebase workspace pre-primed with a chosen `--<skill>` (e.g., `--coder` or `--prompt`).
-3. `[TOOL] <command>`: Runs a local utility (like `cat`, `curl`, or `date`) to inject dynamic Markdown context.
+3. `[TOOL] <command> [--s]`: Runs a background utility to inject dynamic Markdown context (append ` --s` to bypass confirmation).
 4. `<command>`: Launches a native terminal alias, interactive TUI, or document viewer (using `mdcat`, `leaf`, or `glow`).
 
 ---
@@ -71,11 +71,11 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 [TOOL] df -h / ---> disk usage, drive usage
 
 # --- AI Status & Provider Diagnostics ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/ai-status --leaf ---> ai status, aistat, status, aistatus 
+[TOOL] ~/.config/local-ai/tools/agentic/system/ai-status --s --leaf ---> ai status, aistat, status, aistatus 
 
 # --- Weather & Live Networking ---
-[TOOL] curl -s wttr.in --cat ---> weather full, wttr, weather, rain forecast full
-[TOOL] curl -s "wttr.in/?format=3" --cat ---> weather simple, wttr, weather, rain forecast simple
+[TOOL] curl -s wttr.in --s --cat ---> weather full, wttr, weather, rain forecast full
+[TOOL] curl -s "wttr.in/?format=3" --s --cat ---> weather simple, wttr, weather, rain forecast simple
 
 # --- System Time & Date (Real-time Clock Context) ---
 [TOOL] date ---> time, date, current time, what time is it
@@ -85,7 +85,7 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 
 ```properties
 # --- Local-Ai Agent Blueprint (CheatSheet) ---
-~/.config/local-ai/tools/blueprint --leaf ---> cheatsheet, bp, cs, blueprint
+~/.config/local-ai/tools/blueprint --s --leaf ---> cheatsheet, bp, cs, blueprint
 
 # --- AI-Generated Git Commits ---
 ~/.config/local-ai/tools/agentic/system/ai-commit ---> ai-commit, gc, git-commit, git commit
