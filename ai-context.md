@@ -50,13 +50,13 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 
 ```properties
 # --- Pre-Install Zero-Trust AUR Package & PKGBUILD Auditor ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/aur-audit ---> audit package, aur audiit
+[TOOL] ~/.config/local-ai/tools/agentic/system/aur-audit ---> audit package, aur audit
 
 # --- Host Security Surface & Vulnerability Intelligence (SECAUD) ---
 [TOOL] ~/.config/local-ai/tools/agentic/system/security-audit --leaf ---> security audit, secaud, system audit
 
 # --- System Optimization (Improve System Performance) ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/system-optimize --leaf ---> system optimize, sysop
+[TOOL] ~/.config/local-ai/tools/agentic/system/system-optimizer --leaf ---> system optimizer, sysop, optimize
 
 # --- System Logs & Diagnostics (Compressed Stream Triage) ---
 [TOOL] ~/.config/local-ai/tools/agentic/system/log-checker --leaf ---> log checker, ailog, log check, check errors, system crashed, events
@@ -78,7 +78,7 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 [TOOL] curl -s "wttr.in/?format=3" --s --cat ---> weather simple, wttr, weather, rain forecast simple
 
 # --- System Time & Date (Real-time Clock Context) ---
-[TOOL] date ---> time, date, current time, what time is it
+[TOOL] date --s ---> time, date, current time, what time is it
 ```
 
 ## 4. Static Aliases & Shell Shortcuts

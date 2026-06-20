@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.7.3 [j5onrf] [06-20-26]
+# Local-Ai Agent v0.8.7.5 [j5onrf] [06-20-26]
 
 import sys, re, os, json, threading, time, subprocess, shutil, tty, termios, select
 import urllib.request as urlreq, urllib.error as urlerr
@@ -248,7 +248,7 @@ def stream_llm_response(messages, prefix="AI: "):
                                     print(content, end="", flush=True); acc.append(content)
                             except: pass
                         print("")
-                        if resolved_model and resolved_model != model:
+                        if resolved_model and resolved_model != model and sys.stdout.isatty():
                             sys.stdout.write(f"\033[90m[via {resolved_model}]\033[0m\n"); sys.stdout.flush()
                         return "".join(acc)
                 except urlerr.HTTPError as e:

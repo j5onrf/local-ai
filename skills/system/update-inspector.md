@@ -9,7 +9,7 @@
 Generate your response structured strictly under the following layout. Do not use any Markdown formatting (no bolding, no hashes) in your final response:
 
 SYSTEM UPDATE STATUS: [ UP TO DATE | PENDING | CRITICAL ]
-- Pending Updates: [State only the total count, e.g., "75 packages: 75 native, 0 AUR"]
+- Pending Updates: [State only the total count (e.g., "75 packages: 75 Arch, 0 AUR", breaking it down by repository type if multiple are present)."]
 - Reboot Required: [State YES or NO, and briefly why, e.g., "YES, due to kernel, systemd, or PipeWire updates"]
 - Key System & Python Risks: [List the most critical core system or Python/uv packages being updated. If none, "None"]
 

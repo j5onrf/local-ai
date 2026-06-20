@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# AI Update Inspector v0.8.3 [j5onrf] [06-20-26]
+# AI Update Inspector v0.8.6 [j5onrf] [06-20-26]
 
 set -euo pipefail
 
@@ -43,13 +43,28 @@ trap stop_spinner EXIT
 start_spinner
 
 # 2. Gather Native Repository Updates
-repo_count="0"
-repo_packages="*None*"
+cachyos_count="0"
+cachyos_packages="*None*"
+arch_count="0"
+arch_packages="*None*"
 repo_error=""
 
 if command -v checkupdates >/dev/null 2>&1; then
     raw_repo=$(checkupdates 2>/dev/null || true)
-    IFS='|' read -r repo_count repo_packages <<< "$(parse_packages "$raw_repo")"
+    
+    if [ -n "$raw_repo" ]; then
+        # Extract package names and query sync database to split CachyOS from Arch Extra/Core
+        pkg_names=$(echo "$raw_repo" | awk '{print $1}')
+        
+        # Symmetrical seen-filter: only registers the first (prioritized) repository for each package
+        repo_info=$(pacman -Si $pkg_names 2>/dev/null | awk '/^Repository/ {repo=$3} /^Name/ {name=$3; if (!seen[name]) { print repo"|"name; seen[name]=1 } }')
+        
+        cachyos_raw=$(echo "$repo_info" | grep "cachyos" | cut -d'|' -f2 || true)
+        arch_raw=$(echo "$repo_info" | grep -v "cachyos" | cut -d'|' -f2 || true)
+        
+        IFS='|' read -r cachyos_count cachyos_packages <<< "$(parse_packages "$cachyos_raw")"
+        IFS='|' read -r arch_count arch_packages <<< "$(parse_packages "$arch_raw")"
+    fi
 else
     repo_error="*Error: checkupdates utility missing*"
 fi
@@ -77,18 +92,24 @@ if [ -f "$SKILL_FILE" ]; then
     echo ""
 fi
 
-echo "## NATIVE REPOSITORY UPDATES"
+# Dynamically hide CachyOS section if there are no CachyOS packages active
+if [ "$cachyos_count" -gt 0 ]; then
+    echo "## CACHYOS REPOSITORY UPDATES"
+    echo "* **Pending CachyOS**: \`$cachyos_count\`"
+    echo "* **Packages**: $cachyos_packages"
+    echo ""
+fi
 
+echo "## STANDARD ARCH REPOSITORY UPDATES"
 if [ -n "$repo_error" ]; then
-    echo "* **Pending Repos**: $repo_error"
+    echo "* **Pending Arch**: $repo_error"
 else
-    echo "* **Pending Repos**: \`$repo_count\`"
-    echo "* **Packages**: $repo_packages"
+    echo "* **Pending Arch**: \`$arch_count\`"
+    echo "* **Packages**: $arch_packages"
 fi
 
 echo ""
 echo "## AUR REPOSITORY UPDATES"
-
 if [ -n "$aur_error" ]; then
     echo "* **Pending AUR**: $aur_error"
 else

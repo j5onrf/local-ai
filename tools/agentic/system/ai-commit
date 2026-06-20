@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ai-commit - Automate Git Commits with AI Context [j5onrf] v1.2.0
+# ai-commit - Automate Git Commits with AI Context [j5onrf] v1.2.1
 
 set -euo pipefail
 
