@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# chat - Unified Agentic Brainstorm, Thinking & Follow-up Engine v2.5.0
+# chat - Unified Agentic Brainstorm, Thinking & Follow-up Engine v2.5.1
 # Path: ~/.config/local-ai/tools/chat
 
 import sys, os, json, re, urllib.request as urlreq
@@ -54,23 +54,32 @@ THINK_FILE = f"{CFG_DIR}/skills/meta/{skill_file}"
 prompt = ""
 if is_all_cmd:
     # Compile a unified super-prompt from all three source files in one API call
-    prompts = []
+    prompts = {}
     for f_name, header in [("follow-up.md", "Follow-up"), ("thinking.md", "Thinking"), ("brainstorm.md", "Brainstorm")]:
         path = f"{CFG_DIR}/skills/meta/{f_name}"
         if os.path.exists(path):
             try:
                 with open(path) as f:
-                    prompts.append(f.read().strip())
+                    content = f.read().strip()
+                    # Clean out redundant templates from individual files to keep 2B's attention clear
+                    if "Template:" in content:
+                        content = content.split("Template:")[0].strip()
+                    prompts[header] = content
             except Exception: pass
+            
     if prompts:
+        # Structured with XML-scaffolding and a single, unified Master Template
         prompt = (
-            "Analyze history and output exactly three sections: Follow-up, Thinking, and Brainstorm.\n"
-            "Adhere strictly to the rules of each section below:\n\n"
-            + "\n\n---\n\n".join(prompts) +
-            "\n\nTemplate (Ensure headers are exact, flush left, with no empty lines between options):\n"
+            "Analyze the preceding conversation history and output exactly three sections: Follow-up, Thinking, and Brainstorm.\n"
+            "You must output ONLY these three sections, with no conversational introductions or explanations.\n\n"
+            "Template (Ensure headers are exact, flush left, with no empty lines between options):\n"
             "Follow-up\n[Option 1]\n[Option 2]\n[Option 3]\n"
             "Thinking\n[Option 1]\n[Option 2]\n[Option 3]\n"
-            "Brainstorm\n[Option 1]\n[Option 2]\n[Option 3]"
+            "Brainstorm\n[Option 1]\n[Option 2]\n[Option 3]\n\n"
+            "Strictly adhere to the specific guidelines for each section detailed below:\n"
+            f"<FOLLOW_UP_RULES>\n{prompts.get('Follow-up', '')}\n</FOLLOW_UP_RULES>\n\n"
+            f"<THINKING_RULES>\n{prompts.get('Thinking', '')}\n</THINKING_RULES>\n\n"
+            f"<BRAINSTORM_RULES>\n{prompts.get('Brainstorm', '')}\n</BRAINSTORM_RULES>"
         )
 elif os.path.exists(THINK_FILE):
     try:
@@ -104,10 +113,16 @@ else:
     # Inject user's specific requested counts
     prompt = prompt.replace("exactly 3", f"exactly {option_count}")
 
-# 4. Safe Stack Insertion
-history.append({"role": "system", "content": prompt})
-if not any(msg.get("role") == "user" for msg in history):
-    history.append({"role": "user", "content": "Generate triggers."})
+# 4. Safe Stack Insertion (Fixed for local ChatML template compliance)
+# Instead of appending an out-of-order system prompt, we inject a clean trailing User Instruction.
+# This guides the model to perform the command on the preceding history without violating alternating templates.
+instruction_block = (
+    "[COMMAND: Do not continue the conversation. Do not reply to the last message. "
+    "Instead, execute this specific analytical directive based on our preceding chat history immediately. "
+    "Do not include any chatty conversational introductions or preambles.]\n\n"
+    f"{prompt}"
+)
+history.append({"role": "user", "content": instruction_block})
 
 # 5. Simplified Fallbacks (Standardized on openrouter/free)
 configs = []
@@ -163,10 +178,21 @@ for url, headers, model, extra in configs:
                 
                 sys.stdout.write("\n")
                 first_line_clean = lines[0].lower().rstrip('s:') if lines else ""
-                if first_line_clean not in headers_map:
-                    sys.stdout.write(f"\033[1;32mAI:\033[0m {output_header}\n")
                 
-                for line in lines:
+                # Check if the first line is actually a conversational preamble (very common with 2B models)
+                # If so, we bypass printing it to keep the terminal layout clean.
+                start_index = 0
+                if first_line_clean not in headers_map:
+                    # If the model output a preamble, skip it and look for the first valid header line
+                    for idx, line in enumerate(lines):
+                        if line.lower().rstrip('s:') in headers_map:
+                            start_index = idx
+                            break
+                    else:
+                        # Fallback if no valid headers were output at all
+                        sys.stdout.write(f"\033[1;32mAI:\033[0m {output_header}\n")
+                
+                for line in lines[start_index:]:
                     clean_line = line.lower().rstrip('s:')
                     if clean_line in headers_map:
                         sys.stdout.write(f"\033[1;32mAI:\033[0m {headers_map[clean_line]}\n")

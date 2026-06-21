@@ -151,7 +151,6 @@ def get_system_context(query):
                     sys.stderr.write(f"\033[2m[sys] Executing: {tool}\033[0m\n"); sys.stderr.flush()
                     return run_local_tool(tool)
                 
-                # 3-State Prompting: Consolidated into 7 clean lines (properly indented)
                 sys.stderr.write(f"\033[1;30m[sys] Run tool: \033[1;36m{tool}\033[1;30m? [↵ run  Esc]: \033[0m"); sys.stderr.flush()
                 key = get_key()
                 if key in ('\x03', '\x1b'):
@@ -259,17 +258,14 @@ def stream_llm_response(messages, prefix="AI: "):
                     elif e.code == 400:
                         sys.stderr.write(f"\n\033[1;31m[API 400 Error]: {e.read().decode('utf-8')}\033[0m\n"); break
                     else:
-                        # Print precise HTTP error code directly to stderr in gray
                         sys.stderr.write(f"\033[90m[sys] {url.split('/')[2]} failed: HTTP {e.code}\033[0m\n")
                         break
                 except Exception as e:
                     spinner.stop()
-                    # Print precise network or socket error directly to stderr in gray
                     sys.stderr.write(f"\033[90m[sys] {url.split('/')[2]} failed: {e}\033[0m\n")
                     break
     except KeyboardInterrupt:
         spinner.stop(); sys.stderr.write("\n\r\x1b[2K\rCancelled.\n"); sys.stderr.flush(); sys.exit(130)
-    # Direct final error safely to stderr (completely protecting ai-commit)
     sys.stderr.write("\033[1;31mError: All fallbacks/local servers are offline.\033[0m\n\n"); return None
 
 try:
