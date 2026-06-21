@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.7.5 [j5onrf] [06-20-26]
+# Local-Ai Agent v0.8.7.6 [j5onrf] [06-20-26]
 
 import sys, re, os, json, threading, time, subprocess, shutil, tty, termios, select
 import urllib.request as urlreq, urllib.error as urlerr
@@ -205,15 +205,17 @@ def run_interactive_selection(intent):
 
 def stream_llm_response(messages, prefix="AI: "):
     configs, gkey, okey, ckey, curl = [], os.environ.get("GEMINI_API_KEY"), os.environ.get("OPENROUTER_API_KEY"), os.environ.get("CLOUD_API_KEY"), os.environ.get("CLOUD_API_URL")
-    if gkey: configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Authorization": f"Bearer {gkey}"}, os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"), {}))
+    if gkey: 
+        configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Authorization": f"Bearer {gkey}"}, os.environ.get("CLOUD_MODEL", "gemini-3.5-flash"), {}, 15))
     if okey:
         m = os.environ.get("OPENROUTER_MODEL", "openrouter/free")
-        configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"}, m, {}))
-    if ckey and curl: configs.append((curl, {"Authorization": f"Bearer {ckey}"}, os.environ.get("CLOUD_MODEL"), {}))
-    configs.append(("http://localhost:8080/v1/chat/completions", {}, None, {}))
+        configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"}, m, {}, 20))
+    if ckey and curl: 
+        configs.append((curl, {"Authorization": f"Bearer {ckey}"}, os.environ.get("CLOUD_MODEL"), {}, 30))
+    configs.append(("http://localhost:8080/v1/chat/completions", {}, "local-model", {}, 180))
     spinner = InlineSpinner()
     try:
-        for url, headers, model, extra in configs:
+        for url, headers, model, extra, timeout in configs:
             body = {"messages": messages, "stream": True, **extra}
             if model: body["model"] = model
             req = urlreq.Request(url, data=json.dumps(body).encode("utf-8"), headers={"Content-Type": "application/json", **headers}, method="POST")
@@ -221,7 +223,7 @@ def stream_llm_response(messages, prefix="AI: "):
             while retries >= 0:
                 try:
                     spinner.start()
-                    with urlreq.urlopen(req, timeout=10) as response:
+                    with urlreq.urlopen(req, timeout=timeout) as response:
                         try:
                             p = "gemini" if "generativelanguage" in url else "openrouter" if "openrouter" in url else None
                             p and open(os.path.join(CFG_DIR, ".request_log"), "a").write(f"{int(time.time())}|{p}\n")
