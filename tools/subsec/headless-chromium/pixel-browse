@@ -1,0 +1,270 @@
+#!/usr/bin/env python3
+# pixel-browse - Headless Visual Web Ingestion & Analysis Agent v1.0.6
+
+import sys
+import os
+import json
+import base64
+import subprocess
+import urllib.request as urlreq
+import threading
+import time
+
+GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
+MODEL = os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite")
+TMP_SHOT = "/tmp/pixel_shot.png"
+
+# Thread-Safe Spinner
+class SimpleSpinner:
+    def __init__(self, message="[sys] Processing..."):
+        self.message = message
+        self.chars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+        self.active = False
+        self.thread = None
+    def _spin(self):
+        import time
+        idx = 0
+        while self.active:
+            try:
+                sys.stderr.write(f"\r\033[1;32m{self.chars[idx % len(self.chars)]}\033[0m {self.message}")
+                sys.stderr.flush()
+            except Exception:
+                pass
+            idx += 1
+            time.sleep(0.08)
+        try:
+            sys.stderr.write("\r\x1b[2K\r")
+            sys.stderr.flush()
+        except Exception:
+            pass
+    def start(self):
+        self.active = True
+        self.thread = threading.Thread(target=self._spin, daemon=True)
+        self.thread.start()
+    def stop(self):
+        self.active = False
+        if self.thread:
+            self.thread.join()
+
+# 2. Safe Exit Handler
+def safe_exit(code=0):
+    try:
+        sys.stdout.flush()
+    except Exception:
+        pass
+    try:
+        sys.stderr.flush()
+    except Exception:
+        pass
+    try:
+        sys.stdout = open(os.devnull, 'w')
+        sys.stderr = open(os.devnull, 'w')
+    except Exception:
+        pass
+    sys.exit(code)
+
+# 3. Dynamic Chromium-Based Browser Locator
+def find_browser():
+    candidates = ["chromium", "brave", "brave-browser", "google-chrome-stable", "google-chrome", "chrome"]
+    for b in candidates:
+        try:
+            if subprocess.run(["which", b], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
+                return b
+        except Exception:
+            pass
+            
+    fallbacks = [
+        "/opt/brave-origin-bin/brave",
+        "/opt/brave-bin/brave",
+        "/usr/bin/brave",
+        "/usr/bin/chromium",
+        "/usr/bin/google-chrome-stable"
+    ]
+    for path in fallbacks:
+        if os.path.exists(path):
+            return path
+            
+    return None
+
+def take_headless_screenshot(url, browser_bin, output_path):
+    try:
+        subprocess.run(["rm", "-rf", "/tmp/pixel_browse_profile"], stderr=subprocess.DEVNULL)
+    except Exception:
+        pass
+        
+    cmd = [
+        browser_bin,
+        "--headless=new",
+        "--no-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        f"--screenshot={output_path}",
+        "--window-size=1280,1600",
+        "--user-data-dir=/tmp/pixel_browse_profile", # Clean temporary sandbox profile
+        "--disable-extensions",                      # Disables heavy desktop extensions
+        "--no-first-run",                            # Skips first-run setup checks
+        "--no-default-browser-check",                 # Skips default browser validation
+        "--disable-software-rasterizer",             # Disables software GL rasterizer
+        "--disable-background-networking",           # Disables background checks/syncs
+        "--disable-sync",                            # Disables account syncing
+        "--disable-translate",                       # Disables translation popups
+        "--metrics-recording-only",                  # Stops telemetry logging
+        "--safebrowsing-disable-auto-update",        # Stops safebrowsing auto-updates
+        "--autoplay-policy=user-gesture-required",        # Stops video/audio from auto-buffering & playing
+        "--mute-audio"                               # Prevents audio device thread locks
+    ]
+    cmd.append(url)
+    
+    # Strip graphical environmental variables
+    custom_env = os.environ.copy()
+    custom_env["DISPLAY"] = ""
+    custom_env["WAYLAND_DISPLAY"] = ""
+    custom_env["XAUTHORITY"] = ""
+    
+    # Enforces a resilient 15-second execution timeout
+    subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True, timeout=15, env=custom_env)
+
+def encode_image_base64(path):
+    with open(path, "rb") as f:
+        return base64.b64encode(f.read()).decode('utf-8')
+
+# Main Execution Loop
+def main():
+    if not GEMINI_KEY:
+        print("\033[1;31mError: GEMINI_API_KEY is not exported in environment.\033[0m")
+        sys.exit(1)
+        
+    url = ""
+    question = ""
+    
+    # Ingestion Check
+    if len(sys.argv) >= 3:
+        url = sys.argv[1].strip()
+        question = sys.argv[2].strip()
+    else:
+        try:
+            url = input("\033[1;32m[Pixel] Enter target URL:\033[0m ").strip()
+            if not url:
+                print("Error: URL cannot be empty.")
+                sys.exit(1)
+            question = input("\033[1;32m[Pixel] Enter your question:\033[0m ").strip()
+            if not question:
+                print("Error: Question cannot be empty.")
+                sys.exit(1)
+        except (KeyboardInterrupt, EOFError):
+            print("\nExiting.")
+            sys.exit(0)
+            
+    # Auto-resolve missing URL protocols
+    if not url.startswith("http://") and not url.startswith("https://"):
+        url = "https://" + url
+            
+    # Locate active system browser
+    browser_bin = find_browser()
+    if not browser_bin:
+        sys.stderr.write("\033[1;31mError: No compatible Chromium-based browser found on your system.\033[0m\n")
+        sys.exit(1)
+            
+    # Generate unique, timestamped, PID-specific screenshot filename to prevent permission locks in /tmp
+    output_shot = f"/tmp/pixel_shot_{os.getpid()}_{int(time.time())}.png"
+        
+    # Start the local browser capture
+    spinner = SimpleSpinner(f"[sys] Capturing headless render using '{os.path.basename(browser_bin)}'...")
+    try:
+        spinner.start()
+        take_headless_screenshot(url, browser_bin, output_shot)
+        spinner.stop()
+    except subprocess.TimeoutExpired:
+        spinner.stop()
+        sys.stderr.write("\033[1;31mError: Browser screenshot timed out after 15 seconds.\033[0m\n")
+        sys.exit(1)
+    except Exception as e:
+        spinner.stop()
+        sys.stderr.write(f"\033[1;31mError rendering page: {e}\033[0m\n")
+        sys.exit(1)
+        
+    # Read the screenshot file and convert to base64
+    if not os.path.exists(output_shot):
+        sys.stderr.write("\033[1;31mError: Headless render failed to output an image.\033[0m\n")
+        sys.exit(1)
+        
+    try:
+        image_base64 = encode_image_base64(output_shot)
+    except Exception as e:
+        sys.stderr.write(f"\033[1;31mError encoding image: {e}\033[0m\n")
+        sys.exit(1)
+        
+    # Clean up the screenshot from /tmp
+    try:
+        os.unlink(output_shot)
+    except Exception:
+        pass
+
+    # Ingest directly to Gemini via its native, first-class generateContent endpoint
+    spinner = SimpleSpinner("[sys] Offloading to cloud for native visual reasoning...")
+    try:
+        spinner.start()
+        
+        # Native Google AI Studio content schema
+        body = {
+            "contents": [
+                {
+                    "parts": [
+                        {
+                            "text": (
+                                "You are a precise, logical visual web browser assistant. "
+                                "Review the provided screenshot of the webpage and answer the user's question. "
+                                "Prioritize layout details, column alignments, pricing structures, and charts to answer accurately. "
+                                f"\n\nQuestion: {question}"
+                            )
+                        },
+                        {
+                            "inline_data": {
+                                "mime_type": "image/png",
+                                "data": image_base64
+                            }
+                        }
+                    ]
+                }
+            ],
+            "generationConfig": {
+                "temperature": 0.2
+            }
+        }
+        
+        # Call the first-class models REST endpoint directly
+        api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent?key={GEMINI_KEY}"
+        
+        req = urlreq.Request(
+            api_url,
+            data=json.dumps(body).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST"
+        )
+        with urlreq.urlopen(req, timeout=25) as response:
+            spinner.stop()
+            data = json.loads(response.read().decode("utf-8"))
+            
+            # Parse using Google's native JSON path
+            answer = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+            
+            # Print the final result cleanly
+            print("\033[1;34m── PIXEL-BROWSE RESULTS ────────────────────────────────────────────────────\033[0m")
+            print(answer)
+            print("\033[1;34m────────────────────────────────────────────────────────────────────────────\033[0m")
+    except Exception as e:
+        spinner.stop()
+        sys.stderr.write(f"\033[1;31mAPI Error during visual reasoning: {e}\033[0m\n")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        # Graceful cleanup on manual Ctrl+C exit
+        try:
+            os.unlink(output_shot)
+        except Exception:
+            pass
+        sys.stderr.write("\n\033[1;33m[sys] Exiting cleanly on user interrupt.\033[0m\n")
+        safe_exit(0)

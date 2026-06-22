@@ -149,6 +149,9 @@ nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-sp
 
 ## 8. Testing (Concepts & Prototypes)
 ```properties
+# --- Pixel-Browse - Headless Visual Web Ingestion (((wip))) ---
+[TOOL] ~/.config/local-ai/tools/subsec/headless-chromium/pixel-browse --cat ---> pixel browse, headless, chromium
+
 # --- Coding-Triangle-Loop - Interactive TUI Console (((wip))) ---
 [TOOL] ~/.config/local-ai/tools/agentic/coding/coding-triangle-loop --cat ---> coding loop, coding, triangle, loop
 
