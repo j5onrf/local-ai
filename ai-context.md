@@ -98,7 +98,7 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 
 ```properties
 # --- Ai-Prompt-Writer - Interactive TUI Console ---
-[TOOL] ~/.config/local-ai/tools/ai-prompt-writer --cat ---> Prompt Writer, Prompt
+[TOOL] ~/.config/local-ai/tools/ai-prompt-writer --cat ---> prompt writer, prompt
 
 # --- Fusion-Research Engine (Compound MoA / Self-Fusion) ---
 ~/.config/local-ai/tools/agentic/fusion/f_research -r ---> fusion research, fusion, fr, deep research
@@ -149,7 +149,10 @@ nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-sp
 
 ## 8. Testing (Concepts & Prototypes)
 ```properties
-# --- Learned System Shortcuts ---
-ss -tuln ---> how do i view active network ports, active ports, network ports
-hostnamectl ---> how do i see my system information, system info, hostname
+# --- Coding-Triangle-Loop - Interactive TUI Console (((wip))) ---
+[TOOL] ~/.config/local-ai/tools/agentic/coding/coding-triangle-loop --cat ---> coding loop, coding, triangle, loop
+
+# --- Learned System Shortcuts (((wip))) ---
+# ss -tuln ---> how do i view active network ports, active ports, network ports
+# hostnamectl ---> how do i see my system information, system info, hostname
 ```
