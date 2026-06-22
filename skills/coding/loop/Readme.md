@@ -5,6 +5,8 @@ The primary purpose of the `triangle-loop` is **Automated Intent Production**—
 
 By utilizing a progressive disclosure of complexity, the loop ensures that heavy token and compute resources are only spent *after* you have verified and locked in the architectural design, keeping execution fast, cheap, and strictly aligned with your goals.
 
+---
+
 --- Loop 1
 
 ### 1. The Unified `triangle-loop` Visual Workflow
@@ -66,6 +68,8 @@ By utilizing a progressive disclosure of complexity, the loop ensures that heavy
 * **What it does:** Takes the passed, functionally correct script from Pass 2 and applies an aggressive minification and polishing pass.
 * **Why it works:** It strips out dead variables, redundant conditional blocks, and bloated imports. It optimizes variables for readability and execution speed.
 * **Final Output:** It outputs only the clean, execution-ready code block directly to your terminal and automatically copies it to your Wayland clipboard using `wl-copy`.
+
+---
 
 --- Loop 2
 
@@ -158,6 +162,8 @@ The TUI renders a categorized grid of your skills. The files that scored high on
 
 ### The Verdict
 This Directional TUI acts as an incredibly smart, local, zero-latency interface. It keeps your terminal clean, uses **zero** API requests, forces you to hone your intentions into precise niches, and gives you total, sovereign control over how you feed your context to both local models and heavy cloud models. It is a highly optimized, elegant workflow.
+
+---
 
 --- loop 3
 
