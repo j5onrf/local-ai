@@ -163,7 +163,7 @@ This Directional TUI acts as an incredibly smart, local, zero-latency interface.
 
 Highlights the current paradigm shift in AI systems engineering: **you stop writing prompts, and you start writing loops.** 
 
-The model writing the code cannot be the one grading it, and that a separate, independent "Judge" must enforce quality gates—is exactly what we designed into your **`coding-triangle-loop`**.
+The model writing the code cannot be the one grading it, and that a separate, independent "Judge" must enforce quality gates—is exactly what is designed into the **`coding-triangle-loop`**.
 
 By applying **ultra-lite, 3-pass, human-in-the-loop** philosophy to the concepts, we can extract three specific, high-value architectural optimizations that will significantly improve the execution of the current loop.
 
