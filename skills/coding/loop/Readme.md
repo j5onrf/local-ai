@@ -205,7 +205,7 @@ Highlights how agents operate in a positive feedback loop by logging outputs to 
 
 Using a "Planner" or a "Kanban Board" of agents to triage and route tasks before they begin.
 
-* **The Problem:** We want to load highly specific local skill cards (like your `tui.md`, `secaud.md`, or `sqlite-perf.md`) to guide the code generation, but having an LLM read the draft and choose the skill costs a request.
+* **The Problem:** We want to load highly specific local skill cards (like your `skills.md`, or `sqlite-perf.md`) to guide the code generation, but having an LLM read the draft and choose the skill costs a request.
 * **The Ultra-Lite Solution:** Use basic, local Python regex scanning inside `coding-triangle-loop` to auto-route specialties based on imports and syntax:
   * Before starting Pass 1, the Python script scans your raw draft code for specific keywords:
     * If it detects `import sqlite3`, it automatically loads and appends `sqlite-perf.md` [2.1].
