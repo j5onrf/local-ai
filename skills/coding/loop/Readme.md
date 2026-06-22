@@ -190,7 +190,7 @@ By applying **ultra-lite, 3-pass, human-in-the-loop** philosophy to the concepts
 
 ### Optimization 2: The Evolving `.ai_memory` (Lite-Memory Logging)
 
-The transcript highlights how their agents operate in a positive feedback loop by logging outputs to an "Obsidian Galaxy" database, letting subsequent runs pull from past context automatically.
+Highlights how agents operate in a positive feedback loop by logging outputs to an "Obsidian Galaxy" database, letting subsequent runs pull from past context automatically.
 
 * **The Problem:** You do not want heavy databases, network syncs, or Obsidian integrations bloating your local agent.
 * **The Ultra-Lite Solution:** Implement a localized, hidden **`.ai_memory`** file.
