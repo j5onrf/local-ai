@@ -1,6 +1,6 @@
-> Testing (Concepts & Prototypes)
+### Testing (Concepts & Prototypes)
 
-### The Ultra-Lite "PixelBrowse" Tool Design
+# The Ultra-Lite "PixelBrowse" Tool Design
 
 # A clean, single-file Python script:
 ~/.config/local-ai/tools/subsec/headless-chromium/pixel-browse
