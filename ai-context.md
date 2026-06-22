@@ -88,6 +88,7 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 ~/.config/local-ai/tools/agentic/system/ai-commit ---> ai-commit, gc, git commit
 
 # --- Skeleton Map (Structural Repo Profile Compiler) ---
+[TOOL] ~/.config/local-ai/tools/map/skeleton-map-ai --cat ---> skeleton map ai, sm
 ~/.config/local-ai/tools/map/skeleton-map ---> skeleton map, sm
 
 # --- Server Lifecycle Management ---
@@ -150,7 +151,7 @@ nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-sp
 ## 8. Testing (Concepts & Prototypes)
 ```properties
 # --- Pixel-Browse - Headless Visual Web Ingestion (((wip))) ---
-[TOOL] ~/.config/local-ai/tools/subsec/headless-chromium/pixel-browse --cat ---> pixel browse, headless, chromium
+[TOOL] ~/.config/local-ai/tools/subsec/headless-chromium/pixel-browse --cat ---> pixel browse, headless, chromium, pixel browser
 
 # --- Coding-Triangle-Loop - Interactive TUI Console (((wip))) ---
 [TOOL] ~/.config/local-ai/tools/agentic/coding/coding-triangle-loop --cat ---> coding loop, coding, triangle, loop

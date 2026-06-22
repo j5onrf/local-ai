@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
-# skeleton-map [Local Map Compiler] [j5onrf] v1.8
+# skeleton-map [Local Map Compiler] [j5onrf] v1.9 - Unified Guardrails
 
-import os, re, ast, json, fnmatch
+import os
+import re
+import ast
+import json
+import fnmatch
+import sys
+import warnings
 
 # Fallback to current working directory if __file__ is unavailable (e.g., interactive shells)
 try: SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -73,7 +79,12 @@ def analyze_python_file(filepath):
     """Parses Python code using AST to extract functions, classes, and imports."""
     try:
         with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
-            tree = ast.parse(f.read(), filename=filepath)
+            content = f.read()
+        # Suppress any deprecated raw-backslash SyntaxWarnings emitted by the compiler
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", SyntaxWarning)
+            tree = ast.parse(content, filename=filepath)
+            
         funcs, classes, imports = [], [], set()
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)): funcs.append(node.name)
@@ -131,9 +142,18 @@ def analyze_generic_file(filepath):
 
 def generate_skeleton(target_dir):
     skeleton = {}
-    default_ignored = {'.git', '__pycache__', 'logs', '.auto-f', 'node_modules', 'venv', '.venv', 'env', '.env', 'build', 'dist', '.egg-info', '.pytest_cache', '.mypy_cache', '.vscode', '.idea'}
+    
+    # Excludes bloated developer dependencies and system configurations
+    default_ignored = {
+        '.git', '__pycache__', 'logs', '.auto-f', 'node_modules', 
+        'venv', '.venv', 'SSD_BACKUPS', '.cargo', '.rustup', 
+        '.cache', '.npm', '.local', '.mozilla', 'target'
+    }
+    
     patterns = load_gitignore_patterns(target_dir)
-    if patterns: print(f"ℹ Loaded {len(patterns)} rules from .gitignore.")
+    if patterns: 
+        sys.stderr.write(f"ℹ Loaded {len(patterns)} rules from .gitignore.\n")
+        sys.stderr.flush()
     
     dispatch = {
         '.py': analyze_python_file, '.md': analyze_markdown_file,
@@ -142,6 +162,7 @@ def generate_skeleton(target_dir):
         '.lua': analyze_lua_file, '.json': analyze_json_file, '.qml': analyze_qml_file
     }
     
+    file_count = 0
     for root, dirs, files in os.walk(target_dir):
         dirs[:] = [d for d in dirs if not should_ignore(os.path.relpath(os.path.join(root, d), target_dir), True, patterns, default_ignored)]
         for file in files:
@@ -149,22 +170,67 @@ def generate_skeleton(target_dir):
             rel_path = os.path.relpath(filepath, target_dir)
             if should_ignore(rel_path, False, patterns, default_ignored): continue
             
+            # Real-Time File Counter Safety Gate
+            file_count += 1
+            if file_count == 1000:
+                sys.stderr.write(
+                    f"\n\033[1;33m[sys] Warning: Already scanned 1,000 files. Current directory: {root}\n"
+                    "This appears to be a massive system or backup directory.\n"
+                    "Continue scanning? (y/N): \033[0m"
+                )
+                sys.stderr.flush()
+                try:
+                    confirm = sys.stdin.readline().strip().lower()
+                    if confirm not in ['y', 'yes']:
+                        sys.stderr.write("✕ Operation cancelled.\n")
+                        sys.stderr.flush()
+                        sys.exit(0)
+                except (KeyboardInterrupt, EOFError):
+                    sys.stderr.write("\n✕ Operation cancelled.\n")
+                    sys.stderr.flush()
+                    sys.exit(0)
+            
             ext = os.path.splitext(file)[1].lower()
             skeleton[rel_path] = dispatch.get(ext, analyze_generic_file)(filepath)
                 
     return skeleton
 
 def main():
-    try: user_input = input("Scan target [.]: ").strip()
+    default_dir = os.getcwd()
+    try:
+        sys.stderr.write(f"\033[1;32mScan target [Default: {default_dir}]: \033[0m")
+        sys.stderr.flush()
+        user_input = sys.stdin.readline().strip()
     except (KeyboardInterrupt, EOFError):
-        print("\n✕ Operation cancelled.")
+        sys.stderr.write("\n✕ Operation cancelled.\n")
+        sys.stderr.flush()
         return
 
-    target_dir = os.path.abspath(os.path.expanduser(os.path.expandvars(user_input))) if user_input else os.getcwd()
+    target_dir = os.path.abspath(os.path.expanduser(os.path.expandvars(user_input))) if user_input else default_dir
     if not os.path.isdir(target_dir):
-        print(f"❌ Error: '{target_dir}' is not a valid directory.")
+        sys.stderr.write(f"❌ Error: '{target_dir}' is not a valid directory.\n")
+        sys.stderr.flush()
         return
 
+    # Warning for active home directory execution
+    if target_dir == os.path.expanduser("~"):
+        try:
+            sys.stderr.write("\n\033[1;33m[sys] Warning: You are about to scan your entire Home Directory.\nThis could be extremely slow. Proceed? (y/N): \033[0m")
+            sys.stderr.flush()
+            confirm = sys.stdin.readline().strip().lower()
+            if confirm not in ['y', 'yes']:
+                sys.stderr.write("✕ Operation cancelled.\n")
+                sys.stderr.flush()
+                sys.exit(0)
+        except (KeyboardInterrupt, EOFError):
+            sys.stderr.write("\n✕ Operation cancelled.\n")
+            sys.stderr.flush()
+            sys.exit(0)
+
+    # Progress logs are written to stderr so they show up live, bypassing any pipe buffering
+    sys.stderr.write("ℹ Compiling skeleton map...\n")
+    sys.stderr.flush()
+    
     skeleton = generate_skeleton(target_dir)
     
     try:
@@ -175,7 +241,8 @@ def main():
         try:
             with open(fallback_file, 'w', encoding='utf-8') as f: json.dump(skeleton, f, indent=2)
             print(f"⚠ SCRIPT_DIR is read-only. Map saved to fallback: {fallback_file}")
-        except Exception as e: print(f"❌ Error: Failed to write skeleton map. {e}")
+        except Exception as e: 
+            print(f"❌ Error: Failed to write skeleton map. {e}")
 
 if __name__ == "__main__":
     main()

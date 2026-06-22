@@ -1,0 +1,450 @@
+#!/usr/bin/env python3
+# skeleton-map-ai [Local Map Compiler with Unified AI Indexing] [j5onrf] v1.1.6
+
+import os
+import re
+import ast
+import json
+import fnmatch
+import time
+import threading
+import sys
+import warnings
+import urllib.request as urlreq
+import urllib.error as urlerr
+
+try: 
+    import readline
+except ImportError:
+    pass
+
+OUTPUT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "skeleton-ai.json")
+CFG_DIR = os.path.expanduser("~/.config/local-ai")
+
+# 1. Thread-Safe TUI Spinner (Aligned with project-wide standard)
+class InlineSpinner:
+    def __init__(self): 
+        self.chars, self.active, self.thread = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏", False, None
+    def _spin(self):
+        idx = 0
+        char_len = len(self.chars)
+        while self.active:
+            try:
+                sys.stderr.write(f"\r\033[1;32m{self.chars[idx % char_len]}\033[0m ")
+                sys.stderr.flush()
+            except Exception:
+                pass
+            idx += 1
+            time.sleep(0.08)
+        try:
+            sys.stderr.write("\r\x1b[2K\r")
+            sys.stderr.flush()
+        except Exception:
+            pass
+    def start(self): 
+        self.active = True
+        self.thread = threading.Thread(target=self._spin, daemon=True)
+        self.thread.start()
+    def stop(self): 
+        self.active = False
+        if self.thread:
+            self.thread.join()
+
+# 2. Safe Exit Handler
+def safe_exit(code=0):
+    try:
+        sys.stdout.flush()
+    except Exception:
+        pass
+    try:
+        sys.stderr.flush()
+    except Exception:
+        pass
+    try:
+        sys.stdout = open(os.devnull, 'w')
+        sys.stderr = open(os.devnull, 'w')
+    except Exception:
+        pass
+    sys.exit(code)
+
+# 3. Unified Streaming Cascade Client with Active Logger (Strict 30s Cap)
+def call_service(messages, stream_out=True):
+    configs, gkey, okey, ckey, curl = [], os.environ.get("GEMINI_API_KEY"), os.environ.get("OPENROUTER_API_KEY"), os.environ.get("CLOUD_API_KEY"), os.environ.get("CLOUD_API_URL")
+    if gkey: 
+        configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Authorization": f"Bearer {gkey}"}, os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"), {}, 30))
+    if okey:
+        m = os.environ.get("OPENROUTER_MODEL", "openrouter/free")
+        configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"}, m, {}, 30))
+    if ckey and curl: 
+        configs.append((curl, {"Authorization": f"Bearer {ckey}"}, os.environ.get("CLOUD_MODEL"), {}, 30))
+    configs.append(("http://localhost:8080/v1/chat/completions", {}, "local-model", {}, 30))
+    
+    spinner = InlineSpinner()
+    for url, headers, model, extra, timeout in configs:
+        body = {"messages": messages, "stream": stream_out, **extra}
+        if model: body["model"] = model
+        req = urlreq.Request(url, data=json.dumps(body).encode("utf-8"), headers={"Content-Type": "application/json", **headers}, method="POST")
+        retries, backoff = 2, 1.5
+        while retries >= 0:
+            try:
+                if not stream_out:
+                    spinner.start()
+                else:
+                    spinner.start()
+                
+                with urlreq.urlopen(req, timeout=timeout) as response:
+                    spinner.stop()
+                    
+                    try:
+                        p = "gemini" if "generativelanguage" in url else "openrouter" if "openrouter" in url else "custom-cloud" if curl and curl in url else None
+                        if p:
+                            with open(os.path.join(CFG_DIR, ".request_log"), "a") as lf:
+                                lf.write(f"{int(time.time())}|{p}\n")
+                    except Exception:
+                        pass
+                        
+                    if not stream_out:
+                        data = json.loads(response.read().decode("utf-8"))
+                        return data["choices"][0]["message"]["content"].strip()
+                    
+                    first, acc = True, []
+                    for line in response:
+                        dec = line.decode("utf-8").strip()
+                        if not dec: continue
+                        if dec.startswith("data:"): dec = dec[5:].strip()
+                        if dec == "[DONE]": continue
+                        try:
+                            data = json.loads(dec)
+                            content = ""
+                            if "choices" in data and data["choices"]: 
+                                content = data["choices"][0].get("delta", {}).get("content", "")
+                            elif "candidates" in data: 
+                                content = data["candidates"][0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                            if content:
+                                if first:
+                                    sys.stdout.write("\n\033[2m[Streaming response...]\033[0m\n")
+                                    sys.stdout.flush()
+                                    first = False
+                                sys.stdout.write(content)
+                                sys.stdout.flush()
+                                acc.append(content)
+                        except: pass
+                    print("")
+                    return "".join(acc)
+            except urlerr.HTTPError as e:
+                spinner.stop()
+                if e.code == 429 and retries > 0: 
+                    time.sleep(backoff); retries, backoff = retries - 1, backoff * 2
+                else:
+                    break
+            except Exception:
+                spinner.stop()
+                break
+    raise RuntimeError("All fallback/local servers are offline.")
+
+# 4. Standard File Scanning Utilities
+def load_gitignore_patterns(target_dir):
+    path = os.path.join(target_dir, ".gitignore")
+    if os.path.isfile(path):
+        try:
+            with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+                return [line.strip() for line in f if line.strip() and not line.strip().startswith(('#', '!'))]
+        except Exception: pass
+    return []
+
+def should_ignore(rel_path, is_dir, gitignore_patterns, default_ignored_dirs):
+    norm_path = rel_path.replace(os.sep, '/')
+    parts = norm_path.split('/')
+    if any(p in default_ignored_dirs for p in parts): return True
+    
+    for pattern in gitignore_patterns:
+        pat, dir_only = pattern.rstrip('/'), pattern.endswith('/')
+        if dir_only and not is_dir: continue
+        
+        anchored = False
+        if pat.startswith('/'): pat, anchored = pat[1:], True
+        
+        if anchored:
+            target = norm_path if not dir_only else norm_path.rstrip('/')
+            if fnmatch.fnmatchcase(target, pat): return True
+            pat_parts = pat.split('/')
+            if len(parts) >= len(pat_parts) and fnmatch.fnmatchcase('/'.join(parts[:len(pat_parts)]), pat):
+                return True
+        else:
+            for i, part in enumerate(parts):
+                if dir_only and i == len(parts) - 1 and not is_dir: continue
+                if fnmatch.fnmatchcase(part, pat): return True
+                if '/' in pat:
+                    p_len = len(pat.split('/'))
+                    for j in range(len(parts) - p_len + 1):
+                        if fnmatch.fnmatchcase('/'.join(parts[j:j+p_len]), pat): return True
+    return False
+
+def is_binary(filepath):
+    try:
+        with open(filepath, 'rb') as f: return b'\x00' in f.read(1024)
+    except Exception: return True
+
+def get_text_summary(filepath, limit=15, is_shell=False, strip_hash=True):
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            for _ in range(limit):
+                line = f.readline()
+                if not line: break
+                stripped = line.strip()
+                if not stripped or (is_shell and stripped.startswith('#!')): continue
+                if not strip_hash: return stripped[:120]
+                if stripped.startswith('#'): return stripped.lstrip('# ').strip()[:120]
+                if not is_shell: return stripped[:120]
+        return ""
+    except Exception: return ""
+
+# 5. Consolidated Document Batch Ingestion (The "Ultra-Lite Graphify" Engine)
+def get_ai_markdown_summaries_batch(markdown_files):
+    # Guardrail: Abort if the number of files exceeds safe token/budget levels
+    if len(markdown_files) > 100:
+        sys.stderr.write(
+            f"\n\033[1;31m[sys] Error: Found {len(markdown_files)} markdown files.\n"
+            "This exceeds your safe, ultra-lite batch limit (100).\n"
+            "Please target a specific project subdirectory instead.\033[0m\n"
+        )
+        sys.stderr.flush()
+        safe_exit(1)
+
+    try:
+        bundle = {}
+        for rel_path, filepath in markdown_files:
+            try:
+                with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read(1500).strip()
+                if content:
+                    bundle[rel_path] = content
+            except Exception:
+                pass
+                
+        if not bundle:
+            return {}
+            
+        bundle_text = ""
+        for rel_path, content in bundle.items():
+            bundle_text += f'<document path="{rel_path}">\n{content}\n</document>\n\n'
+            
+        system_prompt = (
+            "You are a dense semantic codebase indexer.\n"
+            "You will receive a bundle of documentation files from a repository. "
+            "Analyze how these documents relate to each other and generate a single, precise, 1-sentence architectural summary (under 15 words) for each document.\n\n"
+            "Output your response strictly as a raw JSON object mapping each document path to its summary sentence. "
+            "Do not include any conversational preambles, post-explanations, or markdown blocks (like ```json). "
+            "Double-check that your output is structurally valid, unbroken JSON."
+        )
+        
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Document Bundle:\n\n{bundle_text}"}
+        ]
+        
+        sys.stderr.write(f"\033[2m[sys] Semantically indexing {len(bundle)} markdown files in a single unified batch...\033[0m\n")
+        sys.stderr.flush()
+        
+        response_text = call_service(messages, stream_out=False)
+        
+        json_clean = response_text.strip()
+        if json_clean.startswith("```"):
+            json_clean = re.sub(r'^```(?:json)?\n|```$', '', json_clean, flags=re.MULTILINE)
+            
+        match = re.search(r'\{.*\}', json_clean, re.DOTALL)
+        if match:
+            json_clean = match.group(0)
+            
+        return json.loads(json_clean)
+    except Exception as e:
+        try:
+            with open(os.path.join(CFG_DIR, ".skeleton_batch_error"), "a") as f:
+                f.write(f"[{int(time.time())}] Batch Parsing Failed: {e}\n")
+        except Exception:
+            pass
+    return {}
+
+# 6. Specific Programming Language Parsers (With Silent Warning Filters)
+def analyze_python_file(filepath):
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
+            content = f.read()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", SyntaxWarning)
+            tree = ast.parse(content, filename=filepath)
+            
+        funcs, classes, imports = [], [], set()
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)): funcs.append(node.name)
+            elif isinstance(node, ast.ClassDef): classes.append(node.name)
+            elif isinstance(node, ast.Import): imports.update(n.name.split('.')[0] for n in node.names)
+            elif isinstance(node, ast.ImportFrom):
+                if node.module: imports.add(node.module.split('.')[0])
+        return {"type": "python", "imports": sorted(list(imports)), "classes": classes, "functions": funcs}
+    except SyntaxError: return {"type": "python", "error": "Syntax Error / Unparseable"}
+    except Exception as e: return {"type": "python", "error": f"Unreadable: {str(e)}"}
+
+def analyze_rust_file(filepath):
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f: content = f.read()
+        content = re.sub(r'//.*|/\*.*?\*/', '', content, flags=re.DOTALL)
+        return {"type": "rust", "classes": re.findall(r'\bstruct\s+(\w+)', content), "functions": re.findall(r'\bfn\s+(\w+)', content)}
+    except Exception as e: return {"type": "rust", "error": str(e)}
+
+def analyze_go_file(filepath):
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f: content = f.read()
+        content = re.sub(r'//.*|/\*.*?\*/', '', content, flags=re.DOTALL)
+        return {"type": "go", "classes": re.findall(r'\btype\s+(\w+)\s+struct\b', content), "functions": re.findall(r'\bfunc\s+(?:\([^)]+\)\s+)?(\w+)', content)}
+    except Exception as e: return {"type": "go", "error": str(e)}
+
+def analyze_lua_file(filepath):
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f: content = f.read()
+        return {"type": "lua", "classes": [], "functions": re.findall(r'\bfunction\s+([\w.:]+)', re.sub(r'--.*', '', content))}
+    except Exception as e: return {"type": "lua", "error": str(e)}
+
+def analyze_json_file(filepath):
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f: data = json.load(f)
+        return {"type": "json", "keys": list(data.keys()) if isinstance(data, dict) else []}
+    except Exception: return {"type": "json", "error": "Malformed JSON"}
+
+def analyze_qml_file(filepath):
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f: content = f.read()
+        content = re.sub(r'//.*|/\*.*?\*/', '', content, flags=re.DOTALL)
+        return {"type": "qml", "properties": re.findall(r'\bproperty\s+\w+\s+(\w+)', content), "functions": re.findall(r'\bfunction\s+(\w+)', content)}
+    except Exception as e: return {"type": "qml", "error": str(e)}
+
+def analyze_shell_file(filepath):
+    return {"type": "shell", "summary": get_text_summary(filepath, 10, True, True) or "Shell Script / Hook Module"}
+
+def analyze_generic_file(filepath):
+    ext = os.path.splitext(filepath)[1].lstrip('.').lower() or "file"
+    if is_binary(filepath): return {"type": f"binary/{ext}"}
+    return {"type": ext, "summary": get_text_summary(filepath, 15, False, False) or "Empty file"}
+
+# 7. Skeleton Mapping Core Engine
+def generate_skeleton(target_dir):
+    skeleton = {}
+    
+    # Expanded to ignore bloated developer caches and system configuration subdirectories
+    default_ignored = {
+        '.git', '__pycache__', 'logs', '.auto-f', 'node_modules', 
+        'venv', '.venv', 'SSD_BACKUPS', '.cargo', '.rustup', 
+        '.cache', '.npm', '.local', '.mozilla', 'target'
+    }
+    
+    patterns = load_gitignore_patterns(target_dir)
+    if patterns: 
+        sys.stderr.write(f"ℹ Loaded {len(patterns)} rules from .gitignore.\n")
+        sys.stderr.flush()
+    
+    dispatch = {
+        '.py': analyze_python_file, '.md': None, 
+        '.sh': analyze_shell_file, '.bash': analyze_shell_file,
+        '.rs': analyze_rust_file, '.go': analyze_go_file,
+        '.lua': analyze_lua_file, '.json': analyze_json_file, '.qml': analyze_qml_file
+    }
+    
+    markdown_files = []
+    file_count = 0
+    
+    for root, dirs, files in os.walk(target_dir):
+        dirs[:] = [d for d in dirs if not should_ignore(os.path.relpath(os.path.join(root, d), target_dir), True, patterns, default_ignored)]
+        for file in files:
+            filepath = os.path.join(root, file)
+            rel_path = os.path.relpath(filepath, target_dir)
+            if should_ignore(rel_path, False, patterns, default_ignored): continue
+            
+            # Real-Time File Counter Safety Gate
+            file_count += 1
+            if file_count == 1000:
+                sys.stderr.write(
+                    f"\n\033[1;33m[sys] Warning: Already scanned 1,000 files. Current directory: {root}\n"
+                    "This appears to be a massive system or backup directory.\n"
+                    "Continue scanning? (y/N): \033[0m"
+                )
+                sys.stderr.flush()
+                try:
+                    confirm = sys.stdin.readline().strip().lower()
+                    if confirm not in ['y', 'yes']:
+                        sys.stderr.write("✕ Operation cancelled.\n")
+                        sys.stderr.flush()
+                        safe_exit(0)
+                except (KeyboardInterrupt, EOFError):
+                    sys.stderr.write("\n✕ Operation cancelled.\n")
+                    sys.stderr.flush()
+                    safe_exit(0)
+            
+            ext = os.path.splitext(file)[1].lower()
+            if ext == '.md':
+                markdown_files.append((rel_path, filepath))
+            else:
+                skeleton[rel_path] = dispatch.get(ext, analyze_generic_file)(filepath)
+                
+    # Step 2: Batch Process Markdown Documents in Exactly 1 Request
+    if markdown_files:
+        batch_summaries = get_ai_markdown_summaries_batch(markdown_files)
+        for rel_path, filepath in markdown_files:
+            summary = batch_summaries.get(rel_path)
+            if not summary:
+                summary = get_text_summary(filepath, 15, False, True) or "Agent Documentation Module"
+            skeleton[rel_path] = {"type": "markdown", "summary": summary}
+                
+    return skeleton
+
+def main():
+    # Explicitly display active working directory so the user is 100% aware of the path before pressing Enter
+    default_dir = os.getcwd()
+    try:
+        sys.stderr.write(f"\033[1;32mScan target [Default: {default_dir}]: \033[0m")
+        sys.stderr.flush()
+        user_input = sys.stdin.readline().strip()
+    except (KeyboardInterrupt, EOFError):
+        sys.stderr.write("\n✕ Operation cancelled.\n")
+        sys.stderr.flush()
+        return
+
+    target_dir = os.path.abspath(os.path.expanduser(os.path.expandvars(user_input))) if user_input else default_dir
+    if not os.path.isdir(target_dir):
+        sys.stderr.write(f"❌ Error: '{target_dir}' is not a valid directory.\n")
+        sys.stderr.flush()
+        return
+
+    # Warning for Home Directory targets before starting the filesystem crawl
+    if target_dir == os.path.expanduser("~"):
+        try:
+            sys.stderr.write("\n\033[1;33m[sys] Warning: You are about to scan your entire Home Directory.\nThis could be extremely slow. Proceed? (y/N): \033[0m")
+            sys.stderr.flush()
+            confirm = sys.stdin.readline().strip().lower()
+            if confirm not in ['y', 'yes']:
+                sys.stderr.write("✕ Operation cancelled.\n")
+                sys.stderr.flush()
+                safe_exit(0)
+        except (KeyboardInterrupt, EOFError):
+            sys.stderr.write("\n✕ Operation cancelled.\n")
+            sys.stderr.flush()
+            safe_exit(0)
+
+    # Progress logs are written to stderr so they show up live, bypassing the stdout pipe buffering
+    sys.stderr.write("ℹ Compiling skeleton map...\n")
+    sys.stderr.flush()
+    
+    skeleton = generate_skeleton(target_dir)
+    
+    try:
+        with open(OUTPUT_FILE, 'w', encoding='utf-8') as f: json.dump(skeleton, f, indent=2)
+        print(f"✔ Skeleton map compiled successfully at: {OUTPUT_FILE}")
+    except (IOError, OSError):
+        fallback_file = os.path.join(os.getcwd(), "skeleton-ai.json")
+        try:
+            with open(fallback_file, 'w', encoding='utf-8') as f: json.dump(skeleton, f, indent=2)
+            print(f"⚠ SCRIPT_DIR is read-only. Map saved to fallback: {fallback_file}")
+        except Exception as e: 
+            print(f"❌ Error: Failed to write skeleton map. {e}")
+
+if __name__ == "__main__":
+    main()
