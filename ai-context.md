@@ -35,11 +35,12 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 ## 2. On-Demand System Prompts & Role Injections (Skills)
 
 ```properties
-# --- Dynamic Host Profiler & System Analytics ---
-[TOOL] cat ~/.config/local-ai/skills/system/mysys.md --leaf ---> mysys, show mysys, view sys, mysys doc
 
 # --- Prompt Engineering & Optimization Engine ---
-[TOOL] cat ~/.config/local-ai/skills/meta/prompt.md ---> prompt builder, prompt, optimize prompt
+# [TOOL] cat ~/.config/local-ai/skills/meta/prompt.md ---> prompt builder, prompt, optimize prompt
+
+# --- Dynamic Host Profiler & System Analytics ---
+[TOOL] cat ~/.config/local-ai/skills/system/mysys.md --leaf ---> mysys, show mysys, view sys, mysys doc
 
 # [TOOL] cat ~/.config/local-ai/skills/identity/business/mybiz.md --leaf ---> mybiz, show business profile, view mybiz
 # [TOOL] cat ~/.config/local-ai/skills/identity/marketing/strategy.md --leaf ---> marketing strategy, growth strategy, view marketing
@@ -100,6 +101,9 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 ## 5. TUI (Terminal User Interface) Programs
 
 ```properties
+# --- Ai-Prompt-Writer - Interactive TUI Console ---
+[TOOL] ~/.config/local-ai/tools/ai-prompt-writer --cat ---> Prompt Writer, Prompt
+
 # --- Fusion-Research Engine (Compound MoA / Self-Fusion) ---
 ~/.config/local-ai/tools/agentic/fusion/f_research -r ---> fusion research, fusion, fr, deep research
 # --- AI Deep Research TUI ---
@@ -147,8 +151,7 @@ nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-sp
 ~/.config/local-ai/tools/subsec/hyprstate/media ---> hyprstate media, media, hs, hyprstate
 ```
 
-## 8. Continual Learning
-
+## 8. Testing (Concepts & Prototypes)
 ```properties
 # --- Learned System Shortcuts ---
 ss -tuln ---> how do i view active network ports, active ports, network ports
