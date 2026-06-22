@@ -18,11 +18,17 @@ BASE_PROMPT = "Local shell AI assistant (read-only access).\nProvide direct, nat
 class InlineSpinner:
     def __init__(self): self.chars, self.active, self.thread = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏", False, None
     def _spin(self):
-        idx = 0
+        idx, char_len = 0, len(self.chars)
         while self.active:
-            sys.stderr.write(f"\r\033[1;32m{self.chars[idx % 10]}\033[0m "); sys.stderr.flush()
+            try:
+                sys.stderr.write(f"\r\033[1;32m{self.chars[idx % char_len]}\033[0m ")
+                sys.stderr.flush()
+            except Exception: pass
             idx, _ = idx + 1, time.sleep(0.08)
-        sys.stderr.write("\r\x1b[2K\r"); sys.stderr.flush()
+        try:
+            sys.stderr.write("\r\x1b[2K\r")
+            sys.stderr.flush()
+        except Exception: pass
     def start(self): self.active, self.thread = True, threading.Thread(target=self._spin, daemon=True); self.thread.start()
     def stop(self): self.active = False; self.thread.join() if self.thread else None
 
