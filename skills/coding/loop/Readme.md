@@ -1,4 +1,4 @@
-### TESTING ALPHA DRAFT (WIP) (Early Concepts & Prototypes)
+> TESTING ALPHA DRAFT (WIP) (Early Concepts & Prototypes)
 
 ### Core Use Case: Automated Intent Production
 The primary purpose of the `triangle-loop` is **Automated Intent Production**—translating raw, highly vague, or unpolished human engineering ideas and rough draft scripts into production-ready, highly optimized, and logically verified code. 
