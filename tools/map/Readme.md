@@ -1,8 +1,10 @@
-# Skeleton Map
+# Codebase Mapping: `skeleton-map` & `skeleton-map-ai`
 
-Maps your project's code structure into a lightweight semantic index, saving **95% to 99% in token overhead** compared to raw code ingestion. 
+This subsystem maps your project's directory structure into a lightweight, high-density semantic index, saving **95% to 99% in token overhead** compared to raw codebase ingestion.
 
-Instead of feeding full files to an AI, this tool uses Abstract Syntax Tree (AST) parsing to map Python classes/functions/imports, and leverages custom regex parsers for Rust, Go, Lua, and QML. For all other languages, config files (`.yaml`, `.toml`, `.env`), and text files (`.txt`), it extracts a first-line summary, while safely cataloging images and binary assets (`binary/png`, `binary/jpg`) without context pollution.
+It provides two distinct scanning profiles to match your workflow:
+1. **Static Map (`skeleton-map`):** Purely local, instant line-scraping and Abstract Syntax Tree (AST) parsing. Requires **zero tokens** and zero API calls. Outputs strictly to `skeleton.json`.
+2. **AI-Enriched Map (`skeleton-map-ai`):** Ingests local code files via AST, but dynamically aggregates all repository documentation (`.md` files) and semantically indexes them in **exactly 1 unified API request** using your central `call_service` cascade client. Outputs strictly to `skeleton-ai.json`.
 
 ---
 
@@ -10,102 +12,45 @@ Instead of feeding full files to an AI, this tool uses Abstract Syntax Tree (AST
 
 ```text
 ~ ❯ sm
-[01/01] ❯ [skeleton map] ~/.config/local-ai/tools/map/skeleton-map
-:: ↵ run  any skip: 
-Scan target [.]:
-✔ Skeleton map compiled successfully.
-~ ❯ 
+[01/02] ❯ [skeleton map] ~/.config/local-ai/tools/map/skeleton-map
+[02/02] ❯ [skeleton map ai] ~/.config/local-ai/tools/map/skeleton-map-ai
+:: ↵ run  Esc: 
 ```
 
-*Pressing **Enter** at the `Scan target [.]:` prompt defaults to the current working directory.*
+#### Static Scan
+```text
+Scan target [Default: /home/j5/local-ai]: 
+ℹ Compiling skeleton map...
+✔ Skeleton map compiled successfully at: /home/j5/.config/local-ai/tools/map/skeleton.json
+```
+
+#### AI-Enriched Scan
+```text
+Scan target [Default: /home/j5/local-ai]: 
+ℹ Compiling skeleton map...
+ℹ Loaded 9 rules from .gitignore.
+[sys] Semantically indexing 37 markdown files in a single unified batch...
+✔ Skeleton map compiled successfully at: /home/j5/.config/local-ai/tools/map/skeleton-ai.json
+```
+
+*Pressing **Enter** at the `Scan target` prompt defaults to your current active working directory.*
+
+---
+
+### 🛡️ Dual-Guardrail Safety Gates
+
+To protect your system performance and free-tier API request budgets from accidental runaway folder crawls (e.g., scanning a bloated home directory or system root):
+
+* **Pre-Scan Path Disclosure:** The prompt explicitly displays your active working directory path before walking a single folder, preventing blind executions.
+* **Home-Dir Warning Gate:** The filesystem crawler immediately halts and requires explicit, manual keyboard confirmation (`y/N`) if you attempt to scan your entire home directory (`~` or `/home/j5`).
+* **100-File Batch Limit:** If the directory contains more than 100 markdown files, the AI scanner automatically aborts the batch compile, flashes a warning, and exits safely to protect your token usage, directing you to scan a specific project subdirectory instead.
 
 ---
 
 ### Token Savings Math
 
-* **Code (~98% Saved):** A 400-line Python file (~3,000 tokens) is reduced to a ~50-token JSON outline (including root imports).
-* **Configs, Text & Shell (~99% Saved):** A 1,500-token Markdown, Shell script, or YAML file is reduced to a ~15-token summary.
-* **Images & Binaries (~100% Saved):** Massive assets (like `.png` or `.pdf` files) are safe-cataloged into a ~5-token reference without corrupting terminal output.
-
----
-
-### Output Schema (`skeleton.json`)
-
-```json
-{
-  "README.md": {
-    "type": "markdown",
-    "summary": "local-ai"
-  },
-  "ai-context.md": {
-    "type": "markdown",
-    "summary": "Local-AI Agent Blueprint"
-  },
-  "ai-agent.py": {
-    "type": "python",
-    "imports": [
-      "json",
-      "os",
-      "re",
-      "readline",
-      "select",
-      "shutil",
-      "subprocess",
-      "sys",
-      "termios",
-      "threading",
-      "time",
-      "tty",
-      "urllib"
-    ],
-    "classes": [
-      "InlineSpinner"
-    ],
-    "functions": [
-      "sanitize_input",
-      "tokenize",
-      "check_danger",
-      "ensure_mysys_exists",
-      "find_skill_file",
-      "load_skill_content",
-      "print_stock_error",
-      "run_local_tool",
-      "load_context_entries",
-      "jaccard_search",
-      "get_key",
-      "clean_tool_prefix",
-      "get_system_context",
-      "run_interactive_selection",
-      "stream_llm_response",
-      "__init__",
-      "_spin",
-      "start",
-      "stop"
-    ]
-  },
-  "readme.md": {
-    "type": "markdown",
-    "summary": "Local-AI Agent <kbd>v0.8.6.1</kbd>"
-  },
-  "ai-hook.sh": {
-    "type": "shell",
-    "summary": "Local-Ai Agent Hook v0.8.6.2 [j5onrf] [06-18-26]"
-  },
-  "tools/agentic/identity/logo.png": {
-    "type": "binary/png"
-  },
-  "config.toml": {
-    "type": "toml",
-    "summary": "[server]"
-  }
-}
+* **Code (~98% Saved):** A 400-line Python file (~3,000 tokens) is reduced to a ~50-token JSON outline of imports, classes, and function structures.
+* **Configs, Text & Shell (~99% Saved):** A 1,500-token Shell script or YAML configuration file is reduced to a ~15-token first-line summary.
+* **Images & Binaries (~100% Saved):** Massive assets (like `.png` or `.pdf` files) are cataloged into a ~5-token reference without corrupting terminal output or wasting context window.
+* **AI-Enriched Map vs. Static Map (~500 Tokens Difference):** Loading `skeleton-ai.json` into your central agent's active context window uses only about 500 more tokens than the static `skeleton.json`, but provides 100% accurate, high-density semantic explanations of every single custom tool and skill in your codebase.
 ```
-
----
-
-### Files
-
-* `skeleton-map`: Python 3 AST and regex parser (features auto `.gitignore` and universal fallback/binary support).
-* `skeleton.json`: Auto-generated structural mapping database.
-* `readme.md`: This file.
-
