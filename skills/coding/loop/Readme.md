@@ -203,7 +203,7 @@ Highlights how agents operate in a positive feedback loop by logging outputs to 
 
 ### Optimization 3: AST-Driven "Stealth Routing" (The 0-Cost Specialty Injector)
 
-The transcript mentions using a "Planner" or a "Kanban Board" of agents to triage and route tasks before they begin.
+Using a "Planner" or a "Kanban Board" of agents to triage and route tasks before they begin.
 
 * **The Problem:** We want to load highly specific local skill cards (like your `tui.md`, `secaud.md`, or `sqlite-perf.md`) to guide the code generation, but having an LLM read the draft and choose the skill costs a request.
 * **The Ultra-Lite Solution:** Use basic, local Python regex scanning inside `coding-triangle-loop` to auto-route specialties based on imports and syntax:
