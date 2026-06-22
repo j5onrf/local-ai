@@ -35,10 +35,6 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 ## 2. On-Demand System Prompts & Role Injections (Skills)
 
 ```properties
-
-# --- Prompt Engineering & Optimization Engine ---
-# [TOOL] cat ~/.config/local-ai/skills/meta/prompt.md ---> prompt builder, prompt, optimize prompt
-
 # --- Dynamic Host Profiler & System Analytics ---
 [TOOL] cat ~/.config/local-ai/skills/system/mysys.md --leaf ---> mysys, show mysys, view sys, mysys doc
 
