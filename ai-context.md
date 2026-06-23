@@ -98,6 +98,8 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 ## 5. TUI (Terminal User Interface) Programs
 
 ```properties
+# --- Ai-Prompt-Writer-Imaage - Interactive TUI Console ---
+[TOOL] ~/.config/local-ai/tools/ai-prompt-writer-image --cat ---> prompt writer image, image prompt, ip
 # --- Ai-Prompt-Writer - Interactive TUI Console ---
 [TOOL] ~/.config/local-ai/tools/ai-prompt-writer --cat ---> prompt writer, prompt
 

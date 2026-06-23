@@ -1,5 +1,11 @@
 # Codebase Mapping: `skeleton-map` & `skeleton-map-ai`
 
+<div align="center">
+<img width="800" alt="l3od02l3od02l3od" src="https://github.com/user-attachments/assets/db68048f-350a-4a93-afde-70bb8befae68" />
+</div>
+
+---
+
 This subsystem maps your project's directory structure into a lightweight, high-density semantic index, saving **95% to 99% in token overhead** compared to raw codebase ingestion.
 
 It provides two distinct scanning profiles to match your workflow:
@@ -53,4 +59,5 @@ To protect your system performance and free-tier API request budgets from accide
 * **Configs, Text & Shell (~99% Saved):** A 1,500-token Shell script or YAML configuration file is reduced to a ~15-token first-line summary.
 * **Images & Binaries (~100% Saved):** Massive assets (like `.png` or `.pdf` files) are cataloged into a ~5-token reference without corrupting terminal output or wasting context window.
 * **AI-Enriched Map vs. Static Map (~500 Tokens Difference):** Loading `skeleton-ai.json` into your central agent's active context window uses only about 500 more tokens than the static `skeleton.json`, but provides 100% accurate, high-density semantic explanations of every single custom tool and skill in your codebase.
+
 

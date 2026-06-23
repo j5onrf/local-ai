@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# ai-prompt-writer-image - Context-Aware TUI Image Prompt Builder v1.0.1
+# ai-prompt-writer-image - Context-Aware TUI Image Prompt Builder v1.2.0
 
 import sys
 import os
@@ -8,6 +8,7 @@ import re
 import subprocess
 import time
 import threading
+import textwrap
 import urllib.request as urlreq
 import urllib.error as urlerr
 
@@ -66,44 +67,59 @@ def safe_exit(code=0):
         pass
     sys.exit(code)
 
-# 3. Hardcoded Fallback Skill (Optimized for Style and Layout Preservation)
-DEFAULT_PRIMING_SKILL = """You are a dense prompt engineering engine specializing in text-to-image generators (specifically Google's Imagen model). 
-Transform the raw user design intent and active project context into an optimized style-referenced image prompt.
+# 3. Hardcoded Fallback Skills (Zero-Config out of the box)
+DEFAULT_PRIMING_SKILL = """You are a dense prompt engineering engine. Transform the raw intent into an optimized system prompt matching one of these classes:
+1. VEC (Vector / Flat Art)
+2. PHO (Cinematic / Photography)
+3. SKT (Technical / Schematic Blueprint)
 
+Output ONLY the optimized prompt inside matched, sequentially ordered XML blocks. No preamble."""
+
+DEFAULT_NEUTRAL_SKILL = """You are a dense prompt engineering engine. Transform the raw intent into an optimized style-referenced image prompt.
 Your output prompt must instruct the generator to treat the uploaded image exclusively as a style, color, and aesthetic template, mapping your newly specified project-specific subjects (such as skeleton elements or code structures) onto that exact style.
 
-Output ONLY the optimized prompt inside matched, sequentially ordered XML blocks. No preamble.
+Do NOT guess or hardcode specific color names (like cyan, blue, orange) or specific art mediums (like vector, photo) unless the user explicitly requested them in their intent. Defer these entirely to the uploaded image.
 
-### Tag Constraints:
-- `<context>`: Style classification, medium, and target atmosphere to extract from the reference image.
-- `<elements>`: Visual subjects, layout, and project-specific elements.
-- `<guardrails>`: Zero filler, strict constraints, and style-transfer instructions.
-- `<compiled_prompt>`: A single, continuous, highly-detailed paragraph prompt starting with an explicit style-reference directive, ready to copy-paste.
+Output ONLY the optimized prompt inside matched, sequentially ordered XML blocks. No preamble."""
 
-### Target Layout:
-<context>
-[Style, medium, and atmosphere]
-</context>
-<elements>
-[Visual subjects, background, and layout]
-</elements>
-<guardrails>
-[Strict style-transfer directives and negative constraints]
-</guardrails>
-<compiled_prompt>
-[Cohesive, highly-detailed single-paragraph prompt ready to copy-paste]
-</compiled_prompt>"""
+# 4. Dynamic Directory Skill Scanner (Zero-tokens to parse locally)
+def list_prompt_skills():
+    meta_dir = os.path.join(CFG_DIR, "skills", "meta")
+    default_skills = [
+        ("prompt-writer-image.md", "General (Style-Suggesting)", DEFAULT_PRIMING_SKILL),
+        ("prompt-writer-image-2.md", "Style-Neutral (Image-to-Image)", DEFAULT_NEUTRAL_SKILL)
+    ]
+    
+    if not os.path.exists(meta_dir):
+        return default_skills
+        
+    try:
+        # Scan for any files matching prompt-writer-image*.md in skills/meta/
+        files = sorted([f for f in os.listdir(meta_dir) if f.startswith("prompt-writer-image") and f.endswith(".md")])
+        skills = []
+        for f in files:
+            if f == "prompt-writer-image.md":
+                skills.append((f, "General (Style-Suggesting)", DEFAULT_PRIMING_SKILL))
+            elif f == "prompt-writer-image-2.md":
+                skills.append((f, "Style-Neutral (Image-to-Image)", DEFAULT_NEUTRAL_SKILL))
+            else:
+                # Dynamically extract the custom suffix (e.g. prompt-writer-image-3.md -> "Custom-3")
+                suffix_match = re.search(r'image-(.*?)\.md', f)
+                suffix = suffix_match.group(1) if suffix_match else f
+                skills.append((f, f"Custom-{suffix} ({f})", None))
+        return skills if skills else default_skills
+    except Exception:
+        return default_skills
 
-# 4. Modular Skill Loader
-def load_priming_skill():
-    path = os.path.join(CFG_DIR, "skills", "meta", "prompt-writer-image.md")
+def load_priming_skill(filename, fallback_content):
+    path = os.path.join(CFG_DIR, "skills", "meta", filename)
     if os.path.exists(path):
         try:
             with open(path, "r") as f:
                 return f.read().strip()
         except Exception:
             pass
-    return DEFAULT_PRIMING_SKILL
+    return fallback_content or DEFAULT_PRIMING_SKILL
 
 # 5. Local Context Harvester
 def load_project_context():
@@ -117,22 +133,38 @@ def load_project_context():
     except Exception:
         pass
         
-    readme_path = os.path.join(cwd, "README.md")
-    if os.path.exists(readme_path):
+    readme_path = None
+    skeleton_path = None
+    check_dir = cwd
+    
+    while True:
+        for r_name in ["README.md", "readme.md", "Readme.md"]:
+            p = os.path.join(check_dir, r_name)
+            if os.path.exists(p):
+                readme_path = p
+                break
+        for s_name in ["skeleton-ai.json", "skeleton.json"]:
+            p = os.path.join(check_dir, s_name)
+            if os.path.exists(p):
+                skeleton_path = p
+                break
+        parent_dir = os.path.dirname(check_dir)
+        if (readme_path and skeleton_path) or parent_dir == check_dir:
+            break
+        check_dir = parent_dir
+        
+    if readme_path:
         try:
             with open(readme_path, "r", encoding="utf-8", errors="ignore") as f:
-                context.append(f"README.md Snippet:\n{f.read(1500).strip()}")
+                context.append(f"Project README.md ({os.path.relpath(readme_path, cwd)}):\n{f.read(1500).strip()}")
         except Exception:
             pass
             
-    skeleton_path = os.path.join(cwd, "skeleton-ai.json")
-    if not os.path.exists(skeleton_path):
-        skeleton_path = os.path.join(cwd, "skeleton.json")
-    if os.path.exists(skeleton_path):
+    if skeleton_path:
         try:
             with open(skeleton_path, "r", encoding="utf-8", errors="ignore") as f:
                 lines = [f.readline().strip() for _ in range(50)]
-                context.append(f"Skeleton Map Metadata:\n" + "\n".join(lines))
+                context.append(f"Project Skeleton Map ({os.path.relpath(skeleton_path, cwd)}):\n" + "\n".join(lines))
         except Exception:
             pass
             
@@ -170,7 +202,10 @@ def calculate_metrics(text):
 def call_service(messages):
     configs, gkey, okey, ckey, curl = [], os.environ.get("GEMINI_API_KEY"), os.environ.get("OPENROUTER_API_KEY"), os.environ.get("CLOUD_API_KEY"), os.environ.get("CLOUD_API_URL")
     if gkey: 
-        configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Authorization": f"Bearer {gkey}"}, os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"), {}, 15))
+        target_model = os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite")
+        if "3.1-flash-lite" in target_model:
+            target_model = "gemini-1.5-flash"
+        configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Authorization": f"Bearer {gkey}"}, target_model, {}, 15))
     if okey:
         m = os.environ.get("OPENROUTER_MODEL", "openrouter/free")
         configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"}, m, {}, 20))
@@ -252,11 +287,9 @@ def print_boxed_prompt(text):
         if not line.strip():
             print(f"\033[38;5;244m│\033[0m  {' ' * text_width}  \033[38;5;244m│\033[0m")
             continue
-        while len(line) > text_width:
-            chunk = line[:text_width]
-            print(f"\033[38;5;244m│\033[0m  {chunk:<{text_width}}  \033[38;5;244m│\033[0m")
-            line = line[text_width:]
-        print(f"\033[38;5;244m│\033[0m  {line:<{text_width}}  \033[38;5;244m│\033[0m")
+        wrapped_lines = textwrap.wrap(line, width=text_width)
+        for w_line in wrapped_lines:
+            print(f"\033[38;5;244m│\033[0m  {w_line:<{text_width}}  \033[38;5;244m│\033[0m")
     print("\033[38;5;244m└" + "─" * (box_width - 2) + "┘\033[0m")
 
 # 9. Clipboard Export
@@ -291,11 +324,30 @@ def main():
         print("Error: Design intent cannot be empty.")
         safe_exit(1)
         
-    priming_skill = load_priming_skill()
+    # Discover available visual prompting skills dynamically
+    available_skills = list_prompt_skills()
+    
+    print("\n\033[1;32m[PWT-Image] Select Active Profile:\033[0m")
+    for idx, (_, name, _) in enumerate(available_skills):
+        print(f"  \033[1m{idx + 1}\033[0m. {name}")
+        
+    try:
+        sel_input = input(f"\nSelection [Default: 1]: ").strip()
+        sel_idx = 0
+        if sel_input:
+            val = int(sel_input) - 1
+            if 0 <= val < len(available_skills):
+                sel_idx = val
+    except (ValueError, KeyboardInterrupt, EOFError):
+        sel_idx = 0
+            
+    selected_filename, selected_name, fallback_content = available_skills[sel_idx]
+    
+    priming_skill = load_priming_skill(selected_filename, fallback_content)
     project_context = load_project_context()
     
     # Compile context-aware user instruction
-    user_payload = f"Create an optimized style-referenced image prompt based on this raw intent:\n\nIntent: {raw_intent}"
+    user_payload = f"Create an optimized image prompt based on this raw intent:\n\nIntent: {raw_intent}"
     if project_context:
         user_payload += f"\n\nActive Project Directory Context (Use this to match style, name, or aesthetic themes):\n\n{project_context}"
     
@@ -306,13 +358,18 @@ def main():
     
     current_prompt = ""
     modifications = []
+    notification_msg = ""
     dirty = True
     
     while True:
         if dirty:
             os.system("clear")
             print("\033[1;34m── IMAGE-PROMPT CONSOLE ────────────────────────────────────────────────────\033[0m")
+            if notification_msg:
+                print(f" {notification_msg}")
+                notification_msg = ""
             print(f"\033[38;5;244m[INTENT]\033[0m \"{raw_intent}\"")
+            print(f"\033[38;5;244m[MODE  ]\033[0m \033[1;32m{selected_name}\033[0m")
             if modifications:
                 print(f"\033[38;5;244m[TWEAKS]\033[0m {', '.join(f'\"{m}\"' for m in modifications)}")
                 
@@ -330,8 +387,12 @@ def main():
         tokens, rating = calculate_metrics(current_prompt)
         
         print("\033[1;34m── IMAGE-PROMPT CONSOLE ────────────────────────────────────────────────────\033[0m")
+        if notification_msg:
+            print(f" {notification_msg}")
+            notification_msg = ""
         print(f"\033[38;5;244m[METRICS]\033[0m Token Count: \033[1m{tokens}\033[0m | Quality Rating: {rating}")
         print(f"\033[38;5;244m[INTENT ]\033[0m \"{raw_intent}\"")
+        print(f"\033[38;5;244m[MODE   ]\033[0m \033[1;32m{selected_name}\033[0m")
         if modifications:
             print(f"\033[38;5;244m[TWEAKS ]\033[0m {', '.join(f'\"{m}\"' for m in modifications)}")
             
@@ -339,9 +400,9 @@ def main():
         print_boxed_prompt(current_prompt)
         
         commands = [
-            "[/c] Copy Compiled Prompt & Exit", 
+            "[/c] Copy Compiled Prompt", 
             "[/e] Rewrite Intent", 
-            "[/q] Quit without copying"
+            "[/q] Quit"
         ]
         
         print("\n\033[37mCommands:  " + "  |  ".join(commands) + "\033[0m")
@@ -357,19 +418,17 @@ def main():
             continue
             
         if user_input == "/c":
-            # Extract and copy ONLY the compiled prompt block inside <compiled_prompt> ... </compiled_prompt>
             compiled_match = re.search(r'<compiled_prompt>\n?(.*?)\n?</compiled_prompt>', current_prompt, re.DOTALL | re.IGNORECASE)
             text_to_copy = compiled_match.group(1).strip() if compiled_match else current_prompt.strip()
-            
-            # Remove any surrounding markdown tags if the model was verbose
             text_to_copy = re.sub(r'^```(?:text|markdown)?\n|```$', '', text_to_copy, flags=re.MULTILINE)
             
             if copy_to_clipboard(text_to_copy):
-                print("\n\033[1;32m[sys] Success! Optimized style-referenced image prompt copied directly to your clipboard!\033[0m")
+                notification_msg = "\033[1;32m[sys] Success! Copied optimized prompt to clipboard. Session active.\033[0m"
             else:
-                print("\n\033[1;31m[sys] Clipboard utility not found. Displaying output:\033[0m\n")
+                notification_msg = "\033[1;31m[sys] Clipboard utility not found. Displaying output:\033[0m"
                 print(text_to_copy)
-            safe_exit(0)
+                
+            dirty = False
             
         elif user_input == "/e":
             new_intent = input("\n\033[1;32m[PWT-Image] Enter new intent:\033[0m ").strip()
@@ -378,6 +437,25 @@ def main():
             confirm = input(f"\033[1;33mConfirm rewrite intent (y/N)? \033[0m").strip().lower()
             if confirm in ['y', 'yes']:
                 raw_intent = new_intent
+                
+                # Dynamic selection list on rewrite
+                available_skills = list_prompt_skills()
+                print("\n\033[1;32m[PWT-Image] Select Active Profile:\033[0m")
+                for idx, (_, name, _) in enumerate(available_skills):
+                    print(f"  \033[1m{idx + 1}\033[0m. {name}")
+                try:
+                    sel_input = input(f"\nSelection [Default: 1]: ").strip()
+                    sel_idx = 0
+                    if sel_input:
+                        val = int(sel_input) - 1
+                        if 0 <= val < len(available_skills):
+                            sel_idx = val
+                except (ValueError, KeyboardInterrupt, EOFError):
+                    sel_idx = 0
+                
+                selected_filename, selected_name, fallback_content = available_skills[sel_idx]
+                priming_skill = load_priming_skill(selected_filename, fallback_content)
+                
                 user_payload = f"Create an optimized image prompt based on this raw intent:\n\nIntent: {raw_intent}"
                 if project_context:
                     user_payload += f"\n\nActive Project Directory Context (Use this to match style, name, or aesthetic themes):\n\n{project_context}"
