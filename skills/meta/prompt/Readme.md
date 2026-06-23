@@ -20,4 +20,17 @@ Generate cohesive, project-matched graphics (banners, logos, assets) on your fir
 
 * `prompt-writer.md` ────► XML System Prompt Generator (TE, SA, OD)
 * `prompt-writer-image.md` ─► Style-Referenced Image Prompt Generator (VEC, PHO, SKT)
+  
+---
+
+<div align="center">
+  <p><i>Click to view high-resolution version</i></p>
+  <a href="https://github.com/user-attachments/assets/23c0048c-f77a-4750-b11c-090e221f0780">
+    <img alt="Ai-Commit Thumbnail" src="https://github.com/user-attachments/assets/23c0048c-f77a-4750-b11c-090e221f0780" width="250" />
+  </a>
+</div>
+
+
+
+
 
