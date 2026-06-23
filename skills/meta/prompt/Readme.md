@@ -32,7 +32,3 @@ Generate cohesive, project-matched graphics (banners, logos, assets) on your fir
   </a>
 </div>
 
-
-
-
-
