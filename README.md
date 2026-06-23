@@ -23,7 +23,7 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 > **Routing Logic:** The agent automatically determines the optimal execution path based on your input pattern, ensuring zero wasted tokens.
 
 * **No Session (Direct selections):** Uses a fast Jaccard Similarity engine (`jaccard_search`) with prefix-matching to instantly route custom commands and shortcuts to your local terminal.
-* **Single-Turn Agent (`ai <query>`):** Answers a single question and returns you to Bash, executing explicitly mapped diagnostic tools and skills only when requested.
+* **Single-Turn Agent (`ai <query>`):** Answers a single question and returns you to Bash, executing explicitly mapped diagnostic `tools` and `skills` only when requested.
 * **Multi-Turn Chat (`ai` alone):** Initiates an interactive, persistent conversation with local state preservation and multi-turn context memory.
 * **Workspace Agents (`ai init <path>`):** Compiles a path-specific structural tree of your repository, launching a dedicated, codebase-aware agent session primed with your chosen skill file.
 
@@ -33,12 +33,12 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 
 | Pillar | Capability | Description |
 | :---: | :---: | :--- |
-| **Performance** | **Zero-Daemon** | 0% idle CPU/RAM. Ultra-lite execution. |
+| **Performance** | **Zero-Daemon** | 0% idle CPU/RAM. `Ultra-lite` execution. |
 | **Search Engine** | **Jaccard Similarity** | Sub-millisecond keyword and partial-word matching. |
-| **Resiliency** | **Fallbacks** | Automatically cascades: Gemini → OpenRouter → Local. |
+| **Resiliency** | **Fallbacks** | Automatically cascades: `Gemini` → `OpenRouter` → `Local`. |
 | **Safety** | **Zero-Trust Guardrails** | Intercepts destructive commands before shell execution. |
 | **Integration** | **Dynamic Context** | On-demand compilation of system specs and tool outputs. |
-| **Optimization** | **Token-Slasher** | Custom tool and skill integration built for minimal token use. |
+| **Optimization** | **Token-Slasher** | Custom `tool` and `skill` integration built for minimal token use. |
 | **Interface** | **Conversational TUI** | Rich, multi-turn chat sessions directly in the terminal. |
 | **Auditability** | **Zero-Dependency** | Under 350 lines of standard-library Python. |
 
