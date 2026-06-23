@@ -8,9 +8,11 @@ Generate cohesive, project-matched graphics (banners, logos, assets) on your fir
 
 1. **Ingest & Describe:** Run the tool in your repository and type your design intent. (It automatically reads your `README.md` and codebase structures).
    ```bash
+   
 ~ ❯ prompt writer image
 [01/02] ❯ [prompt writer image] ~/.config/local-ai/tools/ai-prompt-writer-image | cat
 :: ↵ run  Esc: 
+
    ```
 2. **Refine & Copy:** Tweak details in the console, then type **`/c`** to copy only the clean, compiled prompt.
 3. **Anchor the Style:** Open [gemini.google.com](https://gemini.google.com/) and upload your **style reference image** (to define colors, lighting, and medium).
