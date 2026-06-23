@@ -65,7 +65,7 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 | `ai` | Launch interactive, multi-turn conversation session. |
 | `ai <query>` | Instant answer; returns directly to Bash prompt. |
 | `ai init <path>` | Index directory & launch codebase-aware agent. |
-| `voice` | Launch local-network tablet voice bridge (Port 9999). |
+| `voice` | Launch local-network tablet `voice` bridge (Port 9999). |
 | `f` `t` `b` `a` | Trigger Follow-up, Thinking, Brainstorm, or all. |
 
 ---
