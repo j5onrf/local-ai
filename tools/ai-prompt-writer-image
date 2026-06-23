@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# ai-prompt-writer-image - Context-Aware TUI Image Prompt Builder v1.2.0
+# ai-prompt-writer-image - Context-Aware TUI Image Prompt Builder v1.2.1
 
 import sys
 import os
@@ -67,7 +67,7 @@ def safe_exit(code=0):
         pass
     sys.exit(code)
 
-# 3. Hardcoded Fallback Skills (Zero-Config out of the box)
+# 3. Hardcoded Fallback Skills
 DEFAULT_PRIMING_SKILL = """You are a dense prompt engineering engine. Transform the raw intent into an optimized system prompt matching one of these classes:
 1. VEC (Vector / Flat Art)
 2. PHO (Cinematic / Photography)
@@ -82,9 +82,9 @@ Do NOT guess or hardcode specific color names (like cyan, blue, orange) or speci
 
 Output ONLY the optimized prompt inside matched, sequentially ordered XML blocks. No preamble."""
 
-# 4. Dynamic Directory Skill Scanner (Zero-tokens to parse locally)
+# 4. Dynamic Directory Skill Scanner (Updated to target prompt/ subdirectory)
 def list_prompt_skills():
-    meta_dir = os.path.join(CFG_DIR, "skills", "meta")
+    meta_dir = os.path.join(CFG_DIR, "skills", "meta", "prompt")
     default_skills = [
         ("prompt-writer-image.md", "General (Style-Suggesting)", DEFAULT_PRIMING_SKILL),
         ("prompt-writer-image-2.md", "Style-Neutral (Image-to-Image)", DEFAULT_NEUTRAL_SKILL)
@@ -94,7 +94,7 @@ def list_prompt_skills():
         return default_skills
         
     try:
-        # Scan for any files matching prompt-writer-image*.md in skills/meta/
+        # Scan for any files matching prompt-writer-image*.md in skills/meta/prompt/
         files = sorted([f for f in os.listdir(meta_dir) if f.startswith("prompt-writer-image") and f.endswith(".md")])
         skills = []
         for f in files:
@@ -112,7 +112,7 @@ def list_prompt_skills():
         return default_skills
 
 def load_priming_skill(filename, fallback_content):
-    path = os.path.join(CFG_DIR, "skills", "meta", filename)
+    path = os.path.join(CFG_DIR, "skills", "meta", "prompt", filename)
     if os.path.exists(path):
         try:
             with open(path, "r") as f:
@@ -133,6 +133,7 @@ def load_project_context():
     except Exception:
         pass
         
+    # Check parent directories recursively to find README.md and skeleton-ai.json
     readme_path = None
     skeleton_path = None
     check_dir = cwd
@@ -324,7 +325,7 @@ def main():
         print("Error: Design intent cannot be empty.")
         safe_exit(1)
         
-    # Discover available visual prompting skills dynamically
+    # Discover available visual prompting skills dynamically from metadata/prompt folder
     available_skills = list_prompt_skills()
     
     print("\n\033[1;32m[PWT-Image] Select Active Profile:\033[0m")

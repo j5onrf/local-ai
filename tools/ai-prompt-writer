@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# ai-prompt-writer-image - Context-Aware TUI Image Prompt Builder v1.0.1
+# ai-prompt-writer - Interactive Prompt-Writer TUI Console v1.0.4
 
 import sys
 import os
@@ -8,6 +8,7 @@ import re
 import subprocess
 import time
 import threading
+import textwrap
 import urllib.request as urlreq
 import urllib.error as urlerr
 
@@ -18,7 +19,7 @@ except ImportError:
 
 CFG_DIR = os.path.expanduser("~/.config/local-ai")
 API_KEY = os.environ.get("GEMINI_API_KEY") or os.environ.get("OPENROUTER_API_KEY")
-MODEL = os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite")
+MODEL = os.environ.get("CLOUD_MODEL", "gemini-1.5-flash")
 
 # 1. Thread-Safe TUI Spinner
 class InlineSpinner:
@@ -66,37 +67,40 @@ def safe_exit(code=0):
         pass
     sys.exit(code)
 
-# 3. Hardcoded Fallback Skill (Optimized for Style and Layout Preservation)
-DEFAULT_PRIMING_SKILL = """You are a dense prompt engineering engine specializing in text-to-image generators (specifically Google's Imagen model). 
-Transform the raw user design intent and active project context into an optimized style-referenced image prompt.
-
-Your output prompt must instruct the generator to treat the uploaded image exclusively as a style, color, and aesthetic template, mapping your newly specified project-specific subjects (such as skeleton elements or code structures) onto that exact style.
+# 3. Hardcoded Fallback Skill
+DEFAULT_PRIMING_SKILL = """You are a dense prompt engineering engine. Transform the raw intent into an optimized system prompt matching one of these classes:
+1. TE (Technical/Code/Logic)
+2. SA (Synthesis/Research/Reasoning)
+3. OD (Orchestration/JSON/Pipelines)
 
 Output ONLY the optimized prompt inside matched, sequentially ordered XML blocks. No preamble.
 
 ### Tag Constraints:
-- `<context>`: Style classification, medium, and target atmosphere to extract from the reference image.
-- `<elements>`: Visual subjects, layout, and project-specific elements.
-- `<guardrails>`: Zero filler, strict constraints, and style-transfer instructions.
-- `<compiled_prompt>`: A single, continuous, highly-detailed paragraph prompt starting with an explicit style-reference directive, ready to copy-paste.
+- `<context>`: Expert persona & execution environment.
+- `<objective>`: Core goal with active verbs & explicit parameters.
+- `<guardrails>`: Zero filler, strict constraints, syntax rules.
+- `<output_format>`: Explicit response markdown template.
+
+### Formatting Rules:
+- Never nest, mix, or mismatch closing tags. Close `<guardrails>` with `</guardrails>` (never mix with `</objective>`).
 
 ### Target Layout:
 <context>
-[Style, medium, and atmosphere]
+[Expert persona & environment]
 </context>
-<elements>
-[Visual subjects, background, and layout]
-</elements>
+<objective>
+[Actionable goal]
+</objective>
 <guardrails>
-[Strict style-transfer directives and negative constraints]
+[Explicit constraints & safety rules]
 </guardrails>
-<compiled_prompt>
-[Cohesive, highly-detailed single-paragraph prompt ready to copy-paste]
-</compiled_prompt>"""
+<output_format>
+[Markdown output template]
+</output_format>"""
 
-# 4. Modular Skill Loader
+# 4. Modular Skill Loader (Updated to target the new meta/ subdirectory)
 def load_priming_skill():
-    path = os.path.join(CFG_DIR, "skills", "meta", "prompt-writer-image.md")
+    path = os.path.join(CFG_DIR, "skills", "meta", "prompt", "prompt-writer.md")
     if os.path.exists(path):
         try:
             with open(path, "r") as f:
@@ -105,57 +109,22 @@ def load_priming_skill():
             pass
     return DEFAULT_PRIMING_SKILL
 
-# 5. Local Context Harvester
-def load_project_context():
-    context = []
-    cwd = os.getcwd()
-    
-    try:
-        files = [f for f in os.listdir(cwd) if not f.startswith('.')]
-        if files:
-            context.append(f"Directory Contents (ls):\n{', '.join(files[:30])}")
-    except Exception:
-        pass
-        
-    readme_path = os.path.join(cwd, "README.md")
-    if os.path.exists(readme_path):
-        try:
-            with open(readme_path, "r", encoding="utf-8", errors="ignore") as f:
-                context.append(f"README.md Snippet:\n{f.read(1500).strip()}")
-        except Exception:
-            pass
-            
-    skeleton_path = os.path.join(cwd, "skeleton-ai.json")
-    if not os.path.exists(skeleton_path):
-        skeleton_path = os.path.join(cwd, "skeleton.json")
-    if os.path.exists(skeleton_path):
-        try:
-            with open(skeleton_path, "r", encoding="utf-8", errors="ignore") as f:
-                lines = [f.readline().strip() for _ in range(50)]
-                context.append(f"Skeleton Map Metadata:\n" + "\n".join(lines))
-        except Exception:
-            pass
-            
-    return "\n\n---\n\n".join(context)
-
-# 6. Adaptive Quality Metrics Calculator
+# 5. Local Quality Metrics Calculator
 def calculate_metrics(text):
-    if not text:
-        return 0, "\033[1;31mLOW\033[0m"
     words = text.split()
     tokens = int(len(words) * 1.3)
-    lower_text = text.lower()
     
-    has_context = "<context>" in lower_text and "</context>" in lower_text
-    has_elements = "<elements>" in lower_text and "</elements>" in lower_text
-    has_guardrails = "<guardrails>" in lower_text and "</guardrails>" in lower_text
-    has_compiled = "<compiled_prompt>" in lower_text and "</compiled_prompt>" in lower_text
+    # Check for structural patterns
+    has_context = "<context>" in text.lower() and "</context>" in text.lower()
+    has_objective = "<objective>" in text.lower() and "</objective>" in text.lower()
+    has_guardrails = "<guardrails>" in text.lower() and "</guardrails>" in text.lower()
+    has_output_format = "<output_format>" in text.lower() and "</output_format>" in text.lower()
     
     score = 0
     if has_context: score += 25
-    if has_elements: score += 25
+    if has_objective: score += 25
     if has_guardrails: score += 25
-    if has_compiled: score += 25
+    if has_output_format: score += 25
     
     if score >= 100:
         rating = "\033[1;32mHIGH\033[0m"
@@ -166,11 +135,14 @@ def calculate_metrics(text):
     
     return tokens, rating
 
-# 7. Unified Streaming Cascade Client with Active Logger
+# 6. Unified Streaming Cascade Client with Active Logger
 def call_service(messages):
     configs, gkey, okey, ckey, curl = [], os.environ.get("GEMINI_API_KEY"), os.environ.get("OPENROUTER_API_KEY"), os.environ.get("CLOUD_API_KEY"), os.environ.get("CLOUD_API_URL")
     if gkey: 
-        configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Authorization": f"Bearer {gkey}"}, os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"), {}, 15))
+        target_model = os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite")
+        if "3.1-flash-lite" in target_model:
+            target_model = "gemini-1.5-flash"
+        configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Authorization": f"Bearer {gkey}"}, target_model, {}, 15))
     if okey:
         m = os.environ.get("OPENROUTER_MODEL", "openrouter/free")
         configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"}, m, {}, 20))
@@ -233,7 +205,7 @@ def call_service(messages):
                 break
     raise RuntimeError("All fallback/local servers are offline.")
 
-# 8. Mathematically Aligned Render Helper
+# 7. Mathematically Aligned Render Helper
 def print_boxed_prompt(text):
     if not text:
         return
@@ -252,14 +224,12 @@ def print_boxed_prompt(text):
         if not line.strip():
             print(f"\033[38;5;244m│\033[0m  {' ' * text_width}  \033[38;5;244m│\033[0m")
             continue
-        while len(line) > text_width:
-            chunk = line[:text_width]
-            print(f"\033[38;5;244m│\033[0m  {chunk:<{text_width}}  \033[38;5;244m│\033[0m")
-            line = line[text_width:]
-        print(f"\033[38;5;244m│\033[0m  {line:<{text_width}}  \033[38;5;244m│\033[0m")
+        wrapped_lines = textwrap.wrap(line, width=text_width)
+        for w_line in wrapped_lines:
+            print(f"\033[38;5;244m│\033[0m  {w_line:<{text_width}}  \033[38;5;244m│\033[0m")
     print("\033[38;5;244m└" + "─" * (box_width - 2) + "┘\033[0m")
 
-# 9. Clipboard Export
+# 8. Clipboard Export
 def copy_to_clipboard(text):
     for cmd in [['wl-copy'], ['xclip', '-selection', 'clipboard']]:
         try:
@@ -271,7 +241,7 @@ def copy_to_clipboard(text):
             pass
     return False
 
-# 10. Main Interactive TUI Loop
+# 9. Main Interactive TUI Loop
 def main():
     try:
         os.makedirs(CFG_DIR, exist_ok=True)
@@ -282,26 +252,20 @@ def main():
         sys.stderr.write("\033[1;33m[sys] Warning: No cloud keys detected. Cascading directly to offline local server.\033[0m\n")
         
     try:
-        raw_intent = input("\033[1;32m[PWT-Image] Enter design intent or banner requirements:\033[0m ").strip()
+        raw_intent = input("\033[1;32m[PWT] Enter raw intent:\033[0m ").strip()
     except (KeyboardInterrupt, EOFError):
         print("\nExiting.")
         safe_exit(0)
         
     if not raw_intent:
-        print("Error: Design intent cannot be empty.")
+        print("Error: Intent cannot be empty.")
         safe_exit(1)
         
     priming_skill = load_priming_skill()
-    project_context = load_project_context()
-    
-    # Compile context-aware user instruction
-    user_payload = f"Create an optimized style-referenced image prompt based on this raw intent:\n\nIntent: {raw_intent}"
-    if project_context:
-        user_payload += f"\n\nActive Project Directory Context (Use this to match style, name, or aesthetic themes):\n\n{project_context}"
     
     history = [
         {"role": "system", "content": priming_skill},
-        {"role": "user", "content": user_payload}
+        {"role": "user", "content": f"Create a structured system prompt based on this raw intent:\n\n{raw_intent}"}
     ]
     
     current_prompt = ""
@@ -311,12 +275,12 @@ def main():
     while True:
         if dirty:
             os.system("clear")
-            print("\033[1;34m── IMAGE-PROMPT CONSOLE ────────────────────────────────────────────────────\033[0m")
+            print("\033[1;34m── PROMPT-WRITER CONSOLE ───────────────────────────────────────────────────\033[0m")
             print(f"\033[38;5;244m[INTENT]\033[0m \"{raw_intent}\"")
             if modifications:
                 print(f"\033[38;5;244m[TWEAKS]\033[0m {', '.join(f'\"{m}\"' for m in modifications)}")
                 
-            print("\n\033[1;33m[Generating fresh image prompt layout...]\033[0m")
+            print("\n\033[1;33m[Generating fresh system prompt layout...]\033[0m")
             
             try:
                 current_prompt = call_service(history)
@@ -329,13 +293,13 @@ def main():
         os.system("clear")
         tokens, rating = calculate_metrics(current_prompt)
         
-        print("\033[1;34m── IMAGE-PROMPT CONSOLE ────────────────────────────────────────────────────\033[0m")
+        print("\033[1;34m── PROMPT-WRITER CONSOLE ───────────────────────────────────────────────────\033[0m")
         print(f"\033[38;5;244m[METRICS]\033[0m Token Count: \033[1m{tokens}\033[0m | Quality Rating: {rating}")
         print(f"\033[38;5;244m[INTENT ]\033[0m \"{raw_intent}\"")
         if modifications:
             print(f"\033[38;5;244m[TWEAKS ]\033[0m {', '.join(f'\"{m}\"' for m in modifications)}")
             
-        print("\n\033[1;32m[GENERATED IMAGE PROMPT]\033[0m")
+        print("\n\033[1;32m[GENERATED SYSTEM PROMPT]\033[0m")
         print_boxed_prompt(current_prompt)
         
         commands = [
@@ -357,36 +321,24 @@ def main():
             continue
             
         if user_input == "/c":
-            # Extract and copy ONLY the compiled prompt block inside <compiled_prompt> ... </compiled_prompt>
-            compiled_match = re.search(r'<compiled_prompt>\n?(.*?)\n?</compiled_prompt>', current_prompt, re.DOTALL | re.IGNORECASE)
-            text_to_copy = compiled_match.group(1).strip() if compiled_match else current_prompt.strip()
-            
-            # Remove any surrounding markdown tags if the model was verbose
-            text_to_copy = re.sub(r'^```(?:text|markdown)?\n|```$', '', text_to_copy, flags=re.MULTILINE)
-            
-            if copy_to_clipboard(text_to_copy):
-                print("\n\033[1;32m[sys] Success! Optimized style-referenced image prompt copied directly to your clipboard!\033[0m")
+            if copy_to_clipboard(current_prompt):
+                print("\n\033[1;32m[sys] Success! Prompt compiled & copied to system clipboard!\033[0m")
             else:
-                print("\n\033[1;31m[sys] Clipboard utility not found. Displaying output:\033[0m\n")
-                print(text_to_copy)
+                print("\n\033[1;31m[sys] Clipboard utility not found. Displaying raw output:\033[0m\n")
+                print(current_prompt)
             safe_exit(0)
             
         elif user_input == "/e":
-            new_intent = input("\n\033[1;32m[PWT-Image] Enter new intent:\033[0m ").strip()
-            if not new_intent:
-                continue
-            confirm = input(f"\033[1;33mConfirm rewrite intent (y/N)? \033[0m").strip().lower()
-            if confirm in ['y', 'yes']:
-                raw_intent = new_intent
-                user_payload = f"Create an optimized image prompt based on this raw intent:\n\nIntent: {raw_intent}"
-                if project_context:
-                    user_payload += f"\n\nActive Project Directory Context (Use this to match style, name, or aesthetic themes):\n\n{project_context}"
-                history = [
-                    {"role": "system", "content": priming_skill},
-                    {"role": "user", "content": user_payload}
-                ]
-                modifications = []
-                dirty = True
+            raw_intent = input("\n\033[1;32m[PWT] Enter raw intent:\033[0m ").strip()
+            if not raw_intent:
+                print("Error: Intent cannot be empty.")
+                sys.exit(1)
+            history = [
+                {"role": "system", "content": priming_skill},
+                {"role": "user", "content": f"Create a structured system prompt based on this raw intent:\n\n{raw_intent}"}
+            ]
+            modifications = []
+            dirty = True
             
         elif user_input == "/q":
             print("\nExiting.")
@@ -399,7 +351,7 @@ def main():
                 history.append({"role": "assistant", "content": current_prompt})
                 history.append({
                     "role": "user", 
-                    "content": f"Update the previous image prompt with this specific adjustment: {user_input}. Respect the requested formatting rule to output only raw, structurally-bracketed or XML-tagged blocks."
+                    "content": f"Update the previous system prompt with this specific adjustment: {user_input}. Respect the requested formatting rule to output only raw, structurally-bracketed or XML-tagged blocks."
                 })
                 dirty = True
 
