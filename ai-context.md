@@ -102,6 +102,7 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 ~/.config/local-ai/tools/agentic/system/ai-commit ---> ai-commit, gc, git commit
 
 # --- Skeleton Map (Structural Repo Profile Compiler) ---
+[TOOL] ~/.config/local-ai/tools/map/skeleton-map-head --cat ---> skeleton map head, smh, smhead
 [TOOL] ~/.config/local-ai/tools/map/skeleton-map-ai --cat ---> skeleton map ai, sm
 ~/.config/local-ai/tools/map/skeleton-map ---> skeleton map, sm
 
