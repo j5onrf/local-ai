@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.8.8 [j5onrf] [06-24-26]
+# Local-Ai Agent v0.8.8.9 [j5onrf] [06-24-26]
 
 import sys, re, os, json, threading, time, subprocess, shutil, tty, termios, select
 import urllib.request as urlreq, urllib.error as urlerr
@@ -380,13 +380,14 @@ try:
                                 # --- 2. MEMORY BANK: PASSIVELY LOG TURN ---
                                 subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "log-turn", safe_name, query, ans])
                                 # --- 3. DYNAMIC LOCAL WRITER: APPEND CHRONOLOGICAL history.md ---
-                                local_history_file = os.path.join(os.environ.get("AI_WORKSPACE_PATH", os.getcwd()), "history.md")
-                                try:
-                                    mode = "a" if os.path.exists(local_history_file) else "w"
-                                    with open(local_history_file, mode) as hf:
-                                        if mode == "w": hf.write(f"# Workspace History: {os.path.basename(os.path.dirname(local_history_file))}\n\n")
-                                        hf.write(f"## [{time.strftime('%Y-%m-%d %H:%M')}] User:\n{query}\n\n### Agent:\n{ans}\n\n---\n\n")
-                                except: pass
+                                if not query.startswith("# ACTIVE PROJECT WORKSPACE"):
+                                    local_history_file = os.path.join(os.environ.get("AI_WORKSPACE_PATH", os.getcwd()), "history.md")
+                                    try:
+                                        mode = "a" if os.path.exists(local_history_file) else "w"
+                                        with open(local_history_file, mode) as hf:
+                                            if mode == "w": hf.write(f"# Workspace History: {os.path.basename(os.path.dirname(local_history_file))}\n\n")
+                                            hf.write(f"## [{time.strftime('%Y-%m-%d %H:%M')}] User:\n{query}\n\n### Agent:\n{ans}\n\n---\n\n")
+                                    except: pass
                 except KeyboardInterrupt: 
                     print("\n\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
 
@@ -416,3 +417,4 @@ try:
         sys.exit(0)
     print_stock_error(user_input); sys.exit(127)
 except KeyboardInterrupt: sys.stderr.write("\nCancelled.\n"); sys.exit(130)
+
