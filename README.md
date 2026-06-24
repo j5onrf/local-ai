@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <code>Laguna-M.1</code> &nbsp; <code>Qwen3-Coder</code> &nbsp; <code>Gemini-3.1-Flash-Lite</code>
+  <code>Gemini-3.1-Flash-Lite</code> &nbsp; <code>Deepseek-v4-Flash</code> &nbsp; <code>Openrouter/free</code> &nbsp; <code>Local Model</code>
 </p>
 
 ---

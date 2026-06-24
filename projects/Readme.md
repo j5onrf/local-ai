@@ -18,11 +18,11 @@ Agent: I am ready to assist with your development tasks...
 
 All metadata is isolated inside your configuration tree to prevent polluting your codebase:
 *   **`~/.config/local-ai/projects/project-init/`**
-    *   `*.txt`: Compiled codebase structural blueprints generated on-the-fly by `tools/init-projects` [1].
+    *   `*.txt`: Compiled codebase structural blueprints generated on-the-fly by `tools/init-projects`.
 *   **`~/.config/local-ai/projects/database/`**
-    *   `*.db`: Isolated, project-specific SQLite databases managing your save states and memory logs [4].
+    *   `*.db`: Isolated, project-specific SQLite databases managing your save states and memory logs.
 *   **`~/your-project-folder/` (Your active workspace)**
-    *   `history.md`: A human-readable chronological Markdown ledger of your conversation [1].
+    *   `history.md`: A human-readable chronological Markdown ledger of your conversation.
 
 *(Active conversational histories are held strictly in RAM during execution. No temporary JSON files are written to your drive).*
 
@@ -30,15 +30,15 @@ All metadata is isolated inside your configuration tree to prevent polluting you
 
 ## 2. On-Demand Specialist Skills
 
-You can dynamically inject custom, role-based onboarding guides (e.g., finance reviews, legal rules) during any active session on-the-fly [1, 2].
+You can dynamically inject custom, role-based onboarding guides (e.g., finance reviews, legal rules) during any active session on-the-fly.
 
-*   **Search and Load:** Type this command inside your chat [1]:
+*   **Search and Load:** Type this command inside your chat:
     ```text
     ❯ /skill <search_term>
     ```
     *(Or `/s <search_term>`. Use `/skill` with no term to list your entire department skill library).*
-*   **Carousel Selection:** Use your `Up` and `Down` arrow keys to cycle through matches, displaying the file path and live description [1].
-*   **Execution:** Press `Enter` to dynamically inject the skill instructions into your active system prompt, or `Esc` to cancel [1].
+*   **Carousel Selection:** Use your `Up` and `Down` arrow keys to cycle through matches, displaying the file path and live description.
+*   **Execution:** Press `Enter` to dynamically inject the skill instructions into your active system prompt, or `Esc` to cancel.
 
 ---
 
@@ -46,19 +46,19 @@ You can dynamically inject custom, role-based onboarding guides (e.g., finance r
 
 Sessions utilize an on-demand, gated memory layout to prevent token bloat:
 *   **Active Window:** Kept in RAM during execution and capped at `8192` tokens. 
-*   **Passive Memory Bank:** Every turn is passively logged to your workspace's unique `.db` file in the background [4].
-*   **Auto-Retrieval:** If your query references a past topic, your terminal will stop and prompt you for permission before recalling [4]:
+*   **Passive Memory Bank:** Every turn is passively logged to your workspace's unique `.db` file in the background.
+*   **Auto-Retrieval:** If your query references a past topic, your terminal will stop and prompt you for permission before recalling:
     ```text
     [sys] Recall past memory: "Please review this Python..."? [↵ load  Esc]: 
     ```
-    *   Press **`Enter`** to approve and inject [4].
-    *   Press **`Esc`** to completely skip the recall and abort your turn [4], returning you to a clean prompt `❯` without making a single LLM request.
+    *   Press **`Enter`** to approve and inject.
+    *   Press **`Esc`** to completely skip the recall and abort your turn, returning you to a clean prompt `❯` without making a single LLM request.
 
 ---
 
 ## 4. Checkpoints (Save States)
 
-Save or rollback workspace states inside an active chat session. Checkpoints are piped directly to/from SQLite using standard streams, completely bypassing the filesystem [4].
+Save or rollback workspace states inside an active chat session. Checkpoints are piped directly to/from SQLite using standard streams, completely bypassing the filesystem.
 
 *   **Save current state:**
     ```text

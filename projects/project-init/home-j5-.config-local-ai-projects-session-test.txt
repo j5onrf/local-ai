@@ -19,7 +19,6 @@ System context cache for codebase-aware agent executions.
 ```text
   - .
   - history.md
-  - Readme.md
 ```
 
 ---
