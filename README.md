@@ -63,7 +63,7 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 | `ai <query>` | Instant answer; returns directly to Bash prompt. |
 | `ai init <path>` | Index directory & launch codebase-aware agent. |
 | `hs` | On-demand keyword search of workspace history. |
-| `hist` | View styled workspace history log (`history.md`). |
+| `hist` | View workspace history log (`history.md`). |
 
 | Command | Description |
 | --- | --- |
