@@ -18,6 +18,7 @@ System context cache for codebase-aware agent executions.
 ## Codebase File Tree
 ```text
   - .
+  - history.md
   - Readme.md
 ```
 

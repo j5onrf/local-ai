@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai On-Demand Skill Selector [dept-backed] [j5onrf] v0.8.8.2
+# Local-Ai On-Demand Skill Selector [dept-backed]
 
 import sys, os, json, re, tty, termios, select
 
@@ -10,17 +10,34 @@ STOP_WORDS = {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "o
 
 def tokenize(t): return [w for w in TOKEN_RE.sub(" ", t.lower()).split() if len(w) > 1 and w not in STOP_WORDS]
 
+# Blocking raw-TTY keyboard grabber (With terminal input queue flushing)
 def get_key():
-    fd = sys.stdin.fileno()
-    try: old = termios.tcgetattr(fd)
-    except termios.error:
-        try: return os.read(fd, 1).decode("utf-8", errors="ignore")
-        except: return ""
     try:
-        tty.setraw(fd); r = os.read(fd, 1)
-        if r == b'\x1b' and select.select([fd], [], [], 0.05)[0]: r += os.read(fd, 2)
-    finally: termios.tcsetattr(fd, termios.TCSADRAIN, old)
-    return r.decode("utf-8", errors="ignore")
+        with open("/dev/tty", "r") as tty_file:
+            fd = tty_file.fileno()
+            old = termios.tcgetattr(fd)
+            try:
+                tty.setraw(fd)
+                # Flush pending terminal buffer keys (prevents residual Enter key auto-approvals)
+                termios.tcflush(fd, termios.TCIFLUSH)
+                r = os.read(fd, 1) # Blocks until a fresh key is pressed
+                if r == b'\x1b' and select.select([fd], [], [], 0.05)[0]:
+                    r += os.read(fd, 2)
+                return r.decode("utf-8", errors="ignore")
+            finally:
+                termios.tcsetattr(fd, termios.TCSADRAIN, old)
+    except:
+        fd = sys.stdin.fileno()
+        try: old = termios.tcgetattr(fd)
+        except: return ""
+        try:
+            tty.setraw(fd)
+            termios.tcflush(fd, termios.TCIFLUSH)
+            r = os.read(fd, 1)
+            if r == b'\x1b' and select.select([fd], [], [], 0.05)[0]: r += os.read(fd, 2)
+            return r.decode("utf-8", errors="ignore")
+        finally: termios.tcsetattr(fd, termios.TCSADRAIN, old)
+    return ""
 
 def load_skill_blueprints():
     blueprints = []
@@ -56,15 +73,12 @@ def load_skill_blueprints():
     return blueprints
 
 def run_skill_selector(workspace, raw_cmd):
-    session_file = os.path.join(CFG_DIR, "projects", "database", f"{workspace}.json")
-    if not os.path.exists(session_file):
-        print(f"\033[1;31m[skill-mgr] No active session file found at: {session_file}\033[0m")
-        sys.exit(1)
-
+    # 1. Read history array directly from stdin (bypassing filesystem)
     try:
-        with open(session_file, "r") as sf: chat_history = json.load(sf)
+        history_data = sys.stdin.read().strip()
+        chat_history = json.loads(history_data)
     except Exception as e:
-        print(f"\033[1;31m[skill-mgr] Failed to load session JSON: {e}\033[0m")
+        sys.stderr.write(f"\033[1;31m[skill-mgr] Failed to load history from stdin: {e}\033[0m\n")
         sys.exit(1)
 
     parts = raw_cmd.strip().split(maxsplit=1)
@@ -84,7 +98,7 @@ def run_skill_selector(workspace, raw_cmd):
                 candidates.append((score, s))
 
     if not candidates:
-        print("\033[1;31m[skill-mgr] No matching department skills found.\033[0m")
+        sys.stderr.write("\033[1;31m[skill-mgr] No matching department skills found.\033[0m\n")
         sys.exit(0)
 
     candidates.sort(key=lambda x: -x[0])
@@ -108,17 +122,19 @@ def run_skill_selector(workspace, raw_cmd):
                 try:
                     with open(selected_skill["path"], "r") as sf: skill_body = sf.read().strip()
                     chat_history[0]["content"] += f"\n\n### Loaded On-Demand Skill: {selected_skill['name']}\n{skill_body}\n"
-                    with open(session_file, "w") as sf: json.dump(chat_history, sf, indent=2)
-                    sys.stderr.write(f"\r\x1b[K\x1b[1A\r\x1b[K\033[2;32m[sys] On-Demand Skill '{selected_skill['name']}' successfully injected.\033[0m\n")
+                    sys.stderr.write(f"\r\x1b[K\x1b[1A\r\x1b[K\033[2;32m[sys] Skill '{selected_skill['name']}' successfully injected.\033[0m\n")
+                    # Print the updated history JSON array to stdout (captured by ai-agent.py)
+                    print(json.dumps(chat_history))
                 except Exception as e:
                     sys.stderr.write(f"\r\x1b[K\x1b[1A\r\x1b[K\033[1;31m[sys] Failed to load skill: {e}\033[0m\n")
                 break
             elif key in ('\x1b[A', '\x1b[B'):
                 current_idx = (current_idx + (1 if key == '\x1b[B' else -1) + num_opts) % num_opts
-                # Clean up both lines and shift up before drawing the next slide
+                # Clean up both lines before shifting up to draw the next slide
                 sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
-    finally:
         sys.stderr.write("\033[?25h"); sys.stderr.flush()
+    except KeyboardInterrupt:
+        sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[KCancelled.\n"); sys.stderr.flush(); sys.exit(130)
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:

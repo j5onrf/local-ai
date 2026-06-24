@@ -13,6 +13,20 @@
 
 ---
 
+## Active Workspace Projects & History Viewer
+
+```properties
+# --- Workspace Test - Local-Ai-Session --
+ai init ~/.config/local-ai/projects/session-test ---> projects session, projects, session test
+
+
+# --- Active Workspace History Viewer ---
+[TOOL] mdcat history.md | less -R ---> show history, hist, history
+
+# --- Active Workspace History Searcher ---
+[TOOL] read -p "Search Page: " query && mdcat history.md | grep --color=always -A 15 -B 2 -i "$query" ---> search page, search, hs
+```
+
 ## 1. Workspace Initializers & Bridges
 
 ```properties
@@ -152,9 +166,6 @@ nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-sp
 
 ## 8. Testing (Concepts & Prototypes)
 ```properties
-# --- Workspace Test - Local-Ai-Session --
-~/.config/local-ai/projects/session-test ---> projects session, projects, session test
-
 # --- Pixel-Browse - Headless Visual Web Ingestion (((wip))) ---
 [TOOL] ~/.config/local-ai/tools/subsec/headless-chromium/pixel-browse --cat ---> pixel browse, headless, chromium, pixel browser
 
@@ -165,3 +176,4 @@ nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-sp
 # ss -tuln ---> how do i view active network ports, active ports, network ports
 # hostnamectl ---> how do i see my system information, system info, hostname
 ```
+

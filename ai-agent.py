@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.8.4 [j5onrf] [06-24-26]
+# Local-Ai Agent v0.8.8.8 [j5onrf] [06-24-26]
 
 import sys, re, os, json, threading, time, subprocess, shutil, tty, termios, select
 import urllib.request as urlreq, urllib.error as urlerr
@@ -293,7 +293,21 @@ try:
                 
                 pending_query = " ".join(args[1:]) if len(args) > 1 else None
                 clean_name = active_skill.lstrip("-") if active_skill else ""
-                print(f"\033[1;36mAI Agent Session Initialized | Context Loaded{f' [{clean_name}]' if clean_name else ''} | Ctrl+C to exit.\033[0m\n" if is_agent else "\033[1;34mLocal AI Conversation Mode. Ctrl+C to quit.\033[0m\n")
+                
+                # Dynamic diagnostics bar calculations
+                est_tokens = len(active_system_prompt) // 4
+                db_turns = 0
+                if is_agent:
+                    res = subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "get-count", safe_name], capture_output=True, text=True)
+                    try: db_turns = int(res.stdout.strip())
+                    except: pass
+
+                print(f"\033[1;36mAI Agent Session Initialized | Context Loaded{f' [{clean_name}]' if clean_name else ''} | Ctrl+C to exit.\033[0m")
+                if is_agent:
+                    print(f"\033[90m[sys] Startup context: {est_tokens:,} tokens | Database memory: {db_turns} turns (asleep)\033[0m\n")
+                else:
+                    print(f"\033[90m[sys] Startup context: {est_tokens:,} tokens\033[0m\n")
+
                 try:
                     while True:
                         if pending_query: query, pending_query = pending_query, None
@@ -335,6 +349,9 @@ try:
                         past_memory = ""
                         if is_agent and not query.startswith("# ACTIVE PROJECT WORKSPACE"):
                             res = subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "get-context", safe_name, query], stdout=subprocess.PIPE, text=True)
+                            if res.returncode == 2:
+                                pending_query = None
+                                continue
                             past_memory = res.stdout.strip()
 
                         q_lower = query.lower().strip()
@@ -362,6 +379,14 @@ try:
                             if is_agent:
                                 # --- 2. MEMORY BANK: PASSIVELY LOG TURN ---
                                 subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "log-turn", safe_name, query, ans])
+                                # --- 3. DYNAMIC LOCAL WRITER: APPEND CHRONOLOGICAL history.md ---
+                                local_history_file = os.path.join(os.environ.get("AI_WORKSPACE_PATH", os.getcwd()), "history.md")
+                                try:
+                                    mode = "a" if os.path.exists(local_history_file) else "w"
+                                    with open(local_history_file, mode) as hf:
+                                        if mode == "w": hf.write(f"# Workspace History: {os.path.basename(os.path.dirname(local_history_file))}\n\n")
+                                        hf.write(f"## [{time.strftime('%Y-%m-%d %H:%M')}] User:\n{query}\n\n### Agent:\n{ans}\n\n---\n\n")
+                                except: pass
                 except KeyboardInterrupt: 
                     print("\n\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Local-Ai Agent Hook v0.8.7.7 [j5onrf] [06-23-26]
+# Local-Ai Agent Hook v0.8.8.8 [j5onrf] [06-24-26]
 
-# Exit immediately if the shell is non-interactive
+# 1. Scope Guard: Exit immediately if the shell is non-interactive
 [[ $- != *i* ]] && return
 
 _AI_DIR="$HOME/.config/local-ai"
@@ -10,6 +10,18 @@ _AI_SCRIPT_PATH="$_AI_DIR/ai-agent.py"
 
 # Resolve python3 natively without spawning a subshell fork on shell startup
 command -v python3 >/dev/null 2>&1 && _AI_PYTHON_BIN="python3" || _AI_PYTHON_BIN="python"
+
+# 2. Teleport Hook (With strict exit-code preservation & single-append guard)
+_ai_teleport() {
+    local exit_code=$?
+    [ -f "$_AI_DIR/.active_cd" ] && { cd "$(<"$_AI_DIR/.active_cd")"; rm -f "$_AI_DIR/.active_cd"; }
+    return $exit_code
+}
+
+# Prevent duplicate appends to PROMPT_COMMAND when sourcing .bashrc multiple times
+if [[ "$PROMPT_COMMAND" != *_ai_teleport* ]]; then
+    PROMPT_COMMAND="_ai_teleport${PROMPT_COMMAND:+; $PROMPT_COMMAND}"
+fi
 
 ai_handle_missing() {
     [[ -n "$ZSH_VERSION" ]] && setopt local_options ksh_arrays
@@ -28,6 +40,10 @@ ai() {
         local target_path=$(pwd) skill_name="${2:-}"
         [[ -d "${2:-}" ]] && target_path="$2" && skill_name="${3:-}"
         target_path=$(CDPATH= cd "$target_path" && pwd) || return 1
+        
+        # Write target directory path to active teleport file
+        echo "$target_path" > "$_AI_DIR/.active_cd"
+        
         local safe_name="${target_path//\//-}"
         local context_file="$_AI_DIR/projects/project-init/${safe_name#-}.txt"
         "$_AI_DIR/tools/init-projects" "$target_path" "$skill_name" || return 1

@@ -6,6 +6,7 @@ ai-history
 tools/agentic/fusion/logs
 tools/map/skeleton.json
 tools/map/skeleton-ai.json
+.active_cd
 .request_log
 
 # Ignore Python cache directories and bytecode
