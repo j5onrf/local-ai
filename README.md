@@ -24,7 +24,6 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 
 * **No Session (Direct selections):** Uses a fast Jaccard Similarity engine (`jaccard_search`) with prefix-matching to instantly route custom commands and shortcuts to your local terminal.
 * **Single-Turn Agent (`ai <query>`):** Answers a single question and returns you to Bash, executing explicitly mapped diagnostic `tools` and `skills` only when requested.
-* **Multi-Turn Chat (`ai` alone):** Initiates an interactive, persistent conversation with local state preservation and multi-turn context memory.
 * **Workspace Agents (`ai init <path>`):** Compiles a path-specific structural tree of your repository, launching a dedicated, codebase-aware agent session primed with your chosen skill file.
 
 ---
@@ -56,18 +55,22 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 :: ↵ run  Esc:
 ```
 
----
-
 <h2 align="center">Command Reference</h2>
 
 | Command | Description |
 | --- | --- |
-| `ai` | Launch interactive, multi-turn conversation session. |
+| `ai` | Launch interactive, multi-turn chat session. |
 | `ai <query>` | Instant answer; returns directly to Bash prompt. |
 | `ai init <path>` | Index directory & launch codebase-aware agent. |
-| `voice` | Launch local-network tablet `voice` bridge (Port 9999). |
-| `f` `t` `b` `a` | Trigger Follow-up, Thinking, Brainstorm, or all. |
-| `/skill <query>` / `/s <query>` | Search and load dynamic skills. |
+| `hs` | On-demand keyword search of workspace history. |
+| `hist` | View styled workspace history log (`history.md`). |
+
+| Command | Description |
+| --- | --- |
+| `/s <query>` / `/skill` | Search and load dynamic department skills on-the-fly [1]. |
+| `-save <tag>` | Snapshot current conversation directly to SQLite in RAM [4]. |
+| `-timeline` / `-load` | Rollback active memory to a past SQLite checkpoint [4]. |
+| `/f` `/t` `/b` `/a` | Trigger Follow-up, Thinking, Brainstorm, or all. |
 
 ---
 
@@ -107,5 +110,4 @@ export OPENROUTER_API_KEY="sk-or-v1-YourFullOpenRouterKeyHere"
 export OPENROUTER_MODEL="openrouter/free"
 
 ```
-
 
