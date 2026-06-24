@@ -36,8 +36,8 @@ Instruction: Write a 3-5 word git commit message for these changes. Start with a
 # Query the universal Python gateway
 message=$("$_AI_PYTHON_BIN" "$_AI_SCRIPT_PATH" --talk "$PROMPT")
 
-# Clean up trailing quotes, spaces, and strip accidental LLM labeling prefixes
-message=$(echo "$message" | tr -d '"' | sed -E 's/^[Cc]ommit [Mm]essage:?\s*//' | xargs)
+# Clean up trailing quotes, spaces, strip LLM prefixes, and remove trailing periods
+message=$(echo "$message" | tr -d '"' | sed -E -e 's/^[Cc]ommit [Mm]essage:?\s*//' -e 's/\.+\s*$//' | xargs)
 
 # Force standard Git casing
 message="${message,,}" # Convert to lowercase
