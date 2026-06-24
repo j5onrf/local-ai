@@ -285,6 +285,7 @@ try:
                 home_dir = os.path.expanduser("~")
                 if workspace_path.startswith(home_dir): workspace_path = workspace_path[len(home_dir):].lstrip("/")
                 safe_name = workspace_path.replace("/", "-").strip("-")
+                if not safe_name: safe_name = "home"
                 session_file = os.path.join(CFG_DIR, "projects", "database", f"{safe_name}.json")
                 os.makedirs(os.path.dirname(session_file), exist_ok=True)
                 
