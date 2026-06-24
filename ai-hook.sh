@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Local-Ai Agent Hook v0.8.6.8 [j5onrf] [06-19-26]
+# Local-Ai Agent Hook v0.8.7.7 [j5onrf] [06-23-26]
 
 # Exit immediately if the shell is non-interactive
 [[ $- != *i* ]] && return
@@ -29,10 +29,10 @@ ai() {
         [[ -d "${2:-}" ]] && target_path="$2" && skill_name="${3:-}"
         target_path=$(CDPATH= cd "$target_path" && pwd) || return 1
         local safe_name="${target_path//\//-}"
-        local context_file="$_AI_DIR/projects/${safe_name#-}.txt"
+        local context_file="$_AI_DIR/projects/project-init/${safe_name#-}.txt"
         "$_AI_DIR/tools/init-projects" "$target_path" "$skill_name" || return 1
         if [[ -f "$context_file" ]]; then
-            AI_ACTIVE_SKILL="$skill_name" "$_AI_PYTHON_BIN" "$_AI_SCRIPT_PATH" --talk-chat "$(<"$context_file")"
+            AI_ACTIVE_SKILL="$skill_name" AI_WORKSPACE_PATH="$target_path" "$_AI_PYTHON_BIN" "$_AI_SCRIPT_PATH" --talk-chat "$(<"$context_file")"
         else
             printf "\033[1;31mError: Context file not found at: %s\033[0m\n" "$context_file" >&2
             return 1

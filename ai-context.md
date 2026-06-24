@@ -152,6 +152,9 @@ nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-sp
 
 ## 8. Testing (Concepts & Prototypes)
 ```properties
+# --- Workspace Test - Local-Ai-Session --
+~/.config/local-ai/projects/session-test ---> projects session, projects, session test
+
 # --- Pixel-Browse - Headless Visual Web Ingestion (((wip))) ---
 [TOOL] ~/.config/local-ai/tools/subsec/headless-chromium/pixel-browse --cat ---> pixel browse, headless, chromium, pixel browser
 

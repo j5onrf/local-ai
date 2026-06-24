@@ -22,7 +22,7 @@ TARGET_DIR=$(cd "$TARGET_DIR" && pwd)
 PROJECT_NAME=$(basename "$TARGET_DIR")
 
 # Setup clean projects/ subdirectory
-CONTEXT_DIR="/home/j5/.config/local-ai/projects"
+CONTEXT_DIR="/home/j5/.config/local-ai/projects/project-init"
 mkdir -p "$CONTEXT_DIR"
 
 # Generate a unique, path-based safe filename

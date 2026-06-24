@@ -14,7 +14,7 @@ Generate cohesive, project-matched graphics (banners, logos, assets) on your fir
 :: ↵ run  Esc: 
 ```
 2. **Refine & Copy:** Tweak details in the console, then type **`/c`** to copy only the clean, compiled prompt.
-3. **Anchor the Style:** Open [gemini.google.com](https://gemini.google.com/) and upload your **style reference image** (to define colors, lighting, and medium).
+3. **Anchor the Style:** Open your `Text to Image` generator and upload your **style reference image** (to define colors, lighting, and medium).
 4. **Generate:** Paste (`Ctrl+V`) your compiled prompt and hit run.
 
 ---

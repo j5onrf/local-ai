@@ -1,0 +1,121 @@
+#!/usr/bin/env python3
+# Local-Ai Session & Checkpoint Manager [sqlite3-backed] [j5onrf] v0.8.7.7
+
+import sys, os, json, sqlite3, time, termios, tty, select
+
+CFG_DIR = os.path.expanduser("~/.config/local-ai")
+DB_PATH = os.path.join(CFG_DIR, "projects", "database", "sessions.db")
+SESSIONS_DIR = os.path.join(CFG_DIR, "projects", "database")
+
+os.makedirs(SESSIONS_DIR, exist_ok=True)
+
+# 1. Initialize SQLite Database
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS checkpoints (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            workspace TEXT NOT NULL,
+            tag TEXT NOT NULL,
+            history TEXT NOT NULL,
+            timestamp INTEGER NOT NULL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+# 2. Grab terminal keyboard inputs natively
+def get_key():
+    fd = sys.stdin.fileno()
+    try: old = termios.tcgetattr(fd)
+    except termios.error:
+        try: return os.read(fd, 1).decode("utf-8", errors="ignore")
+        except: return ""
+    try:
+        tty.setraw(fd); r = os.read(fd, 1)
+        if r == b'\x1b' and select.select([fd], [], [], 0.05)[0]: r += os.read(fd, 2)
+    finally: termios.tcsetattr(fd, termios.TCSADRAIN, old)
+    return r.decode("utf-8", errors="ignore")
+
+# 3. Save current active timeline JSON to SQLite
+def save_checkpoint(workspace, tag):
+    active_file = os.path.join(SESSIONS_DIR, f"{workspace}.json")
+    if not os.path.exists(active_file):
+        print(f"\033[1;31m[session-mgr] No active session file found at: {active_file}\033[0m")
+        sys.exit(1)
+    
+    try:
+        with open(active_file, "r") as f:
+            history_data = f.read()
+            # Validate it is correct JSON
+            json.loads(history_data)
+    except Exception as e:
+        print(f"\033[1;31m[session-mgr] Failed to read active session file: {e}\033[0m")
+        sys.exit(1)
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO checkpoints (workspace, tag, history, timestamp) VALUES (?, ?, ?, ?)",
+        (workspace, tag, history_data, int(time.time()))
+    )
+    conn.commit()
+    conn.close()
+    print(f"\033[1;32m[session-mgr] Checkpoint '{tag}' saved to SQLite for '{workspace}'.\033[0m")
+
+# 4. List, Select and Rollback the active session JSON
+def rollback_checkpoint(workspace):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT tag, history, timestamp FROM checkpoints WHERE workspace = ? ORDER BY timestamp DESC",
+        (workspace,)
+    )
+    rows = cursor.fetchall()
+    conn.close()
+
+    if not rows:
+        print(f"\033[1;31m[session-mgr] No SQLite checkpoints found for workspace: {workspace}\033[0m")
+        sys.exit(0)
+
+    print("\n\033[1;36m--- Active Checkpoints (SQLite) ---\033[0m")
+    for idx, (tag, history, ts) in enumerate(rows):
+        history_len = len(json.loads(history))
+        time_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(ts))
+        print(f"[{idx}] \033[1;32m{tag}\033[0m ({history_len} turns) - {time_str}")
+    print("\n\033[1;30mSelect index to restore, or press Esc/Ctrl+C to cancel:\033[0m ")
+
+    sys.stderr.write("\033[?25l"); sys.stderr.flush()
+    try:
+        key = get_key()
+        if key in ('\x03', '\x1b'):
+            print("\033[1;30mAction cancelled.\033[0m")
+            sys.exit(0)
+        if key.isdigit() and int(key) < len(rows):
+            selected_row = rows[int(key)]
+            selected_tag, selected_history, _ = selected_row
+            
+            # Write selected history over the active workspace JSON file
+            active_file = os.path.join(SESSIONS_DIR, f"{workspace}.json")
+            with open(active_file, "w") as f:
+                f.write(selected_history)
+            print(f"\033[1;32m[session-mgr] Restored checkpoint '{selected_tag}' successfully.\033[0m\n")
+        else:
+            print("\033[1;31mInvalid selection.\033[0m")
+    finally:
+        sys.stderr.write("\033[?25h"); sys.stderr.flush()
+
+if __name__ == "__main__":
+    init_db()
+    args = sys.argv[1:]
+    if len(args) < 2:
+        print("Usage: ai-agent-sessions [save|load] [workspace_name] [optional_tag]")
+        sys.exit(1)
+        
+    cmd, workspace = args[0], args[1]
+    if cmd == "save":
+        tag = args[2] if len(args) > 2 else f"save_{int(time.time())}"
+        save_checkpoint(workspace, tag)
+    elif cmd == "load":
+        rollback_checkpoint(workspace)

@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.7.6 [j5onrf] [06-20-26]
+# Local-Ai Agent v0.8.7.7 [j5onrf] [06-23-26]
 
 import sys, re, os, json, threading, time, subprocess, shutil, tty, termios, select
 import urllib.request as urlreq, urllib.error as urlerr
-
 try: import readline
 except ImportError: pass
 
@@ -18,57 +17,47 @@ BASE_PROMPT = "Local shell AI assistant (read-only access).\nProvide direct, nat
 class InlineSpinner:
     def __init__(self): self.chars, self.active, self.thread = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏", False, None
     def _spin(self):
-        idx, char_len = 0, len(self.chars)
+        idx = 0
         while self.active:
             try:
-                sys.stderr.write(f"\r\033[1;32m{self.chars[idx % char_len]}\033[0m ")
+                sys.stderr.write(f"\r\033[1;32m{self.chars[idx % 12]}\033[0m ")
                 sys.stderr.flush()
             except Exception: pass
             idx, _ = idx + 1, time.sleep(0.08)
-        try:
-            sys.stderr.write("\r\x1b[2K\r")
-            sys.stderr.flush()
-        except Exception: pass
+        sys.stderr.write("\r\x1b[2K\r"); sys.stderr.flush()
     def start(self): self.active, self.thread = True, threading.Thread(target=self._spin, daemon=True); self.thread.start()
     def stop(self): self.active = False; self.thread.join() if self.thread else None
 
-def sanitize_input(text): return re.sub(r"[`$]", "", text).strip() if text else ""
-def tokenize(text): return [w for w in TOKEN_RE.sub(" ", text.lower()).split() if len(w) > 1 and w not in STOP_WORDS]
-def check_danger(cmd): return f"DANGER_FLAGGED:{cmd}" if cmd and any(kw in cmd.lower() for kw in DESTRUCTIVE_KEYWORDS) else cmd
+def sanitize_input(t): return re.sub(r"[`$]", "", t).strip() if t else ""
+def tokenize(t): return [w for w in TOKEN_RE.sub(" ", t.lower()).split() if len(w) > 1 and w not in STOP_WORDS]
+def check_danger(c): return f"DANGER_FLAGGED:{c}" if c and any(kw in c.lower() for kw in DESTRUCTIVE_KEYWORDS) else c
 
 def ensure_mysys_exists():
     if not os.path.exists(f"{SKILLS_DIR}/system/mysys.md"):
         try: subprocess.run([sys.executable, f"{CFG_DIR}/tools/generate-profile"])
         except Exception: pass
 
-def find_skill_file(skills_dir, name):
-    for r, _, files in os.walk(skills_dir):
-        if r[len(skills_dir):].count(os.sep) <= 3:
-            for f in files:
-                if f.lower() == f"{name.lower()}.md": return os.path.join(r, f)
-    return None
+def find_skill_file(d, n):
+    return next((os.path.join(r, f) for r, _, fs in os.walk(d) if r[len(d):].count(os.sep) <= 3 for f in fs if f.lower() == f"{n.lower()}.md"), None)
 
-def load_skill_content(skill_name):
-    sf = find_skill_file(SKILLS_DIR, skill_name) if skill_name else None
+def load_skill_content(n):
+    sf = find_skill_file(SKILLS_DIR, n) if n else None
     if not sf: return ""
-    if "system" in skill_name.lower(): ensure_mysys_exists()
+    if "system" in n.lower(): ensure_mysys_exists()
     try:
         with open(sf) as f: return f.read().strip()
     except Exception as e:
-        sys.stderr.write(f"\033[1;31mError loading skill '{skill_name}': {e}\033[0m\n")
-        return ""
+        sys.stderr.write(f"\033[1;31mError loading skill '{n}': {e}\033[0m\n"); return ""
 
 def print_stock_error(n):
     sh = os.path.basename(os.environ.get("SHELL", "/bin/bash"))
     sys.stderr.write(f"zsh: command not found: {n}\n" if "zsh" in sh else f"bash: {n}: command not found\n")
 
-def run_local_tool(cmd):
+def run_local_tool(c):
     try:
-        env = {**os.environ, "AI_CONTEXT_RUN": "1"}
-        out = subprocess.check_output(re.sub(r'\|\s*(leaf|mdcat|cat|glow)\b.*$', '', cmd.strip()).strip(), shell=True, text=True, timeout=15, env=env).strip()
+        out = subprocess.check_output(re.sub(r'\|\s*(leaf|mdcat|cat|glow)\b.*$', '', c.strip()).strip(), shell=True, text=True, timeout=15, env={**os.environ, "AI_CONTEXT_RUN": "1"}).strip()
         return f"{out}\n" if out else "Action executed successfully.\n"
-    except Exception as e:
-        return f"[SYSTEM ERROR] Failed to run local tool: {e}\n"
+    except Exception as e: return f"[SYSTEM ERROR] Failed to run local tool: {e}\n"
 
 def load_context_entries():
     global _CACHED_ENTRIES, _LAST_M_TIME
@@ -79,16 +68,16 @@ def load_context_entries():
         if _CACHED_ENTRIES is not None and mtime <= _LAST_M_TIME: return _CACHED_ENTRIES
         with open(CONTEXT_FILE) as f:
             lines = [s for l in f.read().splitlines() if (s := l.strip()) and not s.startswith("#") and "--->" in s]
-        entries = []
+        _CACHED_ENTRIES = []
         for line in lines:
             cmd, intents = line.split("--->", 1)
-            intent_list = [i.strip() for i in intents.split(",") if i.strip()]
-            primary = intent_list[0] if intent_list else ""
-            for intent in intent_list:
+            intents = [i.strip() for i in intents.split(",") if i.strip()]
+            primary = intents[0] if intents else ""
+            for intent in intents:
                 if tokens := tokenize(intent):
-                    entries.append({"cmd": cmd.strip(), "intent": intent, "primary": primary, "tokens": tokens})
-        _CACHED_ENTRIES, _LAST_M_TIME = entries, mtime
-        return entries
+                    _CACHED_ENTRIES.append({"cmd": cmd.strip(), "intent": intent, "primary": primary, "tokens": tokens})
+        _LAST_M_TIME = mtime
+        return _CACHED_ENTRIES
     except Exception: return []
 
 def jaccard_search(query, threshold=0.45):
@@ -128,8 +117,7 @@ def clean_tool_prefix(cmd):
     c = cmd.replace("[TOOL]", "", 1).strip() if is_tool else cmd
     if c.startswith("DANGER_FLAGGED:"):
         c = f"DANGER_FLAGGED:{c.replace('DANGER_FLAGGED:', '').replace('[TOOL]', '').strip()}"
-    c = c.replace(" --s", "").strip()
-    pager = ""
+    c, pager = c.replace(" --s", "").strip(), ""
     for f, p in [(" --leaf", "leaf"), (" --glow", "glow"), (" --cat", "cat"), (" --mdcat", "mdcat")]:
         if c.endswith(f): c, pager = c[:-len(f)].strip(), p; break
     if not pager and is_tool: pager = "mdcat" if shutil.which("mdcat") else "cat"
@@ -146,26 +134,39 @@ def get_system_context(query):
                 tool = cmd.replace("[TOOL]", "").strip()
                 if "system" in tool.lower(): ensure_mysys_exists()
                 is_safe = " --s" in tool
-                if is_safe: tool = tool.replace(" --s", "").strip()
+                tool = tool.replace(" --s", "").strip()
                 for f in [" --leaf", " --glow", " --cat", " --mdcat"]:
                     if tool.endswith(f): tool = tool[:-len(f)].strip()
                 intent_tokens = set(tokenize(entry.get("intent", "")))
                 args = " ".join([w for w in query.split() if tokenize(w) and tokenize(w)[0] not in intent_tokens])
-                if "$1" in tool or "{}" in tool:
-                    tool = tool.replace("$1", args).replace("{}", args).strip()
+                if "$1" in tool or "{}" in tool: tool = tool.replace("$1", args).replace("{}", args).strip()
                 if is_safe:
                     sys.stderr.write(f"\033[2m[sys] Executing: {tool}\033[0m\n"); sys.stderr.flush()
                     return run_local_tool(tool)
-                
                 sys.stderr.write(f"\033[1;30m[sys] Run tool: \033[1;36m{tool}\033[1;30m? [↵ run  Esc]: \033[0m"); sys.stderr.flush()
                 key = get_key()
                 if key in ('\x03', '\x1b'):
                     sys.stderr.write("\r\x1b[K\033[2;31m[sys] Cancelled.\033[0m\n"); sys.stderr.flush(); sys.exit(130)
                 is_run = key in ('\r', '\n', '', 'y', 'Y')
-                msg = f"\033[2m[sys] Executing: {tool}" if is_run else "\033[2;31m[sys] Skipped tool execution."
-                sys.stderr.write(f"\r\x1b[K{msg}\033[0m\n"); sys.stderr.flush()
+                sys.stderr.write(f"\r\x1b[K{f'\033[2m[sys] Executing: {tool}' if is_run else '\033[2;31m[sys] Skipped tool execution.'}\033[0m\n"); sys.stderr.flush()
                 return run_local_tool(tool) if is_run else ""
     return ""
+
+def prune_history(history, max_tokens=None):
+    if len(history) <= 1: return history
+    if max_tokens is None:
+        try: max_tokens = int(os.environ.get("AI_MAX_TOKENS", 8192))
+        except: max_tokens = 8192
+    system_prompt = history[0]
+    current_tokens = len(system_prompt["content"]) // 4
+    selected = []
+    for msg in reversed(history[1:]):
+        msg_tokens = len(msg["content"]) // 4
+        if not selected or current_tokens + msg_tokens <= max_tokens:
+            selected.append(msg)
+            current_tokens += msg_tokens
+        else: break
+    return [system_prompt] + list(reversed(selected))
 
 def run_interactive_selection(intent):
     if re.search(r'[\[\]{}()=\'"",;|<>#]', intent): print_stock_error(intent); sys.exit(127)
@@ -210,13 +211,9 @@ def run_interactive_selection(intent):
 
 def stream_llm_response(messages, prefix="AI: "):
     configs, gkey, okey, ckey, curl = [], os.environ.get("GEMINI_API_KEY"), os.environ.get("OPENROUTER_API_KEY"), os.environ.get("CLOUD_API_KEY"), os.environ.get("CLOUD_API_URL")
-    if gkey: 
-        configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Authorization": f"Bearer {gkey}"}, os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"), {}, 15))
-    if okey:
-        m = os.environ.get("OPENROUTER_MODEL", "openrouter/free")
-        configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"}, m, {}, 20))
-    if ckey and curl: 
-        configs.append((curl, {"Authorization": f"Bearer {ckey}"}, os.environ.get("CLOUD_MODEL"), {}, 30))
+    if gkey: configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Authorization": f"Bearer {gkey}"}, os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"), {}, 15))
+    if okey: configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"}, os.environ.get("OPENROUTER_MODEL", "openrouter/free"), {}, 20))
+    if ckey and curl: configs.append((curl, {"Authorization": f"Bearer {ckey}"}, os.environ.get("CLOUD_MODEL"), {}, 30))
     configs.append(("http://localhost:8080/v1/chat/completions", {}, "local-model", {}, 180))
     spinner = InlineSpinner()
     try:
@@ -231,7 +228,7 @@ def stream_llm_response(messages, prefix="AI: "):
                     with urlreq.urlopen(req, timeout=timeout) as response:
                         try:
                             p = "gemini" if "generativelanguage" in url else "openrouter" if "openrouter" in url else None
-                            p and open(os.path.join(CFG_DIR, ".request_log"), "a").write(f"{int(time.time())}|{p}\n")
+                            if p: open(os.path.join(CFG_DIR, ".request_log"), "a").write(f"{int(time.time())}|{p}\n")
                         except: pass
                         first, acc, resolved_model = True, [], None
                         for line in response:
@@ -248,9 +245,7 @@ def stream_llm_response(messages, prefix="AI: "):
                                 if content:
                                     if first:
                                         spinner.stop()
-                                        if sys.stdout.isatty():
-                                            sys.stdout.write("\r\x1b[2K\r\033[1;32m" + prefix + "\033[0m ")
-                                            sys.stdout.flush()
+                                        if sys.stdout.isatty(): sys.stdout.write(f"\r\x1b[2K\r\033[1;32m{prefix}\033[0m "); sys.stdout.flush()
                                         first = False
                                     print(content, end="", flush=True); acc.append(content)
                             except: pass
@@ -261,15 +256,11 @@ def stream_llm_response(messages, prefix="AI: "):
                 except urlerr.HTTPError as e:
                     spinner.stop()
                     if e.code == 429 and retries > 0: time.sleep(backoff); retries, backoff = retries - 1, backoff * 2
-                    elif e.code == 400:
-                        sys.stderr.write(f"\n\033[1;31m[API 400 Error]: {e.read().decode('utf-8')}\033[0m\n"); break
-                    else:
-                        sys.stderr.write(f"\033[90m[sys] {url.split('/')[2]} failed: HTTP {e.code}\033[0m\n")
-                        break
+                    elif e.code == 400: sys.stderr.write(f"\n\033[1;31m[API 400 Error]: {e.read().decode('utf-8')}\033[0m\n"); break
+                    else: sys.stderr.write(f"\033[90m[sys] {url.split('/')[2]} failed: HTTP {e.code}\033[0m\n"); break
                 except Exception as e:
                     spinner.stop()
-                    sys.stderr.write(f"\033[90m[sys] {url.split('/')[2]} failed: {e}\033[0m\n")
-                    break
+                    sys.stderr.write(f"\033[90m[sys] {url.split('/')[2]} failed: {e}\033[0m\n"); break
     except KeyboardInterrupt:
         spinner.stop(); sys.stderr.write("\n\r\x1b[2K\rCancelled.\n"); sys.stderr.flush(); sys.exit(130)
     sys.stderr.write("\033[1;31mError: All fallbacks/local servers are offline.\033[0m\n\n"); return None
@@ -286,11 +277,26 @@ try:
             if is_agent or len(args) == 1:
                 active_skill = os.environ.get("AI_ACTIVE_SKILL")
                 skill_content = load_skill_content(active_skill.lstrip("-")) if active_skill else ""
-                active_system_prompt = BASE_PROMPT
-                if skill_content: active_system_prompt += f"\n\n### Active Skill/Role Instructions:\n{skill_content}\n"
+                active_system_prompt = BASE_PROMPT + (f"\n\n### Active Skill/Role Instructions:\n{skill_content}\n" if skill_content else "")
+                
+                workspace_path = os.environ.get("AI_WORKSPACE_PATH", os.getcwd())
+                home_dir = os.path.expanduser("~")
+                if workspace_path.startswith(home_dir): workspace_path = workspace_path[len(home_dir):].lstrip("/")
+                safe_name = workspace_path.replace("/", "-").strip("-")
+                session_file = os.path.join(CFG_DIR, "projects", "database", f"{safe_name}.json")
+                os.makedirs(os.path.dirname(session_file), exist_ok=True)
+                
+                chat_history = [{"role": "system", "content": active_system_prompt}]
+                if is_agent and os.path.exists(session_file):
+                    try:
+                        with open(session_file, "r") as sf:
+                            chat_history = json.load(sf)
+                            print(f"\033[1;30m[sys] Resumed workspace session. ({len(chat_history)} turns)\033[0m")
+                    except: pass
+
                 clean_name = active_skill.lstrip("-") if active_skill else ""
                 print(f"\033[1;36mAI Agent Session Initialized | Context Loaded{f' [{clean_name}]' if clean_name else ''} | Ctrl+C to exit.\033[0m\n" if is_agent else "\033[1;34mLocal AI Conversation Mode. Ctrl+C to quit.\033[0m\n")
-                pending_query, chat_history = " ".join(args[1:]) if len(args) > 1 else None, [{"role": "system", "content": active_system_prompt}]
+                pending_query = " ".join(args[1:]) if len(args) > 1 else None
                 try:
                     while True:
                         if pending_query: query, pending_query = pending_query, None
@@ -299,7 +305,26 @@ try:
                             except EOFError: break
                             if not raw_query.strip(): continue
                             query = raw_query.strip()
-                            if query.lower() in ("exit", "quit", "q"): print("\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
+                            if query.lower() in ("exit", "quit", "q"): 
+                                if is_agent:
+                                    with open(session_file, "w") as sf: json.dump(chat_history, sf, indent=2)
+                                print("\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
+                        
+                        if query.startswith("-save"):
+                            tag = query.replace("-save", "").strip()
+                            with open(session_file, "w") as sf: json.dump(chat_history, sf, indent=2)
+                            subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "save", safe_name, tag])
+                            continue
+                        
+                        if query in ("-load", "-timeline"):
+                            with open(session_file, "w") as sf: json.dump(chat_history, sf, indent=2)
+                            subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "load", safe_name])
+                            if os.path.exists(session_file):
+                                try:
+                                    with open(session_file, "r") as sf: chat_history = json.load(sf)
+                                except Exception as e: print(f"Error loading session: {e}")
+                            continue
+
                         q_lower = query.lower().strip()
                         cmd_match = re.match(r'^/?([ftba])(?:\s+(\d+))?$', q_lower)
                         if cmd_match:
@@ -314,9 +339,16 @@ try:
                         chat_history.append({"role": "user", "content": prompt})
                         try: readline.add_history(query)
                         except: pass
-                        ans = stream_llm_response(chat_history, prefix="Agent:" if is_agent else "AI:")
-                        if ans: chat_history.append({"role": "assistant", "content": ans})
-                except KeyboardInterrupt: print("\n\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
+                        pruned_history = prune_history(chat_history)
+                        ans = stream_llm_response(pruned_history, prefix="Agent:" if is_agent else "AI:")
+                        if ans: 
+                            chat_history.append({"role": "assistant", "content": ans})
+                            if is_agent:
+                                with open(session_file, "w") as sf: json.dump(chat_history, sf, indent=2)
+                except KeyboardInterrupt: 
+                    if is_agent:
+                        with open(session_file, "w") as sf: json.dump(chat_history, sf, indent=2)
+                    print("\n\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
 
             elif len(args) > 1:
                 query_parts = args[1:]
