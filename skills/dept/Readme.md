@@ -6,7 +6,7 @@ Documentation for building, organizing, and executing dynamic, on-demand special
 
 ## 1. Directory Structure
 
-The `/home/j5/.config/local-ai/skills/dept/` directory holds your specialized, role-based "onboarding guides." You can organize them recursively to maintain clean organizational lines:
+The `/home/user/.config/local-ai/skills/dept/` directory holds your specialized, role-based "onboarding guides." You can organize them recursively to maintain clean organizational lines:
 
 ```text
 skills/dept/

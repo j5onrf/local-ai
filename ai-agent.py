@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.8.2 [j5onrf] [06-23-26]
+# Local-Ai Agent v0.8.8.3 [j5onrf] [06-24-26]
 
 import sys, re, os, json, threading, time, subprocess, shutil, tty, termios, select
 import urllib.request as urlreq, urllib.error as urlerr
@@ -290,6 +290,9 @@ try:
                 os.makedirs(os.path.dirname(session_file), exist_ok=True)
                 
                 chat_history = [{"role": "system", "content": active_system_prompt}]
+                loaded_skills = set()
+                if active_skill: loaded_skills.add(active_skill.lstrip("-").lower())
+                
                 if is_agent and os.path.exists(session_file):
                     try:
                         with open(session_file, "r") as sf:
@@ -339,6 +342,12 @@ try:
                                 except Exception as e: print(f"Error loading session: {e}")
                             continue
 
+                        # --- 1. MEMORY BANK: RETRIEVE RELEVANT PAST TURNS ---
+                        past_memory = ""
+                        if is_agent and not query.startswith("# ACTIVE PROJECT WORKSPACE"):
+                            res = subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "get-context", safe_name, query], stdout=subprocess.PIPE, text=True)
+                            past_memory = res.stdout.strip()
+
                         q_lower = query.lower().strip()
                         cmd_match = re.match(r'^/?([ftba])(?:\s+(\d+))?$', q_lower)
                         if cmd_match:
@@ -348,8 +357,13 @@ try:
                                 except Exception as e: sys.stderr.write(f"\033[1;31m[Warning] chat tool failed: {e}\033[0m\n")
                             else: sys.stderr.write("\033[1;31mError: chat tool not found at tools/chat\033[0m\n")
                             continue
+                        
                         system_context = get_system_context(query)
-                        prompt = (f"### Real-time System Context:\n{system_context}\n\n" if system_context else "") + f"User Question: {query}"
+                        
+                        # Prepend retrieved past memories to your standard System Context
+                        combined_context = (f"{past_memory}\n\n" if past_memory else "") + system_context
+                        prompt = (f"### Real-time System Context:\n{combined_context}\n\n" if combined_context else "") + f"User Question: {query}"
+                        
                         chat_history.append({"role": "user", "content": prompt})
                         try: readline.add_history(query)
                         except: pass
@@ -359,6 +373,8 @@ try:
                             chat_history.append({"role": "assistant", "content": ans})
                             if is_agent:
                                 with open(session_file, "w") as sf: json.dump(chat_history, sf, indent=2)
+                                # --- 2. MEMORY BANK: PASSIVELY LOG TURN ---
+                                subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "log-turn", safe_name, query, ans])
                 except KeyboardInterrupt: 
                     if is_agent:
                         with open(session_file, "w") as sf: json.dump(chat_history, sf, indent=2)
