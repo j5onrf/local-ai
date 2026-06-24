@@ -67,9 +67,9 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 
 | Command | Description |
 | --- | --- |
-| `/s <query>` / `/skill` | Search and load dynamic department skills on-the-fly [1]. |
-| `-save <tag>` | Snapshot current conversation directly to SQLite in RAM [4]. |
-| `-timeline` / `-load` | Rollback active memory to a past SQLite checkpoint [4]. |
+| `/s <query>` / `/skill` | Search and load dynamic department skills on-the-fly. |
+| `-save <tag>` | Snapshot current conversation directly to SQLite in RAM. |
+| `-timeline` / `-load` | Rollback active memory to a past SQLite checkpoint. |
 | `/f` `/t` `/b` `/a` | Trigger Follow-up, Thinking, Brainstorm, or all. |
 
 ---
