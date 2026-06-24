@@ -67,6 +67,7 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 | `ai init <path>` | Index directory & launch codebase-aware agent. |
 | `voice` | Launch local-network tablet `voice` bridge (Port 9999). |
 | `f` `t` `b` `a` | Trigger Follow-up, Thinking, Brainstorm, or all. |
+| `/skill <query>` / `/s <query>` | Search and load dynamic skills. |
 
 ---
 

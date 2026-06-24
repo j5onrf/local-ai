@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+# Local-Ai On-Demand Skill Selector [dept-backed] [j5onrf] v0.8.8.2
+
+import sys, os, json, re, tty, termios, select
+
+CFG_DIR = os.path.expanduser("~/.config/local-ai")
+DEPT_SKILLS_DIR = os.path.join(CFG_DIR, "skills", "dept")
+TOKEN_RE = re.compile(r"[^\w\s]")
+STOP_WORDS = {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"}
+
+def tokenize(t): return [w for w in TOKEN_RE.sub(" ", t.lower()).split() if len(w) > 1 and w not in STOP_WORDS]
+
+def get_key():
+    fd = sys.stdin.fileno()
+    try: old = termios.tcgetattr(fd)
+    except termios.error:
+        try: return os.read(fd, 1).decode("utf-8", errors="ignore")
+        except: return ""
+    try:
+        tty.setraw(fd); r = os.read(fd, 1)
+        if r == b'\x1b' and select.select([fd], [], [], 0.05)[0]: r += os.read(fd, 2)
+    finally: termios.tcsetattr(fd, termios.TCSADRAIN, old)
+    return r.decode("utf-8", errors="ignore")
+
+def load_skill_blueprints():
+    blueprints = []
+    if os.path.exists(DEPT_SKILLS_DIR):
+        for r, _, fs in os.walk(DEPT_SKILLS_DIR):
+            for f in fs:
+                if f.endswith(".md"):
+                    path = os.path.join(r, f)
+                    try:
+                        with open(path, "r") as sf:
+                            first_line = sf.readline().strip()
+                            # Walk down up to 5 lines to find the first non-markdown paragraph description
+                            desc_line = ""
+                            for _ in range(5):
+                                line = sf.readline().strip()
+                                if line and not line.startswith(("#", "---", ">")):
+                                    desc_line = line
+                                    break
+                        if first_line.startswith("# [SKILL]") and "--->" in first_line:
+                            header, intents = first_line.split("--->", 1)
+                            skill_name = header.replace("# [SKILL]", "").strip()
+                            intent_list = [i.strip() for i in intents.split(",") if i.strip()]
+                            rel_path = os.path.relpath(path, DEPT_SKILLS_DIR)
+                            blueprints.append({
+                                "name": skill_name.lower(),
+                                "path": path,
+                                "rel_path": rel_path,
+                                "desc": desc_line if desc_line else "No description provided.",
+                                "intents": intent_list,
+                                "tokens": tokenize(" ".join(intent_list))
+                            })
+                    except: pass
+    return blueprints
+
+def run_skill_selector(workspace, raw_cmd):
+    session_file = os.path.join(CFG_DIR, "projects", "database", f"{workspace}.json")
+    if not os.path.exists(session_file):
+        print(f"\033[1;31m[skill-mgr] No active session file found at: {session_file}\033[0m")
+        sys.exit(1)
+
+    try:
+        with open(session_file, "r") as sf: chat_history = json.load(sf)
+    except Exception as e:
+        print(f"\033[1;31m[skill-mgr] Failed to load session JSON: {e}\033[0m")
+        sys.exit(1)
+
+    parts = raw_cmd.strip().split(maxsplit=1)
+    search_query = parts[1].strip() if len(parts) > 1 else ""
+    skills = load_skill_blueprints()
+    candidates = []
+
+    for s in skills:
+        if not search_query:
+            candidates.append((1.0, s))
+        else:
+            q_tokens, s_tokens = set(tokenize(search_query)), set(s["tokens"])
+            score = len(q_tokens & s_tokens) / len(q_tokens | s_tokens) if (q_tokens & s_tokens) else 0.0
+            if search_query.lower() in s["name"] or search_query.lower() in os.path.basename(s["path"]).lower() or any(search_query.lower() in i for i in s["intents"]):
+                score = max(score, 0.8)
+            if score > 0.0:
+                candidates.append((score, s))
+
+    if not candidates:
+        print("\033[1;31m[skill-mgr] No matching department skills found.\033[0m")
+        sys.exit(0)
+
+    candidates.sort(key=lambda x: -x[0])
+    num_opts, current_idx = len(candidates), 0
+    sys.stderr.write("\033[?25l"); sys.stderr.flush()
+    try:
+        while True:
+            _, selected_skill = candidates[current_idx]
+            idx_str = f"{current_idx + 1:02d}/{num_opts:02d}"
+            
+            # Line 1: Header, Name, and Geographic relative path
+            sys.stderr.write(f"\r\x1b[K\033[1;30m[\033[1;32m{idx_str}\033[1;30m]\033[0m ❯ \x1b[1;36m[skill]\x1b[0m \033[1;32m{selected_skill['name']}\033[0m \033[90m({selected_skill['rel_path']})\033[0m\n")
+            # Line 2: Description and control key prompt
+            sys.stderr.write(f"\r\x1b[K\033[3m   \"{selected_skill['desc']}\"\033[0m [↵ load  Esc]: ")
+            sys.stderr.flush()
+            
+            key = get_key()
+            if key in ('\x03', '\x1b'):
+                sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[KCancelled.\n"); break
+            if key in ('\r', ''):
+                try:
+                    with open(selected_skill["path"], "r") as sf: skill_body = sf.read().strip()
+                    chat_history[0]["content"] += f"\n\n### Loaded On-Demand Skill: {selected_skill['name']}\n{skill_body}\n"
+                    with open(session_file, "w") as sf: json.dump(chat_history, sf, indent=2)
+                    sys.stderr.write(f"\r\x1b[K\x1b[1A\r\x1b[K\033[2;32m[sys] On-Demand Skill '{selected_skill['name']}' successfully injected.\033[0m\n")
+                except Exception as e:
+                    sys.stderr.write(f"\r\x1b[K\x1b[1A\r\x1b[K\033[1;31m[sys] Failed to load skill: {e}\033[0m\n")
+                break
+            elif key in ('\x1b[A', '\x1b[B'):
+                current_idx = (current_idx + (1 if key == '\x1b[B' else -1) + num_opts) % num_opts
+                # Clean up both lines and shift up before drawing the next slide
+                sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
+    finally:
+        sys.stderr.write("\033[?25h"); sys.stderr.flush()
+
+if __name__ == "__main__":
+    if len(sys.argv) < 3:
+        sys.exit(1)
+    run_skill_selector(sys.argv[1], sys.argv[2])

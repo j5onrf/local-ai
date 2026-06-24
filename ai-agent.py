@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.7.7 [j5onrf] [06-23-26]
+# Local-Ai Agent v0.8.8.2 [j5onrf] [06-23-26]
 
 import sys, re, os, json, threading, time, subprocess, shutil, tty, termios, select
 import urllib.request as urlreq, urllib.error as urlerr
@@ -67,10 +67,11 @@ def load_context_entries():
         mtime = os.path.getmtime(CONTEXT_FILE)
         if _CACHED_ENTRIES is not None and mtime <= _LAST_M_TIME: return _CACHED_ENTRIES
         with open(CONTEXT_FILE) as f:
-            lines = [s for l in f.read().splitlines() if (s := l.strip()) and not s.startswith("#") and "--->" in s]
+            lines = [s for l in f.read().splitlines() if (s := l.strip()) and not s.startswith("#") and "----->" in s or "--->" in s]
         _CACHED_ENTRIES = []
         for line in lines:
-            cmd, intents = line.split("--->", 1)
+            delim = "--->" if "--->" in line else "──>"
+            cmd, intents = line.split(delim, 1)
             intents = [i.strip() for i in intents.split(",") if i.strip()]
             primary = intents[0] if intents else ""
             for intent in intents:
@@ -261,9 +262,10 @@ def stream_llm_response(messages, prefix="AI: "):
                 except Exception as e:
                     spinner.stop()
                     sys.stderr.write(f"\033[90m[sys] {url.split('/')[2]} failed: {e}\033[0m\n"); break
+        sys.stderr.write("\033[1;31mError: All fallbacks/local servers are offline.\033[0m\n\n")
     except KeyboardInterrupt:
         spinner.stop(); sys.stderr.write("\n\r\x1b[2K\rCancelled.\n"); sys.stderr.flush(); sys.exit(130)
-    sys.stderr.write("\033[1;31mError: All fallbacks/local servers are offline.\033[0m\n\n"); return None
+    return None
 
 try:
     args = sys.argv[1:]
@@ -310,6 +312,17 @@ try:
                                     with open(session_file, "w") as sf: json.dump(chat_history, sf, indent=2)
                                 print("\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
                         
+                        # --- ON-DEMAND DEPT SKILL SELECTOR DELEGATE HOOK ---
+                        q_strip = query.strip()
+                        if q_strip in ("/skill", "/s") or q_strip.startswith(("/skill ", "/s ")):
+                            with open(session_file, "w") as sf: json.dump(chat_history, sf, indent=2)
+                            subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-skills", safe_name, q_strip])
+                            if os.path.exists(session_file):
+                                try:
+                                    with open(session_file, "r") as sf: chat_history = json.load(sf)
+                                except Exception as e: print(f"Error loading session: {e}")
+                            continue
+
                         if query.startswith("-save"):
                             tag = query.replace("-save", "").strip()
                             with open(session_file, "w") as sf: json.dump(chat_history, sf, indent=2)
