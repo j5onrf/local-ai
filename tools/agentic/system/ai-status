@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ai-status - Diagnostics for Local-AI Agent Stack v1.3.5
+# ai-status - Diagnostics for Local-AI Agent Stack v1.3.6
 
 set -euo pipefail
 
@@ -83,7 +83,7 @@ try:
     free = [m.get('id') for m in models if m.get('id', '').endswith(':free')]
     if free:
         # Format and show top 5 active free models in the pool
-        print(', '.join(free[:5]) + '...')
+        print(', '.join(free[:15]) + '...')
     else:
         print('None found')
 except Exception:

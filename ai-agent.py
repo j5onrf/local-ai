@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.8.9 [j5onrf] [06-24-26]
+# Local-Ai Agent v0.8.8.8 [j5onrf] [06-24-26]
 
 import sys, re, os, json, threading, time, subprocess, shutil, tty, termios, select
 import urllib.request as urlreq, urllib.error as urlerr
@@ -212,25 +212,10 @@ def run_interactive_selection(intent):
 
 def stream_llm_response(messages, prefix="AI: "):
     configs, gkey, okey, ckey, curl = [], os.environ.get("GEMINI_API_KEY"), os.environ.get("OPENROUTER_API_KEY"), os.environ.get("CLOUD_API_KEY"), os.environ.get("CLOUD_API_URL")
-    
-    # 1. Gemini Tier (Optional via .bashrc toggle)
-    if gkey: 
-        configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Authorization": f"Bearer {gkey}"}, os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"), {}, 15))
-    
-    # 2. OpenRouter Tiers (Split into targeted DeepSeek Flash and dynamic Free Pool)
-    if okey:
-        # High-capacity dedicated MoE target
-        configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"}, "deepseek/deepseek-v4-flash:free", {}, 20))
-        # Dynamic pool fallback backup
-        configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"}, os.environ.get("OPENROUTER_MODEL", "openrouter/free"), {}, 20))
-        
-    # 3. Cloud Provider Tier
-    if ckey and curl: 
-        configs.append((curl, {"Authorization": f"Bearer {ckey}"}, os.environ.get("CLOUD_MODEL"), {}, 30))
-        
-    # 4. Local Model Floor
+    if gkey: configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Authorization": f"Bearer {gkey}"}, os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"), {}, 15))
+    if okey: configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"}, os.environ.get("OPENROUTER_MODEL", "openrouter/free"), {}, 20))
+    if ckey and curl: configs.append((curl, {"Authorization": f"Bearer {ckey}"}, os.environ.get("CLOUD_MODEL"), {}, 30))
     configs.append(("http://localhost:8080/v1/chat/completions", {}, "local-model", {}, 180))
-    
     spinner = InlineSpinner()
     try:
         for url, headers, model, extra, timeout in configs:
@@ -380,8 +365,6 @@ try:
                             continue
                         
                         system_context = get_system_context(query)
-                        
-                        # Prepend retrieved past memories to your standard System Context
                         combined_context = (f"{past_memory}\n\n" if past_memory else "") + system_context
                         prompt = (f"### Real-time System Context:\n{combined_context}\n\n" if combined_context else "") + f"User Question: {query}"
                         
