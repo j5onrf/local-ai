@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
-# Local-Ai Session, Checkpoint, and Dynamic Memory Manager [sqlite3-backed] v0.8.8.3
+# Local-Ai Session, Checkpoint, and Dynamic Memory Manager [sqlite3-backed]
 
 import sys, os, json, sqlite3, time, termios, tty, select, re
 
 CFG_DIR = os.path.expanduser("~/.config/local-ai")
 DB_PATH = os.path.join(CFG_DIR, "projects", "database", "sessions.db")
-SESSIONS_DIR = os.path.join(CFG_DIR, "projects", "database")
 TOKEN_RE = re.compile(r"[^\w\s]")
 STOP_WORDS = {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"}
 
 def tokenize(t): return [w for w in TOKEN_RE.sub(" ", t.lower()).split() if len(w) > 1 and w not in STOP_WORDS]
 
-# Blocking raw-TTY keyboard grabber (With terminal input queue flushing)
+# Blocking raw-TTY keyboard grabber
 def get_key():
     try:
         with open("/dev/tty", "r") as tty_file:
@@ -19,9 +18,8 @@ def get_key():
             old = termios.tcgetattr(fd)
             try:
                 tty.setraw(fd)
-                # Flush pending terminal buffer keys (prevents residual Enter key auto-approvals)
                 termios.tcflush(fd, termios.TCIFLUSH)
-                r = os.read(fd, 1) # Blocks until a fresh key is pressed
+                r = os.read(fd, 1)
                 if r == b'\x1b' and select.select([fd], [], [], 0.05)[0]:
                     r += os.read(fd, 2)
                 return r.decode("utf-8", errors="ignore")
@@ -67,18 +65,22 @@ def init_db():
     conn.commit()
     conn.close()
 
+# Reads the manual save history JSON directly from stdin
 def save_checkpoint(workspace, tag):
-    active_file = os.path.join(SESSIONS_DIR, f"{workspace}.json")
-    if not os.path.exists(active_file): sys.exit(1)
     try:
-        with open(active_file, "r") as f: history_data = f.read()
-    except: sys.exit(1)
+        history_data = sys.stdin.read().strip()
+        json.loads(history_data) # Validate it is correct JSON
+    except:
+        sys.stderr.write("\033[1;31m[session-mgr] Invalid history data received via stdin.\033[0m\n")
+        sys.exit(1)
+
     conn = sqlite3.connect(DB_PATH)
     conn.cursor().execute("INSERT INTO checkpoints (workspace, tag, history, timestamp) VALUES (?, ?, ?, ?)", (workspace, tag, history_data, int(time.time())))
     conn.commit()
     conn.close()
-    print(f"\033[1;32m[session-mgr] Checkpoint '{tag}' saved to SQLite for '{workspace}'.\033[0m")
+    sys.stderr.write(f"\033[1;32m[session-mgr] Checkpoint '{tag}' saved to SQLite for '{workspace}'.\033[0m\n")
 
+# Writes the selected rollback history JSON directly to stdout
 def rollback_checkpoint(workspace):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -86,21 +88,25 @@ def rollback_checkpoint(workspace):
     rows = cursor.fetchall()
     conn.close()
     if not rows:
-        print(f"\033[1;31m[session-mgr] No checkpoints found for: {workspace}\033[0m"); sys.exit(0)
+        sys.stderr.write(f"\033[1;31m[session-mgr] No checkpoints found for: {workspace}\033[0m\n")
+        sys.exit(0)
 
-    print("\n\033[1;36m--- Active Checkpoints (SQLite) ---\033[0m")
+    sys.stderr.write("\n\033[1;36m--- Active Checkpoints (SQLite) ---\033[0m\n")
     for idx, (tag, history, ts) in enumerate(rows):
-        print(f"[{idx}] \033[1;32m{tag}\033[0m ({len(json.loads(history))} turns) - {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(ts))}")
-    print("\n\033[1;30mSelect index to restore, or press Esc/Ctrl+C to cancel:\033[0m ")
+        sys.stderr.write(f"[{idx}] \033[1;32m{tag}\033[0m ({len(json.loads(history))} turns) - {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(ts))}\n")
+    sys.stderr.write("\n\033[1;30mSelect index to restore, or press Esc/Ctrl+C to cancel:\033[0m\n")
 
     sys.stderr.write("\033[?25l"); sys.stderr.flush()
     try:
         key = get_key()
-        if key in ('\x03', '\x1b'): print("\033[1;30mCancelled.\033[0m"); sys.exit(0)
+        if key in ('\x03', '\x1b'):
+            sys.stderr.write("\r\x1b[KCancelled.\n")
+            sys.exit(0)
         if key.isdigit() and int(key) < len(rows):
             selected_tag, selected_history, _ = rows[int(key)]
-            with open(os.path.join(SESSIONS_DIR, f"{workspace}.json"), "w") as f: f.write(selected_history)
-            print(f"\033[1;32m[session-mgr] Restored checkpoint '{selected_tag}' successfully.\033[0m\n")
+            sys.stderr.write(f"\r\x1b[K\033[1;32m[session-mgr] Loading checkpoint '{selected_tag}'...\033[0m\n")
+            # Print the history string directly to stdout (captured by ai-agent.py)
+            print(selected_history)
     finally: sys.stderr.write("\033[?25h"); sys.stderr.flush()
 
 def log_turn(workspace, user_msg, assistant_msg):
@@ -115,7 +121,6 @@ def log_turn(workspace, user_msg, assistant_msg):
     conn.commit()
     conn.close()
 
-# --- PERMISSION-GATED MEMORY RETRIEVAL ---
 def search_past_context(workspace, query):
     q_tokens = set(tokenize(query))
     if not q_tokens: return
@@ -135,7 +140,6 @@ def search_past_context(workspace, query):
     if not candidates: return
     candidates.sort(key=lambda x: -x[0])
     
-    # Intercept and prompt the user for permission to recall the best match
     best_score, best_user, _, _ = candidates[0]
     display_msg = best_user.strip().replace("\n", " ")
     if len(display_msg) > 50:
@@ -145,10 +149,9 @@ def search_past_context(workspace, query):
     sys.stderr.flush()
     
     key = get_key()
-    if key in ('\r', '\n', ''): # approved!
+    if key in ('\r', '\n'):
         sys.stderr.write(f"\r\x1b[K\033[2;32m[sys] Memory injected.\033[0m\n")
         sys.stderr.flush()
-        # Print the context to stdout (captured by ai-agent.py)
         print("\n### Relevant Past Discussion (Retrieved from Session Memory):")
         for _, user_msg, assistant_msg, ts in candidates[:2]:
             date_str = time.strftime('%Y-%m-%d %H:%M', time.localtime(ts))

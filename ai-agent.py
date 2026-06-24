@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.8.3 [j5onrf] [06-24-26]
+# Local-Ai Agent v0.8.8.4 [j5onrf] [06-24-26]
 
 import sys, re, os, json, threading, time, subprocess, shutil, tty, termios, select
 import urllib.request as urlreq, urllib.error as urlerr
@@ -286,23 +286,14 @@ try:
                 if workspace_path.startswith(home_dir): workspace_path = workspace_path[len(home_dir):].lstrip("/")
                 safe_name = workspace_path.replace("/", "-").strip("-")
                 if not safe_name: safe_name = "home"
-                session_file = os.path.join(CFG_DIR, "projects", "database", f"{safe_name}.json")
-                os.makedirs(os.path.dirname(session_file), exist_ok=True)
                 
                 chat_history = [{"role": "system", "content": active_system_prompt}]
                 loaded_skills = set()
                 if active_skill: loaded_skills.add(active_skill.lstrip("-").lower())
                 
-                if is_agent and os.path.exists(session_file):
-                    try:
-                        with open(session_file, "r") as sf:
-                            chat_history = json.load(sf)
-                            print(f"\033[1;30m[sys] Resumed workspace session. ({len(chat_history)} turns)\033[0m")
-                    except: pass
-
+                pending_query = " ".join(args[1:]) if len(args) > 1 else None
                 clean_name = active_skill.lstrip("-") if active_skill else ""
                 print(f"\033[1;36mAI Agent Session Initialized | Context Loaded{f' [{clean_name}]' if clean_name else ''} | Ctrl+C to exit.\033[0m\n" if is_agent else "\033[1;34mLocal AI Conversation Mode. Ctrl+C to quit.\033[0m\n")
-                pending_query = " ".join(args[1:]) if len(args) > 1 else None
                 try:
                     while True:
                         if pending_query: query, pending_query = pending_query, None
@@ -312,33 +303,31 @@ try:
                             if not raw_query.strip(): continue
                             query = raw_query.strip()
                             if query.lower() in ("exit", "quit", "q"): 
-                                if is_agent:
-                                    with open(session_file, "w") as sf: json.dump(chat_history, sf, indent=2)
                                 print("\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
                         
                         # --- ON-DEMAND DEPT SKILL SELECTOR DELEGATE HOOK ---
                         q_strip = query.strip()
                         if q_strip in ("/skill", "/s") or q_strip.startswith(("/skill ", "/s ")):
-                            with open(session_file, "w") as sf: json.dump(chat_history, sf, indent=2)
-                            subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-skills", safe_name, q_strip])
-                            if os.path.exists(session_file):
-                                try:
-                                    with open(session_file, "r") as sf: chat_history = json.load(sf)
+                            # Pass active history JSON string as stdin, capturing outputs directly in pipes
+                            res = subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-skills", safe_name, q_strip], input=json.dumps(chat_history), stdout=subprocess.PIPE, text=True)
+                            if res.stdout.strip():
+                                try: chat_history = json.loads(res.stdout.strip())
                                 except Exception as e: print(f"Error loading session: {e}")
                             continue
 
+                        # --- STATELESS CHECKPOINT SAVE COMMAND ---
                         if query.startswith("-save"):
                             tag = query.replace("-save", "").strip()
-                            with open(session_file, "w") as sf: json.dump(chat_history, sf, indent=2)
-                            subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "save", safe_name, tag])
+                            # Pass history array directly as stdin, bypassing filesystem
+                            subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "save", safe_name, tag], input=json.dumps(chat_history), text=True)
                             continue
                         
+                        # --- STATELESS CHECKPOINT LOAD/TIMELINE COMMAND ---
                         if query in ("-load", "-timeline"):
-                            with open(session_file, "w") as sf: json.dump(chat_history, sf, indent=2)
-                            subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "load", safe_name])
-                            if os.path.exists(session_file):
-                                try:
-                                    with open(session_file, "r") as sf: chat_history = json.load(sf)
+                            # Captures selected rollback JSON history directly from stdout pipe
+                            res = subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "load", safe_name], stdout=subprocess.PIPE, text=True)
+                            if res.stdout.strip():
+                                try: chat_history = json.loads(res.stdout.strip())
                                 except Exception as e: print(f"Error loading session: {e}")
                             continue
 
@@ -359,25 +348,21 @@ try:
                             continue
                         
                         system_context = get_system_context(query)
-                        
-                        # Prepend retrieved past memories to your standard System Context
                         combined_context = (f"{past_memory}\n\n" if past_memory else "") + system_context
                         prompt = (f"### Real-time System Context:\n{combined_context}\n\n" if combined_context else "") + f"User Question: {query}"
                         
                         chat_history.append({"role": "user", "content": prompt})
-                        try: readline.add_history(query)
-                        except: pass
+                        if not query.startswith("# ACTIVE PROJECT WORKSPACE"):
+                            try: readline.add_history(query)
+                            except: pass
                         pruned_history = prune_history(chat_history)
                         ans = stream_llm_response(pruned_history, prefix="Agent:" if is_agent else "AI:")
                         if ans: 
                             chat_history.append({"role": "assistant", "content": ans})
                             if is_agent:
-                                with open(session_file, "w") as sf: json.dump(chat_history, sf, indent=2)
                                 # --- 2. MEMORY BANK: PASSIVELY LOG TURN ---
                                 subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "log-turn", safe_name, query, ans])
                 except KeyboardInterrupt: 
-                    if is_agent:
-                        with open(session_file, "w") as sf: json.dump(chat_history, sf, indent=2)
                     print("\n\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
 
             elif len(args) > 1:

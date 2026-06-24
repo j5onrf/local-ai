@@ -10,22 +10,23 @@ All session and context metadata resides inside `~/.config/local-ai/projects/`:
 *   **`project-init/`**: Raw codebase structural blueprints (`.txt`).
 *   **`database/`**: 
     *   `sessions.db`: SQLite database managing save states and long-term memory.
-    *   `<workspace>.json`: Active conversation state log.
+
+*(Active conversational histories are held strictly in RAM during execution.*
 
 ---
 
 ## 2. Long-Term Conversational Memory (RAG)
 
-Sessions utilize a dual-layer memory layout to prevent token bloat:
-*   **Active Window:** Locked at `8192` tokens by default (recent dialogue remains detailed).
+Sessions utilize an on-demand memory layout to prevent token overages:
+*   **Active Window:** Kept in-memory (RAM) during your active session and capped at `8192` tokens. 
 *   **Passive Memory Bank:** Every turn is passively logged to `sessions.db` in the background.
-*   **Auto-Retrieval:** If your query references a past topic, the Jaccard engine pulls the 2 most relevant past exchanges and injects them as `### Relevant Past Discussion`. The rest of the history remains asleep.
+*   **Auto-Retrieval:** If your query references a past topic, the Jaccard engine pulls the 2 most relevant past exchanges and prompts you to recall them. If approved, they are injected as `### Relevant Past Discussion` [4]. The rest of your history remains asleep.
 
 ---
 
 ## 3. Checkpoints (Save States)
 
-Save or rollback workspace states inside an active chat session.
+Save or rollback workspace states inside an active chat session. Checkpoints are piped directly to/from SQLite using standard streams, completely bypassing the filesystem [4].
 
 *   **Save current state:**
     ```text
@@ -51,4 +52,3 @@ Save or rollback workspace states inside an active chat session.
     ```bash
     export AI_MAX_TOKENS=64000
     ```
-
