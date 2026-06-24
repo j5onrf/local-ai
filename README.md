@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <code>Gemini-3.1-Flash-Lite</code> &nbsp; <code>Deepseek-v4-Flash</code> &nbsp; <code>Openrouter/free</code> &nbsp; <code>Local Model</code>
+  <code>Gemini-3.1-Flash-Lite</code> &nbsp; <code>Openrouter/free</code> &nbsp; <code>Local Model</code>
 </p>
 
 ---
