@@ -110,8 +110,9 @@ Add your shortcuts, commands, and workspaces to `ai-context.md`.
 <h2 align="center">Setup & Prerequisites</h2>
 
 ```bash
-# 1. Optional: Install mdcat for native terminal Markdown rendering
-yay mdcat
+# 1. Optional: Install terminal rendering and dictionary utilities
+# (words enables offline spellcheck; mdcat enables terminal markdown rendering)
+yay -S mdcat words
 
 # 2. Clone the repository locally
 git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai
