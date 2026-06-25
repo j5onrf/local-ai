@@ -4,10 +4,7 @@ tools/subsec/voice/server.pem
 .auto-f
 ai-history
 tools/agentic/fusion/logs
-tools/map/skeleton.json
-tools/map/skeleton-ai.json
-tools/map/skeleton-head.txt
-skeleton-head-local-ai.txt
+index-map-local-ai.txt
 .active_cd
 .request_log
 

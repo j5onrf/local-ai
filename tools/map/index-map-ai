@@ -1,13 +1,30 @@
 #!/usr/bin/env python3
-# skeleton-map-head [Local Map Compiler with SmartCrusher AST Compression] [j5onrf] v1.4.0
+# index-map-ai [Local Map Compiler with SmartCrusher AST Compression & LLM Summarizer] [j5onrf] v1.4.0
 
-import os, re, ast, json, fnmatch, time, sys, warnings
+import os, re, ast, json, fnmatch, time, threading, sys, warnings
+import urllib.request as urlreq, urllib.error as urlerr
 
 try: import tty, termios, select
 except ImportError: pass
 
 try: import readline
 except ImportError: pass
+
+CFG_DIR = os.path.expanduser("~/.config/local-ai")
+
+class InlineSpinner:
+    def __init__(self): self.chars, self.active, self.thread = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏", False, None
+    def _spin(self):
+        idx, char_len = 0, len(self.chars)
+        while self.active:
+            try:
+                sys.stderr.write(f"\r\033[1;32m{self.chars[idx % char_len]}\033[0m ")
+                sys.stderr.flush()
+            except Exception: pass
+            idx += 1; time.sleep(0.08)
+        sys.stderr.write("\r\x1b[2K\r"); sys.stderr.flush()
+    def start(self): self.active, self.thread = True, threading.Thread(target=self._spin, daemon=True); self.thread.start()
+    def stop(self): self.active = False; self.thread.join() if self.thread else None
 
 def safe_exit(code=0):
     try: sys.stdout.flush(); sys.stderr.flush()
@@ -32,6 +49,78 @@ def get_key():
         if r == b'\x1b' and select.select([fd], [], [], 0.05)[0]: r += os.read(fd, 2)
     finally: termios.tcsetattr(fd, termios.TCSADRAIN, old)
     return r.decode("utf-8", errors="ignore")
+
+def call_service(messages, stream_out=True):
+    configs, gkey, okey = [], os.environ.get("GEMINI_API_KEY"), os.environ.get("OPENROUTER_API_KEY")
+    
+    # 1. Primary: Gemini 3.1 Flash Lite Cloud
+    if gkey:
+        configs.append((
+            "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+            {"Authorization": f"Bearer {gkey}"},
+            os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"),
+            {},
+            30
+        ))
+    
+    # 2. First Fallback: OpenRouter Free
+    if okey:
+        configs.append((
+            "https://openrouter.ai/api/v1/chat/completions",
+            {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"},
+            os.environ.get("OPENROUTER_MODEL", "openrouter/free"),
+            {},
+            180
+        ))
+    
+    # 3. Second Fallback: Local Model
+    configs.append(("http://localhost:8080/v1/chat/completions", {}, "local-model", {}, 180))
+    
+    spinner = InlineSpinner()
+    for url, headers, model, extra, timeout in configs:
+        body = {"messages": messages, "stream": stream_out, **extra}
+        if model: body["model"] = model
+        req = urlreq.Request(url, data=json.dumps(body).encode("utf-8"), headers={"Content-Type": "application/json", **headers}, method="POST")
+        retries, backoff = 2, 1.5
+        while retries >= 0:
+            try:
+                spinner.start()
+                with urlreq.urlopen(req, timeout=timeout) as response:
+                    spinner.stop()
+                    try:
+                        p = "gemini" if "generativelanguage" in url else "openrouter" if "openrouter" in url else None
+                        if p: open(os.path.join(CFG_DIR, ".request_log"), "a").write(f"{int(time.time())}|{p}\n")
+                    except: pass
+                    if not stream_out:
+                        return json.loads(response.read().decode("utf-8"))["choices"][0]["message"]["content"].strip()
+                    first, acc, resolved_model = True, [], None
+                    for line in response:
+                        dec = line.decode("utf-8").strip()
+                        if not dec: continue
+                        if dec.startswith("data:"): dec = dec[5:].strip()
+                        if dec == "[DONE]": continue
+                        try:
+                            data = json.loads(dec)
+                            if "model" in data and not resolved_model: resolved_model = data["model"]
+                            content = ""
+                            if "choices" in data and data["choices"]: content = data["choices"][0].get("delta", {}).get("content", "")
+                            elif "candidates" in data and data["candidates"]: content = data["candidates"][0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                            if content:
+                                if first:
+                                    sys.stdout.write("\n\033[2m[Streaming response...]\033[0m\n"); sys.stdout.flush(); first = False
+                                sys.stdout.write(content); sys.stdout.flush(); acc.append(content)
+                        except: pass
+                    print(""); return "".join(acc)
+            except urlerr.HTTPError as e:
+                spinner.stop()
+                if e.code == 429 and retries > 0: time.sleep(backoff); retries, backoff = retries - 1, backoff * 2
+                elif e.code == 400: sys.stderr.write(f"\n\033[1;31m[API 400 Error]: {e.read().decode('utf-8')}\033[0m\n"); break
+                else: sys.stderr.write(f"\033[90m[sys] {url.split('/')[2]} failed: HTTP {e.code}\033[0m\n"); break
+            except Exception as e:
+                spinner.stop()
+                sys.stderr.write(f"\033[90m[sys] {url.split('/')[2]} failed: {e}\033[0m\n")
+                break
+    sys.stderr.write("\033[1;31mError: All fallbacks/local servers are offline.\033[0m\n\n"); return None
 
 def load_gitignore_patterns(target_dir):
     path = os.path.join(target_dir, ".gitignore")
@@ -88,6 +177,46 @@ def get_text_summary(filepath, limit=15, is_shell=False, strip_hash=True):
                 if not is_shell: return stripped[:120]
         return ""
     except: return ""
+
+def get_ai_markdown_summaries_batch(markdown_files):
+    if len(markdown_files) > 100:
+        sys.stderr.write(f"\n\033[1;31m[sys] Error: Found {len(markdown_files)} markdown files (Limit 100).\033[0m\n"); safe_exit(1)
+    
+    batch_size = 5
+    all_summaries = {}
+    
+    for i in range(0, len(markdown_files), batch_size):
+        chunk = markdown_files[i:i + batch_size]
+        bundle = {}
+        for rel_path, filepath in chunk:
+            try:
+                with open(filepath, 'r', encoding='utf-8', errors='ignore') as f: content = f.read(1500).strip()
+                if content: bundle[rel_path] = content
+            except: pass
+        if not bundle: continue
+        
+        bundle_text = "".join(f'<document path="{path}">\n{content}\n</document>\n\n' for path, content in bundle.items())
+        system_prompt = (
+            "You are a dense semantic codebase indexer.\n"
+            "Analyze these documents and generate a single, precise, 1-sentence architectural summary (under 15 words) for each.\n"
+            "Output strictly as a raw JSON object mapping path to summary sentence. No markdown or preambles."
+        )
+        sys.stderr.write(f"\033[2m[sys] Semantically indexing batch of {len(bundle)} markdown files...\033[0m\n"); sys.stderr.flush()
+        
+        response_text = call_service([{"role": "system", "content": system_prompt}, {"role": "user", "content": f"Document Bundle:\n\n{bundle_text}"}], stream_out=False)
+        if not response_text:
+            continue
+            
+        try:
+            json_clean = response_text.strip().replace("```json", "").replace("```", "").strip()
+            match = re.search(r'\{.*\}', json_clean, re.DOTALL)
+            if match:
+                chunk_summaries = json.loads(match.group(0))
+                all_summaries.update(chunk_summaries)
+        except Exception as e:
+            sys.stderr.write(f"\033[90m[sys] Failed to parse summaries for batch: {e}\033[0m\n")
+            
+    return all_summaries
 
 def analyze_python_file(filepath):
     try:
@@ -189,7 +318,7 @@ def generate_skeleton(target_dir):
         '.rs': analyze_rust_file, '.go': analyze_go_file,
         '.lua': analyze_lua_file, '.json': analyze_json_file, '.qml': analyze_qml_file
     }
-    file_count = 0
+    markdown_files, file_count = [], 0
     
     for root, dirs, files in os.walk(target_dir):
         dirs[:] = [d for d in dirs if not should_ignore(os.path.relpath(os.path.join(root, d), target_dir), True, patterns, default_ignored)]
@@ -206,19 +335,21 @@ def generate_skeleton(target_dir):
                 except: safe_exit(0)
             
             ext = os.path.splitext(file)[1].lower()
-            if ext == '.md':
-                # Local line-based parsing: extracts the top-level name/header from the file
-                summary = get_text_summary(filepath, limit=15, is_shell=False, strip_hash=True) or "Documentation Module"
-                skeleton[rel_path] = {"type": "markdown", "summary": summary}
-            else:
-                skeleton[rel_path] = dispatch.get(ext, analyze_generic_file)(filepath)
+            if ext == '.md': markdown_files.append((rel_path, filepath))
+            else: skeleton[rel_path] = dispatch.get(ext, analyze_generic_file)(filepath)
+                
+    if markdown_files:
+        batch_summaries = get_ai_markdown_summaries_batch(markdown_files)
+        for rel_path, filepath in markdown_files:
+            summary = batch_summaries.get(rel_path) or get_text_summary(filepath, 15, False, True) or "Documentation Module"
+            skeleton[rel_path] = {"type": "markdown", "summary": summary}
     return skeleton
 
 def main():
     default_dir = os.getcwd()
     args = sys.argv[1:]
     
-    # Check for --force flag to bypass the prompt in automated/scripted loops
+    # Check for --force flag to bypass prompt in automated/scripted loops
     force = "--force" in args
     if force:
         args = [a for a in args if a != "--force"]
@@ -242,11 +373,11 @@ def main():
     is_interactive = sys.stdin.isatty() and sys.stderr.isatty()
     if is_interactive and not force:
         try:
-            sys.stderr.write(f"\033[1;30m[sys] Compile skeleton map for \033[1;36m{os.path.basename(target_dir)}\033[1;30m? [↵ run  Esc]: \033[0m")
+            sys.stderr.write(f"\033[1;30m[sys] Compile index map with AI for \033[1;36m{os.path.basename(target_dir)}\033[1;30m? [↵ run  Esc]: \033[0m")
             sys.stderr.flush()
             key = get_key()
             if key in ('\x03', '\x1b', 'n', 'N'):
-                sys.stderr.write("\r\x1b[K\033[2;31m[sys] Bypassed skeleton mapping.\033[0m\n")
+                sys.stderr.write("\r\x1b[K\033[2;31m[sys] Bypassed mapping execution.\033[0m\n")
                 sys.stderr.flush()
                 safe_exit(0)
             sys.stderr.write("\r\x1b[K")
@@ -260,20 +391,20 @@ def main():
             if sys.stdin.readline().strip().lower() not in ['y', 'yes']: safe_exit(0)
         except: safe_exit(0)
 
-    sys.stderr.write("ℹ Compiling skeleton map...\n"); sys.stderr.flush()
+    sys.stderr.write("ℹ Compiling index map with AI...\n"); sys.stderr.flush()
     skeleton = generate_skeleton(target_dir)
     
     flat_map = compile_flat_shorthand(skeleton)
     
     # Determine unique, workspace-specific file path inside target_dir
     proj_name = os.path.basename(target_dir)
-    output_file = os.path.join(target_dir, f"skeleton-head-{proj_name}.txt")
+    output_file = os.path.join(target_dir, f"index-map-{proj_name}.txt")
     
     try:
         with open(output_file, 'w', encoding='utf-8') as f: f.write(flat_map)
-        print(f"✔ Compressed skeleton-head compiled successfully at: {output_file}")
+        print(f"✔ Compressed index-map compiled successfully at: {output_file}")
     except (IOError, OSError):
-        fallback_file = os.path.join(os.getcwd(), f"skeleton-head-{proj_name}.txt")
+        fallback_file = os.path.join(os.getcwd(), f"index-map-{proj_name}.txt")
         try:
             with open(fallback_file, 'w', encoding='utf-8') as f: f.write(flat_map)
             print(f"⚠ SCRIPT_DIR is read-only. Saved to fallback: {fallback_file}")

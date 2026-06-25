@@ -104,16 +104,40 @@ def rollback_checkpoint(workspace):
 
     sys.stderr.write("\033[?25l"); sys.stderr.flush()
     try:
-        key = get_key()
-        if key in ('\x03', '\x1b'):
-            sys.stderr.write("\r\x1b[KCancelled.\n")
-            sys.exit(0)
-        if key.isdigit() and int(key) < len(rows):
-            selected_tag, selected_history, _ = rows[int(key)]
-            sys.stderr.write(f"\r\x1b[K\033[1;32m[session-mgr] Loading checkpoint '{selected_tag}'...\033[0m\n")
-            # Print the history string directly to stdout (captured by ai-agent.py)
-            print(selected_history)
-    finally: sys.stderr.write("\033[?25h"); sys.stderr.flush()
+        key = ""
+        while True:
+            # Only grab key if not already defined by fallback loop
+            if not key:
+                key = get_key()
+                
+            # Fallback to standard keyboard input if TTY raw-grab fails
+            if not key:
+                sys.stderr.write("\033[?25h") # Re-enable terminal cursor
+                sys.stderr.write("\033[1;30mSelect Index: \033[0m")
+                sys.stderr.flush()
+                try: key = sys.stdin.readline().strip()
+                except KeyboardInterrupt: key = '\x1b'
+            
+            # Absolute cancellations (Esc, Ctrl+C, 'q', or empty EOF)
+            if key in ('\x03', '\x1b', 'q', 'Q', ''):
+                sys.stderr.write("\r\x1b[KCancelled.\n")
+                sys.exit(0)
+            
+            # Process numeric selections
+            if key.isdigit() and int(key) < len(rows):
+                selected_tag, selected_history, _ = rows[int(key)]
+                sys.stderr.write(f"\r\x1b[K\033[1;32m[session-mgr] Loading checkpoint '{selected_tag}'...\033[0m\n")
+                # Print the history string directly to stdout (captured by ai-agent.py)
+                print(selected_history)
+                break
+            else:
+                # Handle invalid selection gracefully without exiting
+                max_idx = len(rows) - 1
+                sys.stderr.write(f"\r\x1b[K\033[1;31m[session-mgr] Invalid selection. Enter 0-{max_idx} (or Esc to cancel): \033[0m")
+                sys.stderr.flush()
+                key = "" # Reset key to prompt fresh input on the next loop
+    finally:
+        sys.stderr.write("\033[?25h"); sys.stderr.flush()
 
 def log_turn(workspace, user_msg, assistant_msg):
     if "### Real-time System Context:" in user_msg:

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Local-Ai Agent Hook v0.8.8.9 [j5onrf] [06-24-26]
+# Local-Ai Agent Hook v0.8.8.11 [j5onrf] [06-24-26]
 
 # Exit immediately if the shell is non-interactive
 [[ $- != *i* ]] && return
@@ -45,10 +45,10 @@ ai() {
         echo "$target_path" > "$_AI_DIR/.active_cd"
         
         local proj_name=$(basename "$target_path")
-        local context_file="$target_path/skeleton-head-${proj_name}.txt"
+        local context_file="$target_path/index-map-${proj_name}.txt"
         
         # Compile the SmartCrusher AST map directly inside the project directory (replaces init-projects)
-        "$_AI_PYTHON_BIN" "$_AI_DIR/tools/map/skeleton-map-head" "$target_path" || return 1
+        "$_AI_PYTHON_BIN" "$_AI_DIR/tools/map/index-map" "$target_path" || return 1
         
         if [[ -f "$context_file" ]]; then
             AI_ACTIVE_SKILL="$skill_name" AI_WORKSPACE_PATH="$target_path" "$_AI_PYTHON_BIN" "$_AI_SCRIPT_PATH" --talk-chat "$(<"$context_file")"

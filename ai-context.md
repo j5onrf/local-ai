@@ -7,7 +7,7 @@
 
 ### Directional Syntax Guide
 1. `~/path`: Indexes workspace and launches a standard AI Workspace.
-2. `ai init --<skill>`: Indexes codebase workspace pre-primed with a chosen `--<skill>` (e.g., `--coder` or `--prompt`).
+2. `ai init --<skill>`: Indexes codebase workspace pre-primed with a chosen `--<skill>` (e.g., `--init` or `--coder`).
 3. `[TOOL] <command> [--s]`: Runs a background utility to inject dynamic Markdown context (append ` --s` to bypass confirmation).
 4. `<command>`: Launches a native terminal alias, interactive TUI, or document viewer (using `mdcat`, `leaf`, or `glow`).
 
@@ -16,13 +16,13 @@
 ## Active Workspace Projects & History Viewer
 
 ```properties
-# --- Workspace Test - Local-Ai-Session --
-ai init ~/.config/local-ai/projects/session-test ---> projects session, projects, session test
+# --- Session-Test - This is a Project Workspace (Skill-Primed) --
+ai init ~/.config/local-ai/projects/session-test -init ---> projects session, projects, session test
 
-
+# --- Dynamic File Reader ---
+[TOOL] cat $1 ---> read file, show file, view file
 # --- Active Workspace History Viewer ---
 [TOOL] mdcat history.md | less -R ---> show history, hist, history
-
 # --- Active Workspace History Searcher ---
 [TOOL] read -p "Search Page: " query && mdcat history.md | grep --color=always -A 15 -B 2 -i "$query" ---> search page, search, hs
 ```
@@ -38,12 +38,6 @@ ai init ~/.config/local-ai/projects/session-test ---> projects session, projects
 
 # --- Hermes Direct Browser Workspace Launcher ---
 ~/.config/local-ai/tools/subsec/hermes-bridge/hermes-bridge ---> hermes bridge, bridge, hmb, herm
-
-# --- Standard Codebase Workspaces (Dynamic Auto-Init) ---
-~/Projects/qwen-hypr ---> projects qwen, projects
-
-# --- Specialized Codebase Workspaces (Skill-Primed) ---
-ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 ```
 
 ## 2. On-Demand System Prompts & Role Injections (Skills)
@@ -101,10 +95,8 @@ ai init ~/Projects/quickshell --coder ---> projects quickshell, projects
 # --- AI-Generated Git Commits ---
 ~/.config/local-ai/tools/agentic/system/ai-commit ---> ai-commit, gc, git commit
 
-# --- Skeleton Map (Structural Repo Profile Compiler) ---
-[TOOL] ~/.config/local-ai/tools/map/skeleton-map-head --cat ---> skeleton map head, smh, smhead
-# [TOOL] ~/.config/local-ai/tools/map/skeleton-map-ai --cat ---> skeleton map ai, sm
-# ~/.config/local-ai/tools/map/skeleton-map ---> skeleton map, sm
+# --- Index-Map (Structural Repo Profile Compiler) ---
+[TOOL] ~/.config/local-ai/tools/map/index-map --cat ---> index map, im
 
 # --- Server Lifecycle Management ---
 ~/.config/local-ai/tools/kill-ai-servers ---> killserver, ks

@@ -1,4 +1,4 @@
-# Codebase Mapping: `skeleton-map`, `skeleton-map-ai` & `skeleton-map-head`
+# Codebase Mapping: `index-map` & `index-map-ai`
 
 <div align="center">
 <img width="800" alt="l3od02l3od02l3od" src="https://github.com/user-attachments/assets/db68048f-350a-4a93-afde-70bb8befae68" />
@@ -6,49 +6,31 @@
 
 ---
 
-This subsystem maps your project's directory structure into a lightweight, high-density semantic index, saving **95% to 99% in token overhead** compared to raw codebase ingestion.
+This subsystem maps your project's directory structure into a lightweight, high-density shorthand index, saving **95% to 99% in token overhead** compared to raw codebase ingestion.
 
-It provides three distinct scanning profiles to match your workflow:
-1.  **Static Map (`skeleton-map`):** Purely local, instant line-scraping and Abstract Syntax Tree (AST) parsing. Requires **zero tokens** and zero API calls. Outputs to `skeleton.json`.
-2.  **AI-Enriched Map (`skeleton-map-ai`):** Ingests local files via AST, but dynamically aggregates all repository documentation (`.md` files) and semantically indexes them in **exactly 1 unified request** using your cascade client. Outputs to `skeleton-ai.json`.
-3.  **AST "SmartCrusher" Map (`skeleton-map-head`):** *The recommended standard.* Parses code files via AST to extract **complete function signatures along with their parameters/arguments** [1.1.3, 1.3.3]. It then flattens the hierarchy into a custom, high-density flat shorthand that strips all JSON formatting overhead (braces, quotes, indentations) [1.1.3]. Outputs to `skeleton-head.txt` [1].
+*   **`index-map` (Recommended Standard):** Parses code files via AST to extract **complete function signatures along with their parameters/arguments**. It then flattens the hierarchy into a custom, high-density flat shorthand that strips all JSON formatting overhead (braces, quotes, indentations). For markdown files, it extracts the top title lines or headers locally, making the tool 100% offline and cost-free (**0 tokens**). Outputs to `index-map-{proj_name}.txt`.
+*   **`index-map-ai` (Optional/Manual):** Identical directory and AST-based mapping as the standard tool, but routes markdown files in small batches of 5 to an LLM (Gemini 3.1 Flash Lite, falling back to OpenRouter or localhost) to write deep, 1-sentence architectural summaries. It uses more tokens but offers enhanced semantic details for documentation.
 
 ---
 
 ### Expected Behavior
 
 ```text
-~ ❯ sm
-[01/03] ❯ [skeleton map] ~/.config/local-ai/tools/map/skeleton-map
-[02/03] ❯ [skeleton map ai] ~/.config/local-ai/tools/map/skeleton-map-ai
-[03/03] ❯ [skeleton map head] ~/.config/local-ai/tools/map/skeleton-map-head
+~ ❯ index map
+[01/01] ❯ [index map] ~/.config/local-ai/tools/map/index-map
 :: ↵ run  Esc: 
 ```
 
-#### Static Scan
+#### SmartCrusher AST Scan (Standard)
 ```text
-Scan target [Default: /home/user/local-ai]: 
-ℹ Compiling skeleton map...
-✔ Skeleton map compiled successfully at: /home/user/.config/local-ai/tools/map/skeleton.json
+[sys] Compile index map for session-test? [↵ run  Esc]: 
+Scan target [Default: /home/user/projects/session-test]: 
+ℹ Compiling index map...
+✔ Compressed index-map compiled successfully at: /home/user/projects/session-test/index-map-session-test.txt
 ```
 
-#### AI-Enriched Scan
-```text
-Scan target [Default: /home/user/local-ai]: 
-ℹ Compiling skeleton map...
-ℹ Loaded 9 rules from .gitignore.
-[sys] Semantically indexing 37 markdown files in a single unified batch...
-✔ Skeleton map compiled successfully at: /home/user/.config/local-ai/tools/map/skeleton-ai.json
-```
-
-#### SmartCrusher AST Scan (Recommended)
-```text
-Scan target [Default: /home/user/local-ai]: 
-ℹ Compiling skeleton map...
-✔ Compressed skeleton-head compiled successfully at: /home/user/.config/local-ai/tools/map/skeleton-head.txt
-```
-
-*Pressing **Enter** at the `Scan target` prompt defaults to your current active working directory [3].*
+*Pressing **Enter** at the target prompt defaults to scanning your current active working directory.*
+*Pressing **Esc** (or `n`/`N`) at the confirmation gate bypasses compilation safely without crashing parent automation.*
 
 ---
 
@@ -56,15 +38,15 @@ Scan target [Default: /home/user/local-ai]:
 
 To protect your system performance and free-tier API request budgets from accidental runaway folder crawls:
 
-* **Pre-Scan Path Disclosure:** The prompt explicitly displays your active working directory path before walking a folder, preventing blind executions.
-* **Home-Dir Warning Gate:** The filesystem crawler immediately halts and requires explicit, manual keyboard confirmation (`y/N`) if you attempt to scan your entire home directory (`~` or `/home/user`).
-* **100-File Batch Limit:** If the directory contains more than 100 markdown files, the AI scanner automatically aborts the batch compile, flashes a warning, and exits safely to protect your token usage.
+*   **Pre-Scan Path Disclosure:** The prompt explicitly displays your active working directory path before walking a folder, preventing blind executions.
+*   **Home-Dir Warning Gate:** The filesystem crawler immediately halts and requires explicit, manual keyboard confirmation (`y/N`) if you attempt to scan your entire home directory (`~` or `/home/user`).
+*   **100-Markdown Limit (`index-map-ai` only):** If the directory contains more than 100 markdown files, the AI-integrated scanner automatically aborts the compilation, flashes a warning, and exits safely to protect your token usage.
 
 ---
 
 ### Token Savings Math
 
-* **JSON Map vs. Flat AST Map (~65% Saved):** Compiling your codebase metadata into the flat, tag-based SmartCrusher shorthand (`skeleton-head.txt`) completely removes JSON structural syntax overhead (braces, quotes, nested indentations) [1.1.3]. A codebase with over 100 files is crushed from a bulky 4,000-token JSON down to a tiny, high-density **1,500-token** flat-shorthand map with absolutely zero loss in semantic fidelity [1.1.3]!
-* **Code Signatures with Arguments:** In the flat AST map, Python functions include their full parameter signatures (e.g., `prune_history(history,max_tokens)`) instead of just flat names [1.1.3]. This gives the model maximum API fidelity [1.1.3], allowing it to write correct calls on its first turn without reading the raw files.
-* **Images & Binaries (~100% Saved):** Massive assets (like `.png` or `.pdf` files) are cataloged into a ~5-token reference without corrupting terminal output or wasting context window.
+*   **JSON Map vs. Flat AST Map (~65% Saved):** Compiling your codebase metadata into the flat, tag-based SmartCrusher shorthand (`index-map-{proj_name}.txt`) completely removes JSON structural syntax overhead (braces, quotes, nested indentations). A codebase with over 100 files is crushed from a bulky 4,000-token JSON down to a tiny, high-density **1,500-token** flat-shorthand map with no loss in semantic fidelity.
+*   **Code Signatures with Arguments:** In the flat AST map, Python functions include their full parameter signatures (e.g., `prune_history(history,max_tokens)`) instead of just flat names. This gives the model maximum API fidelity, allowing it to write correct calls on its first turn without reading the raw files.
+*   **Images & Binaries (~100% Saved):** Massive assets (like `.png` or `.pdf` files) are cataloged into a ~5-token reference without corrupting terminal output or wasting context window.
 

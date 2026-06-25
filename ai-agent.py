@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.8.10 [j5onrf] [06-24-26]
+# Local-Ai Agent v0.8.8.11 [j5onrf] [06-24-26]
 
 import sys, re, os, json, threading, time, subprocess, shutil, tty, termios, select
 import urllib.request as urlreq, urllib.error as urlerr
@@ -358,11 +358,20 @@ try:
                         
                         # --- STATELESS CHECKPOINT LOAD/TIMELINE COMMAND ---
                         if query in ("-load", "-timeline"):
-                            # Captures selected rollback JSON history directly from stdout pipe
-                            res = subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "load", safe_name], stdout=subprocess.PIPE, text=True)
+                            res = subprocess.run(
+                                [sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "load", safe_name], 
+                                stdin=sys.stdin,  # <--- ADD THIS LINE to connect your keyboard
+                                stdout=subprocess.PIPE, 
+                                text=True
+                            )
                             if res.stdout.strip():
-                                try: chat_history = json.loads(res.stdout.strip())
+                                try:
+                                    chat_history = json.loads(res.stdout.strip())
+                                    num_turns = len(chat_history) - 1  # subtract the system prompt
+                                    print(f"\033[1;32m[session-mgr] Restored session to checkpoint state ({num_turns} turns loaded).\033[0m\n")
                                 except Exception as e: print(f"Error loading session: {e}")
+                            else:
+                                print(f"\033[1;31m[session-mgr] Load aborted. No changes made.\033[0m\n")
                             continue
 
                         # --- 1. MEMORY BANK: RETRIEVE RELEVANT PAST TURNS ---
