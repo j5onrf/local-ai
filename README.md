@@ -2,7 +2,7 @@
   <img alt="Local-AI Agent" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" width="800" />
 </p>
 
-<h1 align="center">Local-AI Agent <kbd>v0.8.8.11-beta</kbd></h1>
+<h1 align="center">Local-AI Agent <kbd>v0.8.8.16-beta</kbd></h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
@@ -39,7 +39,7 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 | **Integration** | **Dynamic Context** | On-demand compilation of system specs and file contents. |
 | **Optimization** | **Token-Slasher** | Custom `tool` and `skill` integration built for minimal token use. |
 | **Interface** | **Conversational TUI** | Rich, multi-turn chat sessions directly in the terminal. |
-| **Auditability** | **Zero-Dependency** | Under 450 lines of standard-library Python. |
+| **Auditability** | **Zero-Dependency** | Under 500 lines of standard-library Python. |
 
 ---
 
@@ -55,23 +55,40 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 :: ↵ run  Esc:
 ```
 
+---
+
 <h2 align="center">Command Reference</h2>
 
-| Command | Description |
-| --- | --- |
-| `ai` | Launch interactive, multi-turn chat session. |
-| `ai <query>` | Instant answer; returns directly to Bash prompt. |
-| `ai init <path>` | Index directory & launch codebase-aware agent. |
-| `hs` | On-demand keyword search of workspace history. |
-| `hist` | View workspace history log (`history.md`). |
+### 1. Global Shell Commands
+*Executed directly from your terminal prompt.*
 
 | Command | Description |
-| --- | --- |
-| `/s <query>` / `/skill` | Search and load dynamic department skills on-the-fly. |
-| `view file <path>` | Dynamically read local files on-the-fly into model context. |
-| `-save <tag>` | Snapshot current conversation directly to local SQLite database. |
-| `-timeline` / `-load` | Rollback active memory to a past SQLite checkpoint. |
-| `/f` `/t` `/b` `/a` | Trigger Follow-up, Thinking, Brainstorm, or all. |
+| :--- | :--- |
+| **`ai`** | Launch an interactive, multi-turn chat session. |
+| **`ai <query>`** | Get an instant, stateless answer; returns directly to your Bash prompt. |
+| **`ai init <path>`** | Index a directory & launch a codebase-aware, stateful agent session. |
+| **`hs`** | Perform an on-demand keyword search of your active workspace history. |
+| **`hist`** | View your workspace history log (`history.md`). |
+
+### 2. Active Session Commands
+*Typed directly inside an active chat session.*
+
+| Command | Description |
+| :--- | :--- |
+| **`/skill <query>`** *(or `/s`)* | Search and load dynamic specialist skills on-the-fly. |
+| **`view file <path>`** *(or `read`)* | Dynamically read local files directly into your model context. |
+| **`-save <tag>`** | Snapshot the current conversation state to your local SQLite database. |
+| **`-load`** *(or `-timeline`)* | Rollback active history to a past SQLite checkpoint. |
+| **`/f`** / **`/t`** / **`/b`** / **`/a`** | Trigger prompt-generating subroutines: Follow-up, Thinking, Brainstorm, or All. |
+
+### 3. Modular Toggle & Diagnostic Switches
+*Typed inside an active chat session to adjust settings on-the-fly.*
+
+| Command | Description |
+| :--- | :--- |
+| **`/d`** / **`/e`** | **Disable** / **Enable** the offline spellcheck engine. |
+| **`/m`** | **Toggle** long-term conversation memory recall on or off. |
+| **`/mem`** | **View** your live token usage capacity and visual progress bar. |
 
 ---
 

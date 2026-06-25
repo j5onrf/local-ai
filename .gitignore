@@ -5,7 +5,7 @@ tools/subsec/voice/server.pem
 ai-history
 tools/agentic/fusion/logs
 index-map-local-ai.txt
-.active_cd
+.active_cd*
 .request_log
 
 # Ignore Python cache directories and bytecode

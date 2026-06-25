@@ -1,16 +1,30 @@
 #!/usr/bin/env python3
-# Local-Ai Session, Checkpoint, and Dynamic Memory Manager [sqlite3-backed]
+# File: /home/j5/.config/local-ai/tools/ai-agent-sessions
+# Description: SQLite-backed session, checkpoint, and memory manager
 
 import sys, os, json, sqlite3, time, termios, tty, select, re
 
 CFG_DIR = os.path.expanduser("~/.config/local-ai")
 SESSIONS_DIR = os.path.join(CFG_DIR, "projects", "database")
+os.makedirs(SESSIONS_DIR, exist_ok=True)
+
 TOKEN_RE = re.compile(r"[^\w\s]")
 STOP_WORDS = {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"}
 
-def tokenize(t): return [w for w in TOKEN_RE.sub(" ", t.lower()).split() if len(w) > 1 and w not in STOP_WORDS]
+def tokenize(t): 
+    return [w for w in TOKEN_RE.sub(" ", t.lower()).split() if len(w) > 1 and w not in STOP_WORDS]
 
-# Blocking raw-TTY keyboard grabber (With terminal input queue flushing)
+# Path Bootstrap: dynamically load local modules
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+MODULES_DIR = os.path.join(SCRIPT_DIR, "modules")
+if MODULES_DIR not in sys.path:
+    sys.path.insert(0, MODULES_DIR)
+
+try:
+    import context
+except ImportError:
+    context = None
+
 def get_key():
     try:
         with open("/dev/tty", "r") as tty_file:
@@ -18,9 +32,8 @@ def get_key():
             old = termios.tcgetattr(fd)
             try:
                 tty.setraw(fd)
-                # Flush pending terminal buffer keys (prevents residual Enter key auto-approvals)
                 termios.tcflush(fd, termios.TCIFLUSH)
-                r = os.read(fd, 1) # Blocks until a fresh key is pressed
+                r = os.read(fd, 1)
                 if r == b'\x1b' and select.select([fd], [], [], 0.05)[0]:
                     r += os.read(fd, 2)
                 return r.decode("utf-8", errors="ignore")
@@ -40,7 +53,6 @@ def get_key():
             termios.tcsetattr(fd, termios.TCSADRAIN, old)
     return ""
 
-# Initialize database dynamically based on active workspace name
 def init_db(workspace):
     db_path = os.path.join(SESSIONS_DIR, f"{workspace}.db")
     conn = sqlite3.connect(db_path)
@@ -69,7 +81,6 @@ def init_db(workspace):
     conn.commit()
     conn.close()
 
-# Reads the manual save history JSON directly from stdin
 def save_checkpoint(workspace, tag):
     try:
         history_data = sys.stdin.read().strip()
@@ -85,7 +96,6 @@ def save_checkpoint(workspace, tag):
     conn.close()
     sys.stderr.write(f"\033[1;32m[session-mgr] Checkpoint '{tag}' saved to SQLite for '{workspace}'.\033[0m\n")
 
-# Writes the selected rollback history JSON directly to stdout
 def rollback_checkpoint(workspace):
     db_path = os.path.join(SESSIONS_DIR, f"{workspace}.db")
     conn = sqlite3.connect(db_path)
@@ -106,38 +116,28 @@ def rollback_checkpoint(workspace):
     try:
         key = ""
         while True:
-            # Only grab key if not already defined by fallback loop
             if not key:
                 key = get_key()
-                
-            # Fallback to standard keyboard input if TTY raw-grab fails
             if not key:
-                sys.stderr.write("\033[?25h") # Re-enable terminal cursor
+                sys.stderr.write("\033[?25h")
                 sys.stderr.write("\033[1;30mSelect Index: \033[0m")
                 sys.stderr.flush()
                 try: key = sys.stdin.readline().strip()
                 except KeyboardInterrupt: key = '\x1b'
-            
-            # Absolute cancellations (Esc, Ctrl+C, 'q', or empty EOF)
             if key in ('\x03', '\x1b', 'q', 'Q', ''):
                 sys.stderr.write("\r\x1b[KCancelled.\n")
                 sys.exit(0)
-            
-            # Process numeric selections
             if key.isdigit() and int(key) < len(rows):
                 selected_tag, selected_history, _ = rows[int(key)]
                 sys.stderr.write(f"\r\x1b[K\033[1;32m[session-mgr] Loading checkpoint '{selected_tag}'...\033[0m\n")
-                # Print the history string directly to stdout (captured by ai-agent.py)
                 print(selected_history)
                 break
             else:
-                # Handle invalid selection gracefully without exiting
                 max_idx = len(rows) - 1
                 sys.stderr.write(f"\r\x1b[K\033[1;31m[session-mgr] Invalid selection. Enter 0-{max_idx} (or Esc to cancel): \033[0m")
                 sys.stderr.flush()
-                key = "" # Reset key to prompt fresh input on the next loop
-    finally:
-        sys.stderr.write("\033[?25h"); sys.stderr.flush()
+                key = ""
+    finally: sys.stderr.write("\033[?25h"); sys.stderr.flush()
 
 def log_turn(workspace, user_msg, assistant_msg):
     if "### Real-time System Context:" in user_msg:
@@ -152,7 +152,6 @@ def log_turn(workspace, user_msg, assistant_msg):
     conn.commit()
     conn.close()
 
-# --- PERMISSION-GATED MEMORY RETRIEVAL (DYNAMIC SINGLE/CAROUSEL) ---
 def search_past_context(workspace, query):
     q_tokens = set(tokenize(query))
     if not q_tokens: return
@@ -174,13 +173,13 @@ def search_past_context(workspace, query):
     candidates.sort(key=lambda x: -x[0])
     num_opts = len(candidates)
     
-    # CASE A: Only 1 Match -> Keep it fast, simple, and single-line
+    # CASE A: Only 1 Match -> Simple single-line prompt
     if num_opts == 1:
         _, user_msg, assistant_msg, ts = candidates[0]
         display_msg = user_msg.strip().replace("\n", " ")
         if len(display_msg) > 50: display_msg = display_msg[:47] + "..."
             
-        sys.stderr.write(f"\033[1;30m[sys] Recall past memory: \033[1;36m\"{display_msg}\"\033[1;30m? [↵ load  Esc]: \033[0m")
+        sys.stderr.write(f"\033[1;30m[sys] Recall past memory: \033[1;36m\"{display_msg}\"\033[1;30m? [↵ load  d: disable  Esc]: \033[0m")
         sys.stderr.flush()
         
         key = get_key()
@@ -190,12 +189,20 @@ def search_past_context(workspace, query):
             print("\n### Relevant Past Discussion (Retrieved from Session Memory):")
             date_str = time.strftime('%Y-%m-%d %H:%M', time.localtime(ts))
             print(f"* **On {date_str} you asked**: \"{user_msg}\"\n  **Agent responded**: \"{assistant_msg.strip()}\"")
-        else:
-            sys.stderr.write("\r\x1b[K\033[2;31m[sys] Memory recall skipped. Aborting.\033[0m\n")
-            sys.stderr.flush()
+        elif key == '\x03':
+            sys.stderr.write("\r\x1b[KCancelled.\n")
             sys.exit(2)
+        elif key in ('d', 'D'):
+            # Clear line and print memory-disable help message
+            sys.stderr.write("\r\x1b[K\033[2;31m[sys] Memory recall disabled. (Type /m to re-enable)\033[0m\n")
+            sys.stderr.flush()
+            sys.exit(3) # exit code 3 tells parent agent to turn off memory tracking
+        else:
+            sys.stderr.write("\r\x1b[K\033[2;31m[sys] Memory recall skipped.\033[0m\n")
+            sys.stderr.flush()
+            sys.exit(0)
             
-    # CASE B: Multiple Matches -> Upgrade dynamically to an Arrow-key Selection Carousel
+    # CASE B: Multiple Matches -> Arrow-key Selection Carousel
     else:
         current_idx = 0
         sys.stderr.write("\033[?25l"); sys.stderr.flush()
@@ -204,29 +211,37 @@ def search_past_context(workspace, query):
                 _, user_msg, assistant_msg, ts = candidates[current_idx]
                 idx_str = f"{current_idx + 1:02d}/{num_opts:02d}"
                 display_msg = user_msg.strip().replace("\n", " ")
-                if len(display_msg) > 40: display_msg = display_msg[:37] + "..."
+                if len(display_msg) > 40: display_msg = display_msg[:47] + "..."
                 date_str = time.strftime('%Y-%m-%d %H:%M', time.localtime(ts))
                 
-                # Line 1: Index and past timestamp
                 sys.stderr.write(f"\r\x1b[K\033[1;30m[\033[1;32m{idx_str}\033[1;30m]\033[0m ❯ \x1b[1;36m[memory]\x1b[0m \033[90m({date_str})\033[0m\n")
-                # Line 2: Query preview & key prompt
-                sys.stderr.write(f"\r\x1b[K\033[3m   \"{display_msg}\"\033[0m [↵ load  Esc]: ")
+                sys.stderr.write(f"\r\x1b[K\033[3m   \"{display_msg}\"\033[0m [↵ load  d: disable  Esc]: ")
                 sys.stderr.flush()
                 
                 key = get_key()
-                if key in ('\x03', '\x1b'):
-                    sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K\033[2;31m[sys] Memory recall skipped. Aborting.\033[0m\n")
+                
+                # Always erase the 2 printed lines immediately after key capture
+                sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
+                sys.stderr.flush()
+                
+                if key == '\x03':
+                    sys.stderr.write("Cancelled.\n")
                     sys.exit(2)
-                if key in ('\r', ''):
-                    sys.stderr.write(f"\r\x1b[K\x1b[1A\r\x1b[K\033[2;32m[sys] Memory injected.\033[0m\n")
+                elif key in ('d', 'D'):
+                    sys.stderr.write("\033[2;31m[sys] Memory recall disabled. (Type /m to re-enable)\033[0m\n")
+                    sys.stderr.flush()
+                    sys.exit(3) # exit code 3 tells parent agent to turn off memory tracking
+                elif key == '\x1b':
+                    sys.stderr.write("\033[2;31m[sys] Memory recall skipped.\033[0m\n")
+                    sys.exit(0)
+                elif key in ('\r', ''):
+                    sys.stderr.write("\033[2;32m[sys] Memory injected.\033[0m\n")
                     sys.stderr.flush()
                     print("\n### Relevant Past Discussion (Retrieved from Session Memory):")
                     print(f"* **On {date_str} you asked**: \"{user_msg}\"\n  **Agent responded**: \"{assistant_msg.strip()}\"")
                     break
                 elif key in ('\x1b[A', '\x1b[B'):
                     current_idx = (current_idx + (1 if key == '\x1b[B' else -1) + num_opts) % num_opts
-                    # Clean up both lines before shifting up to draw the next slide
-                    sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
         finally:
             sys.stderr.write("\033[?25h"); sys.stderr.flush()
 
@@ -243,12 +258,35 @@ def get_turns_count(workspace):
 
 if __name__ == "__main__":
     args = sys.argv[1:]
-    if len(args) < 2: sys.exit(1)
-    cmd, workspace = args[0], args[1]
-    # Initialize the database with the workspace parameter parsed on command line
+    if not args:
+        sys.exit(1)
+        
+    cmd = args[0]
+    # show-mem only relies on stdin stream JSON data; bypass workspace db initialization
+    if cmd == "show-mem":
+        if context:
+            try:
+                chat_history = json.loads(sys.stdin.read().strip())
+                context.show_memory_status(chat_history, max_context=8192, server_url="http://localhost:8080")
+            except Exception as e:
+                sys.stderr.write(f"[session-mgr] Error rendering memory: {e}\n")
+        else:
+            sys.stderr.write("[session-mgr] Warning: 'context' module not found. show-mem bypassed.\n")
+        sys.exit(0)
+        
+    if len(args) < 2:
+        sys.exit(1)
+        
+    workspace = args[1]
     init_db(workspace)
-    if cmd == "save": save_checkpoint(workspace, args[2] if len(args) > 2 else "")
-    elif cmd == "load": rollback_checkpoint(workspace)
-    elif cmd == "log-turn" and len(args) >= 4: log_turn(workspace, args[2], args[3])
-    elif cmd == "get-context" and len(args) >= 3: search_past_context(workspace, args[2])
-    elif cmd == "get-count": get_turns_count(workspace)
+    
+    if cmd == "save":
+        save_checkpoint(workspace, args[2] if len(args) > 2 else "")
+    elif cmd == "load":
+        rollback_checkpoint(workspace)
+    elif cmd == "log-turn" and len(args) >= 4:
+        log_turn(workspace, args[2], args[3])
+    elif cmd == "get-context" and len(args) >= 3:
+        search_past_context(workspace, args[2])
+    elif cmd == "get-count":
+        get_turns_count(workspace)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.8.15 [j5onrf] [06-25-26]
+# Local-Ai Agent v0.8.8.16 [j5onrf] [06-25-26]
 
 import sys, re, os, json, threading, time, subprocess, shutil, tty, termios, select, urllib.request as urlreq, urllib.error as urlerr
 try: import readline
@@ -294,7 +294,7 @@ try:
                 
                 chat_history, loaded_skills = [{"role": "system", "content": active_system_prompt}], {active_skill.lstrip("-").lower()} if active_skill else set()
                 pending_query, clean_name = (" ".join(args[1:]) if len(args) > 1 else None), (active_skill.lstrip("-") if active_skill else "")
-                spell_active = True
+                spell_active, memory_active = True, True
                 
                 # Dynamic diagnostics bar calculations
                 db_turns = 0
@@ -329,6 +329,17 @@ try:
                                 print(f"\033[1;33m[sys] Spellchecker {'enabled' if spell_active else 'disabled'}.\033[0m\n")
                                 continue
                             
+                            # --- ON-THE-FLY MEMORY TOGGLE ---
+                            if query.strip() == "/m":
+                                memory_active = not memory_active
+                                print(f"\033[1;33m[sys] Memory recall {'enabled' if memory_active else 'disabled'}.\033[0m\n")
+                                continue
+
+                            # --- DYNAMIC MEMORY COMMAND INTERCEPT ---
+                            if query == "/mem":
+                                subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "show-mem"], input=json.dumps(chat_history), text=True)
+                                continue
+
                             # Run spelling checker on non-command / non-code block prompt inputs
                             if spell_active and not query.startswith(("/", "-", "#", "```")):
                                 action, query = check_query_spelling(query, get_key)
@@ -342,6 +353,7 @@ try:
                         # --- ON-DEMAND DEPT SKILL SELECTOR DELEGATE HOOK ---
                         q_strip = query.strip()
                         if q_strip in ("/skill", "/s") or q_strip.startswith(("/skill ", "/s ")):
+                            # Pass active history JSON string as stdin, capturing outputs directly in pipes
                             res = subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-skills", safe_name, q_strip], input=json.dumps(chat_history), stdout=subprocess.PIPE, text=True)
                             if res.stdout.strip():
                                 try: chat_history = json.loads(res.stdout.strip())
@@ -351,6 +363,7 @@ try:
                         # --- STATELESS CHECKPOINT SAVE COMMAND ---
                         if query.startswith("-save"):
                             tag = query.replace("-save", "").strip()
+                            # Pass history array directly as stdin, bypassing filesystem
                             subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "save", safe_name, tag], input=json.dumps(chat_history), text=True)
                             continue
                         
@@ -374,11 +387,13 @@ try:
                         # --- 1. MEMORY BANK: RETRIEVE RELEVANT PAST TURNS ---
                         past_memory = ""
                         is_init_map = query.startswith("# ACTIVE PROJECT") or (query.startswith("[") and "\n" in query)
-                        if is_agent and not is_init_map:
+                        if is_agent and memory_active and not is_init_map:
                             res = subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "get-context", safe_name, query], stdout=subprocess.PIPE, text=True)
                             if res.returncode == 2:
                                 pending_query = None
                                 continue
+                            if res.returncode == 3:
+                                memory_active = False
                             past_memory = res.stdout.strip()
 
                         q_lower = query.lower().strip()
@@ -404,7 +419,9 @@ try:
                         if ans: 
                             chat_history.append({"role": "assistant", "content": ans})
                             if is_agent:
+                                # --- 2. MEMORY BANK: PASSIVELY LOG TURN ---
                                 subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "log-turn", safe_name, query, ans])
+                                # --- 3. DYNAMIC LOCAL WRITER: APPEND CHRONOLOGICAL history.md ---
                                 if not is_init_map:
                                     local_history_file = os.path.join(os.environ.get("AI_WORKSPACE_PATH", os.getcwd()), "history.md")
                                     try:

@@ -3,13 +3,13 @@
 Ultra-lite documentation for local agent workspaces, memory, checkpoints, and RAG tools.
 
 ```text
-~ ❯ projects session
+~ ❯ sess
 [01/01] ❯ [projects session] ai init ~/.config/local-ai/projects/session-test -init
 :: ↵ run  Esc: 
 ℹ Compiling index map...
-✔ Compressed index-map compiled successfully at: /home/user/.config/local-ai/projects/session-test/index-map-session-test.txt
+✔ Compressed index-map compiled successfully at: ~/.config/local-ai/projects/session-test/index-map-session-test.txt
 AI Agent Session Initialized | Context Loaded [init] | Ctrl+C to exit.
-[sys] Startup context: 178 tokens | Database memory: 3 turns (asleep)
+[sys] Startup context: 178 tokens | Database memory: 17 turns (asleep)
 
 Agent: Workspace loaded. Awaiting instructions.
 ❯ 
@@ -19,15 +19,15 @@ Agent: Workspace loaded. Awaiting instructions.
 
 ## 1. Directory Structure & Files
 
-All project metadata and structural blueprints are managed without cluttering your core directory tree:
+All project metadata and structural blueprints are managed cleanly without cluttering your active codebase:
 
 *   **`~/.config/local-ai/projects/database/`**
-    *   `*.db`: Isolated, project-specific SQLite databases managing your save checkpoints and conversation logs.
+    *   `*.db`: Isolated, project-specific SQLite databases managing your save checkpoints and memory logs.
 *   **`~/your-project-folder/` (Your active workspace)**
     *   `index-map-<project-name>.txt`: Codebase structural blueprint compiled on-the-fly by `tools/map/index-map` on startup.
     *   `history.md`: A human-readable chronological Markdown ledger of every input and output.
 
-*(Active conversational histories are held strictly in RAM during execution.)*
+*(Active conversational histories are held strictly in RAM during execution. No temporary JSON files are written to your drive).*
 
 ---
 
@@ -39,7 +39,7 @@ Avoid manual copy-pasting. You can pull the full contents of any file directly i
     ```text
     ❯ view file <filename>
     ```
-    *(Or `read file <filename>` / `show file <filename>` / `vf <filename>` )*
+    *(Or `read file <filename>` / `show file <filename>`)*
 *   **Execution:** The agent runs a local `cat` behind the scenes and injects the raw file contents into the system context for immediate reasoning.
 
 ---
@@ -52,10 +52,11 @@ Sessions utilize an on-demand, gated memory layout to prevent token bloat:
 *   **Passive Memory Bank**: Every turn is logged to your workspace's unique SQLite `.db` database.
 *   **Selective Recall**: If your query matches a past turn's keywords, the agent prompts you before loading:
     ```text
-    [sys] Recall past memory: "Please review this Python..."? [↵ load  Esc]: 
+    [sys] Recall past memory: "Please review this Python..."? [↵ load  d: disable  Esc]: 
     ```
     *   Press **`Enter`** to approve and inject the memory.
-    *   Press **`Esc`** to skip the recall and preserve your token window.
+    *   Press **`d`** to skip and **disable** memory recall for the rest of your session. *(Type `/m` at your prompt to re-enable).*
+    *   Press **`Esc`** to skip the recall but **proceed** with your original query.
 
 ---
 
@@ -88,13 +89,23 @@ Inject custom, role-based onboarding instructions dynamically during any active 
 
 ---
 
-## 6. Context Window Limits (Token-Slasher)
+## 6. In-Session Toggle & Diagnostic Commands
+
+Type these quick commands during any active conversation to adjust your settings on-the-fly:
+
+*   **`/mem`**: Displays your live context window usage in a visual progress bar.
+*   **`/d` / `/e`**: Manually **disable** or **enable** the offline spellcheck engine.
+*   **`/m`**: Manually **toggle** long-term memory recall on or off.
+
+---
+
+## 7. Context Window Limits (Token-Slasher)
 
 1 Token ≈ 4 Characters. Adjust the active sliding-window threshold dynamically using `AI_MAX_TOKENS`:
 
 *   **Inline Override (One-off):**
     ```bash
-    AI_MAX_TOKENS=16000 session test
+    AI_MAX_TOKENS=16000 sess
     ```
 *   **Global Override (Active Terminal):**
     ```bash

@@ -1,4 +1,4 @@
-# /home/j5/.config/local-ai/tools/modules/spellcheck.py
+#!/usr/bin/env python3
 # Offline Spellchecker Module for Local-Ai Agent
 
 import os, re, sys
