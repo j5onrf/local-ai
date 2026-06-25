@@ -94,7 +94,7 @@ Inject custom, role-based onboarding instructions dynamically during any active 
 
 *   **Inline Override (One-off):**
     ```bash
-    AI_MAX_TOKENS=16000 sess
+    AI_MAX_TOKENS=16000 session test
     ```
 *   **Global Override (Active Terminal):**
     ```bash
