@@ -24,7 +24,7 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 
 * **No Session (Direct selections):** Uses a fast Jaccard Similarity engine (`jaccard_search`) with prefix-matching to instantly route custom commands and shortcuts to your local terminal.
 * **Single-Turn Agent (`ai <query>`):** Answers a single question and returns you to Bash, executing explicitly mapped diagnostic `tools` and `skills` only when requested.
-* **Workspace Agents (`ai init <path>`):** Compiles a path-specific structural tree of your repository, launching a dedicated, codebase-aware agent session primed with your chosen skill file.
+* **Workspace Agents (`ai init <path>`):** Compiles a path-specific structural tree directly inside your active workspace using `index-map`, launching a dedicated, codebase-aware agent session primed with your chosen skill file.
 
 ---
 
@@ -36,10 +36,10 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 | **Search Engine** | **Jaccard Similarity** | Sub-millisecond keyword and partial-word matching. |
 | **Resiliency** | **Fallbacks** | Automatically cascades: `Gemini` → `OpenRouter` → `Local`. |
 | **Safety** | **Zero-Trust Guardrails** | Intercepts destructive commands before shell execution. |
-| **Integration** | **Dynamic Context** | On-demand compilation of system specs and tool outputs. |
+| **Integration** | **Dynamic Context** | On-demand compilation of system specs and file contents. |
 | **Optimization** | **Token-Slasher** | Custom `tool` and `skill` integration built for minimal token use. |
 | **Interface** | **Conversational TUI** | Rich, multi-turn chat sessions directly in the terminal. |
-| **Auditability** | **Zero-Dependency** | Under 400 lines of standard-library Python. |
+| **Auditability** | **Zero-Dependency** | Under 450 lines of standard-library Python. |
 
 ---
 
@@ -68,7 +68,8 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 | Command | Description |
 | --- | --- |
 | `/s <query>` / `/skill` | Search and load dynamic department skills on-the-fly. |
-| `-save <tag>` | Snapshot current conversation directly to SQLite in RAM. |
+| `view file <path>` | Dynamically read local files on-the-fly into model context. |
+| `-save <tag>` | Snapshot current conversation directly to local SQLite database. |
 | `-timeline` / `-load` | Rollback active memory to a past SQLite checkpoint. |
 | `/f` `/t` `/b` `/a` | Trigger Follow-up, Thinking, Brainstorm, or all. |
 
@@ -108,6 +109,5 @@ export GEMINI_API_KEY="AIzaSyYourFullGeminiApiKeyHere"
 export CLOUD_MODEL="gemini-3.1-flash-lite"
 export OPENROUTER_API_KEY="sk-or-v1-YourFullOpenRouterKeyHere"
 export OPENROUTER_MODEL="openrouter/free"
-
 ```
 
