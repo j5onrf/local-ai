@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.8.11 [j5onrf] [06-24-26]
+# Local-Ai Agent v0.8.8.12 [j5onrf] [06-24-26]
 
 import sys, re, os, json, threading, time, subprocess, shutil, tty, termios, select
 import urllib.request as urlreq, urllib.error as urlerr
@@ -332,7 +332,7 @@ try:
                     while True:
                         if pending_query: query, pending_query = pending_query, None
                         else:
-                            try: raw_query = input("\033[1;30m❯\033[0m ")
+                            try: raw_query = input("\x01\033[1;30m\x02❯\x01\033[0m\x02 ")
                             except EOFError: break
                             if not raw_query.strip(): continue
                             query = raw_query.strip()
