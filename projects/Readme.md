@@ -39,7 +39,7 @@ Avoid manual copy-pasting. You can pull the full contents of any file directly i
     ```text
     ❯ view file <filename>
     ```
-    *(Or `read file <filename>` / `show file <filename>`)*
+    *(Or `read file <filename>` / `show file <filename>` / `vf <filename>` )*
 *   **Execution:** The agent runs a local `cat` behind the scenes and injects the raw file contents into the system context for immediate reasoning.
 
 ---

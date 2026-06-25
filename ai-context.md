@@ -17,10 +17,10 @@
 
 ```properties
 # --- Session-Test - This is a Project Workspace (Skill-Primed) --
-ai init ~/.config/local-ai/projects/session-test -init ---> projects session, projects, session test
+ai init ~/.config/local-ai/projects/session-test -init ---> session test, projects session, projects
 
 # --- Dynamic File Reader ---
-[TOOL] cat $1 ---> read file, show file, view file
+[TOOL] cat $1 ---> view file, read file, show file, vf
 # --- Active Workspace History Viewer ---
 [TOOL] mdcat history.md | less -R ---> show history, hist, history
 # --- Active Workspace History Searcher ---
