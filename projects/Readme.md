@@ -93,9 +93,19 @@ Inject custom, role-based onboarding instructions dynamically during any active 
 
 Type these quick commands during any active conversation to adjust your settings on-the-fly:
 
-*   **`/mem`**: Displays your live context window usage in a visual progress bar.
+*   **`/tok`**: Displays your live context window usage in a visual progress bar.
 *   **`/d` / `/e`**: Manually **disable** or **enable** the offline spellcheck engine.
 *   **`/m`**: Manually **toggle** long-term memory recall on or off.
+
+```text
+❯ /tok
+
+[sys] Context Window: 115/8192 tokens
+[sys] Usage: [░░░░░░░░░░░░░░░░░░░░] 1.4%
+[sys] Remaining: 8077 tokens
+
+❯ 
+```
 
 ---
 

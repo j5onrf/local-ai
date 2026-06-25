@@ -335,9 +335,9 @@ try:
                                 print(f"\033[1;33m[sys] Memory recall {'enabled' if memory_active else 'disabled'}.\033[0m\n")
                                 continue
 
-                            # --- DYNAMIC MEMORY COMMAND INTERCEPT ---
-                            if query == "/mem":
-                                subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "show-mem"], input=json.dumps(chat_history), text=True)
+                            # --- DYNAMIC TOKEN CAPACITY INTERCEPT ---
+                            if query == "/tok":
+                                subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "show-tok"], input=json.dumps(chat_history), text=True)
                                 continue
 
                             # Run spelling checker on non-command / non-code block prompt inputs

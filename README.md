@@ -88,7 +88,7 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 | :--- | :--- |
 | **`/d`** / **`/e`** | **Disable** / **Enable** the offline spellcheck engine. |
 | **`/m`** | **Toggle** long-term conversation memory recall on or off. |
-| **`/mem`** | **View** your live token usage capacity and visual progress bar. |
+| **`/tok`** | **View** your live token usage capacity and visual progress bar. |
 
 ---
 
