@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# skeleton-map-head [Local Map Compiler with SmartCrusher AST Compression] [j5onrf] v1.2.0
+# skeleton-map-head [Local Map Compiler with SmartCrusher AST Compression] [j5onrf] v1.2.2
 
 import os, re, ast, json, fnmatch, time, threading, sys, warnings
 import urllib.request as urlreq, urllib.error as urlerr
@@ -8,7 +8,6 @@ try: import readline
 except ImportError: pass
 
 CFG_DIR = os.path.expanduser("~/.config/local-ai")
-OUTPUT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "skeleton-head.txt")
 
 class InlineSpinner:
     def __init__(self): self.chars, self.active, self.thread = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏", False, None
@@ -32,13 +31,30 @@ def safe_exit(code=0):
     sys.exit(code)
 
 def call_service(messages, stream_out=True):
-    configs, gkey, okey, ckey, curl = [], os.environ.get("GEMINI_API_KEY"), os.environ.get("OPENROUTER_API_KEY"), os.environ.get("CLOUD_API_KEY"), os.environ.get("CLOUD_API_URL")
-    if gkey: configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Authorization": f"Bearer {gkey}"}, os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"), {}, 30))
+    configs, gkey, okey = [], os.environ.get("GEMINI_API_KEY"), os.environ.get("OPENROUTER_API_KEY")
+    
+    # 1. Primary: Gemini 3.1 Flash Lite Cloud
+    if gkey:
+        configs.append((
+            "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+            {"Authorization": f"Bearer {gkey}"},
+            os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"),
+            {},
+            30
+        ))
+    
+    # 2. First Fallback: OpenRouter Free
     if okey:
-        configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"}, "deepseek/deepseek-v4-flash:free", {}, 30))
-        configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"}, os.environ.get("OPENROUTER_MODEL", "openrouter/free"), {}, 30))
-    if ckey and curl: configs.append((curl, {"Authorization": f"Bearer {ckey}"}, os.environ.get("CLOUD_MODEL"), {}, 30))
-    configs.append(("http://localhost:8080/v1/chat/completions", {}, "local-model", {}, 30))
+        configs.append((
+            "https://openrouter.ai/api/v1/chat/completions",
+            {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"},
+            os.environ.get("OPENROUTER_MODEL", "openrouter/free"),
+            {},
+            180
+        ))
+    
+    # 3. Second Fallback: Local Model (Offline fallback)
+    configs.append(("http://localhost:8080/v1/chat/completions", {}, "local-model", {}, 180))
     
     spinner = InlineSpinner()
     for url, headers, model, extra, timeout in configs:
@@ -52,12 +68,12 @@ def call_service(messages, stream_out=True):
                 with urlreq.urlopen(req, timeout=timeout) as response:
                     spinner.stop()
                     try:
-                        p = "gemini" if "generativelanguage" in url else "openrouter" if "openrouter" in url else "custom-cloud" if curl and curl in url else None
+                        p = "gemini" if "generativelanguage" in url else "openrouter" if "openrouter" in url else None
                         if p: open(os.path.join(CFG_DIR, ".request_log"), "a").write(f"{int(time.time())}|{p}\n")
                     except: pass
                     if not stream_out:
                         return json.loads(response.read().decode("utf-8"))["choices"][0]["message"]["content"].strip()
-                    first, acc = True, []
+                    first, acc, resolved_model = True, [], None
                     for line in response:
                         dec = line.decode("utf-8").strip()
                         if not dec: continue
@@ -65,9 +81,10 @@ def call_service(messages, stream_out=True):
                         if dec == "[DONE]": continue
                         try:
                             data = json.loads(dec)
+                            if "model" in data and not resolved_model: resolved_model = data["model"]
                             content = ""
                             if "choices" in data and data["choices"]: content = data["choices"][0].get("delta", {}).get("content", "")
-                            elif "candidates" in data: content = data["candidates"][0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                            elif "candidates" in data and data["candidates"]: content = data["candidates"][0].get("content", {}).get("parts", [{}])[0].get("text", "")
                             if content:
                                 if first:
                                     sys.stdout.write("\n\033[2m[Streaming response...]\033[0m\n"); sys.stdout.flush(); first = False
@@ -77,10 +94,13 @@ def call_service(messages, stream_out=True):
             except urlerr.HTTPError as e:
                 spinner.stop()
                 if e.code == 429 and retries > 0: time.sleep(backoff); retries, backoff = retries - 1, backoff * 2
-                else: break
-            except Exception:
-                spinner.stop(); break
-    raise RuntimeError("All fallback/local servers are offline.")
+                elif e.code == 400: sys.stderr.write(f"\n\033[1;31m[API 400 Error]: {e.read().decode('utf-8')}\033[0m\n"); break
+                else: sys.stderr.write(f"\033[90m[sys] {url.split('/')[2]} failed: HTTP {e.code}\033[0m\n"); break
+            except Exception as e:
+                spinner.stop()
+                sys.stderr.write(f"\033[90m[sys] {url.split('/')[2]} failed: {e}\033[0m\n")
+                break
+    sys.stderr.write("\033[1;31mError: All fallbacks/local servers are offline.\033[0m\n\n"); return None
 
 def load_gitignore_patterns(target_dir):
     path = os.path.join(target_dir, ".gitignore")
@@ -88,22 +108,27 @@ def load_gitignore_patterns(target_dir):
         try:
             with open(path, 'r', encoding='utf-8', errors='ignore') as f:
                 return [line.strip() for line in f if line.strip() and not line.strip().startswith(('#', '!'))]
-        except: pass
+        except Exception: pass
     return []
 
 def should_ignore(rel_path, is_dir, gitignore_patterns, default_ignored_dirs):
-    norm_path, parts = rel_path.replace(os.sep, '/'), rel_path.replace(os.sep, '/').split('/')
+    norm_path = rel_path.replace(os.sep, '/')
+    parts = norm_path.split('/')
     if any(p in default_ignored_dirs for p in parts): return True
+    
     for pattern in gitignore_patterns:
         pat, dir_only = pattern.rstrip('/'), pattern.endswith('/')
         if dir_only and not is_dir: continue
+        
         anchored = False
         if pat.startswith('/'): pat, anchored = pat[1:], True
+        
         if anchored:
             target = norm_path if not dir_only else norm_path.rstrip('/')
             if fnmatch.fnmatchcase(target, pat): return True
             pat_parts = pat.split('/')
-            if len(parts) >= len(pat_parts) and fnmatch.fnmatchcase('/'.join(parts[:len(pat_parts)]), pat): return True
+            if len(parts) >= len(pat_parts) and fnmatch.fnmatchcase('/'.join(parts[:len(pat_parts)]), pat):
+                return True
         else:
             for i, part in enumerate(parts):
                 if dir_only and i == len(parts) - 1 and not is_dir: continue
@@ -117,7 +142,7 @@ def should_ignore(rel_path, is_dir, gitignore_patterns, default_ignored_dirs):
 def is_binary(filepath):
     try:
         with open(filepath, 'rb') as f: return b'\x00' in f.read(1024)
-    except: return True
+    except Exception: return True
 
 def get_text_summary(filepath, limit=15, is_shell=False, strip_hash=True):
     try:
@@ -136,28 +161,44 @@ def get_text_summary(filepath, limit=15, is_shell=False, strip_hash=True):
 def get_ai_markdown_summaries_batch(markdown_files):
     if len(markdown_files) > 100:
         sys.stderr.write(f"\n\033[1;31m[sys] Error: Found {len(markdown_files)} markdown files (Limit 100).\033[0m\n"); safe_exit(1)
-    try:
+    
+    # Process in batches of 5 to protect local context limits (avoiding HTTP 400 context errors)
+    batch_size = 5
+    all_summaries = {}
+    
+    for i in range(0, len(markdown_files), batch_size):
+        chunk = markdown_files[i:i + batch_size]
         bundle = {}
-        for rel_path, filepath in markdown_files:
+        for rel_path, filepath in chunk:
             try:
                 with open(filepath, 'r', encoding='utf-8', errors='ignore') as f: content = f.read(1500).strip()
                 if content: bundle[rel_path] = content
             except: pass
-        if not bundle: return {}
+        if not bundle: continue
+        
         bundle_text = "".join(f'<document path="{path}">\n{content}\n</document>\n\n' for path, content in bundle.items())
         system_prompt = (
             "You are a dense semantic codebase indexer.\n"
             "Analyze these documents and generate a single, precise, 1-sentence architectural summary (under 15 words) for each.\n"
             "Output strictly as a raw JSON object mapping path to summary sentence. No markdown or preambles."
         )
-        sys.stderr.write(f"\033[2m[sys] Semantically indexing {len(bundle)} markdown files in a single batch...\033[0m\n"); sys.stderr.flush()
+        sys.stderr.write(f"\033[2m[sys] Semantically indexing batch of {len(bundle)} markdown files...\033[0m\n"); sys.stderr.flush()
+        
         response_text = call_service([{"role": "system", "content": system_prompt}, {"role": "user", "content": f"Document Bundle:\n\n{bundle_text}"}], stream_out=False)
-        json_clean = response_text.strip().replace("```json", "").replace("```", "").strip()
-        match = re.search(r'\{.*\}', json_clean, re.DOTALL)
-        return json.loads(match.group(0)) if match else {}
-    except: return {}
+        if not response_text:
+            continue
+            
+        try:
+            json_clean = response_text.strip().replace("```json", "").replace("```", "").strip()
+            match = re.search(r'\{.*\}', json_clean, re.DOTALL)
+            if match:
+                chunk_summaries = json.loads(match.group(0))
+                all_summaries.update(chunk_summaries)
+        except Exception as e:
+            sys.stderr.write(f"\033[90m[sys] Failed to parse summaries for batch: {e}\033[0m\n")
+            
+    return all_summaries
 
-# --- PYTHON AST PARSER (Optimization 1: Function Signatures & Arguments) ---
 def analyze_python_file(filepath):
     try:
         with open(filepath, 'r', encoding='utf-8', errors='replace') as f: content = f.read()
@@ -167,7 +208,6 @@ def analyze_python_file(filepath):
         funcs, classes, imports = [], [], set()
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                # Extract arguments recursively to build the dynamic method signature
                 args_list = [a.arg for a in node.args.args]
                 funcs.append(f"{node.name}({','.join(args_list)})")
             elif isinstance(node, ast.ClassDef): classes.append(node.name)
@@ -219,7 +259,6 @@ def analyze_generic_file(filepath):
     if is_binary(filepath): return {"type": f"binary/{ext}"}
     return {"type": ext, "summary": get_text_summary(filepath, 15, False, False) or "Empty file"}
 
-# --- FLAT COMPRESSION ENGINE (Optimization 2: "SmartCrusher" Shorthand Flat-Compiler) ---
 def compile_flat_shorthand(skeleton):
     lines = []
     for rel_path, data in sorted(skeleton.items()):
@@ -289,14 +328,22 @@ def generate_skeleton(target_dir):
 
 def main():
     default_dir = os.getcwd()
-    try:
-        sys.stderr.write(f"\033[1;32mScan target [Default: {default_dir}]: \033[0m"); sys.stderr.flush()
-        user_input = sys.stdin.readline().strip()
-    except: return
+    args = sys.argv[1:]
+    
+    # Check if a directory path argument was passed via command line (for scripted/automated execution)
+    if args:
+        target_dir = os.path.abspath(os.path.expanduser(os.path.expandvars(args[0])))
+    else:
+        # Fallback to interactive terminal prompt if executed manually
+        try:
+            sys.stderr.write(f"\033[1;32mScan target [Default: {default_dir}]: \033[0m"); sys.stderr.flush()
+            user_input = sys.stdin.readline().strip()
+            target_dir = os.path.abspath(os.path.expanduser(os.path.expandvars(user_input))) if user_input else default_dir
+        except (KeyboardInterrupt, EOFError):
+            sys.stderr.write("\n✕ Operation cancelled.\n"); sys.stderr.flush(); return
 
-    target_dir = os.path.abspath(os.path.expanduser(os.path.expandvars(user_input))) if user_input else default_dir
     if not os.path.isdir(target_dir):
-        sys.stderr.write(f"❌ Error: '{target_dir}' is not a valid directory.\n"); sys.stderr.flush(); return
+        sys.stderr.write(f"❌ Error: '{target_dir}' is not a valid directory.\n"); sys.stderr.flush(); safe_exit(1)
 
     if target_dir == os.path.expanduser("~"):
         try:
@@ -307,14 +354,17 @@ def main():
     sys.stderr.write("ℹ Compiling skeleton map...\n"); sys.stderr.flush()
     skeleton = generate_skeleton(target_dir)
     
-    # Compile the hierarchical dictionaries into Headroom-style SmartCrusher flat shorthand
     flat_map = compile_flat_shorthand(skeleton)
     
+    # Determine unique, workspace-specific file path inside target_dir
+    proj_name = os.path.basename(target_dir)
+    output_file = os.path.join(target_dir, f"skeleton-head-{proj_name}.txt")
+    
     try:
-        with open(OUTPUT_FILE, 'w', encoding='utf-8') as f: f.write(flat_map)
-        print(f"✔ Compressed skeleton-head compiled successfully at: {OUTPUT_FILE}")
+        with open(output_file, 'w', encoding='utf-8') as f: f.write(flat_map)
+        print(f"✔ Compressed skeleton-head compiled successfully at: {output_file}")
     except (IOError, OSError):
-        fallback_file = os.path.join(os.getcwd(), "skeleton-head.txt")
+        fallback_file = os.path.join(os.getcwd(), f"skeleton-head-{proj_name}.txt")
         try:
             with open(fallback_file, 'w', encoding='utf-8') as f: f.write(flat_map)
             print(f"⚠ SCRIPT_DIR is read-only. Saved to fallback: {fallback_file}")

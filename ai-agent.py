@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.8.9 [j5onrf] [06-24-26]
+# Local-Ai Agent v0.8.8.10 [j5onrf] [06-24-26]
 
 import sys, re, os, json, threading, time, subprocess, shutil, tty, termios, select
 import urllib.request as urlreq, urllib.error as urlerr
@@ -211,11 +211,31 @@ def run_interactive_selection(intent):
     finally: sys.stderr.write("\033[?25h"); sys.stderr.flush()
 
 def stream_llm_response(messages, prefix="AI: "):
-    configs, gkey, okey, ckey, curl = [], os.environ.get("GEMINI_API_KEY"), os.environ.get("OPENROUTER_API_KEY"), os.environ.get("CLOUD_API_KEY"), os.environ.get("CLOUD_API_URL")
-    if gkey: configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Authorization": f"Bearer {gkey}"}, os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"), {}, 15))
-    if okey: configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"}, os.environ.get("OPENROUTER_MODEL", "openrouter/free"), {}, 20))
-    if ckey and curl: configs.append((curl, {"Authorization": f"Bearer {ckey}"}, os.environ.get("CLOUD_MODEL"), {}, 30))
+    configs, gkey, okey = [], os.environ.get("GEMINI_API_KEY"), os.environ.get("OPENROUTER_API_KEY")
+    
+    # 1. Primary: Gemini 3.1 Flash Lite Cloud
+    if gkey:
+        configs.append((
+            "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+            {"Authorization": f"Bearer {gkey}"},
+            os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"),
+            {},
+            30
+        ))
+    
+    # 2. First Fallback: OpenRouter Free
+    if okey:
+        configs.append((
+            "https://openrouter.ai/api/v1/chat/completions",
+            {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"},
+            os.environ.get("OPENROUTER_MODEL", "openrouter/free"),
+            {},
+            180
+        ))
+    
+    # 3. Second Fallback: Local Model (Offline fallback)
     configs.append(("http://localhost:8080/v1/chat/completions", {}, "local-model", {}, 180))
+    
     spinner = InlineSpinner()
     try:
         for url, headers, model, extra, timeout in configs:
@@ -347,7 +367,8 @@ try:
 
                         # --- 1. MEMORY BANK: RETRIEVE RELEVANT PAST TURNS ---
                         past_memory = ""
-                        if is_agent and not query.startswith("# ACTIVE PROJECT WORKSPACE"):
+                        is_init_map = query.startswith("# ACTIVE PROJECT") or (query.startswith("[") and "\n" in query)
+                        if is_agent and not is_init_map:
                             res = subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "get-context", safe_name, query], stdout=subprocess.PIPE, text=True)
                             if res.returncode == 2:
                                 pending_query = None
@@ -369,7 +390,7 @@ try:
                         prompt = (f"### Real-time System Context:\n{combined_context}\n\n" if combined_context else "") + f"User Question: {query}"
                         
                         chat_history.append({"role": "user", "content": prompt})
-                        if not query.startswith("# ACTIVE PROJECT WORKSPACE"):
+                        if not is_init_map:
                             try: readline.add_history(query)
                             except: pass
                         pruned_history = prune_history(chat_history)
@@ -380,7 +401,7 @@ try:
                                 # --- 2. MEMORY BANK: PASSIVELY LOG TURN ---
                                 subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "log-turn", safe_name, query, ans])
                                 # --- 3. DYNAMIC LOCAL WRITER: APPEND CHRONOLOGICAL history.md ---
-                                if not query.startswith("# ACTIVE PROJECT WORKSPACE"):
+                                if not is_init_map:
                                     local_history_file = os.path.join(os.environ.get("AI_WORKSPACE_PATH", os.getcwd()), "history.md")
                                     try:
                                         mode = "a" if os.path.exists(local_history_file) else "w"
@@ -417,4 +438,3 @@ try:
         sys.exit(0)
     print_stock_error(user_input); sys.exit(127)
 except KeyboardInterrupt: sys.stderr.write("\nCancelled.\n"); sys.exit(130)
-
