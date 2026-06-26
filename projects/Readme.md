@@ -1,9 +1,9 @@
 # Workspace & Session Manager Manual
 
-Ultra-lite documentation for local agent workspaces, memory, checkpoints, and RAG tools.
+Ultra-light documentation for local agent workspaces, checkpoints, and security isolation.
 
 ```text
-~ ❯ sess
+~ ❯ projects session
 [01/01] ❯ [projects session] ai init ~/.config/local-ai/projects/session-test -init
 :: ↵ run  Esc: 
 ℹ Compiling index map...
@@ -44,19 +44,12 @@ Avoid manual copy-pasting. You can pull the full contents of any file directly i
 
 ---
 
-## 3. Long-Term Conversational Memory (Recall)
+## 3. Security Isolation (Docker & SkillSpector)
 
-Sessions utilize an on-demand, gated memory layout to prevent token bloat:
+Because local python scripts run with standard user-level permissions, it is highly recommended to run the agent in a sandboxed, zero-trust environment:
 
-*   **Active Window:** Capped at `8192` tokens and managed dynamically in RAM.
-*   **Passive Memory Bank**: Every turn is logged to your workspace's unique SQLite `.db` database.
-*   **Selective Recall**: If your query matches a past turn's keywords, the agent prompts you before loading:
-    ```text
-    [sys] Recall past memory: "Please review this Python..."? [↵ load  d: disable  Esc]: 
-    ```
-    *   Press **`Enter`** to approve and inject the memory.
-    *   Press **`d`** to skip and **disable** memory recall for the rest of your session. *(Type `/m` at your prompt to re-enable).*
-    *   Press **`Esc`** to skip the recall but **proceed** with your original query.
+*   **Docker Containerization**: For absolute system safety, run the agent inside a sandboxed **Docker container** to isolate the execution context entirely from your host workstation's files.
+*   **Vetting Agent Skills**: Never run unvetted third-party skill modules. We recommend scanning all custom or community skills with [NVIDIA SkillSpector](https://github.com/NVIDIA/SkillSpector) before importing them to identify privilege escalations, malicious shell commands, or prompt injections.
 
 ---
 
@@ -96,16 +89,7 @@ Type these quick commands during any active conversation to adjust your settings
 *   **`/tok`**: Displays your live context window usage in a visual progress bar.
 *   **`/d` / `/e`**: Manually **disable** or **enable** the offline spellcheck engine.
 *   **`/m`**: Manually **toggle** long-term memory recall on or off.
-
-```text
-❯ /tok
-
-[sys] Context Window: 115/8192 tokens
-[sys] Usage: [░░░░░░░░░░░░░░░░░░░░] 1.4%
-[sys] Remaining: 8077 tokens
-
-❯ 
-```
+*   **Memory recall prompt (`d: disable`)**: If a memory-recall prompt pops up, press **`d`** to skip and disable memory recall for the rest of your active session. *(Type `/m` to re-enable).*
 
 ---
 
@@ -121,4 +105,3 @@ Type these quick commands during any active conversation to adjust your settings
     ```bash
     export AI_MAX_TOKENS=16000
     ```
-
