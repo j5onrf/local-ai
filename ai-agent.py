@@ -13,6 +13,7 @@ TOKEN_RE, _CACHED_ENTRIES, _LAST_M_TIME = re.compile(r"[^\w\s]"), None, 0
 STOP_WORDS = {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"}
 BASE_PROMPT = "Local shell AI assistant (read-only access).\nProvide direct, natural plain-text answers using any provided system context.\nNo markdown (no bolding, no headers, no bullet lists).\nAlways write full, complete, and helpful sentences.\n\n"
 
+# --- DYNAMIC SPELLCHECKER IMPORT & FALLBACK ---
 check_query_spelling = lambda q, gk: ("RUN", q)
 try:
     sys.path.append(os.path.join(CFG_DIR, "tools"))
@@ -184,7 +185,7 @@ def run_interactive_selection(intent):
             if is_danger:
                 sys.stderr.write(f"\r\x1b[K\033[1;31m▲ WARNING: Destructive payload detected\033[0m\n\r\x1b[K\033[1;30m[\033[1;31m{idx_str}\033[1;30m]\033[0m ❯ \x1b[1;36m[{current_intent}]\x1b[0m {display_cmd}\n\r\x1b[K\033[1;30m::\033[0m execute payload? [y/N]: ")
             else:
-                sys.stderr.write(f"\r\x1b[K\033[1;30m[\033[1;32m{idx_str}\033[1;32m]\033[1;30m]\033[0m ❯ \x1b[1;36m[{current_intent}]\x1b[0m {display_cmd}\n\r\x1b[K\033[1;30m::\033[0m ↵ run  Esc: ")
+                sys.stderr.write(f"\r\x1b[K\033[1;30m[\033[1;32m{idx_str}\033[1;30m]\033[0m ❯ \x1b[1;36m[{current_intent}]\x1b[0m {display_cmd}\n\r\x1b[K\033[1;30m::\033[0m ↵ run  Esc: ")
             sys.stderr.flush()
             key = get_key()
             if key in ('\x03', '\x1b') or (not is_danger and key not in ('\r', '', '\x1b[A', '\x1b[B')):
@@ -297,21 +298,27 @@ try:
                 pending_query, clean_name = (" ".join(args[1:]) if len(args) > 1 else None), (active_skill.lstrip("-") if active_skill else "")
                 spell_active, memory_active = True, True
                 
+                # Dynamic diagnostics bar calculations
                 db_turns = 0
                 if is_agent:
                     try: db_turns = int(subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "get-count", safe_name], capture_output=True, text=True).stdout.strip())
                     except: pass
 
+                # --- DRAW THE SESSION INFO BOX ---
                 display_dir = workspace_path
                 if display_dir.startswith(home_dir):
                     display_dir = display_dir.replace(home_dir, "~", 1)
+                
+                # Truncate display directory if it's too long
                 if len(display_dir) > 28:
                     display_dir = "..." + display_dir[-25:]
 
+                # Extract version dynamically from this file's header (line 2)
                 version = ""
                 try: version = re.search(r"Local-Ai Agent\s+(v[0-9.]+)", open(__file__, encoding="utf-8").readlines()[1], re.I).group(1)
                 except: pass
 
+                # Resolve active model based on env key precedence
                 gkey = os.environ.get("GEMINI_API_KEY")
                 okey = os.environ.get("OPENROUTER_API_KEY")
                 if gkey:
@@ -327,6 +334,7 @@ try:
                 dir_line   = f" directory: {display_dir}"
                 mem_line   = f" database:  {db_turns} turns (asleep)" if is_agent else f" database:  stateless"
                 
+                # Print box using standard box-drawing characters
                 print("\033[1;36m╭" + "─" * box_width + "╮\033[0m")
                 print(f"\033[1;36m│\033[0m \033[1;37m{title_line:<{box_width-1}}\033[1;36m│\033[0m")
                 print(f"\033[1;36m│\033[0m{' ':<{box_width}}\033[1;36m│\033[0m")
@@ -351,20 +359,24 @@ try:
                             if query.lower() in ("exit", "quit", "q"): 
                                 print("\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
                             
+                            # --- ON-THE-FLY SPELLCHECK TOGGLE ---
                             if query.strip() in ("/d", "/e"):
                                 spell_active = (query.strip() == "/e")
                                 print(f"\033[1;33m[sys] Spellchecker {'enabled' if spell_active else 'disabled'}.\033[0m\n")
                                 continue
                             
+                            # --- ON-THE-FLY MEMORY TOGGLE ---
                             if query.strip() == "/m":
                                 memory_active = not memory_active
                                 print(f"\033[1;33m[sys] Memory recall {'enabled' if memory_active else 'disabled'}.\033[0m\n")
                                 continue
 
+                            # --- DYNAMIC TOKEN CAPACITY INTERCEPT ---
                             if query == "/tok":
                                 subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "show-tok"], input=json.dumps(chat_history), text=True)
                                 continue
 
+                            # Run spelling checker on non-command / non-code block prompt inputs
                             if spell_active and not query.startswith(("/", "-", "#", "```")):
                                 action, query = check_query_spelling(query, get_key)
                                 if action == "EDIT":
@@ -374,19 +386,24 @@ try:
                                 elif action == "DISABLE":
                                     spell_active = False
                         
+                        # --- ON-DEMAND DEPT SKILL SELECTOR DELEGATE HOOK ---
                         q_strip = query.strip()
                         if q_strip in ("/skill", "/s") or q_strip.startswith(("/skill ", "/s ")):
+                            # Pass active history JSON string as stdin, capturing outputs directly in pipes
                             res = subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-skills", safe_name, q_strip], input=json.dumps(chat_history), stdout=subprocess.PIPE, text=True)
                             if res.stdout.strip():
                                 try: chat_history = json.loads(res.stdout.strip())
                                 except Exception as e: print(f"Error loading session: {e}")
                             continue
 
+                        # --- STATELESS CHECKPOINT SAVE COMMAND ---
                         if query.startswith("-save"):
                             tag = query.replace("-save", "").strip()
+                            # Pass history array directly as stdin, bypassing filesystem
                             subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "save", safe_name, tag], input=json.dumps(chat_history), text=True)
                             continue
                         
+                        # --- STATELESS CHECKPOINT LOAD/TIMELINE COMMAND ---
                         if query in ("-load", "-timeline"):
                             res = subprocess.run(
                                 [sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "load", safe_name], 
@@ -403,6 +420,7 @@ try:
                                 print(f"\033[1;31m[session-mgr] Load aborted.\033[0m\n")
                             continue
 
+                        # --- 1. MEMORY BANK: RETRIEVE RELEVANT PAST TURNS ---
                         past_memory = ""
                         is_init_map = query.startswith("# ACTIVE PROJECT") or (query.startswith("[") and "\n" in query)
                         if is_agent and memory_active and not is_init_map:
@@ -437,7 +455,9 @@ try:
                         if ans: 
                             chat_history.append({"role": "assistant", "content": ans})
                             if is_agent:
+                                # --- 2. MEMORY BANK: PASSIVELY LOG TURN ---
                                 subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "log-turn", safe_name, query, ans])
+                                # --- 3. DYNAMIC LOCAL WRITER: APPEND CHRONOLOGICAL history.md ---
                                 if not is_init_map:
                                     local_history_file = os.path.join(os.environ.get("AI_WORKSPACE_PATH", os.getcwd()), "history.md")
                                     try:

@@ -4,17 +4,16 @@ Ultra-light documentation for local agent workspaces, checkpoints, and security 
 
 ```text
 ~ ❯ session
-[02/02]] ❯ [session test ai] ai init ~/.config/local-ai/projects/ai-session-test -init
+[02/02] ❯ [session test ai] ai init ~/.config/local-ai/projects/ai-session-test -init
 :: ↵ run  Esc: 
 ℹ Compiling index map...
-✔ Compressed index-map compiled successfully at: 
-/home/j5/.config/local-ai/projects/ai-session-test/index-map-ai-session-test.txt
+✔ Compressed index-map compiled successfully at: /home/j5/.config/local-ai/projects/...
 ╭──────────────────────────────────────────────╮
 │  >_ Local-AI Agent (v0.8.9.2)                │
 │                                              │
 │  model:     gemini-3.1-flash-lite            │
 │  directory: .../projects/ai-session-test     │
-│  database:  14 turns (asleep)                │
+│  database:  15 turns (asleep)                │
 ╰──────────────────────────────────────────────╯
 [sys] Startup context: 160 tokens | Ctrl+C to exit.
 
