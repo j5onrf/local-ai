@@ -53,6 +53,66 @@ def get_key():
             termios.tcsetattr(fd, termios.TCSADRAIN, old)
     return ""
 
+def print_session_box(workspace):
+    db_path = os.path.join(SESSIONS_DIR, f"{workspace}.db")
+    
+    turns_count = 0
+    checkpoints_count = 0
+    if os.path.exists(db_path):
+        try:
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM turns WHERE workspace = ?", (workspace,))
+            turns_count = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM checkpoints WHERE workspace = ?", (workspace,))
+            checkpoints_count = cursor.fetchone()[0]
+            conn.close()
+        except:
+            pass
+
+    home_dir = os.path.expanduser("~")
+    workspace_path = os.environ.get("AI_WORKSPACE_PATH")
+    if not workspace_path:
+        rebuilt = workspace.replace("-", "/")
+        if rebuilt.startswith(".config"):
+            workspace_path = os.path.join(home_dir, rebuilt)
+        else:
+            workspace_path = rebuilt
+
+    display_ws = workspace_path
+    if display_ws.startswith(home_dir):
+        display_ws = display_ws.replace(home_dir, "~", 1)
+
+    if len(display_ws) > 28:
+        display_ws = "..." + display_ws[-25:]
+
+    # Resolve the active model dynamically using the exact same cascade as ai-agent.py
+    gkey = os.environ.get("GEMINI_API_KEY")
+    okey = os.environ.get("OPENROUTER_API_KEY")
+    
+    if gkey:
+        model_name = os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite")
+    elif okey:
+        model_name = os.environ.get("OPENROUTER_MODEL", "openrouter/free")
+    else:
+        model_name = "local-model"
+
+    box_width = 46
+    title_line = " >_ Local-AI Session Manager"
+    model_line = f" model:     {model_name}"
+    dir_line   = f" directory: {display_ws}"
+    db_line    = f" database:  {turns_count} turns, {checkpoints_count} saves"
+    
+    # Print the box strictly to stderr using standard box-drawing characters and legible 2m dim body text
+    sys.stderr.write("\n\033[1;36m╭" + "─" * box_width + "╮\n\033[0m")
+    sys.stderr.write(f"\033[1;36m│\033[0m \033[1;37m{title_line:<{box_width-1}}\033[1;36m│\n\033[0m")
+    sys.stderr.write(f"\033[1;36m│\033[0m{' ':<{box_width}}\033[1;36m│\n\033[0m")
+    sys.stderr.write(f"\033[1;36m│\033[0m \033[2m{model_line:<{box_width-1}}\033[1;36m│\n\033[0m")
+    sys.stderr.write(f"\033[1;36m│\033[0m \033[2m{dir_line:<{box_width-1}}\033[1;36m│\n\033[0m")
+    sys.stderr.write(f"\033[1;36m│\033[0m \033[2m{db_line:<{box_width-1}}\033[1;36m│\n\033[0m")
+    sys.stderr.write("\033[1;36m╰" + "─" * box_width + "╯\n\033[0m")
+    sys.stderr.flush()
+
 def init_db(workspace):
     db_path = os.path.join(SESSIONS_DIR, f"{workspace}.db")
     conn = sqlite3.connect(db_path)
@@ -103,6 +163,10 @@ def rollback_checkpoint(workspace):
     cursor.execute("SELECT tag, history, timestamp FROM checkpoints WHERE workspace = ? ORDER BY timestamp DESC", (workspace,))
     rows = cursor.fetchall()
     conn.close()
+    
+    # Print the session metadata box before displaying history or errors
+    print_session_box(workspace)
+    
     if not rows:
         sys.stderr.write(f"\033[1;31m[session-mgr] No checkpoints found for: {workspace}\033[0m\n")
         sys.exit(0)
@@ -284,6 +348,8 @@ if __name__ == "__main__":
         save_checkpoint(workspace, args[2] if len(args) > 2 else "")
     elif cmd == "load":
         rollback_checkpoint(workspace)
+    elif cmd == "init":
+        print_session_box(workspace)
     elif cmd == "log-turn" and len(args) >= 4:
         log_turn(workspace, args[2], args[3])
     elif cmd == "get-context" and len(args) >= 3:

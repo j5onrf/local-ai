@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.9.2 [j5onrf] [06-27-26]
+# Local-Ai Agent v0.8.9.3 [j5onrf] [06-27-26]
 
 import sys, re, os, json, threading, time, subprocess, shutil, tty, termios, select, urllib.request as urlreq, urllib.error as urlerr
 try: import readline
@@ -334,13 +334,13 @@ try:
                 dir_line   = f" directory: {display_dir}"
                 mem_line   = f" database:  {db_turns} turns (asleep)" if is_agent else f" database:  stateless"
                 
-                # Print box using standard box-drawing characters
+                # Print box using standard box-drawing characters (with legible 2m dim body text)
                 print("\033[1;36m╭" + "─" * box_width + "╮\033[0m")
                 print(f"\033[1;36m│\033[0m \033[1;37m{title_line:<{box_width-1}}\033[1;36m│\033[0m")
                 print(f"\033[1;36m│\033[0m{' ':<{box_width}}\033[1;36m│\033[0m")
-                print(f"\033[1;36m│\033[0m \033[1;30m{model_line:<{box_width-1}}\033[1;36m│\033[0m")
-                print(f"\033[1;36m│\033[0m \033[1;30m{dir_line:<{box_width-1}}\033[1;36m│\033[0m")
-                print(f"\033[1;36m│\033[0m \033[1;30m{mem_line:<{box_width-1}}\033[1;36m│\033[0m")
+                print(f"\033[1;36m│\033[0m \033[2m{model_line:<{box_width-1}}\033[1;36m│\033[0m")
+                print(f"\033[1;36m│\033[0m \033[2m{dir_line:<{box_width-1}}\033[1;36m│\033[0m")
+                print(f"\033[1;36m│\033[0m \033[2m{mem_line:<{box_width-1}}\033[1;36m│\033[0m")
                 print("\033[1;36m╰" + "─" * box_width + "╯\033[0m")
                 print(f"\033[90m[sys] Startup context: {len(active_system_prompt)//4:,} tokens | Ctrl+C to exit.\033[0m\n")
 

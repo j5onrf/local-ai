@@ -4,22 +4,29 @@ Ultra-light documentation for local agent workspaces, checkpoints, and security 
 
 ```text
 ~ ❯ session
-[02/02] ❯ [session test ai] ai init ~/.config/local-ai/projects/ai-session-test -init
+[01/02] ❯ [session test] ai init ~/.config/local-ai/projects/session-test -init
 :: ↵ run  Esc: 
 ℹ Compiling index map...
-✔ Compressed index-map compiled successfully at: /home/j5/.config/local-ai/projects/...
+✔ Compressed index-map compiled successfully at: /home/user/.config/local-ai/projects/...
 ╭──────────────────────────────────────────────╮
-│  >_ Local-AI Agent (v0.8.9.2)                │
+│  >_ Local-AI Agent (v0.8.9.3)                │
 │                                              │
 │  model:     gemini-3.1-flash-lite            │
-│  directory: .../projects/ai-session-test     │
-│  database:  15 turns (asleep)                │
+│  directory: ...-ai/projects/session-test     │
+│  database:  38 turns (asleep)                │
 ╰──────────────────────────────────────────────╯
 [sys] Startup context: 160 tokens | Ctrl+C to exit.
 
-Agent: The last interaction ID is 842, the workspace history is titled ai-session-test, 
-the index map file contains the key last_interaction_id, and the physics.py file contains 
-a function named calculate_velocity that accepts parameters for distance and time.
+Agent: The value associated with the last_interaction_id key in the .agent/session.json file 
+acts as a reference for tracking the sequence of commands and responses within this specific 
+workspace environment. If you need to update or verify this value, you should inspect the file 
+content directly or use a JSON parser to extract the current identifier for your session history.
+❯ /tok
+
+[sys] Context Window: 223/8192 tokens
+[sys] Usage: [█░░░░░░░░░░░░░░░░░░░] 2.7%
+[sys] Remaining: 7969 tokens
+
 ❯ 
 ```
 
