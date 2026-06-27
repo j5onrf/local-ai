@@ -24,6 +24,7 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 
 * **No Session (Direct selections):** Uses a fast Jaccard Similarity engine (`jaccard_search`) with prefix-matching to instantly route custom commands and shortcuts to your local terminal.
 * **Single-Turn Agent (`ai <query>`):** Answers a single question and returns you to Bash, executing explicitly mapped diagnostic `tools` and `skills` only when requested.
+* **Multi-Turn Chat (`ai` alone):** Initiates an interactive, persistent conversation with local state preservation and multi-turn context memory.
 * **Workspace Agents (`ai init <path>`):** Compiles a path-specific structural tree directly inside your active workspace using `index-map`, launching a dedicated, codebase-aware agent session primed with your chosen skill file.
 
 ---
