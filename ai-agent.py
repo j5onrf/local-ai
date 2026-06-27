@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.9.1 [j5onrf] [06-26-26]
+# Local-Ai Agent v0.8.9.2 [j5onrf] [06-27-26]
 
 import sys, re, os, json, threading, time, subprocess, shutil, tty, termios, select, urllib.request as urlreq, urllib.error as urlerr
 try: import readline
@@ -9,12 +9,10 @@ sys.argv = [arg for arg in sys.argv if arg != ""]
 CFG_DIR = os.path.expanduser("~/.config/local-ai")
 CONTEXT_FILE, SKILLS_DIR = f"{CFG_DIR}/ai-context.md", f"{CFG_DIR}/skills"
 DESTRUCTIVE_KEYWORDS = ["rm ", "dd ", "mkfs", "shred", "chmod -R 777", "> /dev/sda"]
-TOKEN_RE = re.compile(r"[^\w\s]")
+TOKEN_RE, _CACHED_ENTRIES, _LAST_M_TIME = re.compile(r"[^\w\s]"), None, 0
 STOP_WORDS = {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"}
 BASE_PROMPT = "Local shell AI assistant (read-only access).\nProvide direct, natural plain-text answers using any provided system context.\nNo markdown (no bolding, no headers, no bullet lists).\nAlways write full, complete, and helpful sentences.\n\n"
-_CACHED_ENTRIES, _LAST_M_TIME = None, 0
 
-# --- DYNAMIC SPELLCHECKER IMPORT & FALLBACK ---
 check_query_spelling = lambda q, gk: ("RUN", q)
 try:
     sys.path.append(os.path.join(CFG_DIR, "tools"))
@@ -31,9 +29,7 @@ class InlineSpinner:
             idx, _ = idx + 1, time.sleep(0.08)
         sys.stderr.write("\r\x1b[2K\r"); sys.stderr.flush()
     def start(self): self.active, self.thread = True, threading.Thread(target=self._spin, daemon=True); self.thread.start()
-    def stop(self):
-        self.active = False
-        if self.thread: self.thread.join()
+    def stop(self): self.active = False; (self.thread.join() if self.thread else None)
 
 sanitize_input = lambda t: re.sub(r"[`$]", "", t).strip() if t else ""
 tokenize = lambda t: [w for w in TOKEN_RE.sub(" ", t.lower()).split() if len(w) > 1 and w not in STOP_WORDS]
@@ -84,7 +80,7 @@ def load_context_entries():
                     _CACHED_ENTRIES.append({"cmd": cmd.strip(), "intent": intent, "primary": intents[0], "tokens": tokens})
         _LAST_M_TIME = mtime
         return _CACHED_ENTRIES
-    except Exception: return []
+    except: return []
 
 def jaccard_search(query, threshold=0.45):
     q_clean, q_tokens = query.strip().lower(), set(tokenize(query))
@@ -185,13 +181,11 @@ def run_interactive_selection(intent):
             cmd_to_show = current_cmd.replace("DANGER_FLAGGED:", "")
             display_cmd = cmd_to_show.replace(" >/dev/null 2>&1", "").replace(os.path.expanduser("~"), "~")
             idx_str = f"{current_idx + 1:02d}/{num_opts:02d}"
-            
             if is_danger:
                 sys.stderr.write(f"\r\x1b[K\033[1;31m▲ WARNING: Destructive payload detected\033[0m\n\r\x1b[K\033[1;30m[\033[1;31m{idx_str}\033[1;30m]\033[0m ❯ \x1b[1;36m[{current_intent}]\x1b[0m {display_cmd}\n\r\x1b[K\033[1;30m::\033[0m execute payload? [y/N]: ")
             else:
-                sys.stderr.write(f"\r\x1b[K\033[1;30m[\033[1;32m{idx_str}\033[1;30m]\033[0m ❯ \x1b[1;36m[{current_intent}]\x1b[0m {display_cmd}\n\r\x1b[K\033[1;30m::\033[0m ↵ run  Esc: ")
+                sys.stderr.write(f"\r\x1b[K\033[1;30m[\033[1;32m{idx_str}\033[1;32m]\033[1;30m]\033[0m ❯ \x1b[1;36m[{current_intent}]\x1b[0m {display_cmd}\n\r\x1b[K\033[1;30m::\033[0m ↵ run  Esc: ")
             sys.stderr.flush()
-            
             key = get_key()
             if key in ('\x03', '\x1b') or (not is_danger and key not in ('\r', '', '\x1b[A', '\x1b[B')):
                 sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[KCancelled.\n"); sys.stderr.flush(); break
@@ -222,15 +216,13 @@ def stream_llm_response(messages, prefix="AI: "):
             import gemini_client
             ans = gemini_client.stream(messages, prefix, gkey, InlineSpinner)
             if ans is not None: return ans
-        except Exception: pass
-
+        except: pass
     configs, okey = [], os.environ.get("OPENROUTER_API_KEY")
     if gkey:
         configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Authorization": f"Bearer {gkey}"}, os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"), {}, 30))
     if okey:
         configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"}, os.environ.get("OPENROUTER_MODEL", "openrouter/free"), {}, 180))
     configs.append(("http://localhost:8080/v1/chat/completions", {}, "local-model", {}, 180))
-    
     spinner = InlineSpinner()
     try:
         for url, headers, model, extra, timeout in configs:
@@ -305,17 +297,44 @@ try:
                 pending_query, clean_name = (" ".join(args[1:]) if len(args) > 1 else None), (active_skill.lstrip("-") if active_skill else "")
                 spell_active, memory_active = True, True
                 
-                # Dynamic diagnostics bar calculations
                 db_turns = 0
                 if is_agent:
                     try: db_turns = int(subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "get-count", safe_name], capture_output=True, text=True).stdout.strip())
                     except: pass
 
-                print(f"\033[1;36mAI Agent Session Initialized | Context Loaded{f' [{clean_name}]' if clean_name else ''} | Ctrl+C to exit.\033[0m")
-                if is_agent:
-                    print(f"\033[90m[sys] Startup context: {len(active_system_prompt)//4:,} tokens | Database memory: {db_turns} turns (asleep)\033[0m\n")
+                display_dir = workspace_path
+                if display_dir.startswith(home_dir):
+                    display_dir = display_dir.replace(home_dir, "~", 1)
+                if len(display_dir) > 28:
+                    display_dir = "..." + display_dir[-25:]
+
+                version = ""
+                try: version = re.search(r"Local-Ai Agent\s+(v[0-9.]+)", open(__file__, encoding="utf-8").readlines()[1], re.I).group(1)
+                except: pass
+
+                gkey = os.environ.get("GEMINI_API_KEY")
+                okey = os.environ.get("OPENROUTER_API_KEY")
+                if gkey:
+                    model_name = os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite")
+                elif okey:
+                    model_name = os.environ.get("OPENROUTER_MODEL", "openrouter/free")
                 else:
-                    print(f"\033[90m[sys] Startup context: {len(active_system_prompt)//4:,} tokens\033[0m\n")
+                    model_name = "local-model"
+
+                box_width = 46
+                title_line = f" >_ Local-AI Agent ({version})" if version else " >_ Local-AI Agent"
+                model_line = f" model:     {model_name}"
+                dir_line   = f" directory: {display_dir}"
+                mem_line   = f" database:  {db_turns} turns (asleep)" if is_agent else f" database:  stateless"
+                
+                print("\033[1;36m╭" + "─" * box_width + "╮\033[0m")
+                print(f"\033[1;36m│\033[0m \033[1;37m{title_line:<{box_width-1}}\033[1;36m│\033[0m")
+                print(f"\033[1;36m│\033[0m{' ':<{box_width}}\033[1;36m│\033[0m")
+                print(f"\033[1;36m│\033[0m \033[1;30m{model_line:<{box_width-1}}\033[1;36m│\033[0m")
+                print(f"\033[1;36m│\033[0m \033[1;30m{dir_line:<{box_width-1}}\033[1;36m│\033[0m")
+                print(f"\033[1;36m│\033[0m \033[1;30m{mem_line:<{box_width-1}}\033[1;36m│\033[0m")
+                print("\033[1;36m╰" + "─" * box_width + "╯\033[0m")
+                print(f"\033[90m[sys] Startup context: {len(active_system_prompt)//4:,} tokens | Ctrl+C to exit.\033[0m\n")
 
                 try:
                     while True:
@@ -332,24 +351,20 @@ try:
                             if query.lower() in ("exit", "quit", "q"): 
                                 print("\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
                             
-                            # --- ON-THE-FLY SPELLCHECK TOGGLE ---
                             if query.strip() in ("/d", "/e"):
                                 spell_active = (query.strip() == "/e")
                                 print(f"\033[1;33m[sys] Spellchecker {'enabled' if spell_active else 'disabled'}.\033[0m\n")
                                 continue
                             
-                            # --- ON-THE-FLY MEMORY TOGGLE ---
                             if query.strip() == "/m":
                                 memory_active = not memory_active
                                 print(f"\033[1;33m[sys] Memory recall {'enabled' if memory_active else 'disabled'}.\033[0m\n")
                                 continue
 
-                            # --- DYNAMIC TOKEN CAPACITY INTERCEPT ---
                             if query == "/tok":
                                 subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "show-tok"], input=json.dumps(chat_history), text=True)
                                 continue
 
-                            # Run spelling checker on non-command / non-code block prompt inputs
                             if spell_active and not query.startswith(("/", "-", "#", "```")):
                                 action, query = check_query_spelling(query, get_key)
                                 if action == "EDIT":
@@ -359,24 +374,19 @@ try:
                                 elif action == "DISABLE":
                                     spell_active = False
                         
-                        # --- ON-DEMAND DEPT SKILL SELECTOR DELEGATE HOOK ---
                         q_strip = query.strip()
                         if q_strip in ("/skill", "/s") or q_strip.startswith(("/skill ", "/s ")):
-                            # Pass active history JSON string as stdin, capturing outputs directly in pipes
                             res = subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-skills", safe_name, q_strip], input=json.dumps(chat_history), stdout=subprocess.PIPE, text=True)
                             if res.stdout.strip():
                                 try: chat_history = json.loads(res.stdout.strip())
                                 except Exception as e: print(f"Error loading session: {e}")
                             continue
 
-                        # --- STATELESS CHECKPOINT SAVE COMMAND ---
                         if query.startswith("-save"):
                             tag = query.replace("-save", "").strip()
-                            # Pass history array directly as stdin, bypassing filesystem
                             subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "save", safe_name, tag], input=json.dumps(chat_history), text=True)
                             continue
                         
-                        # --- STATELESS CHECKPOINT LOAD/TIMELINE COMMAND ---
                         if query in ("-load", "-timeline"):
                             res = subprocess.run(
                                 [sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "load", safe_name], 
@@ -387,13 +397,12 @@ try:
                             if res.stdout.strip():
                                 try:
                                     chat_history = json.loads(res.stdout.strip())
-                                    print(f"\033[1;32m[session-mgr] Restored session to checkpoint state ({len(chat_history)-1} turns loaded).\033[0m\n")
+                                    print(f"\033[1;32m[session-mgr] Restored session ({len(chat_history)-1} turns loaded).\033[0m\n")
                                 except Exception as e: print(f"Error loading session: {e}")
                             else:
-                                print(f"\033[1;31m[session-mgr] Load aborted. No changes made.\033[0m\n")
+                                print(f"\033[1;31m[session-mgr] Load aborted.\033[0m\n")
                             continue
 
-                        # --- 1. MEMORY BANK: RETRIEVE RELEVANT PAST TURNS ---
                         past_memory = ""
                         is_init_map = query.startswith("# ACTIVE PROJECT") or (query.startswith("[") and "\n" in query)
                         if is_agent and memory_active and not is_init_map:
@@ -411,8 +420,8 @@ try:
                             think_bin = f"{CFG_DIR}/tools/chat"
                             if os.path.exists(think_bin):
                                 try: subprocess.run([sys.executable, think_bin, query], input=json.dumps(chat_history), text=True)
-                                except Exception as e: sys.stderr.write(f"\033[1;31m[Warning] chat tool failed: {e}\033[0m\n")
-                            else: sys.stderr.write("\033[1;31mError: chat tool not found at tools/chat\033[0m\n")
+                                except Exception as e: sys.stderr.write(f"\033[1;31m[Warning] chat failed: {e}\033[0m\n")
+                            else: sys.stderr.write("\033[1;31mError: chat tool not found\033[0m\n")
                             continue
                         
                         system_context = get_system_context(query)
@@ -428,9 +437,7 @@ try:
                         if ans: 
                             chat_history.append({"role": "assistant", "content": ans})
                             if is_agent:
-                                # --- 2. MEMORY BANK: PASSIVELY LOG TURN ---
                                 subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "log-turn", safe_name, query, ans])
-                                # --- 3. DYNAMIC LOCAL WRITER: APPEND CHRONOLOGICAL history.md ---
                                 if not is_init_map:
                                     local_history_file = os.path.join(os.environ.get("AI_WORKSPACE_PATH", os.getcwd()), "history.md")
                                     try:
@@ -438,7 +445,8 @@ try:
                                         with open(local_history_file, mode) as hf:
                                             if mode == "w": hf.write(f"# Workspace History: {os.path.basename(os.path.dirname(local_history_file))}\n\n")
                                             hf.write(f"## [{time.strftime('%Y-%m-%d %H:%M')}] User:\n{query}\n\n### Agent:\n{ans}\n\n---\n\n")
-                                    except: pass
+                                    except Exception:
+                                        pass
                 except KeyboardInterrupt: 
                     print("\n\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
 

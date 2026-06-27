@@ -2,18 +2,7 @@
 
 Ultra-light documentation for local agent workspaces, checkpoints, and security isolation.
 
-```text
-~ ❯ project session
-[02/02] ❯ [session test ai] ai init ~/.config/local-ai/projects/ai-session-test -init
-:: ↵ run  Esc: 
-ℹ Compiling index map...
-✔ Compressed index-map compiled successfully at: /home/user/.config/local-ai/projects/ai-session-test/index-map-ai-session-test.txt
-AI Agent Session Initialized | Context Loaded [init] | Ctrl+C to exit.
-[sys] Startup context: 160 tokens | Database memory: 7 turns (asleep)
-
-Agent: The last interaction ID is 842, the workspace history is titled ai-session-test, the index map file contains the key last_interaction_id, and the physics.py file contains a function named calculate_velocity that accepts parameters for distance and time.
-❯ 
-```
+<img alt="20260627_140858" src="https://github.com/user-attachments/assets/35f51b27-786a-438f-81ca-f77abeb113fc" />
 
 ---
 
@@ -114,3 +103,4 @@ When configured with a `GEMINI_API_KEY`, your agent bypasses standard stateless 
 
 *   **Context Caching:** Your workspace directory index map is uploaded exactly *once* during initialization. Google holds this context in an high-speed server-side memory cache referenced by the ID in your local `.agent/session.json`.
 *   **Bandwidth Savings:** Subsequent conversation turns only upload your new, brief query over the network rather than re-uploading the entire codebase structure, saving up to 90% in token costs and reducing average response latency.
+
