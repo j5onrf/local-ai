@@ -26,9 +26,11 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 * **Single-Turn Agent (`ai <query>`):** Answers a single question and returns you to Bash, executing explicitly mapped diagnostic `tools` and `skills` only when requested.
 * **Workspace Agents (`ai init <path>`):** Compiles a path-specific structural tree directly inside your active workspace using `index-map`, launching a dedicated, codebase-aware agent session primed with your chosen skill file.
 
-<br>
+---
 
-<img alt="20260627_143753" src="https://github.com/user-attachments/assets/8aa1c5cf-10e3-416c-9e8e-59bbd62acba1" />
+<p align="center">
+<img alt="20260627_143753" src="https://github.com/user-attachments/assets/8aa1c5cf-10e3-416c-9e8e-59bbd62acba1" width="800" />
+</p>
 
 ---
 
@@ -133,5 +135,6 @@ export CLOUD_MODEL="gemini-3.1-flash-lite"
 export OPENROUTER_API_KEY="sk-or-v1-YourFullOpenRouterKeyHere"
 export OPENROUTER_MODEL="openrouter/free"
 ```
+
 
 
