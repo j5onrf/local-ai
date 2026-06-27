@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <code>Gemini-3.5-Flash</code> &nbsp; <code>Openrouter/free</code> &nbsp; <code>Local-Ai Model</code>
+  <code>Gemini-3.1-flash-lite</code> &nbsp; <code>Openrouter/free</code> &nbsp; <code>Local-Ai Model</code>
 </p>
 
 ---
@@ -125,7 +125,7 @@ source ~/.bashrc
 
 # 4. Optional: Export cloud API keys to enable remote fallback routing
 export GEMINI_API_KEY="AIzaSyYourFullGeminiApiKeyHere"
-export CLOUD_MODEL="gemini-3.5-flash"
+export CLOUD_MODEL="gemini-3.1-flash-lite"
 export OPENROUTER_API_KEY="sk-or-v1-YourFullOpenRouterKeyHere"
 export OPENROUTER_MODEL="openrouter/free"
 ```

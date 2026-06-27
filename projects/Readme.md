@@ -7,7 +7,7 @@ Ultra-light documentation for local agent workspaces, checkpoints, and security 
 [02/02] ❯ [session test ai] ai init ~/.config/local-ai/projects/ai-session-test -init
 :: ↵ run  Esc: 
 ℹ Compiling index map...
-✔ Compressed index-map compiled successfully at: /home/j5/.config/local-ai/projects/ai-session-test/index-map-ai-session-test.txt
+✔ Compressed index-map compiled successfully at: /home/user/.config/local-ai/projects/ai-session-test/index-map-ai-session-test.txt
 AI Agent Session Initialized | Context Loaded [init] | Ctrl+C to exit.
 [sys] Startup context: 160 tokens | Database memory: 7 turns (asleep)
 
