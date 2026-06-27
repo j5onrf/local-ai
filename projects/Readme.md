@@ -3,15 +3,15 @@
 Ultra-light documentation for local agent workspaces, checkpoints, and security isolation.
 
 ```text
-~ ❯ projects session
-[01/01] ❯ [projects session] ai init ~/.config/local-ai/projects/session-test -init
+~ ❯ project session
+[02/02] ❯ [session test ai] ai init ~/.config/local-ai/projects/ai-session-test -init
 :: ↵ run  Esc: 
 ℹ Compiling index map...
-✔ Compressed index-map compiled successfully at: ~/.config/local-ai/projects/session-test/index-map-session-test.txt
+✔ Compressed index-map compiled successfully at: /home/j5/.config/local-ai/projects/ai-session-test/index-map-ai-session-test.txt
 AI Agent Session Initialized | Context Loaded [init] | Ctrl+C to exit.
-[sys] Startup context: 178 tokens | Database memory: 17 turns (asleep)
+[sys] Startup context: 160 tokens | Database memory: 7 turns (asleep)
 
-Agent: Workspace loaded. Awaiting instructions.
+Agent: The last interaction ID is 842, the workspace history is titled ai-session-test, the index map file contains the key last_interaction_id, and the physics.py file contains a function named calculate_velocity that accepts parameters for distance and time.
 ❯ 
 ```
 

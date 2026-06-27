@@ -1,4 +1,4 @@
 [json:.agent/session.json] keys:last_interaction_id
 [markdown:history.md] sum:Workspace History: ai-session-test
-[txt:index-map-ai-session-test.txt] sum:Active project directory is /home/j5/.config/local-ai/projects/ai-session-test
+[txt:index-map-ai-session-test.txt] sum:[json:.agent/session.json] keys:last_interaction_id
 [py:physics.py] fn:calculate_velocity(dist,time)
