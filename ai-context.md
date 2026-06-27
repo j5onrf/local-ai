@@ -18,6 +18,7 @@
 ```properties
 # --- Session-Test - This is a Project Workspace (Skill-Primed) --
 ai init ~/.config/local-ai/projects/session-test -init ---> session test, projects session, projects
+ai init ~/.config/local-ai/projects/ai-session-test -init ---> session test ai, projects session, projects
 
 # --- Dynamic File Reader ---
 [TOOL] cat $1 ---> view file, read file, show file, vf
@@ -64,7 +65,7 @@ ai init ~/.config/local-ai/projects/session-test -init ---> session test, projec
 [TOOL] ~/.config/local-ai/tools/agentic/system/system-optimizer --leaf ---> system optimizer, sysop, optimize
 
 # --- System Logs & Diagnostics (Compressed Stream Triage) ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/log-checker --leaf ---> log checker, ailog, log check, check errors, system crashed, events
+[TOOL] ~/.config/local-ai/tools/agentic/system/log-checker ---> log checker, ailog, log check, check errors, system crashed, events
 
 # --- System Resources & Diagnosis (System Health) ---
 [TOOL] ~/.config/local-ai/tools/agentic/system/system-health --leaf ---> system health, sysh, health, system diagnosis, why is my system slow

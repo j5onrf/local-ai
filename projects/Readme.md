@@ -24,10 +24,9 @@ All project metadata and structural blueprints are managed cleanly without clutt
 *   **`~/.config/local-ai/projects/database/`**
     *   `*.db`: Isolated, project-specific SQLite databases managing your save checkpoints and memory logs.
 *   **`~/your-project-folder/` (Your active workspace)**
+    *   `.agent/session.json`: Securely holds the server-side interaction tracking key when using stateful Gemini APIs.
     *   `index-map-<project-name>.txt`: Codebase structural blueprint compiled on-the-fly by `tools/map/index-map` on startup.
     *   `history.md`: A human-readable chronological Markdown ledger of every input and output.
-
-*(Active conversational histories are held strictly in RAM during execution. No temporary JSON files are written to your drive).*
 
 ---
 
@@ -87,6 +86,7 @@ Inject custom, role-based onboarding instructions dynamically during any active 
 Type these quick commands during any active conversation to adjust your settings on-the-fly:
 
 *   **`/tok`**: Displays your live context window usage in a visual progress bar.
+*   **`/clear` / `/reset`**: Securely deletes the server-side interaction history from Google's servers, resets chat history, and clears the local `.agent/session.json` state.
 *   **`/d` / `/e`**: Manually **disable** or **enable** the offline spellcheck engine.
 *   **`/m`**: Manually **toggle** long-term memory recall on or off.
 *   **Memory recall prompt (`d: disable`)**: If a memory-recall prompt pops up, press **`d`** to skip and disable memory recall for the rest of your active session. *(Type `/m` to re-enable).*
@@ -99,9 +99,18 @@ Type these quick commands during any active conversation to adjust your settings
 
 *   **Inline Override (One-off):**
     ```bash
-    AI_MAX_TOKENS=16000 sess
+    AI_MAX_TOKENS=16000 session-test(your-project)
     ```
 *   **Global Override (Active Terminal):**
     ```bash
     export AI_MAX_TOKENS=16000
     ```
+
+---
+
+## 8. Server-Side Context Tracking (Gemini Interactions API)
+
+When configured with a `GEMINI_API_KEY`, your agent bypasses standard stateless completion limits and communicates statefully via Google's modern `/v1beta/interactions` endpoint.
+
+*   **Context Caching:** Your workspace directory index map is uploaded exactly *once* during initialization. Google holds this context in an high-speed server-side memory cache referenced by the ID in your local `.agent/session.json`.
+*   **Bandwidth Savings:** Subsequent conversation turns only upload your new, brief query over the network rather than re-uploading the entire codebase structure, saving up to 90% in token costs and reducing average response latency.

@@ -2,7 +2,7 @@
   <img alt="Local-AI Agent" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" width="800" />
 </p>
 
-<h1 align="center">Local-AI Agent <kbd>v0.8.8.16-beta</kbd></h1>
+<h1 align="center">Local-AI Agent <kbd>v0.8.9.1-beta</kbd></h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <code>Gemini-3.1-Flash-Lite</code> &nbsp; <code>Openrouter/free</code> &nbsp; <code>Local-Ai Model</code>
+  <code>Gemini-3.5-Flash</code> &nbsp; <code>Openrouter/free</code> &nbsp; <code>Local-Ai Model</code>
 </p>
 
 ---
@@ -86,6 +86,7 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 
 | Command | Description |
 | :--- | :--- |
+| **`/clear`** / **`/reset`** | **Reset** Google session context & clear local. |
 | **`/d`** / **`/e`** | **Disable** / **Enable** the offline spellcheck engine. |
 | **`/m`** | **Toggle** long-term conversation memory recall on or off. |
 | **`/tok`** | **View** your live token usage capacity and visual progress bar. |
@@ -124,7 +125,7 @@ source ~/.bashrc
 
 # 4. Optional: Export cloud API keys to enable remote fallback routing
 export GEMINI_API_KEY="AIzaSyYourFullGeminiApiKeyHere"
-export CLOUD_MODEL="gemini-3.1-flash-lite"
+export CLOUD_MODEL="gemini-3.5-flash"
 export OPENROUTER_API_KEY="sk-or-v1-YourFullOpenRouterKeyHere"
 export OPENROUTER_MODEL="openrouter/free"
 ```

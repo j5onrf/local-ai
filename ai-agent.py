@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.8.16 [j5onrf] [06-25-26]
+# Local-Ai Agent v0.8.9.1 [j5onrf] [06-26-26]
 
 import sys, re, os, json, threading, time, subprocess, shutil, tty, termios, select, urllib.request as urlreq, urllib.error as urlerr
 try: import readline
@@ -215,7 +215,16 @@ def run_interactive_selection(intent):
     finally: sys.stderr.write("\033[?25h"); sys.stderr.flush()
 
 def stream_llm_response(messages, prefix="AI: "):
-    configs, gkey, okey = [], os.environ.get("GEMINI_API_KEY"), os.environ.get("OPENROUTER_API_KEY")
+    gkey = os.environ.get("GEMINI_API_KEY")
+    if gkey:
+        try:
+            sys.path.append(os.path.join(CFG_DIR, "tools", "modules"))
+            import gemini_client
+            ans = gemini_client.stream(messages, prefix, gkey, InlineSpinner)
+            if ans is not None: return ans
+        except Exception: pass
+
+    configs, okey = [], os.environ.get("OPENROUTER_API_KEY")
     if gkey:
         configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Authorization": f"Bearer {gkey}"}, os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"), {}, 30))
     if okey:

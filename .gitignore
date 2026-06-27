@@ -7,6 +7,7 @@ tools/agentic/fusion/logs
 index-map-local-ai.txt
 .active_cd*
 .request_log
+.agent
 
 # Ignore Python cache directories and bytecode
 __pycache__/
