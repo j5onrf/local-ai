@@ -10,10 +10,6 @@
   <img src="https://img.shields.io/github/repo-size/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=d6b4e0" alt="Repo Size">
 </p>
 
-<p align="center">
-  <code>Gemini-3.1-flash-lite</code> &nbsp; <code>Openrouter/free</code> &nbsp; <code>Local-Ai Model</code>
-</p>
-
 ---
 
 <h2 align="center">How the Agent Works</h2>
