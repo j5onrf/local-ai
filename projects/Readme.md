@@ -2,11 +2,11 @@
 
 Ultra-light documentation for local agent workspaces, checkpoints, and security isolation.
 
+---
+
 <p align="center">
   <img alt="20260627_140858" src="https://github.com/user-attachments/assets/35f51b27-786a-438f-81ca-f77abeb113fc" width="800" />
 </p>
-
-
 
 ---
 
@@ -107,5 +107,6 @@ When configured with a `GEMINI_API_KEY`, your agent bypasses standard stateless 
 
 *   **Context Caching:** Your workspace directory index map is uploaded exactly *once* during initialization. Google holds this context in an high-speed server-side memory cache referenced by the ID in your local `.agent/session.json`.
 *   **Bandwidth Savings:** Subsequent conversation turns only upload your new, brief query over the network rather than re-uploading the entire codebase structure, saving up to 90% in token costs and reducing average response latency.
+
 
 
