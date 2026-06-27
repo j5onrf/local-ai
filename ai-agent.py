@@ -13,7 +13,6 @@ TOKEN_RE, _CACHED_ENTRIES, _LAST_M_TIME = re.compile(r"[^\w\s]"), None, 0
 STOP_WORDS = {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"}
 BASE_PROMPT = "Local shell AI assistant (read-only access).\nProvide direct, natural plain-text answers using any provided system context.\nNo markdown (no bolding, no headers, no bullet lists).\nAlways write full, complete, and helpful sentences.\n\n"
 
-# --- DYNAMIC SPELLCHECKER IMPORT & FALLBACK ---
 check_query_spelling = lambda q, gk: ("RUN", q)
 try:
     sys.path.append(os.path.join(CFG_DIR, "tools"))
@@ -287,7 +286,7 @@ try:
             if is_agent or len(args) == 1:
                 active_skill = os.environ.get("AI_ACTIVE_SKILL")
                 skill_content = load_skill_content(active_skill.lstrip("-")) if active_skill else ""
-                active_system_prompt = BASE_PROMPT + (f"\n\n### Active Skill/Role Instructions:\n{skill_content}\n" if skill_content else "")
+                active_system_prompt = skill_content if (is_agent and skill_content) else (BASE_PROMPT + (f"\n\n### Active Skill/Role Instructions:\n{skill_content}\n" if skill_content else ""))
                 
                 workspace_path = os.environ.get("AI_WORKSPACE_PATH", os.getcwd())
                 home_dir = os.path.expanduser("~")
@@ -308,8 +307,6 @@ try:
                 display_dir = workspace_path
                 if display_dir.startswith(home_dir):
                     display_dir = display_dir.replace(home_dir, "~", 1)
-                
-                # Truncate display directory if it's too long
                 if len(display_dir) > 28:
                     display_dir = "..." + display_dir[-25:]
 
@@ -332,6 +329,7 @@ try:
                 title_line = f" >_ Local-AI Agent ({version})" if version else " >_ Local-AI Agent"
                 model_line = f" model:     {model_name}"
                 dir_line   = f" directory: {display_dir}"
+                skill_line = f" skill:     {clean_name}" if clean_name else " skill:     default"
                 mem_line   = f" database:  {db_turns} turns (asleep)" if is_agent else f" database:  stateless"
                 
                 # Print box using standard box-drawing characters (with legible 2m dim body text)
@@ -340,6 +338,7 @@ try:
                 print(f"\033[1;36m│\033[0m{' ':<{box_width}}\033[1;36m│\033[0m")
                 print(f"\033[1;36m│\033[0m \033[2m{model_line:<{box_width-1}}\033[1;36m│\033[0m")
                 print(f"\033[1;36m│\033[0m \033[2m{dir_line:<{box_width-1}}\033[1;36m│\033[0m")
+                print(f"\033[1;36m│\033[0m \033[2m{skill_line:<{box_width-1}}\033[1;36m│\033[0m")
                 print(f"\033[1;36m│\033[0m \033[2m{mem_line:<{box_width-1}}\033[1;36m│\033[0m")
                 print("\033[1;36m╰" + "─" * box_width + "╯\033[0m")
                 print(f"\033[90m[sys] Startup context: {len(active_system_prompt)//4:,} tokens | Ctrl+C to exit.\033[0m\n")
@@ -359,24 +358,20 @@ try:
                             if query.lower() in ("exit", "quit", "q"): 
                                 print("\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
                             
-                            # --- ON-THE-FLY SPELLCHECK TOGGLE ---
                             if query.strip() in ("/d", "/e"):
                                 spell_active = (query.strip() == "/e")
                                 print(f"\033[1;33m[sys] Spellchecker {'enabled' if spell_active else 'disabled'}.\033[0m\n")
                                 continue
                             
-                            # --- ON-THE-FLY MEMORY TOGGLE ---
                             if query.strip() == "/m":
                                 memory_active = not memory_active
                                 print(f"\033[1;33m[sys] Memory recall {'enabled' if memory_active else 'disabled'}.\033[0m\n")
                                 continue
 
-                            # --- DYNAMIC TOKEN CAPACITY INTERCEPT ---
                             if query == "/tok":
                                 subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "show-tok"], input=json.dumps(chat_history), text=True)
                                 continue
 
-                            # Run spelling checker on non-command / non-code block prompt inputs
                             if spell_active and not query.startswith(("/", "-", "#", "```")):
                                 action, query = check_query_spelling(query, get_key)
                                 if action == "EDIT":
@@ -422,7 +417,7 @@ try:
 
                         # --- 1. MEMORY BANK: RETRIEVE RELEVANT PAST TURNS ---
                         past_memory = ""
-                        is_init_map = query.startswith("# ACTIVE PROJECT") or (query.startswith("[") and "\n" in query)
+                        is_init_map = query.startswith(("#", "[", "{")) or "\n" in query.strip() or "last_interaction_id" in query or "index-map" in query
                         if is_agent and memory_active and not is_init_map:
                             res = subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "get-context", safe_name, query], stdout=subprocess.PIPE, text=True)
                             if res.returncode == 2:
@@ -442,9 +437,13 @@ try:
                             else: sys.stderr.write("\033[1;31mError: chat tool not found\033[0m\n")
                             continue
                         
-                        system_context = get_system_context(query)
-                        combined_context = (f"{past_memory}\n\n" if past_memory else "") + system_context
-                        prompt = (f"### Real-time System Context:\n{combined_context}\n\n" if combined_context else "") + f"User Question: {query}"
+                        # --- DIRECT USER INJECTION TO ENSURE GEMINI INSTRUCTION COMPLIANCE ---
+                        if is_init_map:
+                            prompt = f"### SYSTEM INSTRUCTIONS (CRITICAL OVERRIDE):\n{active_system_prompt}\n\n### CODESPACE MAP:\n{query}"
+                        else:
+                            system_context = get_system_context(query)
+                            combined_context = (f"{past_memory}\n\n" if past_memory else "") + system_context
+                            prompt = (f"### Real-time System Context:\n{combined_context}\n\n" if combined_context else "") + f"User Question: {query}"
                         
                         chat_history.append({"role": "user", "content": prompt})
                         if not is_init_map:

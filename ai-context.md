@@ -80,8 +80,9 @@ ai init ~/.config/local-ai/projects/ai-session-test -init ---> session test ai, 
 [TOOL] ~/.config/local-ai/tools/agentic/system/ai-status --s --leaf ---> ai status, aistat, status, aistatus 
 
 # --- Weather & Live Networking ---
-[TOOL] curl -s wttr.in --s --cat ---> weather full, wttr, weather, rain forecast full
 [TOOL] curl -s "wttr.in/?format=3" --s --cat ---> weather simple, wttr, weather, rain forecast simple
+[TOOL] curl -s wttr.in --s --cat ---> weather full, wttr, weather, rain forecast full
+
 
 # --- System Time & Date (Real-time Clock Context) ---
 [TOOL] date --s ---> time, date, current time, what time is it
