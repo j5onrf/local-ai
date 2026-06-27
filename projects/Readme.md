@@ -4,7 +4,7 @@ Ultra-light documentation for local agent workspaces, checkpoints, and security 
 
 ```text
 ~ ❯ session
-[01/02] ❯ [session test] ai init ~/.config/local-ai/projects/session-test -init
+[02/02] ❯ [session test ai] ai init ~/.config/local-ai/projects/ai-session-test -init
 :: ↵ run  Esc: 
 ℹ Compiling index map...
 ✔ Compressed index-map compiled successfully at: /home/user/.config/local-ai/projects/...
@@ -12,20 +12,48 @@ Ultra-light documentation for local agent workspaces, checkpoints, and security 
 │  >_ Local-AI Agent (v0.8.9.3)                │
 │                                              │
 │  model:     gemini-3.1-flash-lite            │
-│  directory: ...-ai/projects/session-test     │
-│  database:  38 turns (asleep)                │
+│  directory: .../projects/ai-session-test     │
+│  skill:     init                             │
+│  database:  26 turns (asleep)                │
 ╰──────────────────────────────────────────────╯
-[sys] Startup context: 160 tokens | Ctrl+C to exit.
+[sys] Startup context: 92 tokens | Ctrl+C to exit.
 
-Agent: The value associated with the last_interaction_id key in the .agent/session.json file 
-acts as a reference for tracking the sequence of commands and responses within this specific 
-workspace environment. If you need to update or verify this value, you should inspect the file 
-content directly or use a JSON parser to extract the current identifier for your session history.
+Agent: Workspace loaded. Awaiting instructions.
+❯ hello how are you
+[sys] Memory recall skipped.
+Agent: I am functioning within the workspace and ready for your development tasks. How 
+can I assist you with your code today?
+❯ how do rabbits get through metal fence so easy?
+Agent: Rabbits bypass metal fences primarily by exploiting physical gaps or structural 
+weaknesses:
+
+1.  **Digging:** They excavate soil beneath the barrier. Unless the fence is buried at 
+least 6-12 inches deep or features a hardware cloth "apron" staked outward at the base, 
+they will tunnel under it.
+2.  **Squeezing:** Their flexible anatomy allows them to compress their bodies through small 
+gaps. If the wire mesh has a grid spacing larger than 2 inches, or if the bottom wire isn't 
+flush with the ground, they can push their way through.
+3.  **Lifting:** If the fence is not securely anchored to posts at close intervals, a rabbit 
+can use its head or paws to lift the bottom edge of flexible wire mesh to create an entry point.
+❯ /a
+
+AI: Follow-up
+What skeletal adaptations allow rabbits to compress their bodies?
+How can one effectively proof a garden against rabbits?
+How do wire mesh fences compare to wooden barriers?
+AI: Thinking
+Test the minimum mesh size to prevent rabbit entry.
+Check if soil density affects the speed of digging.
+Determine how fence height influences a rabbit's jumping ability.
+AI: Brainstorm
+Model rabbit behavior using complex evolutionary game theory algorithms.
+Apply structural engineering principles to optimize garden barrier designs.
+Analyze how urban sprawl impacts local wild rabbit populations.
 ❯ /tok
 
-[sys] Context Window: 223/8192 tokens
-[sys] Usage: [█░░░░░░░░░░░░░░░░░░░] 2.7%
-[sys] Remaining: 7969 tokens
+[sys] Context Window: 487/8192 tokens
+[sys] Usage: [█░░░░░░░░░░░░░░░░░░░] 5.9%
+[sys] Remaining: 7705 tokens
 
 ❯ 
 ```
