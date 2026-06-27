@@ -2,13 +2,27 @@
 
 Ultra-light documentation for local agent workspaces, checkpoints, and security isolation.
 
----
+```text
+~ ❯ session
+[02/02]] ❯ [session test ai] ai init ~/.config/local-ai/projects/ai-session-test -init
+:: ↵ run  Esc: 
+ℹ Compiling index map...
+✔ Compressed index-map compiled successfully at: 
+/home/j5/.config/local-ai/projects/ai-session-test/index-map-ai-session-test.txt
+╭──────────────────────────────────────────────╮
+│  >_ Local-AI Agent (v0.8.9.2)                │
+│                                              │
+│  model:     gemini-3.1-flash-lite            │
+│  directory: .../projects/ai-session-test     │
+│  database:  14 turns (asleep)                │
+╰──────────────────────────────────────────────╯
+[sys] Startup context: 160 tokens | Ctrl+C to exit.
 
-<p align="center">
-  <img alt="20260627_140858" src="https://github.com/user-attachments/assets/35f51b27-786a-438f-81ca-f77abeb113fc" width="800" />
-</p>
-
----
+Agent: The last interaction ID is 842, the workspace history is titled ai-session-test, 
+the index map file contains the key last_interaction_id, and the physics.py file contains 
+a function named calculate_velocity that accepts parameters for distance and time.
+❯ 
+```
 
 ## 1. Directory Structure & Files
 
