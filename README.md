@@ -152,7 +152,7 @@ export OPENROUTER_MODEL="openrouter/free"
 
 ---
 
-> 🌐 **Interactive Demo:** Experience the real-time terminal simulations, dynamic Sunset/Nebulae themes, and live agent execution on the [Web Demo Portfolio](https://j5onrf.github.io/local-ai-agent/).
+> **Interactive Demo:** Experience the real-time terminal simulations, dynamic Sunset/Nebulae themes, and live agent execution on the [Web Demo Portfolio](https://j5onrf.github.io/local-ai-agent/).
 
 
 
