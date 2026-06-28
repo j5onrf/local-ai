@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.9.3 [j5onrf] [06-27-26]
+# Local-Ai Agent v0.8.9.4 [j5onrf] [06-27-26]
 
-import sys, re, os, json, threading, time, subprocess, shutil, tty, termios, select, urllib.request as urlreq, urllib.error as urlerr
-try: import readline
-except ImportError: pass
+import sys, re, os, json, select, subprocess, shutil
+import urllib.request as urlreq, urllib.error as urlerr
 
 sys.argv = [arg for arg in sys.argv if arg != ""]
 CFG_DIR = os.path.expanduser("~/.config/local-ai")
@@ -13,23 +12,13 @@ TOKEN_RE, _CACHED_ENTRIES, _LAST_M_TIME = re.compile(r"[^\w\s]"), None, 0
 STOP_WORDS = {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"}
 BASE_PROMPT = "Local shell AI assistant (read-only access).\nProvide direct, natural plain-text answers using any provided system context.\nNo markdown (no bolding, no headers, no bullet lists).\nAlways write full, complete, and helpful sentences.\n\n"
 
+# Bootstrap on-demand modules folder path
+sys.path.append(os.path.join(CFG_DIR, "tools", "modules"))
+
 check_query_spelling = lambda q, gk: ("RUN", q)
 try:
-    sys.path.append(os.path.join(CFG_DIR, "tools"))
     from spellcheck import check_query_spelling
 except ImportError: pass
-
-class InlineSpinner:
-    def __init__(self): self.chars, self.active, self.thread = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏", False, None
-    def _spin(self):
-        idx = 0
-        while self.active:
-            try: sys.stderr.write(f"\r\033[1;32m{self.chars[idx % 12]}\033[0m "); sys.stderr.flush()
-            except: pass
-            idx, _ = idx + 1, time.sleep(0.08)
-        sys.stderr.write("\r\x1b[2K\r"); sys.stderr.flush()
-    def start(self): self.active, self.thread = True, threading.Thread(target=self._spin, daemon=True); self.thread.start()
-    def stop(self): self.active = False; (self.thread.join() if self.thread else None)
 
 sanitize_input = lambda t: re.sub(r"[`$]", "", t).strip() if t else ""
 tokenize = lambda t: [w for w in TOKEN_RE.sub(" ", t.lower()).split() if len(w) > 1 and w not in STOP_WORDS]
@@ -44,13 +33,19 @@ def find_skill_file(d, n):
     return next((os.path.join(r, f) for r, _, fs in os.walk(d) if r[len(d):].count(os.sep) <= 3 for f in fs if f.lower() == f"{n.lower()}.md"), None)
 
 def load_skill_content(n):
-    sf = find_skill_file(SKILLS_DIR, n) if n else None
-    if not sf: return ""
-    if "system" in n.lower(): ensure_mysys_exists()
-    try:
-        with open(sf) as f: return f.read().strip()
-    except Exception as e:
-        sys.stderr.write(f"\033[1;31mError loading skill '{n}': {e}\033[0m\n"); return ""
+    if not n: return ""
+    skills = [s.lstrip("-").lower() for s in n.split()]
+    contents = []
+    for skill in skills:
+        sf = find_skill_file(SKILLS_DIR, skill)
+        if sf:
+            if "system" in skill: ensure_mysys_exists()
+            try:
+                with open(sf, "r", encoding="utf-8") as f:
+                    contents.append(f.read().strip())
+            except Exception as e:
+                sys.stderr.write(f"\033[1;31mError loading skill '{skill}': {e}\033[0m\n")
+    return "\n\n".join(contents)
 
 def print_stock_error(n):
     sh = os.path.basename(os.environ.get("SHELL", "/bin/bash"))
@@ -101,18 +96,6 @@ def jaccard_search(query, threshold=0.45):
             seen.add(cmd); top.append(f"{primary}|||{clean_tool_prefix(cmd)}")
     return "\n".join(top)
 
-def get_key():
-    fd = sys.stdin.fileno()
-    try: old = termios.tcgetattr(fd)
-    except termios.error:
-        try: return os.read(fd, 1).decode("utf-8", errors="ignore")
-        except: return ""
-    try:
-        tty.setraw(fd); r = os.read(fd, 1)
-        if r == b'\x1b' and select.select([fd], [], [], 0.05)[0]: r += os.read(fd, 2)
-    finally: termios.tcsetattr(fd, termios.TCSADRAIN, old)
-    return r.decode("utf-8", errors="ignore")
-
 def clean_tool_prefix(cmd):
     is_tool = cmd.startswith("[TOOL]")
     c = cmd.replace("[TOOL]", "", 1).strip() if is_tool else cmd
@@ -145,75 +128,23 @@ def get_system_context(query):
                     sys.stderr.write(f"\033[2m[sys] Executing: {tool}\033[0m\n"); sys.stderr.flush()
                     return run_local_tool(tool)
                 sys.stderr.write(f"\033[1;30m[sys] Run tool: \033[1;36m{tool}\033[1;30m? [↵ run  Esc]: \033[0m"); sys.stderr.flush()
+                # On-demand import of key-handling module for system confirmation prompts
+                from ux import get_key
                 key = get_key()
                 if key in ('\x03', '\x1b'):
                     sys.stderr.write("\r\x1b[K\033[2;31m[sys] Cancelled.\033[0m\n"); sys.stderr.flush(); sys.exit(130)
                 is_run = key in ('\r', '\n', '', 'y', 'Y')
                 sys.stderr.write(f"\r\x1b[K{f'\033[2m[sys] Executing: {tool}' if is_run else '\033[2;31m[sys] Skipped tool execution.'}\033[0m\n"); sys.stderr.flush()
                 return run_local_tool(tool) if is_run else ""
-    return ""
-
-def prune_history(history, max_tokens=None):
-    if len(history) <= 1: return history
-    try: max_tokens = int(os.environ.get("AI_MAX_TOKENS", 8192)) if max_tokens is None else max_tokens
-    except: max_tokens = 8192
-    sys_prompt = history[0]
-    curr, selected = len(sys_prompt["content"]) // 4, []
-    for m in reversed(history[1:]):
-        toks = len(m["content"]) // 4
-        if not selected or curr + toks <= max_tokens:
-            selected.append(m); curr += toks
-        else: break
-    return [sys_prompt] + list(reversed(selected))
-
-def run_interactive_selection(intent):
-    if re.search(r'[\[\]{}()=\'"",;|<>#]', intent): print_stock_error(intent); sys.exit(127)
-    matched_base = jaccard_search(intent)
-    if not matched_base: print_stock_error(intent); sys.exit(127)
-    options = matched_base.split("\n")
-    num_opts, current_idx = len(options), 0
-    sys.stderr.write("\033[?25l"); sys.stderr.flush()
-    try:
-        while True:
-            current_intent, current_cmd = options[current_idx].split("|||", 1)
-            current_cmd = clean_tool_prefix(current_cmd)
-            is_danger = current_cmd.startswith("DANGER_FLAGGED:")
-            cmd_to_show = current_cmd.replace("DANGER_FLAGGED:", "")
-            display_cmd = cmd_to_show.replace(" >/dev/null 2>&1", "").replace(os.path.expanduser("~"), "~")
-            idx_str = f"{current_idx + 1:02d}/{num_opts:02d}"
-            if is_danger:
-                sys.stderr.write(f"\r\x1b[K\033[1;31m▲ WARNING: Destructive payload detected\033[0m\n\r\x1b[K\033[1;30m[\033[1;31m{idx_str}\033[1;30m]\033[0m ❯ \x1b[1;36m[{current_intent}]\x1b[0m {display_cmd}\n\r\x1b[K\033[1;30m::\033[0m execute payload? [y/N]: ")
-            else:
-                sys.stderr.write(f"\r\x1b[K\033[1;30m[\033[1;32m{idx_str}\033[1;30m]\033[0m ❯ \x1b[1;36m[{current_intent}]\x1b[0m {display_cmd}\n\r\x1b[K\033[1;30m::\033[0m ↵ run  Esc: ")
-            sys.stderr.flush()
-            key = get_key()
-            if key in ('\x03', '\x1b') or (not is_danger and key not in ('\r', '', '\x1b[A', '\x1b[B')):
-                sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[KCancelled.\n"); sys.stderr.flush(); break
-            if is_danger:
-                sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K\x1b[1A\r\x1b[K"); sys.stderr.flush()
-                if key.lower() == 'y':
-                    if "system" in cmd_to_show: ensure_mysys_exists()
-                    sys.stdout.write(cmd_to_show)
-                else: sys.stderr.write("Aborted safely.\n")
-                sys.stdout.flush(); break
-            if key in ('\r', ''):
-                sys.stderr.write("\n"); sys.stderr.flush()
-                if "system" in cmd_to_show: ensure_mysys_exists()
-                sys.stdout.write(cmd_to_show); sys.stdout.flush(); break
-            elif key in ('\x1b[A', '\x1b[B'):
-                current_idx = (current_idx + (1 if key == '\x1b[B' else -1) + num_opts) % num_opts
-                sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
-        sys.exit(0)
-    except KeyboardInterrupt:
-        sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[KCancelled.\n"); sys.stderr.flush(); sys.exit(130)
-    finally: sys.stderr.write("\033[?25h"); sys.stderr.flush()
+        return ""
 
 def stream_llm_response(messages, prefix="AI: "):
     gkey = os.environ.get("GEMINI_API_KEY")
     if gkey:
         try:
-            sys.path.append(os.path.join(CFG_DIR, "tools", "modules"))
             import gemini_client
+            # On-demand import of the CLI Spinner
+            from ux import InlineSpinner
             ans = gemini_client.stream(messages, prefix, gkey, InlineSpinner)
             if ans is not None: return ans
         except: pass
@@ -223,6 +154,7 @@ def stream_llm_response(messages, prefix="AI: "):
     if okey:
         configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"}, os.environ.get("OPENROUTER_MODEL", "openrouter/free"), {}, 180))
     configs.append(("http://localhost:8080/v1/chat/completions", {}, "local-model", {}, 180))
+    from ux import InlineSpinner
     spinner = InlineSpinner()
     try:
         for url, headers, model, extra, timeout in configs:
@@ -278,14 +210,30 @@ try:
     args = sys.argv[1:]
     if args:
         if args[0] == "--interactive" and len(args) >= 2:
-            run_interactive_selection(" ".join(args[1:]))
+            # On-demand import of Option Selection Carousel
+            from ux import run_interactive_selection
+            run_interactive_selection(" ".join(args[1:]), jaccard_search, clean_tool_prefix, print_stock_error, ensure_mysys_exists)
             sys.exit(0)
 
         if args[0] in ("--talk", "--talk-chat"):
             is_agent = (args[0] == "--talk-chat")
             if is_agent or len(args) == 1:
                 active_skill = os.environ.get("AI_ACTIVE_SKILL")
-                skill_content = load_skill_content(active_skill.lstrip("-")) if active_skill else ""
+                skills_list = []
+                if active_skill:
+                    for s in active_skill.split():
+                        s_clean = s.lstrip("-").lower()
+                        if s_clean not in skills_list: skills_list.append(s_clean)
+                for arg in args:
+                    if arg.startswith("-") and arg not in ("--talk", "--talk-chat"):
+                        s_clean = arg.lstrip("-").lower()
+                        if s_clean not in skills_list: skills_list.append(s_clean)
+
+                skill_content_list = []
+                for skill in skills_list:
+                    content = load_skill_content(skill)
+                    if content: skill_content_list.append(content)
+                skill_content = "\n\n".join(skill_content_list)
                 active_system_prompt = skill_content if (is_agent and skill_content) else (BASE_PROMPT + (f"\n\n### Active Skill/Role Instructions:\n{skill_content}\n" if skill_content else ""))
                 
                 workspace_path = os.environ.get("AI_WORKSPACE_PATH", os.getcwd())
@@ -293,55 +241,18 @@ try:
                 safe_name = workspace_path[len(home_dir):].lstrip("/") if workspace_path.startswith(home_dir) else workspace_path
                 safe_name = safe_name.replace("/", "-").strip("-") or "home"
                 
-                chat_history, loaded_skills = [{"role": "system", "content": active_system_prompt}], {active_skill.lstrip("-").lower()} if active_skill else set()
-                pending_query, clean_name = (" ".join(args[1:]) if len(args) > 1 else None), (active_skill.lstrip("-") if active_skill else "")
+                chat_history, loaded_skills = [{"role": "system", "content": active_system_prompt}], set(skills_list)
+                pending_query, clean_name = (" ".join(args[1:]) if len(args) > 1 else None), (" ".join(skills_list))
                 spell_active, memory_active = True, True
                 
-                # Dynamic diagnostics bar calculations
                 db_turns = 0
                 if is_agent:
                     try: db_turns = int(subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "get-count", safe_name], capture_output=True, text=True).stdout.strip())
                     except: pass
 
-                # --- DRAW THE SESSION INFO BOX ---
-                display_dir = workspace_path
-                if display_dir.startswith(home_dir):
-                    display_dir = display_dir.replace(home_dir, "~", 1)
-                if len(display_dir) > 28:
-                    display_dir = "..." + display_dir[-25:]
-
-                # Extract version dynamically from this file's header (line 2)
-                version = ""
-                try: version = re.search(r"Local-Ai Agent\s+(v[0-9.]+)", open(__file__, encoding="utf-8").readlines()[1], re.I).group(1)
-                except: pass
-
-                # Resolve active model based on env key precedence
-                gkey = os.environ.get("GEMINI_API_KEY")
-                okey = os.environ.get("OPENROUTER_API_KEY")
-                if gkey:
-                    model_name = os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite")
-                elif okey:
-                    model_name = os.environ.get("OPENROUTER_MODEL", "openrouter/free")
-                else:
-                    model_name = "local-model"
-
-                box_width = 46
-                title_line = f" >_ Local-AI Agent ({version})" if version else " >_ Local-AI Agent"
-                model_line = f" model:     {model_name}"
-                dir_line   = f" directory: {display_dir}"
-                skill_line = f" skill:     {clean_name}" if clean_name else " skill:     default"
-                mem_line   = f" database:  {db_turns} turns (asleep)" if is_agent else f" database:  stateless"
-                
-                # Print box using standard box-drawing characters (with legible 2m dim body text)
-                print("\033[1;36m╭" + "─" * box_width + "╮\033[0m")
-                print(f"\033[1;36m│\033[0m \033[1;37m{title_line:<{box_width-1}}\033[1;36m│\033[0m")
-                print(f"\033[1;36m│\033[0m{' ':<{box_width}}\033[1;36m│\033[0m")
-                print(f"\033[1;36m│\033[0m \033[2m{model_line:<{box_width-1}}\033[1;36m│\033[0m")
-                print(f"\033[1;36m│\033[0m \033[2m{dir_line:<{box_width-1}}\033[1;36m│\033[0m")
-                print(f"\033[1;36m│\033[0m \033[2m{skill_line:<{box_width-1}}\033[1;36m│\033[0m")
-                print(f"\033[1;36m│\033[0m \033[2m{mem_line:<{box_width-1}}\033[1;36m│\033[0m")
-                print("\033[1;36m╰" + "─" * box_width + "╯\033[0m")
-                print(f"\033[90m[sys] Startup context: {len(active_system_prompt)//4:,} tokens | Ctrl+C to exit.\033[0m\n")
+                # On-demand import and drawing of the Codex-style Info Box
+                from ux import draw_session_box
+                draw_session_box(workspace_path, home_dir, is_agent, db_turns, active_system_prompt, clean_name)
 
                 try:
                     while True:
@@ -357,22 +268,21 @@ try:
                             query = raw_query.strip()
                             if query.lower() in ("exit", "quit", "q"): 
                                 print("\r\033[1;33mExiting conversation.\033[0m"); sys.exit(0)
-                            
                             if query.strip() in ("/d", "/e"):
                                 spell_active = (query.strip() == "/e")
                                 print(f"\033[1;33m[sys] Spellchecker {'enabled' if spell_active else 'disabled'}.\033[0m\n")
                                 continue
-                            
                             if query.strip() == "/m":
                                 memory_active = not memory_active
                                 print(f"\033[1;33m[sys] Memory recall {'enabled' if memory_active else 'disabled'}.\033[0m\n")
                                 continue
-
                             if query == "/tok":
                                 subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "show-tok"], input=json.dumps(chat_history), text=True)
                                 continue
 
                             if spell_active and not query.startswith(("/", "-", "#", "```")):
+                                # On-demand key-handling for spellcheck checks
+                                from ux import get_key
                                 action, query = check_query_spelling(query, get_key)
                                 if action == "EDIT":
                                     try: readline.set_startup_hook(lambda: readline.insert_text(query))
@@ -381,31 +291,21 @@ try:
                                 elif action == "DISABLE":
                                     spell_active = False
                         
-                        # --- ON-DEMAND DEPT SKILL SELECTOR DELEGATE HOOK ---
                         q_strip = query.strip()
                         if q_strip in ("/skill", "/s") or q_strip.startswith(("/skill ", "/s ")):
-                            # Pass active history JSON string as stdin, capturing outputs directly in pipes
                             res = subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-skills", safe_name, q_strip], input=json.dumps(chat_history), stdout=subprocess.PIPE, text=True)
                             if res.stdout.strip():
                                 try: chat_history = json.loads(res.stdout.strip())
                                 except Exception as e: print(f"Error loading session: {e}")
                             continue
 
-                        # --- STATELESS CHECKPOINT SAVE COMMAND ---
                         if query.startswith("-save"):
                             tag = query.replace("-save", "").strip()
-                            # Pass history array directly as stdin, bypassing filesystem
                             subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "save", safe_name, tag], input=json.dumps(chat_history), text=True)
                             continue
                         
-                        # --- STATELESS CHECKPOINT LOAD/TIMELINE COMMAND ---
                         if query in ("-load", "-timeline"):
-                            res = subprocess.run(
-                                [sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "load", safe_name], 
-                                stdin=sys.stdin, 
-                                stdout=subprocess.PIPE, 
-                                text=True
-                            )
+                            res = subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "load", safe_name], stdin=sys.stdin, stdout=subprocess.PIPE, text=True)
                             if res.stdout.strip():
                                 try:
                                     chat_history = json.loads(res.stdout.strip())
@@ -415,7 +315,6 @@ try:
                                 print(f"\033[1;31m[session-mgr] Load aborted.\033[0m\n")
                             continue
 
-                        # --- 1. MEMORY BANK: RETRIEVE RELEVANT PAST TURNS ---
                         past_memory = ""
                         is_init_map = query.startswith(("#", "[", "{")) or "\n" in query.strip() or "last_interaction_id" in query or "index-map" in query
                         if is_agent and memory_active and not is_init_map:
@@ -437,7 +336,6 @@ try:
                             else: sys.stderr.write("\033[1;31mError: chat tool not found\033[0m\n")
                             continue
                         
-                        # --- DIRECT USER INJECTION TO ENSURE GEMINI INSTRUCTION COMPLIANCE ---
                         if is_init_map:
                             prompt = f"### SYSTEM INSTRUCTIONS (CRITICAL OVERRIDE):\n{active_system_prompt}\n\n### CODESPACE MAP:\n{query}"
                         else:
@@ -449,14 +347,14 @@ try:
                         if not is_init_map:
                             try: readline.add_history(query)
                             except: pass
+                        # On-demand import of context history pruner
+                        from ux import prune_history
                         pruned_history = prune_history(chat_history)
                         ans = stream_llm_response(pruned_history, prefix="Agent:" if is_agent else "AI:")
                         if ans: 
                             chat_history.append({"role": "assistant", "content": ans})
                             if is_agent:
-                                # --- 2. MEMORY BANK: PASSIVELY LOG TURN ---
                                 subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "log-turn", safe_name, query, ans])
-                                # --- 3. DYNAMIC LOCAL WRITER: APPEND CHRONOLOGICAL history.md ---
                                 if not is_init_map:
                                     local_history_file = os.path.join(os.environ.get("AI_WORKSPACE_PATH", os.getcwd()), "history.md")
                                     try:

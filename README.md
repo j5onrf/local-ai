@@ -2,7 +2,7 @@
   <img alt="Local-AI Agent" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" width="800" />
 </p>
 
-<h1 align="center">Local-AI Agent <kbd>v0.8.9.2-beta</kbd></h1>
+<h1 align="center">Local-AI Agent <kbd>v0.8.9.4-beta</kbd></h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
@@ -40,7 +40,7 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 | **Integration** | **Dynamic Context** | On-demand compilation of system specs and file contents. |
 | **Optimization** | **Token-Slasher** | Custom `tool` and `skill` integration built for minimal token use. |
 | **Interface** | **Conversational TUI** | Rich, multi-turn chat sessions directly in the terminal. |
-| **Auditability** | **Zero-Dependency** | Under 500 lines of standard-library Python. |
+| **Auditability** | **Zero-Dependency** | Under 400 lines of standard-library Python. |
 
 ---
 
