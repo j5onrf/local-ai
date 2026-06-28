@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.9.4 [j5onrf] [06-27-26]
+# Local-Ai Agent v0.8.9.5 [j5onrf] [06-28-26]
 
 import sys, re, os, json, select, subprocess, shutil
 import urllib.request as urlreq, urllib.error as urlerr
+try:
+    import readline
+    # Raw strings suppress python invalid escape warnings
+    readline.parse_and_bind(r'"\e[A": previous-history')
+    readline.parse_and_bind(r'"\e[B": next-history')
+except ImportError:
+    pass
 
 sys.argv = [arg for arg in sys.argv if arg != ""]
 CFG_DIR = os.path.expanduser("~/.config/local-ai")
@@ -119,27 +126,18 @@ def get_system_context(query):
             cmd = entry.get("cmd", "")
             if cmd.startswith("[TOOL]"):
                 tool = cmd.replace("[TOOL]", "").strip()
+                if " --s" not in tool:
+                    return ""
                 if "system" in tool.lower(): ensure_mysys_exists()
-                is_safe = " --s" in tool
                 tool = tool.replace(" --s", "").strip()
                 for f in [" --leaf", " --glow", " --cat", " --mdcat"]:
                     if tool.endswith(f): tool = tool[:-len(f)].strip()
                 intent_tokens = set(tokenize(entry.get("intent", "")))
                 args = " ".join([w for w in query.split() if tokenize(w) and tokenize(w)[0] not in intent_tokens])
                 if "$1" in tool or "{}" in tool: tool = tool.replace("$1", args).replace("{}", args).strip()
-                if is_safe:
-                    sys.stderr.write(f"\033[2m[sys] Executing: {tool}\033[0m\n"); sys.stderr.flush()
-                    return run_local_tool(tool)
-                sys.stderr.write(f"\033[1;30m[sys] Run tool: \033[1;36m{tool}\033[1;30m? [↵ run  Esc]: \033[0m"); sys.stderr.flush()
-                # On-demand import of key-handling module for system confirmation prompts
-                from ux import get_key
-                key = get_key()
-                if key in ('\x03', '\x1b'):
-                    sys.stderr.write("\r\x1b[K\033[2;31m[sys] Cancelled.\033[0m\n"); sys.stderr.flush(); sys.exit(130)
-                is_run = key in ('\r', '\n', '', 'y', 'Y')
-                sys.stderr.write(f"\r\x1b[K{f'\033[2m[sys] Executing: {tool}' if is_run else '\033[2;31m[sys] Skipped tool execution.'}\033[0m\n"); sys.stderr.flush()
-                return run_local_tool(tool) if is_run else ""
-    return ""
+                sys.stderr.write(f"\033[2m[sys] Executing: {tool}\033[0m\n"); sys.stderr.flush()
+                return run_local_tool(tool)
+        return ""
 
 def stream_llm_response(messages, prefix="AI: "):
     gkey = os.environ.get("GEMINI_API_KEY")
@@ -284,7 +282,6 @@ try:
                                 continue
 
                             if spell_active and not query.startswith(("/", "-", "#", "```")):
-                                # On-demand key-handling for spellcheck checks
                                 from ux import get_key
                                 action, query = check_query_spelling(query, get_key)
                                 if action == "EDIT":
@@ -305,7 +302,7 @@ try:
 
                         if query.startswith("-save"):
                             tag = query.replace("-save", "").strip()
-                            subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "save", safe_name], input=json.dumps(chat_history), text=True)
+                            subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "save", safe_name, tag], input=json.dumps(chat_history), text=True)
                             continue
                         
                         if query in ("-load", "-timeline"):
