@@ -2,3 +2,4 @@
 [shell:Test Script.sh] sum:Define the input array of numbers
 [markdown:history.md] sum:Workspace History: session-test
 [txt:index-map-session-test.txt] sum:[json:.agent/session.json] keys:last_interaction_id
+[py:physics.py] fn:calculate_velocity(dist,time)

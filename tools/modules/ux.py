@@ -94,9 +94,15 @@ def run_interactive_selection(intent, jaccard_search, clean_tool_prefix, print_s
             is_danger = current_cmd.startswith("DANGER_FLAGGED:")
             cmd_to_show = current_cmd.replace("DANGER_FLAGGED:", "")
             display_cmd = cmd_to_show.replace(" >/dev/null 2>&1", "").replace(os.path.expanduser("~"), "~")
+            
+            # Aligned to exactly 12 and 16 spaces
+            if "/.config/local-ai/projects/" in display_cmd:
+                display_cmd = display_cmd.replace("/.config/local-ai/projects/", "/")
+
             idx_str = f"{current_idx + 1:02d}/{num_opts:02d}"
+            
             if is_danger:
-                sys.stderr.write(f"\r\x1b[K\033[1;31m▲ WARNING: Destructive payload detected\033[0m\n\r\x1b[K\033[2m[\033[1;31m{idx_str}\033[0;2m]\033[0m ❯ \x1b[1;36m[{current_intent}]\x1b[0m {display_cmd}\n\r\x1b[K\033[2m::\033[0m execute payload? [y/N]: ")
+                sys.stderr.write(f"\r\x1b[K\033[1;31m▲ WARNING: Destructive payload detected\033[0m\n\r\x1b[K\033[1;31m[{idx_str}]\033[0m ❯ \x1b[1;36m[{current_intent}]\x1b[0m {display_cmd}\n\r\x1b[K\033[2m::\033[0m execute payload? [y/N]: ")
             else:
                 sys.stderr.write(f"\r\x1b[K\033[1;32m[{idx_str}]\033[0m ❯ \x1b[1;36m[{current_intent}]\x1b[0m {display_cmd}\n\r\x1b[K\033[2m::\033[0m ↵ run  Esc: ")
             sys.stderr.flush()

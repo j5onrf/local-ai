@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Local-Ai Agent Hook v0.8.9.4 [j5onrf] [06-27-26]
+# Local-Ai Agent Hook v0.8.9.5 [j5onrf] [06-28-26]
 
 [[ $- != *i* ]] && return
 
@@ -42,8 +42,8 @@ ai() {
         name=$(basename "$path")
         map="$path/index-map-$name.txt"
         
-        # Fast newer-file caching check (excluding background git, agent metadata, and history logs)
-        [[ ! -f "$map" ]] || [[ -n "$(find "$path" -type f -not -path '*/.git/*' -not -path '*/.agent/*' -not -name 'history.md' ! -name "$(basename "$map")" -newer "$map" -print -quit 2>/dev/null)" ]] && {
+        # Fast newer-file/directory check (removing -type f ensures directory additions trigger rebuilds)
+        [[ ! -f "$map" ]] || [[ -n "$(find "$path" -not -path '*/.git/*' -not -path '*/.agent/*' -not -name 'history.md' ! -name "$(basename "$map")" -newer "$map" -print -quit 2>/dev/null)" ]] && {
             "$_AI_PYTHON_BIN" "$_AI_DIR/tools/map/index-map" "$path" || return 1
         }
         

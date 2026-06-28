@@ -29,6 +29,25 @@ All configurations are managed through your master blueprint: [`ai-context.md`](
 
 ---
 
+<h2 align="center">CLI Launch Interface</h2>
+
+```text
+╭──────────────────────────────────────────────╮
+│  >_ Local-AI Agent (v0.8.9.5)                │
+│                                              │
+│  model:     local-model                      │
+│  directory: ...-ai/projects/session-test     │
+│  skill:     init                             │
+│  database:  109 turns (asleep)               │
+╰──────────────────────────────────────────────╯
+[sys] Startup context: 92 tokens | Ctrl+C to exit.
+
+Agent: Workspace loaded. Awaiting instructions.
+❯ 
+```
+
+---
+
 <h2 align="center">Core Pillars & Capabilities</h2>
 
 | Pillar | Capability | Description |
@@ -130,6 +149,13 @@ export CLOUD_MODEL="gemini-3.1-flash-lite"
 export OPENROUTER_API_KEY="sk-or-v1-YourFullOpenRouterKeyHere"
 export OPENROUTER_MODEL="openrouter/free"
 ```
+
+---
+
+> 🌐 **Interactive Demo:** Experience the real-time terminal simulations, dynamic Sunset/Nebulae themes, and live agent execution on the [Web Demo Portfolio](https://j5onrf.github.io/local-ai-agent/).
+
+
+
 
 
 

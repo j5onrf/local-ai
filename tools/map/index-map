@@ -238,11 +238,11 @@ def main():
     if not os.path.isdir(target_dir):
         sys.stderr.write(f"❌ Error: '{target_dir}' is not a valid directory.\n"); sys.stderr.flush(); safe_exit(1)
 
-    # Interactive Confirmation Check with Esc Bypass
+    # Interactive Confirmation Check with Esc Bypass (Using the highly legible 2m dim colors)
     is_interactive = sys.stdin.isatty() and sys.stderr.isatty()
     if is_interactive and not force:
         try:
-            sys.stderr.write(f"\033[1;30m[sys] Compile index map for \033[1;36m{os.path.basename(target_dir)}\033[1;30m? [↵ run  Esc]: \033[0m")
+            sys.stderr.write(f"\033[2m[sys] Compile index map for \033[1;36m{os.path.basename(target_dir)}\033[0;2m? [↵ run  Esc]: \033[0m")
             sys.stderr.flush()
             key = get_key()
             if key in ('\x03', '\x1b', 'n', 'N'):
@@ -269,14 +269,32 @@ def main():
     proj_name = os.path.basename(target_dir)
     output_file = os.path.join(target_dir, f"index-map-{proj_name}.txt")
     
+    home_dir = os.path.expanduser("~")
+
     try:
         with open(output_file, 'w', encoding='utf-8') as f: f.write(flat_map)
-        print(f"✔ Compressed index-map compiled successfully at: {output_file}")
+        
+        # Format the main success path
+        display_map = output_file
+        if display_map.startswith(home_dir):
+            display_map = display_map.replace(home_dir, "~", 1)
+        if "/.config/local-ai/projects/" in display_map:
+            display_map = display_map.replace("/.config/local-ai/projects/", "/")
+            
+        print(f"✔ Compressed index-map: {display_map}")
     except (IOError, OSError):
         fallback_file = os.path.join(os.getcwd(), f"index-map-{proj_name}.txt")
         try:
             with open(fallback_file, 'w', encoding='utf-8') as f: f.write(flat_map)
-            print(f"⚠ SCRIPT_DIR is read-only. Saved to fallback: {fallback_file}")
+            
+            # Format the fallback success path
+            display_fallback = fallback_file
+            if display_fallback.startswith(home_dir):
+                display_fallback = display_fallback.replace(home_dir, "~", 1)
+            if "/.config/local-ai/projects/" in display_fallback:
+                display_fallback = display_fallback.replace("/.config/local-ai/projects/", "/")
+                
+            print(f"⚠ SCRIPT_DIR is read-only. Saved to fallback: {display_fallback}")
         except Exception as e: print(f"❌ Error: Failed to write map. {e}")
 
 if __name__ == "__main__":
