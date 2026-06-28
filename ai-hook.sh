@@ -35,12 +35,18 @@ command_not_found_handler() { command_not_found_handle "$@"; }
 
 ai() {
     if [[ "$1" == "init" ]]; then
-        local path=$(pwd) skills=()
+        local path=$(pwd) skills=() name map
         [[ -d "${2:-}" ]] && { path="$2"; skills=("${@:3}"); } || skills=("${@:2}")
         path=$(CDPATH= cd "$path" && pwd) || return 1
         echo "$path" > "$_AI_DIR/.active_cd.$$"
-        local name=$(basename "$path") map="$path/index-map-${name}.txt"
-        "$_AI_PYTHON_BIN" "$_AI_DIR/tools/map/index-map" "$path" || return 1
+        name=$(basename "$path")
+        map="$path/index-map-$name.txt"
+        
+        # Fast newer-file caching check (sub-millisecond execution)
+        [[ ! -f "$map" ]] || [[ -n "$(find "$path" -type f -newer "$map" -print -quit 2>/dev/null)" ]] && {
+            "$_AI_PYTHON_BIN" "$_AI_DIR/tools/map/index-map" "$path" || return 1
+        }
+        
         if [[ -f "$map" ]]; then
             AI_ACTIVE_SKILL="${skills[*]}" AI_WORKSPACE_PATH="$path" "$_AI_PYTHON_BIN" "$_AI_SCRIPT_PATH" --talk-chat "$(<"$map")"
         else

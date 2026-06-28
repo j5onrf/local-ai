@@ -22,7 +22,6 @@ except ImportError: pass
 
 sanitize_input = lambda t: re.sub(r"[`$]", "", t).strip() if t else ""
 tokenize = lambda t: [w for w in TOKEN_RE.sub(" ", t.lower()).split() if len(w) > 1 and w not in STOP_WORDS]
-check_danger = lambda c: f"DANGER_FLAGGED:{c}" if c and any(kw in c.lower() for kw in DESTRUCTIVE_KEYWORDS) else c
 
 def ensure_mysys_exists():
     if not os.path.exists(f"{SKILLS_DIR}/system/mysys.md"):
@@ -64,18 +63,22 @@ def load_context_entries():
     try:
         mtime = os.path.getmtime(CONTEXT_FILE)
         if _CACHED_ENTRIES is not None and mtime <= _LAST_M_TIME: return _CACHED_ENTRIES
-        with open(CONTEXT_FILE) as f:
+        with open(CONTEXT_FILE, "r", encoding="utf-8") as f:
             lines = [s for l in f.read().splitlines() if (s := l.strip()) and not s.startswith("#") and "--->" in s]
         _CACHED_ENTRIES = []
         for line in lines:
-            cmd, intents = line.split("--->", 1)
-            intents = [i.strip() for i in intents.split(",") if i.strip()]
+            cmd, intents_str = line.split("--->", 1)
+            intents = [i.strip() for i in intents_str.split(",") if i.strip()]
+            if not intents:
+                continue
             for intent in intents:
                 if tokens := tokenize(intent):
                     _CACHED_ENTRIES.append({"cmd": cmd.strip(), "intent": intent, "primary": intents[0], "tokens": tokens})
         _LAST_M_TIME = mtime
         return _CACHED_ENTRIES
-    except: return []
+    except Exception as e:
+        sys.stderr.write(f"\033[1;31m[sys] Error parsing ai-context.md: {e}\033[0m\n")
+        return []
 
 def jaccard_search(query, threshold=0.45):
     q_clean, q_tokens = query.strip().lower(), set(tokenize(query))
@@ -136,7 +139,7 @@ def get_system_context(query):
                 is_run = key in ('\r', '\n', '', 'y', 'Y')
                 sys.stderr.write(f"\r\x1b[K{f'\033[2m[sys] Executing: {tool}' if is_run else '\033[2;31m[sys] Skipped tool execution.'}\033[0m\n"); sys.stderr.flush()
                 return run_local_tool(tool) if is_run else ""
-        return ""
+    return ""
 
 def stream_llm_response(messages, prefix="AI: "):
     gkey = os.environ.get("GEMINI_API_KEY")
@@ -291,6 +294,7 @@ try:
                                 elif action == "DISABLE":
                                     spell_active = False
                         
+                        # --- ON-DEMAND DEPT SKILL SELECTOR DELEGATE HOOK ---
                         q_strip = query.strip()
                         if q_strip in ("/skill", "/s") or q_strip.startswith(("/skill ", "/s ")):
                             res = subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-skills", safe_name, q_strip], input=json.dumps(chat_history), stdout=subprocess.PIPE, text=True)
@@ -301,7 +305,7 @@ try:
 
                         if query.startswith("-save"):
                             tag = query.replace("-save", "").strip()
-                            subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "save", safe_name, tag], input=json.dumps(chat_history), text=True)
+                            subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "save", safe_name], input=json.dumps(chat_history), text=True)
                             continue
                         
                         if query in ("-load", "-timeline"):
@@ -354,7 +358,9 @@ try:
                         if ans: 
                             chat_history.append({"role": "assistant", "content": ans})
                             if is_agent:
+                                # --- 2. MEMORY BANK: PASSIVELY LOG TURN ---
                                 subprocess.run([sys.executable, f"{CFG_DIR}/tools/ai-agent-sessions", "log-turn", safe_name, query, ans])
+                                # --- 3. DYNAMIC LOCAL WRITER: APPEND CHRONOLOGICAL history.md ---
                                 if not is_init_map:
                                     local_history_file = os.path.join(os.environ.get("AI_WORKSPACE_PATH", os.getcwd()), "history.md")
                                     try:
