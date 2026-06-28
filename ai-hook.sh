@@ -42,8 +42,8 @@ ai() {
         name=$(basename "$path")
         map="$path/index-map-$name.txt"
         
-        # Fast newer-file caching check (sub-millisecond execution)
-        [[ ! -f "$map" ]] || [[ -n "$(find "$path" -type f -newer "$map" -print -quit 2>/dev/null)" ]] && {
+        # Fast newer-file caching check (excluding background git, agent metadata, and history logs)
+        [[ ! -f "$map" ]] || [[ -n "$(find "$path" -type f -not -path '*/.git/*' -not -path '*/.agent/*' -not -name 'history.md' ! -name "$(basename "$map")" -newer "$map" -print -quit 2>/dev/null)" ]] && {
             "$_AI_PYTHON_BIN" "$_AI_DIR/tools/map/index-map" "$path" || return 1
         }
         
