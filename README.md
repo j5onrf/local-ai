@@ -18,7 +18,7 @@
 
 <h2 align="center">How the Agent Works</h2>
 
-All configurations are managed through your master blueprint: `ai-context.md`.
+All configurations are managed through your master blueprint: [`ai-context.md`](https://github.com/j5onrf/local-ai/blob/main/ai-context.md).
 
 > **Routing Logic:** The agent automatically determines the optimal execution path based on your input pattern, ensuring zero wasted tokens.
 
