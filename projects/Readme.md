@@ -4,10 +4,10 @@ Ultra-light documentation for local agent workspaces, checkpoints, and security 
 
 ```text
 ~ ❯ session
-[02/02] ❯ [session test ai] ai init ~/.config/local-ai/projects/ai-session-test -init
+[02/02] ❯ [session test ai] ai init ~/projects/ai-session-test -init
 :: ↵ run  Esc: 
 ℹ Compiling index map...
-✔ Compressed index-map compiled successfully at: /home/user/.config/local-ai/projects/...
+✔ Compressed index-map: ~/projects/ai-session-test
 ╭──────────────────────────────────────────────╮
 │  >_ Local-AI Agent (v0.8.9.4)                │
 │                                              │
