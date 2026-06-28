@@ -69,12 +69,12 @@ def draw_session_box(workspace_path, home_dir, is_agent, db_turns, active_system
     mem_line   = f" database:  {db_turns} turns (asleep)" if is_agent else f" database:  stateless"
     
     print("\033[1;36m╭" + "─" * box_width + "╮\033[0m")
-    print(f"\033[1;36m│\033[0m \033[1;37m{title_line:<{box_width-1}}\033[1;36m│\033[0m")
+    print(f"\033[1;36m│\033[0m \033[1;37m{title_line:<{box_width-1}}\033[0m\033[1;36m│\033[0m")
     print(f"\033[1;36m│\033[0m{' ':<{box_width}}\033[1;36m│\033[0m")
-    print(f"\033[1;36m│\033[0m \033[2m{model_line:<{box_width-1}}\033[1;36m│\033[0m")
-    print(f"\033[1;36m│\033[0m \033[2m{dir_line:<{box_width-1}}\033[1;36m│\033[0m")
-    print(f"\033[1;36m│\033[0m \033[2m{skill_line:<{box_width-1}}\033[1;36m│\033[0m")
-    print(f"\033[1;36m│\033[0m \033[2m{mem_line:<{box_width-1}}\033[1;36m│\033[0m")
+    print(f"\033[1;36m│\033[0m \033[2m{model_line:<{box_width-1}}\033[0m\033[1;36m│\033[0m")
+    print(f"\033[1;36m│\033[0m \033[2m{dir_line:<{box_width-1}}\033[0m\033[1;36m│\033[0m")
+    print(f"\033[1;36m│\033[0m \033[2m{skill_line:<{box_width-1}}\033[0m\033[1;36m│\033[0m")
+    print(f"\033[1;36m│\033[0m \033[2m{mem_line:<{box_width-1}}\033[0m\033[1;36m│\033[0m")
     print("\033[1;36m╰" + "─" * box_width + "╯\033[0m")
     
     # Updated startup context line to use the legible 2m dim styling

@@ -9,7 +9,7 @@ Ultra-light documentation for local agent workspaces, checkpoints, and security 
 ℹ Compiling index map...
 ✔ Compressed index-map: ~/projects/ai-session-test
 ╭──────────────────────────────────────────────╮
-│  >_ Local-AI Agent (v0.8.9.4)                │
+│  >_ Local-AI Agent (v0.8.9.5)                │
 │                                              │
 │  model:     gemini-3.1-flash-lite            │
 │  directory: .../projects/ai-session-test     │
