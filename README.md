@@ -23,7 +23,7 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 > **Routing Logic:** The agent automatically determines the optimal execution path based on your input pattern, ensuring zero wasted tokens.
 
 * **No Session (Direct selections):** Uses a fast Jaccard Similarity engine (`jaccard_search`) with prefix-matching to instantly route custom commands and shortcuts to your local terminal.
-* **Single-Turn Agent (`ai <query>`):** Answers a single question and returns you to Bash, executing explicitly mapped diagnostic `tools` and `skills` only when requested.
+* **Single-Turn Agent (`ai <query>`):** Answers a single question and returns you to Bash, executing explicitly mapped diagnostic [`tools`](https://github.com/j5onrf/local-ai/tree/main/tools) and [`skills`](https://github.com/j5onrf/local-ai/tree/main/skills) only when requested.
 * **Multi-Turn Chat (`ai` alone):** Initiates an interactive, persistent conversation with local state preservation and multi-turn context memory.
 * **Workspace Agents (`ai init <path>`):** Compiles a path-specific structural tree directly inside your active [project workspace](https://github.com/j5onrf/local-ai/tree/main/projects) using `index-map`, launching a dedicated, codebase-aware agent session primed with your chosen skill file.
 
@@ -38,7 +38,7 @@ All configurations are managed through your master blueprint: `ai-context.md`.
 | **Resiliency** | **Fallbacks** | Automatically cascades: `Gemini` → `OpenRouter` → `Local`. |
 | **Safety** | **Zero-Trust Guardrails** | Intercepts destructive commands before shell execution. |
 | **Integration** | **Dynamic Context** | On-demand compilation of system specs and file contents. |
-| **Optimization** | **Token-Slasher** | Custom `tool` and `skill` integration built for minimal token use. |
+| **Optimization** | **Token-Slasher** | Custom [`tool`](https://github.com/j5onrf/local-ai/tree/main/tools) and [`skill`](https://github.com/j5onrf/local-ai/tree/main/skills) integration built for minimal token use. |
 | **Interface** | **Conversational TUI** | Rich, multi-turn chat sessions directly in the terminal. |
 | **Auditability** | **Zero-Dependency** | Under 400 lines of standard-library Python. |
 
