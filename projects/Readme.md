@@ -9,7 +9,7 @@ Ultra-light documentation for local agent workspaces, checkpoints, and security 
 ℹ Compiling index map...
 ✔ Compressed index-map: ~/projects/ai-session-test
 ╭──────────────────────────────────────────────╮
-│  >_ Local-AI Agent (v0.8.9.5)                │
+│  >_ Local-AI Agent (v0.8.9.8)                │
 │                                              │
 │  model:     gemini-3.1-flash-lite            │
 │  directory: .../projects/ai-session-test     │
@@ -105,9 +105,9 @@ Type these quick commands during any active conversation to adjust your settings
 
 *   **`/tok`**: Displays your live context window usage in a visual progress bar.
 *   **`/clear` / `/reset`**: Securely deletes the server-side interaction history from Google's servers, resets chat history, and clears the local `.agent/session.json` state.
-*   **`/d` / `/e`**: Manually **disable** or **enable** the offline spellcheck engine.
+*   **`/d` / `/e`**: Manually **disable** or **enable** the context-aware grammar and spellchecking engine (which uses LanguageTool cloud/local API routing with an offline dictionary fallback).
 *   **`/m`**: Manually **toggle** long-term memory recall on or off.
-*   **Memory recall prompt (`d: disable`)**: If a memory-recall prompt pops up, press **`d`** to skip and disable memory recall for the rest of your active session. *(Type `/m` to re-enable).*
+*   **Memory & Authorization Prompt Navigation**: Both standard memory recall (`[↵ load  d: disable  Esc/Arrows: skip]`) and tool authorization (`[Y/n]`) prompts are optimized for keyboard-only terminal workflows. Pressing **`Esc`** or **`Right Arrow`** instantly triggers a **No/Skip** action—safely printing `n` or clearing lines without outputting raw escape sequences, returning you directly to your conversation.
 
 ---
 
@@ -132,6 +132,4 @@ When configured with a `GEMINI_API_KEY`, your agent bypasses standard stateless 
 
 *   **Context Caching:** Your workspace directory index map is uploaded exactly *once* during initialization. Google holds this context in an high-speed server-side memory cache referenced by the ID in your local `.agent/session.json`.
 *   **Bandwidth Savings:** Subsequent conversation turns only upload your new, brief query over the network rather than re-uploading the entire codebase structure, saving up to 90% in token costs and reducing average response latency.
-
-
 

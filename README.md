@@ -63,11 +63,11 @@ Agent: Workspace loaded. Awaiting instructions.
 
 ---
 
-<h2 align="center">TUI Carousel Controls</h2>
+<h2 align="center">TUI Carousel & Input Controls</h2>
 
 * **`Up` / `Down` Arrow Keys:** Cycle through available ranked selections.
 * **`Enter`:** Execute the highlighted command (or initialize a [workspace](https://github.com/j5onrf/local-ai/tree/main/projects) if the selection is a directory path).
-* **`Esc` / `Ctrl+C` / `Any Key`:** Cancel the menu.
+* **`Esc` / `Right Arrow` / `Ctrl+C`:** Cancel/Skip the active menu, memory-recall, or tool authorization prompt cleanly.
 
 ```text
 ~ ❯ weather
@@ -107,7 +107,7 @@ Agent: Workspace loaded. Awaiting instructions.
 | Command | Description |
 | :--- | :--- |
 | **`/clear`** / **`/reset`** | **Reset** Google session context & clear local. |
-| **`/d`** / **`/e`** | **Disable** / **Enable** the offline spellcheck engine. |
+| **`/d`** / **`/e`** | **Disable** / **Enable** the context-aware grammar & spellchecker. |
 | **`/m`** | **Toggle** long-term conversation memory recall on or off. |
 | **`/tok`** | **View** your live token usage capacity and visual progress bar. |
 
@@ -131,9 +131,9 @@ Add your shortcuts, commands, and workspaces to [`ai-context.md`](https://github
 <h2 align="center">Setup & Prerequisites</h2>
 
 ```bash
-# 1. Optional: Install terminal rendering and dictionary utilities
-# (words enables offline spellcheck; mdcat enables terminal markdown rendering)
-yay -S mdcat words
+# 1. Optional: Install terminal rendering utilities
+# (mdcat enables beautiful terminal markdown formatting)
+yay -S mdcat
 
 # 2. Clone the repository locally
 git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai
@@ -153,9 +153,4 @@ export OPENROUTER_MODEL="openrouter/free"
 ---
 
 > **Interactive Demo:** Experience the real-time terminal simulations, dynamic Sunset/Nebulae themes, and live agent execution on the [Web Demo Portfolio](https://j5onrf.github.io/local-ai-agent/).
-
-
-
-
-
 
