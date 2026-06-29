@@ -192,7 +192,15 @@ def stream_llm_response(messages, prefix="AI: "):
                             except: pass
                         print("")
                         if resolved_model and resolved_model != model and sys.stdout.isatty():
-                            sys.stdout.write(f"\033[90m[via {resolved_model}]\033[0m\n"); sys.stdout.flush()
+                               # Resolve the active user's home folder dynamically so it works on any system
+                               home_dir = os.path.expanduser("~")
+                               target_path = os.path.join(home_dir, "ollama_backup") + "/"
+                               
+                               display_model = resolved_model
+                               if display_model.startswith(target_path):
+                                   display_model = display_model.replace(target_path, ".../")
+                               
+                               sys.stdout.write(f"\033[90m[via {display_model}]\033[0m\n"); sys.stdout.flush()
                         return "".join(acc)
                 except urlerr.HTTPError as e:
                     spinner.stop()
@@ -396,3 +404,4 @@ try:
             sys.exit(0)
         print_stock_error(user_input); sys.exit(127)
 except KeyboardInterrupt: sys.stderr.write("\nCancelled.\n"); sys.exit(130)
+

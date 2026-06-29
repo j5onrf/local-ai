@@ -76,8 +76,8 @@ def check_query_spelling(query, get_key_fn):
             corrected_words.append(chunk)
     if changed:
         corrected_query = "".join(corrected_words)
-        # Clean, discoverable menu prompt
-        sys.stderr.write(f"\n\033[1;30m[sys] Typos detected. Correct query to:\033[0m\n\033[3m   \"{corrected_query}\"\033[0m\n\033[1;30m   [↵ accept  Tab: edit  d: disable  Esc: skip]: \033[0m")
+        # Clean, discoverable menu prompt (Updated to highly legible \033[2m dim gray)
+        sys.stderr.write(f"\n\033[2m[sys] Typos detected. Correct query to:\033[0m\n\033[3m   \"{corrected_query}\"\033[0m\n\033[2m   [↵ accept  Tab: edit  d: disable  Esc: skip]: \033[0m")
         sys.stderr.flush()
         
         key = get_key_fn()
