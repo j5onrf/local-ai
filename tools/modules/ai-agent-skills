@@ -128,9 +128,11 @@ def run_skill_selector(workspace, raw_cmd):
                 except Exception as e:
                     sys.stderr.write(f"\r\x1b[K\x1b[1A\r\x1b[K\033[1;31m[sys] Failed to load skill: {e}\033[0m\n")
                 break
-            elif key in ('\x1b[A', '\x1b[B'):
-                current_idx = (current_idx + (1 if key == '\x1b[B' else -1) + num_opts) % num_opts
-                # Clean up both lines before shifting up to draw the next slide
+            else:
+                # Cycle index if Up or Down arrow was pressed
+                if key in ('\x1b[A', '\x1b[B'):
+                    current_idx = (current_idx + (1 if key == '\x1b[B' else -1) + num_opts) % num_opts
+                # Always erase the two prompt lines before looping back to redraw
                 sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
         sys.stderr.write("\033[?25h"); sys.stderr.flush()
     except KeyboardInterrupt:

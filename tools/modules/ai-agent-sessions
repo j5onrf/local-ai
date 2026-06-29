@@ -42,12 +42,12 @@ if MODULES_DIR not in sys.path:
 
 # Centralize dependencies
 try:
-    import context
+    import agent_core as context
 except ImportError:
     context = None
 
 try:
-    from ux import get_key
+    from agent_core import get_key
 except ImportError:
     def get_key() -> str:
         """Fallback inline single-key input reader if standard ux.py module is unavailable."""

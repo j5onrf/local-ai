@@ -100,3 +100,31 @@ Rabbits bypass metal fences primarily by exploiting physical gaps or structural 
 
 ---
 
+## [2026-06-29 17:23] User:
+how do rabbits jump?
+
+### Agent:
+Rabbits jump using their powerful hind legs. The muscles in their thighs and calves are highly developed, allowing them to generate significant force for propulsion. Their long, strong legs act like springs, storing elastic energy when they crouch and releasing it to launch them into the air. This mechanism enables them to leap great distances relative to their body size, often up to 3 feet high and 9 feet long, which helps them evade predators.
+
+---
+
+## [2026-06-29 17:24] User:
+how high can they jump?
+
+### Agent:
+Rabbits can jump up to **3 feet (approximately 0.9 meters)** high.
+
+This capability is due to the powerful muscles in their hind legs, which act like springs. While they are not built for sustained running, their explosive jumping ability allows them to quickly evade predators.
+
+---
+
+## [2026-06-29 17:24] User:
+how high can they jump?
+
+### Agent:
+Rabbits can jump up to **3 feet (approximately 0.9 meters)** high.
+
+This
+
+---
+
