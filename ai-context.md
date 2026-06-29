@@ -25,7 +25,7 @@ ai init ~/.config/local-ai/projects/ai-session-test --init ---> session test ai,
 # --- Active Workspace History Viewer ---
 [TOOL] mdcat history.md | less -R ---> show history, hist, history
 # --- Active Workspace History Searcher ---
-[TOOL] read -p "Search Page: " query && mdcat history.md | grep --color=always -A 15 -B 2 -i "$query" ---> search page, search, hs
+[TOOL] read -p "Search Page: " query && mdcat history.md | grep --color=always -A 15 -B 2 -i "$query" ---> search page, hs
 ```
 
 ## 1. Workspace Initializers & Bridges
