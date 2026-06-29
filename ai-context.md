@@ -101,7 +101,7 @@ ai init ~/.config/local-ai/projects/ai-session-test --init ---> session test ai,
 [TOOL] ~/.config/local-ai/tools/map/index-map --cat ---> index map, im
 
 # --- Server Lifecycle Management ---
-~/.config/local-ai/tools/kill-ai-servers ---> killserver, ks
+~/.config/local-ai/tools/tools/subsec/server/kill-ai-servers ---> killserver, ks
 ```
 
 ## 5. TUI (Terminal User Interface) Programs
