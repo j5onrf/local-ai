@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 # chat - Unified Agentic Brainstorm, Thinking & Follow-up Engine v2.5.1
-# Path: ~/.config/local-ai/tools/chat
+# Path: ~/.config/local-ai/tools/modules/chat
 
-import sys, os, json, re, urllib.request as urlreq
+import sys
+import os
+import json
+import re
+import urllib.request as urlreq
 
 CFG_DIR = os.path.expanduser("~/.config/local-ai")
 
@@ -59,13 +63,14 @@ if is_all_cmd:
         path = f"{CFG_DIR}/skills/meta/{f_name}"
         if os.path.exists(path):
             try:
-                with open(path) as f:
+                with open(path, "r", encoding="utf-8") as f:
                     content = f.read().strip()
                     # Clean out redundant templates from individual files to keep 2B's attention clear
                     if "Template:" in content:
                         content = content.split("Template:")[0].strip()
                     prompts[header] = content
-            except Exception: pass
+            except Exception:
+                pass
             
     if prompts:
         # Structured with XML-scaffolding and a single, unified Master Template
@@ -83,7 +88,7 @@ if is_all_cmd:
         )
 elif os.path.exists(THINK_FILE):
     try:
-        with open(THINK_FILE) as f:
+        with open(THINK_FILE, "r", encoding="utf-8") as f:
             prompt = f.read().strip()
     except Exception:
         pass
@@ -114,8 +119,6 @@ else:
     prompt = prompt.replace("exactly 3", f"exactly {option_count}")
 
 # 4. Safe Stack Insertion (Fixed for local ChatML template compliance)
-# Instead of appending an out-of-order system prompt, we inject a clean trailing User Instruction.
-# This guides the model to perform the command on the preceding history without violating alternating templates.
 instruction_block = (
     "[COMMAND: Do not continue the conversation. Do not reply to the last message. "
     "Instead, execute this specific analytical directive based on our preceding chat history immediately. "
@@ -124,29 +127,50 @@ instruction_block = (
 )
 history.append({"role": "user", "content": instruction_block})
 
-# 5. Simplified Fallbacks (Standardized on openrouter/free)
+# 5. Simplified Fallbacks with Dynamic Timeouts (Standardized on openrouter/free)
 configs = []
 gkey, okey = os.environ.get("GEMINI_API_KEY"), os.environ.get("OPENROUTER_API_KEY")
+
 if gkey:
-    configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Authorization": f"Bearer {gkey}"}, os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"), {}))
+    # 10 second timeout for quick cloud failover
+    configs.append((
+        "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+        {"Authorization": f"Bearer {gkey}"},
+        os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"),
+        {},
+        10
+    ))
 if okey:
     m = os.environ.get("OPENROUTER_MODEL", "openrouter/free")
-    configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"}, m, {}))
-configs.append(("http://localhost:8080/v1/chat/completions", {}, None, {}))
+    # 10 second timeout for quick cloud failover
+    configs.append((
+        "https://openrouter.ai/api/v1/chat/completions",
+        {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"},
+        m,
+        {},
+        10
+    ))
 
-for url, headers, model, extra in configs:
+# 180 second timeout for Local models to allow full GGUF VRAM loading on cold boots
+configs.append(("http://localhost:8080/v1/chat/completions", {}, None, {}, 180))
+
+for url, headers, model, extra, timeout in configs:
     body = {"messages": history, "stream": True, **extra}
-    if model: body["model"] = model
+    if model:
+        body["model"] = model
     req = urlreq.Request(url, data=json.dumps(body).encode("utf-8"), headers={"Content-Type": "application/json", **headers}, method="POST")
     try:
-        with urlreq.urlopen(req, timeout=10) as response:
+        with urlreq.urlopen(req, timeout=timeout) as response:
             first_token = True
             chunks = []
             for line in response:
                 dec = line.decode("utf-8").strip()
-                if not dec: continue
-                if dec.startswith("data:"): dec = dec[5:].strip()
-                if dec == "[DONE]": continue
+                if not dec:
+                    continue
+                if dec.startswith("data:"):
+                    dec = dec[5:].strip()
+                if dec == "[DONE]":
+                    continue
                 try:
                     data = json.loads(dec)
                     content = ""
@@ -157,7 +181,8 @@ for url, headers, model, extra in configs:
                     if content:
                         if first_token:
                             content = content.lstrip()
-                            if not content: continue
+                            if not content:
+                                continue
                             first_token = False
                         chunks.append(content)
                 except Exception:
@@ -179,17 +204,14 @@ for url, headers, model, extra in configs:
                 sys.stdout.write("\n")
                 first_line_clean = lines[0].lower().rstrip('s:') if lines else ""
                 
-                # Check if the first line is actually a conversational preamble (very common with 2B models)
-                # If so, we bypass printing it to keep the terminal layout clean.
+                # Check if the first line is actually a conversational preamble
                 start_index = 0
                 if first_line_clean not in headers_map:
-                    # If the model output a preamble, skip it and look for the first valid header line
                     for idx, line in enumerate(lines):
                         if line.lower().rstrip('s:') in headers_map:
                             start_index = idx
                             break
                     else:
-                        # Fallback if no valid headers were output at all
                         sys.stdout.write(f"\033[1;32mAI:\033[0m {output_header}\n")
                 
                 for line in lines[start_index:]:
