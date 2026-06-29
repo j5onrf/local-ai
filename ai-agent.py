@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-# Local-Ai Agent v0.8.9.5 [j5onrf] [06-28-26]
+# Local-Ai Agent v0.8.9.7 [j5onrf] [06-28-26]
 
-import sys, re, os, json, select, subprocess, shutil
+import sys, re, os, json, select, subprocess, shutil, time
 import urllib.request as urlreq, urllib.error as urlerr
 try:
     import readline
@@ -127,7 +127,8 @@ def get_system_context(query):
             if cmd.startswith("[TOOL]"):
                 tool = cmd.replace("[TOOL]", "").strip()
                 if " --s" not in tool:
-                    return ""
+                    from ux import confirm_tool
+                    if not confirm_tool(tool): return ""
                 if "system" in tool.lower(): ensure_mysys_exists()
                 tool = tool.replace(" --s", "").strip()
                 for f in [" --leaf", " --glow", " --cat", " --mdcat"]:
@@ -137,7 +138,7 @@ def get_system_context(query):
                 if "$1" in tool or "{}" in tool: tool = tool.replace("$1", args).replace("{}", args).strip()
                 sys.stderr.write(f"\033[2m[sys] Executing: {tool}\033[0m\n"); sys.stderr.flush()
                 return run_local_tool(tool)
-        return ""
+    return ""
 
 def stream_llm_response(messages, prefix="AI: "):
     gkey = os.environ.get("GEMINI_API_KEY")
@@ -404,4 +405,3 @@ try:
             sys.exit(0)
         print_stock_error(user_input); sys.exit(127)
 except KeyboardInterrupt: sys.stderr.write("\nCancelled.\n"); sys.exit(130)
-

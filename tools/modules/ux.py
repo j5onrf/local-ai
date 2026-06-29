@@ -127,3 +127,16 @@ def run_interactive_selection(intent, jaccard_search, clean_tool_prefix, print_s
     except KeyboardInterrupt:
         sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[KCancelled.\n"); sys.stderr.flush(); sys.exit(130)
     finally: sys.stderr.write("\033[?25h"); sys.stderr.flush()
+
+def confirm_tool(tool):
+    try:
+        # Clear leftover characters/newline from the standard input queue
+        termios.tcflush(sys.stdin.fileno(), termios.TCIFLUSH)
+    except Exception:
+        pass
+    sys.stderr.write(f"\033[1;33m[sys] Authorize tool: {tool}? [y/N]: \033[0m")
+    sys.stderr.flush()
+    key = get_key()
+    sys.stderr.write("\n")
+    sys.stderr.flush()
+    return key.lower() == 'y'
