@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.8.9.9] [06-29-26] - Orchestrator - Streamlined CLI driver, chat loop, and workspace session controller
+# Local-Ai Agent [j5onrf] [v0.8.9.9] [06-29-26]
 
 import os
 import sys
-# ... (rest of code)
-
 import os
 import sys
 import re
