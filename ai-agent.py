@@ -149,7 +149,10 @@ def run_interactive_chat(args: list):
     chat_history = [{"role": "system", "content": active_system_prompt}]
     pending_query = " ".join(args[1:]) if len(args) > 1 else None
     clean_name = " ".join(skills_list)
-    spell_active, memory_active = True, True
+    
+    # Spellcheck is disabled by default in workspaces, but active in chat
+    spell_active = not is_agent
+    memory_active = True
     
     db_turns = 0
     if is_agent:

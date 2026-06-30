@@ -105,7 +105,6 @@ Type these quick commands during any active conversation to adjust your settings
 
 *   **`/tok`**: Displays your live context window usage in a visual progress bar.
 *   **`/clear` / `/reset`**: Securely deletes the server-side interaction history from Google's servers, resets chat history, and clears the local `.agent/session.json` state.
-*   **`/d` / `/e`**: Manually **disable** or **enable** the context-aware grammar and spellchecking engine (which uses LanguageTool cloud/local API routing with an offline dictionary fallback).
 *   **`/m`**: Manually **toggle** long-term memory recall on or off.
 *   **Memory & Authorization Prompt Navigation**: Both standard memory recall (`[↵ load  d: disable  Esc/Arrows: skip]`) and tool authorization (`[Y/n]`) prompts are optimized for keyboard-only terminal workflows. Pressing **`Esc`** or **`Right Arrow`** instantly triggers a **No/Skip** action—safely printing `n` or clearing lines without outputting raw escape sequences, returning you directly to your conversation.
 
