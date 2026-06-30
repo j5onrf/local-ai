@@ -1,156 +1,135 @@
-<p align="center">
-  <img alt="Local-AI Agent" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" width="800" />
-</p>
+# Workspace & Session Manager Manual
 
-<h1 align="center">Local-AI Agent <kbd>v0.8.9.9-beta</kbd></h1>
+Ultra-light documentation for local agent workspaces, checkpoints, and security isolation.
 
-<p align="center">
-  <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
-  <img src="https://img.shields.io/badge/language-python-a3be8c?style=for-the-badge&labelColor=1f1f1f" alt="Language">
-  <img src="https://img.shields.io/github/repo-size/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=d6b4e0" alt="Repo Size">
-</p>
-
-<p align="center">
-  <code>Gemini-3.1-flash-lite</code> &nbsp; <code>Openrouter/free</code> &nbsp; <code>Local-Ai Model</code>
-</p>
-
----
-
-<h2 align="center">How the Agent Works</h2>
-
-All configurations are managed through your master blueprint: [`ai-context.md`](https://github.com/j5onrf/local-ai/blob/main/ai-context.md).
-
-> **Routing Logic:** The agent automatically determines the optimal execution path based on your input pattern, ensuring zero wasted tokens.
-
-* **No Session (Direct selections):** Uses a fast Jaccard Similarity engine (`jaccard_search`) with prefix-matching to instantly route custom commands and shortcuts to your local terminal.
-* **Single-Turn Agent (`ai <query>`):** Answers a single question and returns you to Bash, executing explicitly mapped diagnostic [`tools`](https://github.com/j5onrf/local-ai/tree/main/tools) and [`skills`](https://github.com/j5onrf/local-ai/tree/main/skills) only when requested.
-* **Multi-Turn Chat (`ai` alone):** Initiates an interactive, persistent conversation with local state preservation and multi-turn context memory.
-* **Workspace Agents (`ai init <path>`):** Compiles a path-specific structural tree directly inside your active [project workspace](https://github.com/j5onrf/local-ai/tree/main/projects) using `index-map`, launching a dedicated, codebase-aware agent session primed with your chosen skill file.
-
----
-
-<h2 align="center">CLI Launch Interface</h2>
-
-```text
+```console
+~ ❯ session
+[02/02] ❯ [session test ai] ai init ~/projects/ai-session-test -init
+:: ↵ run  Esc: 
+ℹ Compiling index map...
+✔ Compressed index-map: ~/projects/ai-session-test
 ╭──────────────────────────────────────────────╮
-│  >_ Local-AI Agent (v0.8.9.9)                │
+│  >_ Local-AI Agent (v0.8.9.8)                │
 │                                              │
-│  model:     local-model                      │
-│  directory: ...-ai/projects/session-test     │
+│  model:     gemini-3.1-flash-lite            │
+│  directory: .../projects/ai-session-test     │
 │  skill:     init                             │
-│  database:  109 turns (asleep)               │
+│  database:  26 turns (asleep)                │
 ╰──────────────────────────────────────────────╯
 [sys] Startup context: 92 tokens | Ctrl+C to exit.
 
 Agent: Workspace loaded. Awaiting instructions.
+❯ hello how are you
+[sys] Memory recall skipped.
+Agent: I am functioning within the workspace and ready for your development tasks. How 
+can I assist you with your code today?
+❯ how do rabbits get through metal fence so easy?
+Agent: Rabbits bypass metal fences primarily by exploiting physical gaps or structural 
+weaknesses...
+❯ /tok
+
+[sys] Context Window: 487/8192 tokens
+[sys] Usage: [█░░░░░░░░░░░░░░░░░░░] 5.9%
+[sys] Remaining: 7705 tokens
+
 ❯ 
 ```
 
----
+## 1. Directory Structure & Files
 
-<h2 align="center">Core Pillars & Capabilities</h2>
+All project metadata and structural blueprints are managed cleanly without cluttering your active codebase:
 
-| Pillar | Capability | Description |
-| :---: | :---: | :--- |
-| **Performance** | **Zero-Daemon** | 0% idle CPU/RAM. `Ultra-light` execution. |
-| **Search Engine** | **Jaccard Similarity** | Sub-millisecond keyword and partial-word matching. |
-| **Resiliency** | **Fallbacks** | Automatically cascades: `Gemini` → `OpenRouter` → `Local`. |
-| **Safety** | **Zero-Trust Guardrails** | Intercepts destructive commands before shell execution. |
-| **Integration** | **Dynamic Context** | On-demand compilation of system specs and file contents. |
-| **Optimization** | **Token-Slasher** | Custom [`tool`](https://github.com/j5onrf/local-ai/tree/main/tools) and [`skill`](https://github.com/j5onrf/local-ai/tree/main/skills) integration built for minimal token use. |
-| **Interface** | **Conversational TUI** | Rich, multi-turn chat sessions directly in the terminal. |
-| **Auditability** | **Zero-Dependency** | Under 400 lines of standard-library Python. |
+*   **`~/.config/local-ai/projects/database/`**
+    *   `*.db`: Isolated, project-specific SQLite databases managing your save checkpoints and memory logs.
+*   **`~/your-project-folder/` (Your active workspace)**
+    *   `.agent/session.json`: Securely holds the server-side interaction tracking key when using stateful Gemini APIs.
+    *   `index-map-<project-name>.txt`: Codebase structural blueprint compiled on-the-fly by `tools/map/index-map` on startup.
+    *   `history.md`: A human-readable chronological Markdown ledger of every input and output.
 
 ---
 
-<h2 align="center">TUI Carousel & Input Controls</h2>
+## 2. Dynamic File Context Insertion (On-Demand RAG)
 
-* **`Up` / `Down` Arrow Keys:** Cycle through available ranked selections.
-* **`Enter`:** Execute the highlighted command (or initialize a [workspace](https://github.com/j5onrf/local-ai/tree/main/projects) if the selection is a directory path).
-* **`Esc` / `Right Arrow` / `Ctrl+C`:** Cancel/Skip the active menu, memory-recall, or tool authorization prompt cleanly.
+Avoid manual copy-pasting. You can pull the full contents of any file directly into the model's active context on-the-fly using the integrated local tool execution pipeline:
 
-```text
-~ ❯ weather
-[01/02] ❯ [weather full] curl -s wttr.in | cat
-:: ↵ run  Esc:
-```
-
----
-
-<h2 align="center">Command Reference</h2>
-
-### 1. Global Shell Commands
-*Executed directly from your terminal prompt.*
-
-| Command | Description |
-| :--- | :--- |
-| **`ai`** | Launch an interactive, multi-turn chat session. |
-| **`ai <query>`** | Get an instant, stateless answer; returns directly to your Bash prompt. |
-| **`ai init <path>`** | Index a directory & launch a codebase-aware, stateful agent session. |
-| **`hs`** | Perform an on-demand keyword search of your active workspace history. |
-| **`hist`** | View your workspace history log (`history.md`). |
-
-### 2. Active Session Commands
-*Typed directly inside an active chat session.*
-
-| Command | Description |
-| :--- | :--- |
-| **`/skill <query>`** *(or `/s`)* | Search and load dynamic specialist skills on-the-fly. |
-| **`view file <path>`** *(or `read`)* | Dynamically read local files directly into your model context. |
-| **`-save <tag>`** | Snapshot the current conversation state to your local SQLite database. |
-| **`-load`** *(or `-timeline`)* | Rollback active history to a past SQLite checkpoint. |
-| **`/f`** / **`/t`** / **`/b`** / **`/a`** | Trigger prompt-generating subroutines: Follow-up, Thinking, Brainstorm, or All. |
-
-### 3. Modular Toggle & Diagnostic Switches
-*Typed inside an active chat session to adjust settings on-the-fly.*
-
-| Command | Description |
-| :--- | :--- |
-| **`/clear`** / **`/reset`** | **Reset** Google session context & clear local. |
-| **`/d`** / **`/e`** | **Disable** / **Enable** the context-aware grammar & spellchecker. |
-| **`/m`** | **Toggle** long-term conversation memory recall on or off. |
-| **`/tok`** | **View** your live token usage capacity and visual progress bar. |
+*   **Command:** Type this inside your active chat:
+    ```text
+    ❯ view file <filename>
+    ```
+    *(Or `read file <filename>` / `show file <filename>`)*
+*   **Execution:** The agent runs a local `cat` behind the scenes and injects the raw file contents into the system context for immediate reasoning.
 
 ---
 
-<h2 align="center">Agent Blueprint</h2>
+## 3. Security Isolation (Docker & SkillSpector)
 
-Add your shortcuts, commands, and workspaces to [`ai-context.md`](https://github.com/j5onrf/local-ai/blob/main/ai-context.md).
+Because local python scripts run with standard user-level permissions, it is highly recommended to run the agent in a sandboxed, zero-trust environment:
 
-```markdown
-# --- Weather & Live Networking ---
-[TOOL] curl -s wttr.in --cat ---> weather full, wttr, weather
-[TOOL] curl -s "wttr.in/?format=3" --cat ---> weather simple, wttr, weather
-
-# --- Local-Ai Agent Blueprint (CheatSheet) ---
-~/.config/local-ai/tools/blueprint --leaf ---> cheatsheet, blueprint, bp, cs
-```
+*   **Docker Containerization**: For absolute system safety, run the agent inside a sandboxed **Docker container** to isolate the execution context entirely from your host workstation's files.
+*   **Vetting Agent Skills**: Never run unvetted third-party skill modules. We recommend scanning all custom or community skills with [NVIDIA SkillSpector](https://github.com/NVIDIA/SkillSpector) before importing them to identify privilege escalations, malicious shell commands, or prompt injections.
 
 ---
 
-<h2 align="center">Setup & Prerequisites</h2>
+## 4. Checkpoints (Save States & Timelines)
 
-```bash
-# 1. Optional: Install terminal rendering utilities
-# (mdcat enables beautiful terminal markdown formatting)
-yay -S mdcat
+Save or rollback workspace states inside an active chat session. Checkpoints bypass the filesystem and stream directly to SQLite.
 
-# 2. Clone the repository locally
-git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai
-
-# 3. Inject the environment hook into Bash & reload your profile
-AI_SRC='$HOME/.config/local-ai/ai-hook.sh'
-printf '[ -f "%s" ] && source "%s"\n' "$AI_SRC" "$AI_SRC" >> ~/.bashrc
-source ~/.bashrc
-
-# 4. Optional: Export cloud API keys to enable remote fallback routing
-export GEMINI_API_KEY="AIzaSyYourFullGeminiApiKeyHere"
-export CLOUD_MODEL="gemini-3.1-flash-lite"
-export OPENROUTER_API_KEY="sk-or-v1-YourFullOpenRouterKeyHere"
-export OPENROUTER_MODEL="openrouter/free"
-```
+*   **Save Current State:**
+    ```text
+    ❯ -save <tag>
+    ```
+*   **Rollback State:**
+    ```text
+    ❯ -load
+    ```
+    *(Or `-timeline`). Displays your saved snapshots. Type the target index number (e.g., `0`) and press **`Enter`**. The interface is wrapped in a fail-safe input loop to prevent accidental menu crashes if an invalid key or arrow key is pressed.*
 
 ---
 
-> **Interactive Demo:** Experience the real-time terminal simulations, dynamic Sunset/Nebulae themes, and live agent execution on the [Web Demo Portfolio](https://j5onrf.github.io/local-ai-agent/).
+## 5. On-Demand Specialist Skills
+
+Inject custom, role-based onboarding instructions dynamically during any active session.
+
+*   **Search and Load:** Type this command inside your chat:
+    ```text
+    ❯ /skill <search_term>
+    ```
+    *(Or `/s <search_term>`. Use `/skill` with no term to list your entire skill library).*
+*   **Selection & Execution:** Use your `Up` and `Down` arrow keys to cycle through matches, then press `Enter` to apply or `Esc` to cancel.
+
+---
+
+## 6. In-Session Toggle & Diagnostic Commands
+
+Type these quick commands during any active conversation to adjust your settings on-the-fly:
+
+*   **`/tok`**: Displays your live context window usage in a visual progress bar.
+*   **`/clear` / `/reset`**: Securely deletes the server-side interaction history from Google's servers, resets chat history, and clears the local `.agent/session.json` state.
+*   **`/m`**: Manually **toggle** long-term memory recall on or off.
+*   **Memory & Authorization Prompt Navigation**: Both standard memory recall (`[↵ load  d: disable  Esc/Arrows: skip]`) and tool authorization (`[Y/n]`) prompts are optimized for keyboard-only terminal workflows. Pressing **`Esc`** or **`Right Arrow`** instantly triggers a **No/Skip** action—safely printing `n` or clearing lines without outputting raw escape sequences, returning you directly to your conversation.
+
+---
+
+## 7. Context Window Limits (Token-Slasher)
+
+1 Token ≈ 4 Characters. Adjust the active sliding-window threshold dynamically using `AI_MAX_TOKENS`:
+
+*   **Inline Override (One-off):**
+    ```bash
+    AI_MAX_TOKENS=16000 session-test(your-project)
+    ```
+*   **Global Override (Active Terminal):**
+    ```bash
+    export AI_MAX_TOKENS=16000
+    ```
+
+---
+
+## 8. Server-Side Context Tracking (Gemini Interactions API)
+
+When configured with a `GEMINI_API_KEY`, your agent bypasses standard stateless completion limits and communicates statefully via Google's modern `/v1beta/interactions` endpoint.
+
+*   **Context Caching:** Your workspace directory index map is uploaded exactly *once* during initialization. Google holds this context in an high-speed server-side memory cache referenced by the ID in your local `.agent/session.json`.
+*   **Bandwidth Savings:** Subsequent conversation turns only upload your new, brief query over the network rather than re-uploading the entire codebase structure, saving up to 90% in token costs and reducing average response latency.
+
 
