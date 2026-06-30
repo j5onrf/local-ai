@@ -116,7 +116,7 @@ Type these quick commands during any active conversation to adjust your settings
 
 *   **Inline Override (One-off):**
 ```console
-    AI_MAX_TOKENS=16000 session-test(your-project)
+    AI_MAX_TOKENS=16000 session-test
 ```
 *   **Global Override (Active Terminal):**
 ```console
