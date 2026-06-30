@@ -1,3 +1,4 @@
+# [SKILL] follow-up ---> follow-up, followup, question, mechanics, practical, compare
 Analyze active history and generate exactly 3 general knowledge follow-up questions:
 - Option 1 (Mechanics): A question probing the underlying scientific, physical, or step-by-step process.
 - Option 2 (Practical): A question addressing practical application, real-world execution, or usage techniques.

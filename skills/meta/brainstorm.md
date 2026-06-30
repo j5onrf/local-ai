@@ -1,3 +1,4 @@
+# [SKILL] brainstorm ---> brainstorm, lateral, creative, perspective, future, trends, macro
 Analyze history and generate exactly 3 divergent, lateral ideas or high-level perspectives:
 - Option 1 (Lateral Perspective): A fundamentally alternative viewpoint, analogy, or paradigm to explore.
 - Option 2 (Cross-Discipline Sync): A method to connect this topic to an entirely different field, system, or tool.

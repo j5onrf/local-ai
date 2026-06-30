@@ -60,11 +60,14 @@ fi
 PROFILE_ALIGNMENT="NOMINAL"
 PROFILE_DETAILS="Running configurations align with the static system architecture profile."
 if [ -f "$MYSYS_FILE" ]; then
-    STATIC_KERNEL=$(grep -i "Linux Kernel" "$MYSYS_FILE" | cut -d'`' -f2 | awk '{print $1}' || echo "")
+    STATIC_KERNEL=$(grep -i "Linux Kernel" "$MYSYS_FILE" | cut -d'`' -f2 | awk '{print $1}')
+    
+    # Extract the system kernel name dynamically (e.g., '7.x.2-2-cachyos')
     ACTIVE_KERNEL=$(uname -r)
+    
     if [ -n "$STATIC_KERNEL" ] && [[ "$ACTIVE_KERNEL" != *"$STATIC_KERNEL"* ]]; then
         PROFILE_ALIGNMENT="MISALIGNED"
-        PROFILE_DETAILS="Kernel version mismatch! Active kernel is '$ACTIVE_KERNEL', but static profile expects '$STATIC_KERNEL'."
+        PROFILE_DETAILS="Kernel mismatch! Active is '$ACTIVE_KERNEL', but static profile expects '$STATIC_KERNEL'. Run 'generate profile' to update."
     fi
 fi
 
@@ -78,10 +81,19 @@ fi
 if [ "$PROFILE_ALIGNMENT" = "MISALIGNED" ]; then
     POSTURE="WARNING"
     WARNINGS="${WARNINGS}* Profile Alignment: $PROFILE_DETAILS\n"
+    # Friendly inline tip instructing the user exactly how to update
+    WARNINGS="${WARNINGS}  \033[1;36m👉 TIP:\033[0m Type \033[1;32m'generate profile'\033[0m in your chat to update your static profile.\n"
 fi
 
 # 9. Context-Aware Output Generation
 if [ "${AI_CONTEXT_RUN:-0}" = "1" ]; then
+    # Extract only the core system specifications, stripping out the heavy AI guidelines block
+    MYSYS_CORE="No static system profile available."
+    if [ -f "$MYSYS_FILE" ]; then
+        # Exits immediately when it hits your guidelines header, slicing context by ~60%
+        MYSYS_CORE=$(sed '/## AI System Rules \& Guidelines/Q' "$MYSYS_FILE" || cat "$MYSYS_FILE")
+    fi
+
     # Machine-friendly raw format: optimizes parser throughput and ensures high-focus LLM synthesis
     cat <<EOF
 SYSTEM HEALTH STATUS: $POSTURE
@@ -98,7 +110,7 @@ Alignment Details: $PROFILE_DETAILS
 
 ---
 REFERENCE BLUEPRINT CONTEXT:
-$(cat "$MYSYS_FILE" 2>/dev/null || echo "No static system profile available.")
+$MYSYS_CORE
 EOF
 else
     # Human-friendly Markdown format: optimized for TUI display and Leaf viewing

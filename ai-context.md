@@ -44,9 +44,6 @@ ai init ~/.config/local-ai/projects/ai-session-test --init ---> session test ai,
 ## 2. On-Demand System Prompts & Role Injections (Skills)
 
 ```properties
-# --- Dynamic Host Profiler & System Analytics ---
-[TOOL] cat ~/.config/local-ai/skills/system/mysys.md --leaf ---> mysys, show mysys, view sys, mysys doc
-
 # [TOOL] cat ~/.config/local-ai/skills/identity/business/mybiz.md --leaf ---> mybiz, show business profile, view mybiz
 # [TOOL] cat ~/.config/local-ai/skills/identity/marketing/strategy.md --leaf ---> marketing strategy, growth strategy, view marketing
 # [TOOL] cat ~/.config/local-ai/skills/identity/workout/routine.md --leaf ---> routine, fitness profile, workout routine
@@ -55,6 +52,10 @@ ai init ~/.config/local-ai/projects/ai-session-test --init ---> session test ai,
 ## 3. Dynamic Context-Injected Tools (RAG)
 
 ```properties
+# --- Dynamic Host Profiler & System Analytics ---
+[TOOL] cat ~/.config/local-ai/skills/system/mysys.md --leaf ---> mysys, show mysys, view sys, mysys doc
+[TOOL] ~/.config/local-ai/tools/generate-profile ---> generate profile, update sys profile, sync mysys
+
 # --- Pre-Install Zero-Trust AUR Package & PKGBUILD Auditor ---
 [TOOL] ~/.config/local-ai/tools/agentic/system/aur-audit ---> aur audit, audit package
 

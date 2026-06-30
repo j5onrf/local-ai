@@ -1,3 +1,4 @@
+# [SKILL] thinking ---> thinking, think, analyze, next-steps, details, critique, risk
 Analyze history and generate exactly 3 highly focused, analytical next-steps for the current topic:
 - Option 1 (Critical Next-Step): The immediate, most logical next step to deeply investigate or clarify the active topic.
 - Option 2 (Logical Risk): A critical vulnerability, logical flaw, counter-argument, or bias to verify.
