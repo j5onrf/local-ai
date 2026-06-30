@@ -53,9 +53,9 @@ All project metadata and structural blueprints are managed cleanly without clutt
 Avoid manual copy-pasting. You can pull the full contents of any file directly into the model's active context on-the-fly using the integrated local tool execution pipeline:
 
 *   **Command:** Type this inside your active chat:
-    ```text
+```console
     ❯ view file <filename>
-    ```
+```
     *(Or `read file <filename>` / `show file <filename>`)*
 *   **Execution:** The agent runs a local `cat` behind the scenes and injects the raw file contents into the system context for immediate reasoning.
 
@@ -75,14 +75,14 @@ Because local python scripts run with standard user-level permissions, it is hig
 Save or rollback workspace states inside an active chat session. Checkpoints bypass the filesystem and stream directly to SQLite.
 
 *   **Save Current State:**
-    ```text
+```console
     ❯ -save <tag>
-    ```
+```
 *   **Rollback State:**
-    ```text
+```console
     ❯ -load
-    ```
-    *(Or `-timeline`). Displays your saved snapshots. Type the target index number (e.g., `0`) and press **`Enter`**. The interface is wrapped in a fail-safe input loop to prevent accidental menu crashes if an invalid key or arrow key is pressed.*
+```
+    *(Or `-timeline`). Displays your saved snapshots. Type the target index number (e.g., `0`) and press **`Enter`**. 
 
 ---
 
@@ -91,9 +91,9 @@ Save or rollback workspace states inside an active chat session. Checkpoints byp
 Inject custom, role-based onboarding instructions dynamically during any active session.
 
 *   **Search and Load:** Type this command inside your chat:
-    ```text
+```console
     ❯ /skill <search_term>
-    ```
+```
     *(Or `/s <search_term>`. Use `/skill` with no term to list your entire skill library).*
 *   **Selection & Execution:** Use your `Up` and `Down` arrow keys to cycle through matches, then press `Enter` to apply or `Esc` to cancel.
 
@@ -115,13 +115,13 @@ Type these quick commands during any active conversation to adjust your settings
 1 Token ≈ 4 Characters. Adjust the active sliding-window threshold dynamically using `AI_MAX_TOKENS`:
 
 *   **Inline Override (One-off):**
-    ```bash
+```console
     AI_MAX_TOKENS=16000 session-test(your-project)
-    ```
+```
 *   **Global Override (Active Terminal):**
-    ```bash
+```console
     export AI_MAX_TOKENS=16000
-    ```
+```
 
 ---
 
@@ -131,5 +131,6 @@ When configured with a `GEMINI_API_KEY`, your agent bypasses standard stateless 
 
 *   **Context Caching:** Your workspace directory index map is uploaded exactly *once* during initialization. Google holds this context in an high-speed server-side memory cache referenced by the ID in your local `.agent/session.json`.
 *   **Bandwidth Savings:** Subsequent conversation turns only upload your new, brief query over the network rather than re-uploading the entire codebase structure, saving up to 90% in token costs and reducing average response latency.
+
 
 
