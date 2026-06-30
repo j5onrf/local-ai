@@ -2,14 +2,14 @@
 
 Ultra-light documentation for local agent workspaces, checkpoints, and security isolation.
 
-```text
+```console
 ~ ❯ session
 [02/02] ❯ [session test ai] ai init ~/projects/ai-session-test -init
 :: ↵ run  Esc: 
 ℹ Compiling index map...
 ✔ Compressed index-map: ~/projects/ai-session-test
 ╭──────────────────────────────────────────────╮
-│  >_ Local-AI Agent (v0.8.9.8)                │
+│  >_ Local-AI Agent (v0.8.9.9)                │
 │                                              │
 │  model:     gemini-3.1-flash-lite            │
 │  directory: .../projects/ai-session-test     │
@@ -131,4 +131,5 @@ When configured with a `GEMINI_API_KEY`, your agent bypasses standard stateless 
 
 *   **Context Caching:** Your workspace directory index map is uploaded exactly *once* during initialization. Google holds this context in an high-speed server-side memory cache referenced by the ID in your local `.agent/session.json`.
 *   **Bandwidth Savings:** Subsequent conversation turns only upload your new, brief query over the network rather than re-uploading the entire codebase structure, saving up to 90% in token costs and reducing average response latency.
+
 
