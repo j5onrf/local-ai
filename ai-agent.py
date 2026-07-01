@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.8.9.10] [06-30-26]
+# Local-Ai Agent [j5onrf] [v0.8.9.11]
 
 import os
 import sys
@@ -88,7 +88,7 @@ def run_local_tool(cmd: str) -> str:
         return f"[SYSTEM ERROR] Failed to run local tool: {e}\n"
 
 
-def get_system_context(query: str) -> str:
+def get_system_context(query: str) -> str or None:
     q_tokens = core.tokenize(query, STOP_WORDS)
     if not q_tokens or "\n" in query.strip():
         return ""
@@ -100,7 +100,7 @@ def get_system_context(query: str) -> str:
                 tool = tool.replace("[TOOL]", "").strip()
                 if " --s" not in tool:
                     if not core.confirm_tool(tool):
-                        return ""
+                        return None  # Abort transaction signal
                 if "system" in tool.lower():
                     ensure_mysys_exists()
                 tool = tool.replace(" --s", "").strip()
@@ -116,8 +116,9 @@ def get_system_context(query: str) -> str:
     return ""
 
 
-def stream_llm_response(messages: list, prefix: str = "AI: ") -> str or None:
-    return core.stream_response(messages, prefix, CFG_DIR)
+# Updated to accept and pass the show_stats toggle parameter (defaulting to True)
+def stream_llm_response(messages: list, prefix: str = "AI: ", show_stats: bool = True) -> str or None:
+    return core.stream_response(messages, prefix, CFG_DIR, show_stats)
 
 
 def run_interactive_chat(args: list):
@@ -143,7 +144,6 @@ def run_interactive_chat(args: list):
     pending_query = " ".join(args[1:]) if len(args) > 1 else None
     clean_name = " ".join(skills_list)
     
-    # Spellcheck is disabled by default in workspaces, but active in chat
     spell_active = not is_agent
     memory_active = True
     
@@ -203,6 +203,7 @@ def run_interactive_chat(args: list):
                 if res.stdout.strip():
                     try:
                         chat_history = json.loads(res.stdout.strip())
+                        print(f"\033[1;32m[session-mgr] Restored session ({len(chat_history)-1} turns loaded).\033[0m\n")
                     except Exception as e:
                         print(f"Error loading session: {e}")
                 continue
@@ -247,6 +248,9 @@ def run_interactive_chat(args: list):
                 prompt = f"### SYSTEM INSTRUCTIONS (CRITICAL OVERRIDE):\n{active_system_prompt}\n\n### CODESPACE MAP:\n{query}"
             else:
                 sys_ctx = get_system_context(query)
+                if sys_ctx is None:  # Abort run if tool was actively rejected
+                    pending_query = None
+                    continue
                 comb_ctx = (f"{past_memory}\n\n" if past_memory else "") + sys_ctx
                 prompt = (f"### Real-time System Context:\n{comb_ctx}\n\n" if comb_ctx else "") + f"User Question: {query}"
                 
@@ -256,6 +260,7 @@ def run_interactive_chat(args: list):
                     readline.add_history(query)
                 except Exception:
                     pass
+            # Defaults to show_stats=True inside active chat sessions
             ans = stream_llm_response(core.prune_history(chat_history), prefix="Agent:" if is_agent else "AI:")
             if ans:
                 chat_history.append({"role": "assistant", "content": ans})
@@ -277,7 +282,7 @@ def run_interactive_chat(args: list):
 
 
 def run_direct_query(args: list):
-    """Executes a direct shell query command without entering full chat loop."""
+    """Executes a direct shell query command, explicitly disabling the speed test output."""
     query_parts = args[1:]
     active_system_prompt = BASE_PROMPT
     if query_parts and query_parts[-1].startswith("-"):
@@ -287,11 +292,14 @@ def run_direct_query(args: list):
         query_parts = query_parts[:-1]
     query = " ".join(query_parts)
     sys_ctx = get_system_context(query)
+    if sys_ctx is None:  # Direct query abort
+        sys.exit(0)
     messages = [
         {"role": "system", "content": active_system_prompt},
         {"role": "user", "content": (f"### Real-time System Context:\n{sys_ctx}\n\n" if sys_ctx else "") + f"User Question: {query}"}
     ]
-    stream_llm_response(messages, prefix="AI:")
+    # Explicitly passes show_stats=False so direct queries remain silent
+    stream_llm_response(messages, prefix="AI:", show_stats=False)
     sys.exit(0)
 
 
