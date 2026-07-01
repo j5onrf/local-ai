@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # chat - Unified Agentic Brainstorm, Thinking & Follow-up Engine v2.5.1
-# Path: ~/.config/local-ai/tools/modules/chat
+# Path: ~/.config/local-ai/modules/chat
 
 import sys
 import os

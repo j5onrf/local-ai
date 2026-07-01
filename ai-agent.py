@@ -20,7 +20,7 @@ BASE_PROMPT = (
 )
 
 # Bootstrap custom local modules path
-sys.path.append(os.path.join(CFG_DIR, "tools", "modules"))
+sys.path.append(os.path.join(CFG_DIR, "modules"))
 
 try:
     import readline
@@ -150,7 +150,7 @@ def run_interactive_chat(args: list):
     db_turns = 0
     if is_agent:
         try:
-            res = subprocess.run([sys.executable, f"{CFG_DIR}/tools/modules/ai-agent-sessions", "get-count", safe_name], capture_output=True, text=True)
+            res = subprocess.run([sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "get-count", safe_name], capture_output=True, text=True)
             db_turns = int(res.stdout.strip())
         except Exception:
             pass
@@ -185,7 +185,7 @@ def run_interactive_chat(args: list):
                     print(f"\033[1;33m[sys] Memory recall {'enabled' if memory_active else 'disabled'}.\033[0m\n")
                     continue
                 if query == "/tok":
-                    subprocess.run([sys.executable, f"{CFG_DIR}/tools/modules/ai-agent-sessions", "show-tok"], input=json.dumps(chat_history), text=True)
+                    subprocess.run([sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "show-tok"], input=json.dumps(chat_history), text=True)
                     continue
                 if spell_active and not query.startswith(("/", "-", "#", "```")):
                     action, query = core.check_query_spelling(query, core.get_key)
@@ -199,7 +199,7 @@ def run_interactive_chat(args: list):
                         spell_active = False
                     
             if query.startswith(("/skill", "/s")) or query.startswith(("/skill ", "/s ")):
-                res = subprocess.run([sys.executable, f"{CFG_DIR}/tools/modules/ai-agent-skills", safe_name, query], input=json.dumps(chat_history), stdout=subprocess.PIPE, text=True)
+                res = subprocess.run([sys.executable, f"{CFG_DIR}/modules/ai-agent-skills", safe_name, query], input=json.dumps(chat_history), stdout=subprocess.PIPE, text=True)
                 if res.stdout.strip():
                     try:
                         chat_history = json.loads(res.stdout.strip())
@@ -207,10 +207,10 @@ def run_interactive_chat(args: list):
                         print(f"Error loading session: {e}")
                 continue
             if query.startswith("-save"):
-                subprocess.run([sys.executable, f"{CFG_DIR}/tools/modules/ai-agent-sessions", "save", safe_name, query.replace("-save", "").strip()], input=json.dumps(chat_history), text=True)
+                subprocess.run([sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "save", safe_name, query.replace("-save", "").strip()], input=json.dumps(chat_history), text=True)
                 continue
             if query in ("-load", "-timeline"):
-                res = subprocess.run([sys.executable, f"{CFG_DIR}/tools/modules/ai-agent-sessions", "load", safe_name], stdin=sys.stdin, stdout=subprocess.PIPE, text=True)
+                res = subprocess.run([sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "load", safe_name], stdin=sys.stdin, stdout=subprocess.PIPE, text=True)
                 if res.stdout.strip():
                     try:
                         chat_history = json.loads(res.stdout.strip())
@@ -224,7 +224,7 @@ def run_interactive_chat(args: list):
             past_memory = ""
             is_init_map = query.startswith(("#", "[", "{")) or "\n" in query or "last_interaction_id" in query or "index-map" in query
             if is_agent and memory_active and not is_init_map:
-                res = subprocess.run([sys.executable, f"{CFG_DIR}/tools/modules/ai-agent-sessions", "get-context", safe_name, query], stdout=subprocess.PIPE, text=True)
+                res = subprocess.run([sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "get-context", safe_name, query], stdout=subprocess.PIPE, text=True)
                 if res.returncode == 2:
                     pending_query = None
                     continue
@@ -233,7 +233,7 @@ def run_interactive_chat(args: list):
                 past_memory = res.stdout.strip()
                 
             if re.match(r'^/?([ftba])(?:\s+(\d+))?$', query.lower()):
-                think_bin = f"{CFG_DIR}/tools/modules/chat"
+                think_bin = f"{CFG_DIR}/modules/chat"
                 if os.path.exists(think_bin):
                     try:
                         subprocess.run([sys.executable, think_bin, query], input=json.dumps(chat_history), text=True)
@@ -260,7 +260,7 @@ def run_interactive_chat(args: list):
             if ans:
                 chat_history.append({"role": "assistant", "content": ans})
                 if is_agent:
-                    subprocess.run([sys.executable, f"{CFG_DIR}/tools/modules/ai-agent-sessions", "log-turn", safe_name, query, ans])
+                    subprocess.run([sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "log-turn", safe_name, query, ans])
                     if not is_init_map:
                         hist_file = os.path.join(workspace_path, "history.md")
                         try:
