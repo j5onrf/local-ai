@@ -15,8 +15,8 @@ if [ -f "$AUDIT_SKILL_FILE" ]; then
     echo ""
 fi
 
-# 2. Prompt the user interactively for the package name
-read -p "❯ Enter AUR package name to audit: " PKG_NAME
+# 2. Prompt the user interactively for the package name with Readline editing enabled
+read -e -p "❯ Enter AUR package name to audit: " PKG_NAME
 
 # Clean trailing whitespace
 PKG_NAME=$(echo "$PKG_NAME" | xargs 2>/dev/null || echo "$PKG_NAME")

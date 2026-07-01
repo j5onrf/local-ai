@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.8.9.9] [06-29-26]
+# Local-Ai Agent [j5onrf] [v0.8.9.10] [06-30-26]
 
-import os
-import sys
 import os
 import sys
 import re
@@ -31,13 +29,9 @@ try:
 except ImportError:
     pass
 
-# Load consolidated core library functions
+# Load consolidated core library functions under a single unified namespace
 try:
-    import agent_core as agent_context
-    import agent_core as gemini_client
-    import agent_core as spellcheck
-    import agent_core as ux
-    from agent_core import check_query_spelling
+    import agent_core as core
 except ImportError as e:
     sys.stderr.write(f"\033[1;31m[CRITICAL]: Failed to load modular functions: {e}\033[0m\n")
     sys.exit(1)
@@ -95,26 +89,25 @@ def run_local_tool(cmd: str) -> str:
 
 
 def get_system_context(query: str) -> str:
-    q_tokens = agent_context.tokenize(query, STOP_WORDS)
+    q_tokens = core.tokenize(query, STOP_WORDS)
     if not q_tokens or "\n" in query.strip():
         return ""
-    for entry in agent_context.load_context_entries(CONTEXT_FILE, STOP_WORDS):
+    for entry in core.load_context_entries(CONTEXT_FILE, STOP_WORDS):
         ent_tokens = entry.get("tokens", [])
         if any(q_tokens[i:i+len(ent_tokens)] == ent_tokens for i in range(len(q_tokens) - len(ent_tokens) + 1)):
             tool = entry.get("cmd", "")
             if tool.startswith("[TOOL]"):
                 tool = tool.replace("[TOOL]", "").strip()
                 if " --s" not in tool:
-                    from agent_core import confirm_tool
-                    if not confirm_tool(tool):
+                    if not core.confirm_tool(tool):
                         return ""
                 if "system" in tool.lower():
                     ensure_mysys_exists()
                 tool = tool.replace(" --s", "").strip()
                 for flag in [" --leaf", " --glow", " --cat", " --mdcat"]:
                     tool = tool.replace(flag, "")
-                intent_tokens = set(agent_context.tokenize(entry.get("intent", ""), STOP_WORDS))
-                args = " ".join([w for w in query.split() if agent_context.tokenize(w, STOP_WORDS) and agent_context.tokenize(w, STOP_WORDS)[0] not in intent_tokens])
+                intent_tokens = set(core.tokenize(entry.get("intent", ""), STOP_WORDS))
+                args = " ".join([w for w in query.split() if core.tokenize(w, STOP_WORDS) and core.tokenize(w, STOP_WORDS)[0] not in intent_tokens])
                 if "$1" in tool or "{}" in tool:
                     tool = tool.replace("$1", args).replace("{}", args).strip()
                 sys.stderr.write(f"\033[2m[sys] Executing: {tool}\033[0m\n")
@@ -124,7 +117,7 @@ def get_system_context(query: str) -> str:
 
 
 def stream_llm_response(messages: list, prefix: str = "AI: ") -> str or None:
-    return gemini_client.stream_response(messages, prefix, CFG_DIR)
+    return core.stream_response(messages, prefix, CFG_DIR)
 
 
 def run_interactive_chat(args: list):
@@ -162,8 +155,7 @@ def run_interactive_chat(args: list):
         except Exception:
             pass
         
-    from agent_core import draw_session_box
-    draw_session_box(workspace_path, home_dir, is_agent, db_turns, active_system_prompt, clean_name)
+    core.draw_session_box(workspace_path, home_dir, is_agent, db_turns, active_system_prompt, clean_name)
     
     try:
         while True:
@@ -196,8 +188,7 @@ def run_interactive_chat(args: list):
                     subprocess.run([sys.executable, f"{CFG_DIR}/tools/modules/ai-agent-sessions", "show-tok"], input=json.dumps(chat_history), text=True)
                     continue
                 if spell_active and not query.startswith(("/", "-", "#", "```")):
-                    from agent_core import get_key
-                    action, query = check_query_spelling(query, get_key)
+                    action, query = core.check_query_spelling(query, core.get_key)
                     if action == "EDIT":
                         try:
                             readline.set_startup_hook(lambda: readline.insert_text(query))
@@ -265,8 +256,7 @@ def run_interactive_chat(args: list):
                     readline.add_history(query)
                 except Exception:
                     pass
-            from agent_core import prune_history
-            ans = stream_llm_response(prune_history(chat_history), prefix="Agent:" if is_agent else "AI:")
+            ans = stream_llm_response(core.prune_history(chat_history), prefix="Agent:" if is_agent else "AI:")
             if ans:
                 chat_history.append({"role": "assistant", "content": ans})
                 if is_agent:
@@ -314,9 +304,9 @@ def run_matching_search(args: list):
         shell_name = os.path.basename(os.environ.get("SHELL", "/bin/bash"))
         sys.stderr.write(f"zsh: command not found: {user_input}\n" if "zsh" in shell_name else f"bash: {user_input}: command not found\n")
         sys.exit(127)
-    matched = agent_context.jaccard_search(user_input, CONTEXT_FILE, STOP_WORDS)
+    matched = core.jaccard_search(user_input, CONTEXT_FILE, STOP_WORDS)
     if matched:
-        print("\n".join(f"{line.split('|||', 1)[0]}|||{agent_context.clean_tool_prefix(line.split('|||', 1)[1])}" for line in matched.split("\n")))
+        print("\n".join(f"{line.split('|||', 1)[0]}|||{core.clean_tool_prefix(line.split('|||', 1)[1])}" for line in matched.split("\n")))
         sys.exit(0)
     shell_name = os.path.basename(os.environ.get("SHELL", "/bin/bash"))
     sys.stderr.write(f"zsh: command not found: {user_input}\n" if "zsh" in shell_name else f"bash: {user_input}: command not found\n")
@@ -329,11 +319,10 @@ def main():
         args = sys.argv[1:]
         if args:
             if args[0] == "--interactive" and len(args) >= 2:
-                from agent_core import run_interactive_selection
-                run_interactive_selection(
+                core.run_interactive_selection(
                     " ".join(args[1:]),
-                    lambda q: agent_context.jaccard_search(q, CONTEXT_FILE, STOP_WORDS),
-                    agent_context.clean_tool_prefix,
+                    lambda q: core.jaccard_search(q, CONTEXT_FILE, STOP_WORDS),
+                    core.clean_tool_prefix,
                     lambda n: sys.stderr.write(f"zsh: command not found: {n}\n" if "zsh" in os.path.basename(os.environ.get("SHELL", "")) else f"bash: {n}: command not found\n"),
                     ensure_mysys_exists
                 )
