@@ -108,9 +108,9 @@ Agent: Workspace loaded. Awaiting instructions.
 | :--- | :--- |
 | **`/clear`** / **`/reset`** | **Reset** Google session context & clear local. |
 | **`/d`** / **`/e`** | **Disable** / **Enable** the context-aware grammar & spellchecker. |
-| **`/m`** | **Toggle** long-term conversation memory recall on or off. |
-| **`/tok`** | **View** your live token usage capacity and visual progress bar. |
+| **`/m`** | **Toggle** long-term memory and TPM reconciliation ON/OFF. |
 | **`/stats`** | **Toggle** real-time generation speed metrics. |
+| **`/tok`** | **View** your live token usage capacity and visual progress bar. |
 
 ---
 
