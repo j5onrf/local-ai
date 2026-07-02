@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# AI Update Inspector v0.8.6 [j5onrf] [06-20-26]
+# AI Update Inspector v0.8.7 [j5onrf] [07-01-26]
 
 set -euo pipefail
 

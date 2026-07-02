@@ -69,7 +69,7 @@ ai init ~/.config/local-ai/projects/ai-session-test --init ---> session test ai,
 [TOOL] ~/.config/local-ai/tools/agentic/system/log-checker ---> log checker, ailog, log check, check errors, system crashed, events
 
 # --- System Resources & Diagnosis (System Health) ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/system-health --leaf ---> system health, sysh, health, system diagnosis, why is my system slow
+[TOOL] ~/.config/local-ai/tools/agentic/system/system-health ---> system health, sysh, health, system diagnosis, why is my system slow
 
 # --- Pending Updates ---
 [TOOL] ~/.config/local-ai/tools/agentic/system/update-inspector --leaf ---> update inspector, inspector, ui

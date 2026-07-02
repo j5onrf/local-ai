@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# system-health - Context-Aware Real-time Hardware Inspector v1.4.0
+# system-health - Context-Aware Real-time Hardware Inspector v1.4.2 [j5onrf]
 # Path: ~/.config/local-ai/tools/agentic/system/system-health
 
 set -euo pipefail
@@ -7,47 +7,59 @@ set -euo pipefail
 # Pointed to the root skills folder
 MYSYS_FILE="$HOME/.config/local-ai/skills/system/mysys.md"
 
-# 1. Fetch Real-time CPU Temperature
+# 1. Fetch Real-time CPU Temperature (Robust hardware monitor search)
 CPU_TEMP="N/A"
-if [ -f "/sys/class/thermal/thermal_zone0/temp" ]; then
-    RAW_TEMP=$(cat /sys/class/thermal/thermal_zone0/temp)
+HWMON_PATH=$(grep -l -E "coretemp|k10temp|zenpower" /sys/class/hwmon/hwmon*/name 2>/dev/null | head -n 1 || true)
+if [ -n "$HWMON_PATH" ]; then
+    HWMON_DIR=$(dirname "$HWMON_PATH")
+    # Search for Package/Tdie input sensor
+    for temp_file in "$HWMON_DIR"/temp*_input; do
+        if [ -f "$temp_file" ]; then
+            RAW_TEMP=$(cat "$temp_file")
+            CPU_TEMP="$((RAW_TEMP / 1000))"
+            break
+        fi
+    done
+fi
+# Fallback to standard thermal zone if hardware sensors are missed
+if [ "$CPU_TEMP" = "N/A" ] && [ -f "/sys/class/thermal/thermal_zone0/temp" ]; then
+    RAW_TEMP=$(cat "/sys/class/thermal/thermal_zone0/temp")
     CPU_TEMP="$((RAW_TEMP / 1000))"
 fi
 
-# 2. Fetch Real-time Load Averages
+# 2. Fetch Real-time Load Averages (Low-overhead proc read)
 LOAD_AVG="N/A"
 if [ -f "/proc/loadavg" ]; then
     LOAD_AVG=$(awk '{print $1" (1m), "$2" (5m), "$3" (15m)"}' /proc/loadavg)
 fi
 
-# 3. Fetch Real-time Memory Usage (RAM)
+# 3. Fetch Real-time Memory Usage (RAM) (Single-pass awk optimization)
 FREE_RAM="N/A"
 USED_RAM_PCT="N/A"
 if [ -f "/proc/meminfo" ]; then
-    MEM_TOTAL=$(grep MemTotal /proc/meminfo | awk '{print $2}')
-    MEM_AVAIL=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
+    eval "$(awk '/^MemTotal:/ {print "MEM_TOTAL=" $2} /^MemAvailable:/ {print "MEM_AVAIL=" $2}' /proc/meminfo)"
     MEM_USED=$((MEM_TOTAL - MEM_AVAIL))
     FREE_RAM="$((MEM_AVAIL / 1024)) MB"
     USED_RAM_PCT="$(( (MEM_USED * 100) / MEM_TOTAL ))%"
 fi
 
-# 4. Fetch Real-time Disk Storage Capacity (Root)
+# 4. Fetch Real-time Disk Storage Capacity (Root) (Direct stream read)
 DISK_FREE="N/A"
 DISK_PCT="N/A"
 if command -v df >/dev/null 2>&1; then
-    DISK_INFO=$(df -h / | tail -n 1)
-    DISK_FREE=$(echo "$DISK_INFO" | awk '{print $4}')
-    DISK_PCT=$(echo "$DISK_INFO" | awk '{print $5}')
+    read -r _ _ _ DISK_FREE DISK_PCT _ < <(df -h / | tail -n 1)
 fi
 
-# 5. Get Top CPU and Memory Consumers
+# 5. Get Top CPU and Memory Consumers (Excluding self-spiking processes and headers)
 TOP_CPU_PROC="N/A"
 if command -v ps >/dev/null 2>&1; then
-    TOP_CPU_PROC=$(ps -eo pcpu,comm --sort=-pcpu | head -n 2 | tail -n 1 | awk '{print $2" ("$1"%)"}')
+    # Exclude system tools, scripts, and column headers to prevent false readings
+    TOP_CPU_PROC=$(ps -eo pcpu,comm --sort=-pcpu | grep -E -v "ps|grep|awk|system-health|%CPU|COMMAND|comm" | head -n 1 | awk '{print $2" ("$1"%)"}' || echo "N/A")
 fi
 TOP_MEM_PROC="N/A"
 if command -v ps >/dev/null 2>&1; then
-    TOP_MEM_PROC=$(ps -eo pmem,comm --sort=-pmem | head -n 2 | tail -n 1 | awk '{print $2" ("$1"%)"}')
+    # Exclude column headers to accurately grab the actual top memory consumer
+    TOP_MEM_PROC=$(ps -eo pmem,comm --sort=-pmem | grep -E -v "ps|grep|awk|system-health|%MEM|COMMAND|comm" | head -n 1 | awk '{print $2" ("$1"%)"}' || echo "N/A")
 fi
 
 # 6. Check for Failed Systemd Services
@@ -56,13 +68,12 @@ if command -v systemctl >/dev/null 2>&1; then
     FAILED_UNITS=$(systemctl list-units --failed --quiet | wc -l)
 fi
 
-# 7. Check Profile Alignment with mysys.md
+# 7. Check Profile Alignment with mysys.md (Robust single-process sed)
 PROFILE_ALIGNMENT="NOMINAL"
 PROFILE_DETAILS="Running configurations align with the static system architecture profile."
 if [ -f "$MYSYS_FILE" ]; then
-    STATIC_KERNEL=$(grep -i "Linux Kernel" "$MYSYS_FILE" | cut -d'`' -f2 | awk '{print $1}')
-    
-    # Extract the system kernel name dynamically (e.g., '7.x.2-2-cachyos')
+    # Extracts the exact kernel version inside the backticks up to the first space
+    STATIC_KERNEL=$(sed -n '/Linux Kernel/s/.*`\([^` ]*\).*/\1/p' "$MYSYS_FILE" || true)
     ACTIVE_KERNEL=$(uname -r)
     
     if [ -n "$STATIC_KERNEL" ] && [[ "$ACTIVE_KERNEL" != *"$STATIC_KERNEL"* ]]; then
@@ -81,20 +92,13 @@ fi
 if [ "$PROFILE_ALIGNMENT" = "MISALIGNED" ]; then
     POSTURE="WARNING"
     WARNINGS="${WARNINGS}* Profile Alignment: $PROFILE_DETAILS\n"
-    # Friendly inline tip instructing the user exactly how to update
     WARNINGS="${WARNINGS}  \033[1;36m👉 TIP:\033[0m Type \033[1;32m'generate profile'\033[0m in your chat to update your static profile.\n"
 fi
 
 # 9. Context-Aware Output Generation
 if [ "${AI_CONTEXT_RUN:-0}" = "1" ]; then
-    # Extract only the core system specifications, stripping out the heavy AI guidelines block
-    MYSYS_CORE="No static system profile available."
-    if [ -f "$MYSYS_FILE" ]; then
-        # Exits immediately when it hits your guidelines header, slicing context by ~60%
-        MYSYS_CORE=$(sed '/## AI System Rules \& Guidelines/Q' "$MYSYS_FILE" || cat "$MYSYS_FILE")
-    fi
-
     # Machine-friendly raw format: optimizes parser throughput and ensures high-focus LLM synthesis
+    # Completely removed the redundant and memory-heavy system context dump to save context space
     cat <<EOF
 SYSTEM HEALTH STATUS: $POSTURE
 Live Load Averages: $LOAD_AVG
@@ -107,10 +111,6 @@ Root Disk Capacity: $DISK_PCT ($DISK_FREE Free)
 Failed Systemd Units: $FAILED_UNITS
 System Alignment State: $PROFILE_ALIGNMENT
 Alignment Details: $PROFILE_DETAILS
-
----
-REFERENCE BLUEPRINT CONTEXT:
-$MYSYS_CORE
 EOF
 else
     # Human-friendly Markdown format: optimized for TUI display and Leaf viewing

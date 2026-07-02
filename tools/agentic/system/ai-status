@@ -1,7 +1,31 @@
 #!/usr/bin/env bash
-# ai-status - Diagnostics for Local-AI Agent Stack v1.3.6
+# ai-status - Diagnostics for Local-AI Agent Stack v1.3.8 [j5onrf]
 
 set -euo pipefail
+
+# Helper to dynamically map Gemini rate limits based on current CLOUD_MODEL
+get_gemini_limits() {
+    local model="${1:-gemini-3.1-flash-lite}"
+    local m_low; m_low=$(echo "$model" | tr '[:upper:]' '[:lower:]')
+    
+    if [[ "$m_low" == *"3.5-flash"* ]]; then
+        echo "15 RPM / 250 RPD (Restricted)"
+    elif [[ "$m_low" == *"3.1-flash-lite"* ]]; then
+        echo "30 RPM / 1,500 RPD"
+    elif [[ "$m_low" == *"3-flash"* ]]; then
+        echo "15 RPM / 1,500 RPD"
+    elif [[ "$m_low" == *"2.5-flash-lite"* ]]; then
+        echo "30 RPM / 1,500 RPD"
+    elif [[ "$m_low" == *"2.5-flash"* ]]; then
+        echo "15 RPM / 1,500 RPD"
+    elif [[ "$m_low" == *"2.5-pro"* ]]; then
+        echo "5 RPM / 50 RPD (Trial only)"
+    elif [[ "$m_low" == *"1.5-pro"* ]]; then
+        echo "2 RPM / 50 RPD (Legacy)"
+    else
+        echo "15 RPM / 1,500 RPD"
+    fi
+}
 
 # Helper to mask API keys safely
 mask_key() {
@@ -105,9 +129,12 @@ except:
 " || echo "Local Server")
 fi
 
+# Retrieve the dynamic limits based on the active CLOUD_MODEL
+gemini_limits=$(get_gemini_limits "${CLOUD_MODEL:-gemini-3.1-flash-lite}")
+
 echo -e "# ACTIVE AI ROUTING DIAGNOSTICS\n\n> **AI Instructions:**\n> Summarize the active provider, model, and its 24h RPD count in 1-2 direct, unformatted sentences.\n> If fallback is active, briefly state why.\n\n---\n\n## CREDENTIALS & CONFIGURATION"
 echo "* **GEMINI_API_KEY**  : $(mask_key "${GEMINI_API_KEY:-}")"
-echo "* **CLOUD_MODEL**     : \`${CLOUD_MODEL:-gemini-3.1-flash-lite}\` (Free Limits: 15 RPM / 1,500 RPD)"
+echo "* **CLOUD_MODEL**     : \`${CLOUD_MODEL:-gemini-3.1-flash-lite}\` (Free Limits: ${gemini_limits})"
 echo "* **GEMINI METRICS**  : \`RPM: ${gemini_rpm} | RPD: ${gemini_rpd}\` (Last 24h rolling)"
 echo ""
 echo "* **OPENROUTER_KEY**  : $(mask_key "${OPENROUTER_API_KEY:-}")"
@@ -115,7 +142,7 @@ echo "* **OPENROUTER_MODEL**: \`${OPENROUTER_MODEL:-openrouter/free}\` (Free Lim
 if [[ $or_status -eq 0 && "${OPENROUTER_MODEL:-}" == *"free"* ]]; then
     echo "* **FREE POOL ROUTES**: \`${or_free_list}\`"
 fi
-echo "* **OPENROUTER_USAGE**: \`${or_meta}\`" # Prints: Used: $X.XXXX | Limit: $Y (Free/Paid)
+echo "* **OPENROUTER_USAGE**: \`${or_meta}\`"
 echo "* **OPENROUTER METRICS**: \`RPM: ${or_rpm} | RPD: ${or_rpd}\` (Last 24h rolling)"
 echo -e "\n---\n\n## ENDPOINT STATUS"
 
@@ -133,7 +160,7 @@ elif [[ -n "${OPENROUTER_API_KEY:-}" && $or_status -eq 0 ]]; then
     echo "* **Active Model**     : \`${OPENROUTER_MODEL:-openrouter/free}\`"
 elif [[ $local_status -eq 0 ]]; then
     echo "* **Selected Provider**: **Local AI Server**"
-    echo "* **Active Model**     : \`${local_model}\`" # Shows discovered model name (e.g. qwen2.5-coder)
+    echo "* **Active Model**     : \`${local_model}\`"
 else
     echo "* **Selected Provider**: *None / All Offline*"
 fi
