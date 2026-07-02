@@ -88,7 +88,7 @@ def run_local_tool(cmd: str) -> str:
         return f"[SYSTEM ERROR] Failed to run local tool: {e}\n"
 
 
-def get_system_context(query: str) -> str or None:
+def get_system_context(query: str) -> str:
     q_tokens = core.tokenize(query, STOP_WORDS)
     if not q_tokens or "\n" in query.strip():
         return ""
@@ -100,7 +100,7 @@ def get_system_context(query: str) -> str or None:
                 tool = tool.replace("[TOOL]", "").strip()
                 if " --s" not in tool:
                     if not core.confirm_tool(tool):
-                        return None  # Abort transaction signal
+                        return ""
                 if "system" in tool.lower():
                     ensure_mysys_exists()
                 tool = tool.replace(" --s", "").strip()
@@ -146,6 +146,7 @@ def run_interactive_chat(args: list):
     
     spell_active = not is_agent
     memory_active = True
+    show_stats = True  # Keeps stats enabled by default inside chat sessions
     
     db_turns = 0
     if is_agent:
@@ -184,6 +185,35 @@ def run_interactive_chat(args: list):
                     memory_active = not memory_active
                     print(f"\033[1;33m[sys] Memory recall {'enabled' if memory_active else 'disabled'}.\033[0m\n")
                     continue
+                
+                # --- NEW STATS ON-DEMAND TOGGLE ---
+                if query == "/stats":
+                    show_stats = not show_stats
+                    print(f"\033[1;33m[sys] Generation statistics {'enabled' if show_stats else 'disabled'}.\033[0m\n")
+                    continue
+
+                # --- NATIVE FULL SESSION CLEAR ---
+                if query.lower() in ("/clear", "/reset"):
+                    # 1. Clear local Python history array
+                    chat_history = [{"role": "system", "content": active_system_prompt}]
+                    
+                    # 2. Clear Google/Cloud session by deleting session.json
+                    try:
+                        sf = os.path.join(workspace_path, ".agent", "session.json")
+                        if os.path.exists(sf):
+                            os.remove(sf)
+                    except Exception:
+                        pass
+                        
+                    # 3. Clear the active agentic tools session database
+                    try:
+                        subprocess.run([sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "clear", safe_name], capture_output=True)
+                    except Exception:
+                        pass
+                        
+                    print("\033[1;32m[sys] Conversation history and session context cleared successfully.\033[0m\n")
+                    continue
+
                 if query == "/tok":
                     subprocess.run([sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "show-tok"], input=json.dumps(chat_history), text=True)
                     continue
@@ -199,7 +229,7 @@ def run_interactive_chat(args: list):
                         spell_active = False
                     
             if query.startswith(("/skill", "/s")) or query.startswith(("/skill ", "/s ")):
-                res = subprocess.run([sys.executable, f"{CFG_DIR}/modules/ai-agent-skills", safe_name, query], input=json.dumps(chat_history), stdout=subprocess.PIPE, text=True)
+                res = subprocess.run([sys.executable, f"{CFG_DIR}/modules/ai-agent-skills", safe_name, query], input=json.loads(res.stdout.strip()) if res.stdout.strip() else json.dumps(chat_history), stdout=subprocess.PIPE, text=True)
                 if res.stdout.strip():
                     try:
                         chat_history = json.loads(res.stdout.strip())
@@ -248,9 +278,6 @@ def run_interactive_chat(args: list):
                 prompt = f"### SYSTEM INSTRUCTIONS (CRITICAL OVERRIDE):\n{active_system_prompt}\n\n### CODESPACE MAP:\n{query}"
             else:
                 sys_ctx = get_system_context(query)
-                if sys_ctx is None:  # Abort run if tool was actively rejected
-                    pending_query = None
-                    continue
                 comb_ctx = (f"{past_memory}\n\n" if past_memory else "") + sys_ctx
                 prompt = (f"### Real-time System Context:\n{comb_ctx}\n\n" if comb_ctx else "") + f"User Question: {query}"
                 
@@ -260,8 +287,8 @@ def run_interactive_chat(args: list):
                     readline.add_history(query)
                 except Exception:
                     pass
-            # Defaults to show_stats=True inside active chat sessions
-            ans = stream_llm_response(core.prune_history(chat_history), prefix="Agent:" if is_agent else "AI:")
+            # Explicitly passes your dynamic show_stats state parameter
+            ans = stream_llm_response(core.prune_history(chat_history), prefix="Agent:" if is_agent else "AI:", show_stats=show_stats)
             if ans:
                 chat_history.append({"role": "assistant", "content": ans})
                 if is_agent:
@@ -292,13 +319,11 @@ def run_direct_query(args: list):
         query_parts = query_parts[:-1]
     query = " ".join(query_parts)
     sys_ctx = get_system_context(query)
-    if sys_ctx is None:  # Direct query abort
-        sys.exit(0)
     messages = [
         {"role": "system", "content": active_system_prompt},
         {"role": "user", "content": (f"### Real-time System Context:\n{sys_ctx}\n\n" if sys_ctx else "") + f"User Question: {query}"}
     ]
-    # Explicitly passes show_stats=False so direct queries remain silent
+    # Passes show_stats=False so direct queries remain silent
     stream_llm_response(messages, prefix="AI:", show_stats=False)
     sys.exit(0)
 
