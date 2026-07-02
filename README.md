@@ -110,6 +110,7 @@ Agent: Workspace loaded. Awaiting instructions.
 | **`/d`** / **`/e`** | **Disable** / **Enable** the context-aware grammar & spellchecker. |
 | **`/m`** | **Toggle** long-term conversation memory recall on or off. |
 | **`/tok`** | **View** your live token usage capacity and visual progress bar. |
+| **`/stats`** | **Toggle** real-time generation speed metrics. |
 
 ---
 

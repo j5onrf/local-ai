@@ -34,6 +34,7 @@ Agent: Understood. I have noted your preferences:
 *   **Role:** Lead Python Developer
 *   **Editor:** Helix
 *   **Shell:** Bash
+
 ❯ /tok
 
 [sys] Context Window: 487/8192 tokens
