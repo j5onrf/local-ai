@@ -84,8 +84,9 @@ Agent: Understood. I have noted your preferences:
 *   **Inline Override:** `AI_MAX_TOKENS=16000 session-test`
 *   **Global Override:** `export AI_MAX_TOKENS=16000`
 
-## 8. Dynamic Memory (TPM)
+## 8. Temporal Personality Memory (TPM)
+* **Origins**: Combines Weaviate Engram's SQLite active reconciliation loop with Noema's hand-editable, local Markdown file system.
 *   **Background Extraction**: Spawns a background thread on completion to extract facts without delay.
 *   **Dynamic Sync**: Manual edits made to `.agent/tpm.md` are synced back into SQLite at bootup.
 *   **Reconciliation**: SQL `INSERT OR REPLACE` overwrites old contradictory facts cleanly.
-```
+
