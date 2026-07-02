@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# index-map [Local Map Compiler with SmartCrusher AST Compression] [j5onrf] v1.4.0
+# index-map [Local Map Compiler with SmartCrusher AST Compression] v1.5.0
 
 import os, re, ast, json, fnmatch, time, sys, warnings
 
@@ -30,7 +30,8 @@ def get_key():
     try:
         tty.setraw(fd); r = os.read(fd, 1)
         if r == b'\x1b' and select.select([fd], [], [], 0.05)[0]: r += os.read(fd, 2)
-    finally: termios.tcsetattr(fd, termios.TCSADRAIN, old)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old)
     return r.decode("utf-8", errors="ignore")
 
 def load_gitignore_patterns(target_dir):
@@ -89,6 +90,67 @@ def get_text_summary(filepath, limit=15, is_shell=False, strip_hash=True):
         return ""
     except: return ""
 
+
+# --- DYNAMIC ADAPTIVE HEADER EXTRACTOR ---
+def extract_file_description(filepath: str) -> str:
+    """Statically reads the top 3 lines of a file and extracts the first meaningful comment."""
+    if not os.path.isfile(filepath) or is_binary(filepath):
+        return ""
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            lines = [f.readline().strip() for _ in range(3)]
+            
+        for line in lines:
+            if not line:
+                continue
+            if line.startswith("#!"):
+                continue
+            if line.startswith("#"):
+                cleaned = line.lstrip("# \t").strip()
+                if cleaned.lower().startswith("file:") or "path:" in cleaned.lower():
+                    continue
+                return cleaned[:100]
+        return ""
+    except Exception:
+        return ""
+
+
+def compile_ascii_tree(target_dir: str) -> str:
+    """Scans the target codebase directory and dynamically compiles an ASCII-art branch tree
+
+    of all files, extracting descriptions from their headers.
+    """
+    files_to_check = []
+    for file in sorted(os.listdir(target_dir)):
+        path = os.path.join(target_dir, file)
+        if os.path.isfile(path):
+            files_to_check.append(("", file, path))
+            
+    modules_path = os.path.join(target_dir, "modules")
+    if os.path.isdir(modules_path):
+        for file in sorted(os.listdir(modules_path)):
+            path = os.path.join(modules_path, file)
+            if os.path.isfile(path):
+                files_to_check.append(("modules", file, path))
+                
+    if not files_to_check:
+        return ""
+        
+    lines = ["# Codebase Modules & Active Architecture:"]
+    total = len(files_to_check)
+    for idx, (subdir, name, path) in enumerate(files_to_check):
+        display_name = os.path.join(subdir, name) if subdir else name
+        desc = extract_file_description(path)
+        
+        connector = "└── " if idx == total - 1 else "├── "
+        if desc:
+            lines.append(f"#   {connector}{display_name:<24} - {desc}")
+        else:
+            lines.append(f"#   {connector}{display_name}")
+    return "\n".join(lines) + "\n# -----------------------------------------------------------------------------------------\n"
+
+
+# --- OPTIMIZED TOP-LEVEL AST PARSER ---
 def analyze_python_file(filepath):
     try:
         with open(filepath, 'r', encoding='utf-8', errors='replace') as f: content = f.read()
@@ -96,17 +158,102 @@ def analyze_python_file(filepath):
             warnings.simplefilter("ignore", SyntaxWarning)
             tree = ast.parse(content, filename=filepath)
         funcs, classes, imports = [], [], set()
-        for node in ast.walk(tree):
+        generic_imports = {"os", "sys", "time", "json", "re", "warnings", "fnmatch", "typing"}
+        for node in tree.body:
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                args_list = [a.arg for a in node.args.args]
-                funcs.append(f"{node.name}({','.join(args_list)})")
-            elif isinstance(node, ast.ClassDef): classes.append(node.name)
-            elif isinstance(node, ast.Import): imports.update(n.name.split('.')[0] for n in node.names)
+                funcs.append(node.name)
+            elif isinstance(node, ast.ClassDef):
+                classes.append(node.name)
+            elif isinstance(node, ast.Import):
+                for name in node.names:
+                    base = name.name.split('.')[0]
+                    if base not in generic_imports: imports.add(base)
             elif isinstance(node, ast.ImportFrom):
-                if node.module: imports.add(node.module.split('.')[0])
+                if node.module:
+                    base = node.module.split('.')[0]
+                    if base not in generic_imports: imports.add(base)
         return {"type": "python", "imports": sorted(list(imports)), "classes": classes, "functions": funcs}
     except SyntaxError: return {"type": "python", "error": "Syntax Error"}
     except Exception as e: return {"type": "python", "error": str(e)}
+
+
+# --- SEMANTIC GRAPH LINK & NOTES EXTRACTOR ---
+def analyze_markdown_file(filepath):
+    """Parses markdown files to extract structured metadata, YAML tags, and outbound relational graph links."""
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            content = f.read()
+            
+        title = ""
+        tm = re.search(r'^#\s+(.*)', content, re.M)
+        if tm:
+            title = tm.group(1).strip()
+            
+        tags = set()
+        fm_match = re.search(r'^---\s*\n(.*?)\n---\s*\n', content, re.DOTALL)
+        if fm_match:
+            fm_text = fm_match.group(1)
+            tags_match = re.search(r'tags\s*:\s*[\[\']?([^\]\']+)\]?', fm_text, re.I)
+            if tags_match:
+                tags.update(t.strip().lower() for t in tags_match.group(1).split(',') if t.strip())
+                
+        # Extract both Obsidian-style [[wiki-links]] and standard [markdown](links.md) edges
+        links = set()
+        for w in re.findall(r'\[\[([^#\]|]+)(?:#[^\]|]+)?(?:\|[^\]]+)?\]\]', content):
+            links.add(w.strip())
+        for ml in re.findall(r'\[[^\]]+\]\(([^)]+\.(?:md|txt|py|sh|rs|go|lua))\)', content):
+            if not ml.startswith(("http", "https")):
+                links.add(os.path.basename(ml))
+                
+        return {
+            "type": "markdown",
+            "title": title or os.path.splitext(os.path.basename(filepath))[0],
+            "tags": sorted(list(tags)) if tags else [],
+            "links": sorted(list(links)) if links else []
+        }
+    except Exception:
+        return {"type": "markdown", "title": os.path.splitext(os.path.basename(filepath))[0]}
+
+
+# --- ZERO-DEPENDENCY IMAGE METADATA EXTRACTOR ---
+def analyze_image_file(filepath):
+    """Statically parses raw image file headers (PNG, JPG, GIF, SVG) to extract size and resolution in microseconds."""
+    ext = os.path.splitext(filepath)[1].lstrip('.').lower()
+    size_bytes = os.path.getsize(filepath)
+    size_str = f"{size_bytes / 1024:.1f}KB" if size_bytes < 1024*1024 else f"{size_bytes / (1024*1024):.1f}MB"
+    try:
+        with open(filepath, 'rb') as f:
+            head = f.read(512)
+        w, h = 0, 0
+        if ext == "png" and head.startswith(b'\x89PNG\r\n\x1a\n'):
+            import struct
+            w, h = struct.unpack('>II', head[16:24])
+        elif ext == "gif" and (head.startswith(b'GIF87a') or head.startswith(b'GIF89a')):
+            import struct
+            w, h = struct.unpack('<HH', head[6:10])
+        elif ext in ("jpg", "jpeg") and head.startswith(b'\xff\xd8'):
+            import struct
+            f_idx = 2
+            while f_idx < len(head):
+                marker, length = struct.unpack('>HH', head[f_idx:f_idx+4])
+                if 0xffc0 <= marker <= 0xffc3:
+                    h, w = struct.unpack('>HH', head[f_idx+5:f_idx+9])
+                    break
+                f_idx += length + 2
+        elif ext == "svg":
+            text = head.decode("utf-8", errors="ignore")
+            wm = re.search(r'width\s*=\s*["\']([^"\']+)["\']', text)
+            hm = re.search(r'height\s*=\s*["\']([^"\']+)["\']', text)
+            w_str = wm.group(1) if wm else ""
+            h_str = hm.group(1) if hm else ""
+            return {"type": "image/svg", "dim": f"{w_str}x{h_str}", "size": size_str}
+            
+        if w and h:
+            return {"type": f"image/{ext}", "dim": f"{w}x{h}", "size": size_str}
+        return {"type": f"image/{ext}", "size": size_str}
+    except Exception:
+        return {"type": f"image/{ext}", "size": size_str}
+
 
 def analyze_rust_file(filepath):
     try:
@@ -149,6 +296,8 @@ def analyze_generic_file(filepath):
     if is_binary(filepath): return {"type": f"binary/{ext}"}
     return {"type": ext, "summary": get_text_summary(filepath, 15, False, False) or "Empty file"}
 
+
+# --- COMPRESSED SHORTHAND COMPILER ---
 def compile_flat_shorthand(skeleton):
     lines = []
     for rel_path, data in sorted(skeleton.items()):
@@ -158,22 +307,34 @@ def compile_flat_shorthand(skeleton):
             cls = f"cls:{','.join(data.get('classes', []))}" if data.get('classes') else ""
             fn = f"fn:{','.join(data.get('functions', []))}" if data.get('functions') else ""
             meta = " | ".join(filter(None, [imp, cls, fn]))
-            lines.append(f"[py:{rel_path}] {meta}")
+            lines.append(f"[py:{rel_path}] {meta}" if meta else f"[py:{rel_path}]")
+        elif t == "markdown":
+            title = f"title:{data.get('title', '')}" if data.get('title') else ""
+            tags = f"tags:{','.join(data.get('tags', []))}" if data.get('tags') else ""
+            links = f"links:{','.join(data.get('links', []))}" if data.get('links') else ""
+            meta = " | ".join(filter(None, [title, tags, links]))
+            lines.append(f"[md:{rel_path}] {meta}" if meta else f"[md:{rel_path}]")
+        elif t.startswith("image/"):
+            dim = f"dim:{data.get('dim', '')}" if data.get('dim') else ""
+            sz = f"size:{data.get('size', '')}" if data.get('size') else ""
+            meta = " | ".join(filter(None, [dim, sz]))
+            lines.append(f"[{t}:{rel_path}] {meta}" if meta else f"[{t}:{rel_path}]")
         elif t in ("rust", "go", "qml"):
             cls = f"cls:{','.join(data.get('classes', []))}" if data.get('classes') else ""
             fn = f"fn:{','.join(data.get('functions', []))}" if data.get('functions') else ""
             meta = " | ".join(filter(None, [cls, fn]))
-            lines.append(f"[{t}:{rel_path}] {meta}")
+            lines.append(f"[{t}:{rel_path}] {meta}" if meta else f"[{t}:{rel_path}]")
         elif t == "lua":
             fn = f"fn:{','.join(data.get('functions', []))}" if data.get('functions') else ""
-            lines.append(f"[{t}:{rel_path}] {fn}")
+            lines.append(f"[{t}:{rel_path}] {fn}" if fn else f"[{t}:{rel_path}]")
         elif t == "json":
             keys = f"keys:{','.join(data.get('keys', []))}" if data.get('keys') else ""
-            lines.append(f"[{t}:{rel_path}] {keys}")
+            lines.append(f"[{t}:{rel_path}] {keys}" if keys else f"[{t}:{rel_path}]")
         else:
             summary = data.get("summary", "").replace("\n", " ").strip()
-            lines.append(f"[{t}:{rel_path}] sum:{summary}")
+            lines.append(f"[{t}:{rel_path}] sum:{summary}" if summary else f"[{t}:{rel_path}]")
     return "\n".join(lines)
+
 
 def generate_skeleton(target_dir):
     skeleton = {}
@@ -184,13 +345,13 @@ def generate_skeleton(target_dir):
     }
     patterns = load_gitignore_patterns(target_dir)
     dispatch = {
-        '.py': analyze_python_file, '.md': None, 
+        '.py': analyze_python_file, '.md': analyze_markdown_file, 
         '.sh': analyze_shell_file, '.bash': analyze_shell_file,
         '.rs': analyze_rust_file, '.go': analyze_go_file,
-        '.lua': analyze_lua_file, '.json': analyze_json_file, '.qml': analyze_qml_file
+        '.lua': analyze_lua_file, '.json': analyze_json_file, '.qml': analyze_qml_file,
+        '.png': analyze_image_file, '.jpg': analyze_image_file, '.jpeg': analyze_image_file, '.gif': analyze_image_file, '.svg': analyze_image_file
     }
     file_count = 0
-    
     for root, dirs, files in os.walk(target_dir):
         dirs[:] = [d for d in dirs if not should_ignore(os.path.relpath(os.path.join(root, d), target_dir), True, patterns, default_ignored)]
         for file in files:
@@ -206,28 +367,19 @@ def generate_skeleton(target_dir):
                 except: safe_exit(0)
             
             ext = os.path.splitext(file)[1].lower()
-            if ext == '.md':
-                # Local line-based parsing: extracts the top title line from the markdown file
-                summary = get_text_summary(filepath, limit=15, is_shell=False, strip_hash=True) or "Documentation Module"
-                skeleton[rel_path] = {"type": "markdown", "summary": summary}
-            else:
-                skeleton[rel_path] = dispatch.get(ext, analyze_generic_file)(filepath)
+            skeleton[rel_path] = dispatch.get(ext, analyze_generic_file)(filepath)
     return skeleton
 
 def main():
     default_dir = os.getcwd()
     args = sys.argv[1:]
-    
-    # Check for --force flag to bypass prompt in automated/scripted loops
     force = "--force" in args
     if force:
         args = [a for a in args if a != "--force"]
         
-    # Check if a directory path argument was passed via command line
     if args:
         target_dir = os.path.abspath(os.path.expanduser(os.path.expandvars(args[0])))
     else:
-        # Fallback to interactive terminal prompt if executed manually
         try:
             sys.stderr.write(f"\033[1;32mScan target [Default: {default_dir}]: \033[0m"); sys.stderr.flush()
             user_input = sys.stdin.readline().strip()
@@ -235,10 +387,17 @@ def main():
         except (KeyboardInterrupt, EOFError):
             sys.stderr.write("\n✕ Operation cancelled.\n"); sys.stderr.flush(); return
 
+    # Dynamic target folder validator and creator
     if not os.path.isdir(target_dir):
-        sys.stderr.write(f"❌ Error: '{target_dir}' is not a valid directory.\n"); sys.stderr.flush(); safe_exit(1)
+        try:
+            os.makedirs(target_dir, exist_ok=True)
+            sys.stderr.write(f"\033[2m[sys] Target directory did not exist. Created: {target_dir}\033[0m\n")
+            sys.stderr.flush()
+        except Exception as e:
+            sys.stderr.write(f"❌ Error: Failed to create target directory '{target_dir}'. {e}\n")
+            sys.stderr.flush()
+            safe_exit(1)
 
-    # Interactive Confirmation Check with Esc Bypass (Using the highly legible 2m dim colors)
     is_interactive = sys.stdin.isatty() and sys.stderr.isatty()
     if is_interactive and not force:
         try:
@@ -265,16 +424,44 @@ def main():
     
     flat_map = compile_flat_shorthand(skeleton)
     
-    # Determine unique, workspace-specific file path inside target_dir
     proj_name = os.path.basename(target_dir)
+    display_dir = target_dir
+    home_dir = os.path.expanduser("~")
+    if display_dir.startswith(home_dir):
+        display_dir = display_dir.replace(home_dir, "~", 1)
+        
+    date_str = time.strftime('%Y-%m-%d %H:%M')
+    
+    # UNIVERSAL CODEBASE AI-INSTRUCTION HEADER
+    # Injects explicit, universal guidelines instructing any reading AI how to leverage this map.
+    header = (
+        f"# CODEBASE INDEX MAP (UNIVERSAL ARCHITECTURE REFERENCE)\n"
+        f"# Generated on      : {date_str}\n"
+        f"# Project Workspace : {proj_name}\n"
+        f"# Target Directory  : {display_dir}\n"
+        f"# -----------------------------------------------------------------------------------------\n"
+        f"# INSTRUCTIONS:\n"
+        f"# This flat-map represents the structural outline of the codebase. It lists file paths, \n"
+        f"# imports (imp:), classes (cls:), and functions (fn:) extracted via static AST/regex parsers.\n"
+        f"# Use this map as a lightweight reference to understand architecture, namespaces, and dependencies.\n"
+        f"# Use this map to identify and request ONLY the specific file(s) you need to analyze.\n"
+        f"# -----------------------------------------------------------------------------------------\n"
+    )
+    
+    # DYNAMIC ARCHITECTURE TREE COMPILER
+    # Automatically extracts file summaries and builds a neat, project-specific ASCII tree inside the header!
+    architecture_tree = compile_ascii_tree(target_dir)
+    if architecture_tree:
+        header += architecture_tree
+    else:
+        header += "# -----------------------------------------------------------------------------------------\n\n"
+        
+    flat_map = header + flat_map
     output_file = os.path.join(target_dir, f"index-map-{proj_name}.txt")
     
-    home_dir = os.path.expanduser("~")
-
     try:
         with open(output_file, 'w', encoding='utf-8') as f: f.write(flat_map)
         
-        # Format the main success path
         display_map = output_file
         if display_map.startswith(home_dir):
             display_map = display_map.replace(home_dir, "~", 1)
@@ -287,7 +474,6 @@ def main():
         try:
             with open(fallback_file, 'w', encoding='utf-8') as f: f.write(flat_map)
             
-            # Format the fallback success path
             display_fallback = fallback_file
             if display_fallback.startswith(home_dir):
                 display_fallback = display_fallback.replace(home_dir, "~", 1)

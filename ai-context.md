@@ -18,7 +18,7 @@
 ```properties
 # --- Session-Test - This is a Project Workspace (Skill-Primed) --
 ai init ~/.config/local-ai/projects/session-test --init ---> session test, projects session, projects
-ai init ~/.config/local-ai/projects/ai-session-test --init ---> session test ai, projects session, projects
+ai init ~/.config/local-ai/projects/session-test-2 --init ---> session test 2, projects session, projects
 
 # --- Dynamic File Reader ---
 [TOOL] cat $1 ---> view file, read file, show file, vf

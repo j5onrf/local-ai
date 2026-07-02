@@ -1,18 +1,14 @@
 #!/usr/bin/env python3
-# File: ~/.config/local-ai/modules/ai-agent-sessions [v0.8.9.11]
-# Description: SQLite-backed session, checkpoint, and memory manager
+# File: ~/.config/local-ai/modules/ai-agent-sessions [v0.8.9.12]
+# Description: SQLite-backed session, checkpoint, and turn logger with Global Handoff
 
 import sys
 import os
 import json
 import sqlite3
 import time
-import termios
-import tty
-import select
 import re
 from contextlib import closing
-from typing import List
 
 CFG_DIR = os.path.expanduser("~/.config/local-ai")
 SESSIONS_DIR = os.path.join(CFG_DIR, "projects", "database")
@@ -24,43 +20,22 @@ STOP_WORDS = {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "o
 def tokenize(text: str) -> List[str]: 
     return [w for w in TOKEN_RE.sub(" ", text.lower()).split() if len(w) > 1 and w not in STOP_WORDS] if text else []
 
-# Dynamically resolve import paths for sibling and parent directories
-sys.path.extend([
-    os.path.dirname(os.path.abspath(__file__)),
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "modules"),
-    os.path.expanduser("~/.config/local-ai/modules")
-])
-
+# Dynamic imports for sibling helpers
+sys.path.append(os.path.expanduser("~/.config/local-ai/modules"))
 try:
-    import agent_core as context
-    get_key = context.get_key
+    import agent_ui as ui
+    get_key = ui.get_key
 except ImportError:
-    context = None
     def get_key() -> str:
-        tty_file = None
-        try:
-            tty_file = open("/dev/tty", "r+")
-            fd = tty_file.fileno()
-        except Exception:
-            fd = sys.stdin.fileno()
-        try:
-            import fcntl
-            flags = fcntl.fcntl(fd, fcntl.F_GETFL)
-            fcntl.fcntl(fd, fcntl.F_SETFL, flags & ~os.O_NONBLOCK)
-        except Exception: pass
-        try:
-            old = termios.tcgetattr(fd)
-        except Exception:
-            try: return os.read(fd, 1).decode("utf-8", errors="ignore")
-            except Exception: return ""
-            finally:
-                if tty_file: tty_file.close()
+        # Fallback inline key getter if UI module is absent
+        import tty, termios, select
+        fd = sys.stdin.fileno()
+        try: old = termios.tcgetattr(fd)
+        except Exception: return sys.stdin.read(1)
         try:
             tty.setraw(fd)
-            try: termios.tcflush(fd, termios.TCIFLUSH)
-            except Exception: pass
-            b = os.read(fd, 1)
-            if b == b'\x1b' and select.select([fd], [], [], 0.05)[0]:
+            r = os.read(fd, 1)
+            if r == b'\x1b' and select.select([fd], [], [], 0.05)[0]:
                 b += os.read(fd, 2)
             return b.decode("utf-8", errors="ignore")
         except Exception: return ""
@@ -71,7 +46,7 @@ except ImportError:
 
 def print_session_box(workspace: str) -> None:
     db_path = os.path.join(SESSIONS_DIR, f"{workspace}.db")
-    turns, checkpoints = 0, 0
+    turns, checkpoints, tpm_count = 0, 0, 0
     if os.path.exists(db_path):
         try:
             with closing(sqlite3.connect(db_path, timeout=10)) as conn:
@@ -80,6 +55,8 @@ def print_session_box(workspace: str) -> None:
                 turns = cur.fetchone()[0]
                 cur.execute("SELECT COUNT(*) FROM checkpoints WHERE workspace = ?", (workspace,))
                 checkpoints = cur.fetchone()[0]
+                cur.execute("SELECT COUNT(*) FROM tpm_memories")
+                tpm_count = cur.fetchone()[0]
         except Exception: pass
     home_dir = os.path.expanduser("~")
     ws_path = os.environ.get("AI_WORKSPACE_PATH") or (os.path.join(home_dir, workspace.replace("-", "/")) if workspace.startswith(".config") else workspace.replace("-", "/"))
@@ -88,7 +65,14 @@ def print_session_box(workspace: str) -> None:
     model = os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite") if os.environ.get("GEMINI_API_KEY") else os.environ.get("OPENROUTER_MODEL", "openrouter/free") if os.environ.get("OPENROUTER_API_KEY") else "local-model"
     skill = " ".join(s.lstrip("-") for s in os.environ.get("AI_ACTIVE_SKILL", "").split()) or "default"
     box_w = 46
-    lines = [" >_ Local-AI Session Manager", "", f" model:     {model}", f" directory: {disp}", f" skill:     {skill}", f" database:  {turns} turns, {checkpoints} saves"]
+    
+    lines = [
+        " >_ Local-AI Session Manager", "", 
+        f" model:     {model}", 
+        f" directory: {disp}", 
+        f" skill:     {skill}", 
+        f" database:  active ({tpm_count} facts, {turns} turns)"
+    ]
     sys.stderr.write("\n\033[1;36m╭" + "─" * box_w + "╮\n\033[0m")
     for i, l in enumerate(lines):
         if i == 1:
@@ -106,6 +90,7 @@ def init_db(workspace: str) -> None:
         cur = conn.cursor()
         cur.execute("CREATE TABLE IF NOT EXISTS checkpoints (id INTEGER PRIMARY KEY AUTOINCREMENT, workspace TEXT NOT NULL, tag TEXT NOT NULL, history TEXT NOT NULL, timestamp INTEGER NOT NULL)")
         cur.execute("CREATE TABLE IF NOT EXISTS turns (id INTEGER PRIMARY KEY AUTOINCREMENT, workspace TEXT NOT NULL, user_msg TEXT NOT NULL, assistant_msg TEXT NOT NULL, tokens TEXT NOT NULL, timestamp INTEGER NOT NULL)")
+        cur.execute("CREATE TABLE IF NOT EXISTS tpm_memories (key TEXT PRIMARY KEY, value TEXT NOT NULL, timestamp INTEGER NOT NULL)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_turns_workspace ON turns (workspace)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_checkpoints_workspace ON checkpoints (workspace)")
         conn.commit()
@@ -123,27 +108,63 @@ def save_checkpoint(workspace: str, tag: str) -> None:
         cur = conn.cursor()
         cur.execute("INSERT INTO checkpoints (workspace, tag, history, timestamp) VALUES (?, ?, ?, ?)", (workspace, tag, hist_data, int(time.time())))
         conn.commit()
-    sys.stderr.write(f"\033[1;32m[session-mgr] Checkpoint '{tag}' saved to SQLite for '{workspace}'.\033[0m\n")
+    sys.stderr.write(f"\033[1;32m[session-mgr] Checkpoint '{tag}' saved to SQLite.\033[0m\n")
 
 
 def rollback_checkpoint(workspace: str) -> None:
     db_path = os.path.join(SESSIONS_DIR, f"{workspace}.db")
-    with closing(sqlite3.connect(db_path, timeout=10)) as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT tag, history, timestamp FROM checkpoints WHERE workspace = ? ORDER BY timestamp DESC", (workspace,))
-        rows = cur.fetchall()
-    print_session_box(workspace)
+    rows = []
+    if os.path.exists(db_path):
+        with closing(sqlite3.connect(db_path, timeout=10)) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT tag, history, timestamp FROM checkpoints WHERE workspace = ? ORDER BY timestamp DESC", (workspace,))
+            rows = cur.fetchall()
+    
+    is_global = False
+    global_rows = []
+    
+    # GLOBAL HANDOFF: If no local checkpoints exist, scan for other workspace backups
     if not rows:
-        sys.stderr.write(f"\033[1;31m[session-mgr] No checkpoints found for: {workspace}\033[0m\n")
+        is_global = True
+        for file in os.listdir(SESSIONS_DIR):
+            if file.endswith(".db") and file != f"{workspace}.db":
+                other_ws = file[:-3]
+                other_db = os.path.join(SESSIONS_DIR, file)
+                try:
+                    with closing(sqlite3.connect(other_db, timeout=2)) as conn2:
+                        other_cur = conn2.cursor()
+                        other_cur.execute("SELECT tag, history, timestamp FROM checkpoints ORDER BY timestamp DESC")
+                        for tag, history, ts in other_cur.fetchall():
+                            global_rows.append((tag, history, ts, other_ws))
+                except Exception:
+                    pass
+                    
+    print_session_box(workspace)
+    if not rows and not global_rows:
+        sys.stderr.write(f"\033[1;31m[session-mgr] No checkpoints found locally or globally.\033[0m\n")
+        sys.stderr.flush()
         sys.exit(0)
-    sys.stderr.write("\n\033[1;36m--- Active Checkpoints (SQLite) ---\033[0m\n")
-    for idx, (tag, history, ts) in enumerate(rows):
+        
+    display_rows = global_rows if is_global else rows
+    title = "--- Global Checkpoints (Clonable) ---" if is_global else "--- Active Checkpoints (SQLite) ---"
+    sys.stderr.write(f"\n\033[1;36m{title}\033[0m\n")
+    
+    for idx, item in enumerate(display_rows):
+        if is_global:
+            tag, history, ts, src_ws = item
+            src_info = f" \033[1;30m(from '{src_ws}')\033[0m"
+        else:
+            tag, history, ts = item
+            src_info = ""
         try: turns_len = len(json.loads(history))
         except Exception: turns_len = 0
         date_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(ts))
-        sys.stderr.write(f"[{idx}] \033[1;32m{tag}\033[0m ({turns_len} turns) - {date_str}\n")
-    sys.stderr.write("\n\033[1;30mSelect index to restore, or press Esc/Ctrl+C to cancel:\033[0m\n\033[?25l")
+        sys.stderr.write(f"[{idx}] \033[1;32m{tag}\033[0m ({turns_len} turns){src_info} - {date_str}\n")
+        
+    action_text = "clone and load" if is_global else "load"
+    sys.stderr.write(f"\n\033[2mSelect index to {action_text}, or press Esc to cancel: \033[0m\033[?25l")
     sys.stderr.flush()
+    
     try:
         key = ""
         while True:
@@ -153,24 +174,30 @@ def rollback_checkpoint(workspace: str) -> None:
                 sys.stderr.flush()
                 try:
                     with open("/dev/tty", "r+", encoding="utf-8") as tty_in:
-                        try:
-                            import fcntl
-                            flags = fcntl.fcntl(tty_in.fileno(), fcntl.F_GETFL)
-                            fcntl.fcntl(tty_in.fileno(), fcntl.F_SETFL, flags & ~os.O_NONBLOCK)
-                        except Exception: pass
                         key = tty_in.readline().strip()
                 except KeyboardInterrupt: key = '\x1b'
                 except Exception: key = ''
             if key in ('\x03', '\x1b', 'q', 'Q', ''):
                 sys.stderr.write("\r\x1b[KCancelled.\n")
                 sys.exit(0)
-            if key.isdigit() and int(key) < len(rows):
-                selected_tag, selected_history, _ = rows[int(key)]
-                sys.stderr.write(f"\r\x1b[K\033[1;32m[session-mgr] Loading checkpoint '{selected_tag}'...\033[0m\n")
-                print(selected_history)
+            if key.isdigit() and int(key) < len(display_rows):
+                selected_item = display_rows[int(key)]
+                if is_global:
+                    tag, history, ts, src_ws = selected_item
+                    # Clone the global checkpoint dynamically into your fresh workspace database
+                    init_db(workspace)
+                    with closing(sqlite3.connect(db_path, timeout=10)) as conn3:
+                        cur3 = conn3.cursor()
+                        cur3.execute("INSERT OR REPLACE INTO checkpoints (workspace, tag, history, timestamp) VALUES (?, ?, ?, ?)", (workspace, tag, history, int(time.time())))
+                        conn3.commit()
+                    sys.stderr.write(f"\r\x1b[K\033[1;32m[session-mgr] Cloned checkpoint '{tag}' from '{src_ws}' to '{workspace}'!\033[0m\n")
+                else:
+                    tag, history, ts = selected_item
+                    sys.stderr.write(f"\r\x1b[K\033[1;32m[session-mgr] Loading checkpoint '{tag}'...\033[0m\n")
+                print(history)
                 break
             else:
-                sys.stderr.write(f"\r\x1b[K\033[1;31m[session-mgr] Invalid selection. Enter 0-{len(rows)-1} (or Esc to cancel): \033[0m")
+                sys.stderr.write(f"\r\x1b[K\033[1;31m[session-mgr] Invalid selection. Enter 0-{len(display_rows)-1}: ")
                 sys.stderr.flush()
                 key = ""
     finally:
@@ -181,67 +208,15 @@ def rollback_checkpoint(workspace: str) -> None:
 def log_turn(workspace: str, user_msg: str, assistant_msg: str) -> None:
     if "### Real-time System Context:" in user_msg:
         user_msg = user_msg.split("User Question:", 1)[-1].strip()
-    tokens_str = " ".join(tokenize(user_msg))
+    
+    cleaned = re.sub(r"[^\w\s]", " ", user_msg.lower())
+    tokens_str = " ".join([w for w in cleaned.split() if len(w) > 1 and w not in STOP_WORDS])
+    
     db_path = os.path.join(SESSIONS_DIR, f"{workspace}.db")
     with closing(sqlite3.connect(db_path, timeout=10)) as conn:
         cur = conn.cursor()
         cur.execute("INSERT INTO turns (workspace, user_msg, assistant_msg, tokens, timestamp) VALUES (?, ?, ?, ?, ?)", (workspace, user_msg, assistant_msg, tokens_str, int(time.time())))
         conn.commit()
-
-
-def search_past_context(workspace: str, query: str) -> None:
-    q_tokens = set(tokenize(query))
-    if not q_tokens: return
-    db_path = os.path.join(SESSIONS_DIR, f"{workspace}.db")
-    with closing(sqlite3.connect(db_path, timeout=10)) as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT user_msg, assistant_msg, tokens, timestamp FROM turns WHERE workspace = ?", (workspace,))
-        rows = cur.fetchall()
-    candidates = []
-    for user_msg, assistant_msg, tokens, ts in rows:
-        t_tokens = set(tokens.split())
-        score = len(q_tokens & t_tokens) / len(q_tokens | t_tokens) if (q_tokens & t_tokens) else 0.0
-        if score >= 0.35:
-            candidates.append((score, user_msg, assistant_msg, ts))
-    if not candidates: return
-    candidates.sort(key=lambda x: -x[0])
-    num_opts, current_idx = len(candidates), 0
-    sys.stderr.write("\033[?25l")
-    sys.stderr.flush()
-    try:
-        while True:
-            _, user_msg, assistant_msg, ts = candidates[current_idx]
-            idx_str = f"[{current_idx + 1:02d}/{num_opts:02d}] ❯ " if num_opts > 1 else ""
-            disp = user_msg.strip().replace("\n", " ")
-            if len(disp) > 40: disp = disp[:47] + "..."
-            date_str = time.strftime('%Y-%m-%d %H:%M', time.localtime(ts))
-            sys.stderr.write(f"\r\x1b[K\033[2m{idx_str}[memory] ({date_str})\033[0m\n\r\x1b[K\033[3m   \"{disp}\"\033[0m [↵ load  d: disable  Esc/Arrows: skip]: ")
-            sys.stderr.flush()
-            key = get_key()
-            sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
-            sys.stderr.flush()
-            if key == '\x03':
-                sys.stderr.write("Cancelled.\n")
-                sys.exit(2)
-            elif key in ('\r', '\n', ''):
-                sys.stderr.write("\033[2;32m[sys] Memory injected.\033[0m\n")
-                sys.stderr.flush()
-                print("\n### Relevant Past Discussion (Retrieved from Session Memory):")
-                print(f"* **On {date_str} you asked**: \"{user_msg}\"\n  **Agent responded**: \"{assistant_msg.strip()}\"")
-                break
-            elif key in ('d', 'D'):
-                sys.stderr.write("\033[2;31m[sys] Memory recall disabled. (Type /m to re-enable)\033[0m\n")
-                sys.stderr.flush()
-                sys.exit(3)
-            elif key in ('\x1b[A', '\x1b[B'):
-                current_idx = (current_idx + (1 if key == '\x1b[B' else -1) + num_opts) % num_opts
-            else:
-                sys.stderr.write("\033[2;31m[sys] Memory recall skipped.\033[0m\n")
-                sys.stderr.flush()
-                sys.exit(0)
-    finally:
-        sys.stderr.write("\033[?25h")
-        sys.stderr.flush()
 
 
 def get_turns_count(workspace: str) -> None:
@@ -253,6 +228,15 @@ def get_turns_count(workspace: str) -> None:
             print(cur.fetchone()[0])
     else:
         print(0)
+        
+def clear_turns(workspace: str) -> None:
+    """Wipes all logged conversational turns from the turns table for this workspace."""
+    db_path = os.path.join(SESSIONS_DIR, f"{workspace}.db")
+    if os.path.exists(db_path):
+        with closing(sqlite3.connect(db_path, timeout=10)) as conn:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM turns WHERE workspace = ?", (workspace,))
+            conn.commit()
 
 
 if __name__ == "__main__":
@@ -260,18 +244,13 @@ if __name__ == "__main__":
     if not args: sys.exit(1)
     cmd = args[0]
     if cmd == "show-tok":
-        if context:
-            try:
-                chat_history = json.loads(sys.stdin.read().strip())
-                try:
-                    limit = int(os.environ.get("AI_MAX_TOKENS", 8192))
-                except Exception:
-                    limit = 8192
-                context.show_memory_status(chat_history, max_context=limit, server_url="http://localhost:8080")
-            except Exception as e:
-                sys.stderr.write(f"[session-mgr] Error rendering memory: {e}\n")
-        else:
-            sys.stderr.write("[session-mgr] Warning: 'context' module not found. show-tok bypassed.\n")
+        try:
+            import agent_core as context
+            chat_history = json.loads(sys.stdin.read().strip())
+            limit = int(os.environ.get("AI_MAX_TOKENS", 8192))
+            context.show_memory_status(chat_history, max_context=limit, server_url="http://localhost:8080")
+        except Exception as e:
+            sys.stderr.write(f"[session-mgr] Error rendering memory: {e}\n")
         sys.exit(0)
     if len(args) < 2: sys.exit(1)
     workspace_name = args[1]
@@ -284,7 +263,7 @@ if __name__ == "__main__":
         print_session_box(workspace_name)
     elif cmd == "log-turn" and len(args) >= 4:
         log_turn(workspace_name, args[2], args[3])
-    elif cmd == "get-context" and len(args) >= 3:
-        search_past_context(workspace_name, args[2])
     elif cmd == "get-count":
         get_turns_count(workspace_name)
+    elif cmd == "clear":
+        clear_turns(workspace_name)

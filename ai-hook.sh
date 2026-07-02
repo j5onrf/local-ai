@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Local-Ai Agent Hook v0.8.9.5 [j5onrf] [06-28-26]
+# Local-Ai Agent Hook v0.8.9.12
 
 [[ $- != *i* ]] && return
 
@@ -36,14 +36,27 @@ command_not_found_handler() { command_not_found_handle "$@"; }
 ai() {
     if [[ "$1" == "init" ]]; then
         local path=$(pwd) skills=() name map
-        [[ -d "${2:-}" ]] && { path="$2"; skills=("${@:3}"); } || skills=("${@:2}")
+        
+        # If the second argument is not empty and does not start with "-", treat it as a path
+        if [[ -n "${2:-}" && "${2:-}" != -* ]]; then
+            path="$2"
+            skills=("${@:3}")
+        else
+            skills=("${@:2}")
+        fi
+        
+        # If the directory does not exist, automatically create it first
+        if [[ ! -d "$path" ]]; then
+            mkdir -p "$path" || return 1
+        fi
+        
         path=$(CDPATH= cd "$path" && pwd) || return 1
         echo "$path" > "$_AI_DIR/.active_cd.$$"
         name=$(basename "$path")
         map="$path/index-map-$name.txt"
         
-        # Fast newer-file/directory check (removing -type f ensures directory additions trigger rebuilds)
-        [[ ! -f "$map" ]] || [[ -n "$(find "$path" -not -path '*/.git/*' -not -path '*/.agent/*' -not -name 'history.md' ! -name "$(basename "$map")" -newer "$map" -print -quit 2>/dev/null)" ]] && {
+        # Fast newer-file/directory check
+        [[ ! -f "$map" ]] || [[ -n "$(find "$path" ! -path "$path" -not -path '*/.git/*' -not -path '*/.agent/*' -not -name 'history.md' ! -name "$(basename "$map")" -newer "$map" -print -quit 2>/dev/null)" ]] && {
             "$_AI_PYTHON_BIN" "$_AI_DIR/tools/map/index-map" "$path" || return 1
         }
         

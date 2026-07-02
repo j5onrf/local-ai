@@ -1,0 +1,33 @@
+# CODEBASE INDEX MAP (UNIVERSAL ARCHITECTURE REFERENCE)
+# Generated on      : 2026-07-02 16:38
+# Project Workspace : modules
+# Target Directory  : ~/.config/local-ai/modules
+# -----------------------------------------------------------------------------------------
+# INSTRUCTIONS:
+# This flat-map represents the structural outline of the codebase. It lists file paths, 
+# imports (imp:), classes (cls:), and functions (fn:) extracted via static AST/regex parsers.
+# Use this map as a lightweight reference to understand architecture, namespaces, and dependencies.
+# Use this map to identify and request ONLY the specific file(s) you need to analyze.
+# -----------------------------------------------------------------------------------------
+# Codebase Modules & Active Architecture:
+#   ├── agent_context.py
+#   ├── agent_core.py
+#   ├── agent_skills.py
+#   ├── agent_spell.py
+#   ├── agent_ui.py
+#   ├── ai-agent-memories        - Description: SQLite-backed semantic recall and Temporal Personality Memory (TPM) manager
+#   ├── ai-agent-sessions        - Description: SQLite-backed session, checkpoint, and turn logger with Global Handoff
+#   ├── ai-agent-skills          - Local-Ai On-Demand Skill Selector [dept-backed]
+#   ├── chat                     - chat - Unified Agentic Brainstorm, Thinking & Follow-up Engine v2.5.1
+#   └── speed_test.py            - ~/.config/local-ai/modules/speed_test.py
+# -----------------------------------------------------------------------------------------
+[py:agent_context.py] imp:shutil | fn:tokenize,load_context_entries,jaccard_search,clean_tool_prefix
+[py:agent_core.py] imp:agent_ui,requests,urllib | fn:extract_stream_content,stream,stream_response,get_accurate_token_count,show_memory_status,prune_history
+[py:agent_skills.py] imp:agent_context,agent_ui,subprocess | fn:ensure_mysys_exists,find_skill_file,load_skill_content,run_local_tool,get_system_context
+[py:agent_spell.py] imp:shutil,urllib | fn:load_system_dictionary,edits1,correct_word,apply_static_overrides,check_query_spelling_offline,check_query_spelling
+[py:agent_ui.py] imp:select,threading | cls:InlineSpinner | fn:get_key,draw_session_box,confirm_tool,run_interactive_selection
+[file:ai-agent-memories] sum:#!/usr/bin/env python3
+[file:ai-agent-sessions] sum:#!/usr/bin/env python3
+[file:ai-agent-skills] sum:#!/usr/bin/env python3
+[file:chat] sum:#!/usr/bin/env python3
+[py:speed_test.py] fn:start,count_token,end

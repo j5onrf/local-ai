@@ -1,0 +1,18 @@
+# CODEBASE INDEX MAP (UNIVERSAL ARCHITECTURE REFERENCE)
+# Generated on      : 2026-07-02 16:08
+# Project Workspace : session-test-2
+# Target Directory  : ~/.config/local-ai/projects/session-test-2
+# -----------------------------------------------------------------------------------------
+# INSTRUCTIONS:
+# This flat-map represents the structural outline of the codebase. It lists file paths, 
+# imports (imp:), classes (cls:), and functions (fn:) extracted via static AST/regex parsers.
+# Use this map as a lightweight reference to understand architecture, namespaces, and dependencies.
+# Use this map to identify and request ONLY the specific file(s) you need to analyze.
+# -----------------------------------------------------------------------------------------
+# Codebase Modules & Active Architecture:
+#   ├── history.md               - Workspace History: projects
+#   └── index-map-session-test-2.txt - CODEBASE INDEX MAP (UNIVERSAL ARCHITECTURE REFERENCE)
+# -----------------------------------------------------------------------------------------
+[md:.agent/tpm.md] title:tpm
+[md:history.md] title:Workspace History: projects
+[txt:index-map-session-test-2.txt] sum:# CODEBASE INDEX MAP (UNIVERSAL ARCHITECTURE REFERENCE)
