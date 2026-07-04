@@ -106,7 +106,7 @@ Agent: Workspace loaded. Awaiting instructions.
 
 | Command | Description |
 | :--- | :--- |
-| **`/skill <query>`** *(or `/s <query>`)* | Search and load dynamic specialist skills on-the-fly. |
+| **`/skill <query>`** *(or `/s`)* | Search and load dynamic specialist skills on-the-fly. |
 | **`view file <path>`** *(or `read`)* | Dynamically read local files directly into your model context. |
 | **`-save <tag>`** | Snapshot the current conversation state to your local SQLite database. |
 | **`-load`** *(or `-timeline`)* | Rollback active history to a past SQLite checkpoint (with Global Handoff cloning). |
@@ -156,9 +156,8 @@ sudo pacman -S python-requests
 # 3. Clone the repository locally
 git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai
 
-# 4. Inject the environment hook into Bash & reload your profile
-AI_SRC='$HOME/.config/local-ai/ai-hook.sh'
-printf '[ -f "%s" ] && source "%s"\n' "$AI_SRC" "$AI_SRC" >> ~/.bashrc
+# 4. Add the environment hook into Bash & reload your profile
+echo '[ -f "$HOME/.config/local-ai/ai-hook.sh" ] && source "$HOME/.config/local-ai/ai-hook.sh"' >> ~/.bashrc
 source ~/.bashrc
 
 # 5. Create your private configuration file (No global exports needed!)
