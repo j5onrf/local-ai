@@ -181,3 +181,10 @@ OPENROUTER_MODEL="openrouter/free"
 AI_MAX_TOKENS=4096
 ```
 
+---
+
+## Credits & License
+
+*   **License**: Licensed under the permissive [MIT License](LICENSE).
+*   **Contributions**: Special thanks to [suyadnya](https://github.com/wibawasuyadnya) for the `.env` configuration architecture, macOS compatibility investigations, and high-velocity alias designs. Contributions are always welcome.
+
