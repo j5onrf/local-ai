@@ -1,4 +1,7 @@
+#!/usr/bin/env python3
 # File: ~/.config/local-ai/modules/agent_skills.py
+# Description: Unified library & executable for static, dynamic, and on-demand skills
+
 import os
 import sys
 import re
@@ -85,3 +88,109 @@ def get_system_context(query: str, context_file: str, stop_words: set, skills_di
                 sys.stderr.flush()
                 return run_local_tool(tool)
     return ""
+
+
+# --- DYNAMIC ON-DEMAND SKILL SELECTOR TUI ---
+
+def load_skill_blueprints(dept_skills_dir: str, stop_words: set) -> list:
+    blueprints = []
+    if os.path.exists(dept_skills_dir):
+        for r, _, fs in os.walk(dept_skills_dir):
+            for f in fs:
+                if f.endswith(".md"):
+                    path = os.path.join(r, f)
+                    try:
+                        with open(path, "r") as sf:
+                            first_line = sf.readline().strip()
+                            desc_line = ""
+                            for _ in range(5):
+                                line = sf.readline().strip()
+                                if line and not line.startswith(("#", "---", ">")):
+                                    desc_line = line
+                                    break
+                        if first_line.startswith("# [SKILL]") and "--->" in first_line:
+                            header, intents = first_line.split("--->", 1)
+                            skill_name = header.replace("# [SKILL]", "").strip()
+                            intent_list = [i.strip() for i in intents.split(",") if i.strip()]
+                            rel_path = os.path.relpath(path, dept_skills_dir)
+                            blueprints.append({
+                                "name": skill_name.lower(),
+                                "path": path,
+                                "rel_path": rel_path,
+                                "desc": desc_line if desc_line else "No description provided.",
+                                "intents": intent_list,
+                                "tokens": context.tokenize(" ".join(intent_list), stop_words)
+                            })
+                    except Exception:
+                        pass
+    return blueprints
+
+def run_skill_selector(workspace: str, raw_cmd: str, dept_skills_dir: str, stop_words: set) -> None:
+    try:
+        history_data = sys.stdin.read().strip()
+        chat_history = json.loads(history_data)
+    except Exception as e:
+        sys.stderr.write(f"\033[1;31m[skill-mgr] Failed to load history: {e}\033[0m\n")
+        sys.exit(1)
+
+    parts = raw_cmd.strip().split(maxsplit=1)
+    search_query = parts[1].strip() if len(parts) > 1 else ""
+    skills = load_skill_blueprints(dept_skills_dir, stop_words)
+    candidates = []
+
+    for s in skills:
+        if not search_query:
+            candidates.append((1.0, s))
+        else:
+            q_tokens, s_tokens = set(context.tokenize(search_query, stop_words)), set(s["tokens"])
+            score = len(q_tokens & s_tokens) / len(q_tokens | s_tokens) if (q_tokens & s_tokens) else 0.0
+            if search_query.lower() in s["name"] or search_query.lower() in os.path.basename(s["path"]).lower() or any(search_query.lower() in i for i in s["intents"]):
+                score = max(score, 0.8)
+            if score > 0.0:
+                candidates.append((score, s))
+
+    if not candidates:
+        sys.stderr.write("\033[1;31m[skill-mgr] No matching department skills found.\033[0m\n")
+        sys.exit(0)
+
+    candidates.sort(key=lambda x: -x[0])
+    num_opts, current_idx = len(candidates), 0
+    sys.stderr.write("\033[?25l"); sys.stderr.flush()
+    try:
+        while True:
+            _, selected_skill = candidates[current_idx]
+            idx_str = f"{current_idx + 1:02d}/{num_opts:02d}"
+            sys.stderr.write(f"\r\x1b[K\033[1;30m[\033[1;32m{idx_str}\033[1;30m]\033[0m ❯ \x1b[1;36m[skill]\x1b[0m \033[1;32m{selected_skill['name']}\033[0m \033[90m({selected_skill['rel_path']})\033[0m\n")
+            sys.stderr.write(f"\r\x1b[K\033[3m   \"{selected_skill['desc']}\"\033[0m [↵ load  Esc]: ")
+            sys.stderr.flush()
+            
+            key = ui.get_key()
+            if key in ('\x03', '\x1b'):
+                sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[KCancelled.\n"); break
+            if key in ('\r', ''):
+                try:
+                    with open(selected_skill["path"], "r") as sf: skill_body = sf.read().strip()
+                    chat_history[0]["content"] += f"\n\n### Loaded On-Demand Skill: {selected_skill['name']}\n{skill_body}\n"
+                    sys.stderr.write(f"\r\x1b[K\x1b[1A\r\x1b[K\033[2;32m[sys] Skill '{selected_skill['name']}' successfully injected.\033[0m\n")
+                    print(json.dumps(chat_history))
+                except Exception as e:
+                    sys.stderr.write(f"\r\x1b[K\x1b[1A\r\x1b[K\033[1;31m[sys] Failed to load skill: {e}\033[0m\n")
+                break
+            else:
+                if key in ('\x1b[A', '\x1b[B'):
+                    current_idx = (current_idx + (1 if key == '\x1b[B' else -1) + num_opts) % num_opts
+                sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
+        sys.stderr.write("\033[?25h"); sys.stderr.flush()
+    except KeyboardInterrupt:
+        sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[KCancelled.\n"); sys.stderr.flush(); sys.exit(130)
+
+
+if __name__ == "__main__":
+    # Setup config directories for standalone execution when invoked by ai-agent.py
+    CFG_DIR = os.path.expanduser("~/.config/local-ai")
+    DEPT_SKILLS_DIR = os.path.join(CFG_DIR, "skills", "dept")
+    STOP_WORDS = {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"}
+    
+    if len(sys.argv) < 3:
+        sys.exit(1)
+    run_skill_selector(sys.argv[1], sys.argv[2], DEPT_SKILLS_DIR, STOP_WORDS)

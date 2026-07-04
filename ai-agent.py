@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.8.9.15]
+# Local-Ai Agent [j5onrf] [v0.8.9.16]
 # Path: ~/.config/local-ai/ai-agent.py
 
 import os
@@ -306,14 +306,13 @@ def run_interactive_chat(args: list):
                         spell_active = False
                     
             if query.startswith(("/skill", "/s")) or query.startswith(("/skill ", "/s ")):
-                res = subprocess.run([sys.executable, f"{CFG_DIR}/modules/ai-agent-skills", safe_name, query], input=json.loads(res.stdout.strip()) if res.stdout.strip() else json.dumps(chat_history), stdout=subprocess.PIPE, text=True)
-                if res.stdout.strip():
-                    try:
-                        chat_history = json.loads(res.stdout.strip())
-                        print(f"\033[1;32m[session-mgr] Restored session ({len(chat_history)-1} turns loaded).\033[0m\n")
-                    except Exception as e:
-                        print(f"Error loading session: {e}")
-                continue
+                    res = subprocess.run([sys.executable, f"{CFG_DIR}/modules/agent_skills.py", safe_name, query], input=json.dumps(chat_history), stdout=subprocess.PIPE, text=True)
+                    if res.stdout.strip():
+                        try:
+                            chat_history = json.loads(res.stdout.strip())
+                        except Exception as e:
+                            print(f"Error loading session: {e}")
+                    continue
             if query.startswith("-save"):
                 subprocess.run([sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "save", safe_name, query.replace("-save", "").strip()], input=json.dumps(chat_history), text=True)
                 continue

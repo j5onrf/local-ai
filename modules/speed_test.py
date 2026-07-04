@@ -12,12 +12,15 @@ def start() -> None:
     _token_count = 0
 
 def count_token(content: str) -> None:
-    """Increments the generated token count based on streaming chunks."""
+    """Increments the generated token count based on streaming chunk length.
+    
+    Uses character length scaling (1 token ≈ 4 characters) to maintain accuracy
+    for both local models and high-speed batched cloud APIs.
+    """
     global _token_count
     if content:
-        # In streaming SSE responses (like llama-server), each delta content 
-        # packet represents exactly one newly generated token.
-        _token_count += 1
+        # Standardizes token estimation across both single and multi-token stream packets
+        _token_count += max(1, len(content) // 4)
 
 def end() -> None:
     """Calculates, prints the token statistics, and resets state."""

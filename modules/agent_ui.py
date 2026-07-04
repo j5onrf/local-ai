@@ -49,47 +49,45 @@ class InlineSpinner:
                 self.thread = None
 
 def get_key() -> str:
-    """Reads a single key or escape sequence from /dev/tty directly or falls back to stdin."""
-    tty_file = None
+    """Reads a single key or escape sequence from /dev/tty directly or falls back to stdin.
+    
+    Uses read-only access on /dev/tty to ensure compatibility inside piped subprocesses.
+    """
     try:
-        tty_file = open("/dev/tty", "r+")
-        fd = tty_file.fileno()
+        # Opening as "r" (read-only) is extremely robust and succeeds inside piped subprocesses
+        with open("/dev/tty", "r") as tty_file:
+            fd = tty_file.fileno()
+            old_settings = termios.tcgetattr(fd)
+            try:
+                tty.setraw(fd)
+                # Flush pending terminal buffer keys (prevents accidental double-enters)
+                termios.tcflush(fd, termios.TCIFLUSH)
+                char_bytes = os.read(fd, 1)
+                if char_bytes == b'\x1b' and select.select([fd], [], [], 0.05)[0]:
+                    char_bytes += os.read(fd, 2)
+                return char_bytes.decode("utf-8", errors="ignore")
+            finally:
+                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
     except Exception:
+        # Fallback to standard stdin if /dev/tty is completely unavailable
         fd = sys.stdin.fileno()
-
-    try:
-        import fcntl
-        flags = fcntl.fcntl(fd, fcntl.F_GETFL)
-        fcntl.fcntl(fd, fcntl.F_SETFL, flags & ~os.O_NONBLOCK)
-    except Exception:
-        pass
-
-    try:
-        old_settings = termios.tcgetattr(fd)
-    except Exception:
         try:
-            char_bytes = os.read(fd, 1)
-            return char_bytes.decode("utf-8", errors="ignore")
+            old_settings = termios.tcgetattr(fd)
+            try:
+                tty.setraw(fd)
+                termios.tcflush(fd, termios.TCIFLUSH)
+                char_bytes = os.read(fd, 1)
+                if char_bytes == b'\x1b' and select.select([fd], [], [], 0.05)[0]:
+                    char_bytes += os.read(fd, 2)
+                return char_bytes.decode("utf-8", errors="ignore")
+            finally:
+                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         except Exception:
-            return ""
-        finally:
-            if tty_file:
-                tty_file.close()
-
-    try:
-        tty.setraw(fd)
-        try:
-            termios.tcflush(fd, termios.TCIFLUSH)
-        except Exception:
-            pass
-        char_bytes = os.read(fd, 1)
-        if char_bytes == b'\x1b' and select.select([fd], [], [], 0.05)[0]:
-            char_bytes += os.read(fd, 2)
-    finally:
-        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-        if tty_file:
-            tty_file.close()
-    return char_bytes.decode("utf-8", errors="ignore")
+            try:
+                char_bytes = os.read(fd, 1)
+                return char_bytes.decode("utf-8", errors="ignore")
+            except Exception:
+                return ""
 
 def draw_session_box(
     workspace_path: str,
