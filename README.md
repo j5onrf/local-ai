@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <code>Gemini-3.5-flash</code> &nbsp; <code>Openrouter/free</code> &nbsp; <code>Local-Ai Model</code>
+  <code>Gemini-3.1-flash-lite</code> &nbsp; <code>Openrouter/free</code> &nbsp; <code>Local-Ai Model</code>
 </p>
 
 ---
@@ -31,7 +31,7 @@ All configurations and custom shortcuts are managed in [`ai-context.md`](ai-cont
 
 ```console
 ╭──────────────────────────────────────────────╮
-│  >_ Local-AI Agent (v0.8.9.15)               │
+│  >_ Local-AI Agent            │
 │                                              │
 │  model:     local-model                      │
 │  directory: ...-ai/projects/session-test     │
@@ -171,7 +171,7 @@ nano ~/.config/local-ai/.env
 ```env
 # Google Gemini API Configurations
 GEMINI_API_KEY="AIzaSyYourFullGeminiApiKeyHere"
-CLOUD_MODEL="gemini-3.5-flash"
+CLOUD_MODEL="gemini-3.1-flash-lite"
 
 # OpenRouter API Configurations
 OPENROUTER_API_KEY="sk-or-v1-YourFullOpenRouterKeyHere"
