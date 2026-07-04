@@ -4,10 +4,11 @@ import sys
 import re
 import json
 import time
-import urllib.request as urlreq
-import urllib.error as urlerr
 import requests
 import agent_ui as ui
+
+# Create a shared Session object to manage active connection pooling
+_session = requests.Session()
 
 # --- OPTIONAL SPEED-TEST HOOK ---
 try:
@@ -148,16 +149,9 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
     spinner = ui.InlineSpinner()
     try:
         gkey = os.environ.get("GEMINI_API_KEY")
-        if gkey:
-            try:
-                ans = stream(messages, prefix, gkey, ui.InlineSpinner, show_stats)
-                if ans is not None:
-                    return ans
-            except Exception:
-                pass
-                
         configs = []
         okey = os.environ.get("OPENROUTER_API_KEY")
+        
         if gkey:
             configs.append((
                 "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
@@ -184,85 +178,87 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
             if model:
                 body["model"] = model
                 
-            req = urlreq.Request(
-                url,
-                data=json.dumps(body).encode("utf-8"),
-                headers={"Content-Type": "application/json", **headers},
-                method="POST"
-            )
             retries = 2
             backoff = 1.5
             while retries >= 0:
                 try:
                     spinner.start()
-                    with urlreq.urlopen(req, timeout=timeout) as response:
-                        try:
-                            p = "gemini" if "generativelanguage" in url else "openrouter" if "openrouter" in url else None
-                            if p and cfg_dir:
-                                with open(os.path.join(cfg_dir, ".request_log"), "a", encoding="utf-8") as lf:
-                                    lf.write(f"{int(time.time())}|{p}\n")
-                        except Exception:
-                            pass
-                        first, resolved_model = True, None
-                        for line in response:
-                            if not line.startswith(b"data:"):
-                                continue
-                            content = extract_stream_content(line)
-                            if content:
-                                if first:
-                                    spinner.stop()
-                                    if sys.stdout.isatty():
-                                        sys.stdout.write(f"\r\x1b[2K\r\033[1;32m{prefix}\033[0m ")
-                                        sys.stdout.flush()
-                                    first = False
-                                    if speed_test and show_stats:
-                                        speed_test.start()
-                                print(content, end="", flush=True)
-                                acc.append(content)
-                                if speed_test and show_stats:
-                                    speed_test.count_token(content)
-                            else:
-                                try:
-                                    dec = line.decode("utf-8").strip()
-                                    if dec.startswith("data:"):
-                                        dec = dec[5:].strip()
-                                    if dec == "[DONE]" or not dec:
-                                        continue
-                                    data = json.loads(dec)
-                                    if "model" in data and not resolved_model:
-                                        resolved_model = data["model"]
-                                except Exception:
-                                    pass
-                        print("")
-                        if speed_test and show_stats:
-                            speed_test.end()
-                        if resolved_model and resolved_model != model and sys.stdout.isatty():
-                            home_dir = os.path.expanduser("~")
-                            target_path = os.path.join(home_dir, "ollama_backup") + "/"
-                            display_model = resolved_model
-                            if display_model.startswith(target_path):
-                                display_model = display_model.replace(target_path, ".../")
-                            sys.stdout.write(f"\033[90m[via {display_model}]\033[0m\n")
-                            sys.stdout.flush()
-                        return "".join(acc)
-                except urlerr.HTTPError as e:
-                    spinner.stop()
-                    if e.code == 429 and retries > 0:
+                    
+                    # Leverages the connection pool to stream the completion
+                    response = _session.post(
+                        url,
+                        json=body,
+                        headers={"Content-Type": "application/json", **headers},
+                        stream=True,
+                        timeout=timeout
+                    )
+                    
+                    if response.status_code == 429 and retries > 0:
+                        spinner.stop()
                         time.sleep(backoff)
                         retries -= 1
                         backoff *= 2
-                    elif e.code == 400:
-                        sys.stderr.write(f"\n\033[1;31m[API 400 Error]: {e.read().decode('utf-8')}\033[0m\n")
+                        continue
+                    elif response.status_code != 200:
+                        spinner.stop()
+                        sys.stderr.write(f"\n\033[1;31m[API {response.status_code} Error]: {response.text}\033[0m\n")
                         break
-                    else:
-                        host = url.split('/')[2]
-                        sys.stderr.write(f"\033[90m[sys] {host} failed: HTTP {e.code}\033[0m\n")
-                        break
+                        
+                    first, resolved_model = True, None
+                    for line in response.iter_lines():
+                        if not line.startswith(b"data:"):
+                            continue
+                        
+                        content = extract_stream_content(line)
+                        if content:
+                            if first:
+                                spinner.stop()
+                                if sys.stdout.isatty():
+                                    sys.stdout.write(f"\r\x1b[2K\r\033[1;32m{prefix}\033[0m ")
+                                    sys.stdout.flush()
+                                first = False
+                                if speed_test and show_stats:
+                                    speed_test.start()
+                            print(content, end="", flush=True)
+                            acc.append(content)
+                            if speed_test and show_stats:
+                                speed_test.count_token(content)
+                        else:
+                            try:
+                                dec = line.decode("utf-8").strip()
+                                if dec.startswith("data:"):
+                                    dec = dec[5:].strip()
+                                if dec == "[DONE]" or not dec:
+                                    continue
+                                data = json.loads(dec)
+                                if "model" in data and not resolved_model:
+                                    resolved_model = data["model"]
+                            except Exception:
+                                pass
+                                
+                    print("")
+                    if speed_test and show_stats:
+                        speed_test.end()
+                        
+                    if resolved_model and resolved_model != model and sys.stdout.isatty():
+                        home_dir = os.path.expanduser("~")
+                        target_path = os.path.join(home_dir, "ollama_backup") + "/"
+                        display_model = resolved_model
+                        if display_model.startswith(target_path):
+                            display_model = display_model.replace(target_path, ".../")
+                        sys.stdout.write(f"\033[90m[via {display_model}]\033[0m\n")
+                        sys.stdout.flush()
+                    return "".join(acc)
                 except Exception as e:
                     spinner.stop()
-                    host = url.split('/')[2]
-                    sys.stderr.write(f"\033[90m[sys] {host} failed: {e}\033[0m\n")
-                    break
+                    if retries > 0:
+                        retries -= 1
+                        time.sleep(0.5)
+                    else:
+                        host = url.split('/')[2]
+                        sys.stderr.write(f"\033[90m[sys] {host} failed: {e}\033[0m\n")
+                        break
+        sys.stderr.write("\033[1;31mError: All fallbacks/local servers are offline.\033[0m\n\n")
     except KeyboardInterrupt:
         try: spinner.stop()
         except Exception: pass

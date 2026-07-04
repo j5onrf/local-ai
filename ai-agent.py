@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.8.9.12]
+# Local-Ai Agent [j5onrf] [v0.8.9.15]
 # Path: ~/.config/local-ai/ai-agent.py
 
 import os
@@ -22,6 +22,29 @@ BASE_PROMPT = (
     "No markdown (no bolding, no headers, no bullet lists).\n"
     "Always write full, complete, and helpful sentences.\n\n"
 )
+
+def load_env_file(env_path: str) -> None:
+    """Reads a local .env file and dynamically loads keys into os.environ if present."""
+    if not os.path.exists(env_path):
+        return
+    try:
+        with open(env_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                parts = line.split("=", 1)
+                if len(parts) == 2:
+                    key, val = parts[0].strip(), parts[1].strip()
+                    # Strip surrounding quotes if present
+                    if val.startswith(('"', "'")) and val.endswith(('"', "'")):
+                        val = val[1:-1]
+                    os.environ[key] = val
+    except Exception:
+        pass
+
+# Dynamically load the keys into your environment at runtime
+load_env_file(os.path.join(CFG_DIR, ".env"))
 
 # Bootstrap custom local modules path
 sys.path.append(os.path.join(CFG_DIR, "modules"))

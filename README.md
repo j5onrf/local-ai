@@ -2,7 +2,7 @@
   <img alt="Local-AI Agent" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" width="800" />
 </p>
 
-<h1 align="center">Local-AI Agent <kbd>v0.8.9.12-beta</kbd></h1>
+<h1 align="center">Local-AI Agent <kbd>v0.8.9.15</kbd></h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
@@ -11,21 +11,19 @@
 </p>
 
 <p align="center">
-  <code>Gemini-3.1-flash-lite</code> &nbsp; <code>Openrouter/free</code> &nbsp; <code>Local-Ai Model</code>
+  <code>Gemini-3.5-flash</code> &nbsp; <code>Openrouter/free</code> &nbsp; <code>Local-Ai Model</code>
 </p>
 
 ---
 
 <h2 align="center">How the Agent Works</h2>
 
-All configurations are managed through your master blueprint: [`ai-context.md`](https://github.com/j5onrf/local-ai/blob/main/ai-context.md).
+All configurations and custom shortcuts are managed in [`ai-context.md`](ai-context.md).
 
-> **Routing Logic:** The agent automatically determines the optimal execution path based on your input pattern, ensuring zero wasted tokens.
-
-* **No Session (Direct selections):** Uses a fast Jaccard Similarity engine (`jaccard_search`) with prefix-matching to instantly route custom commands and shortcuts to your local terminal.
-* **Single-Turn Agent (`ai <query>`):** Answers a single question and returns you to Bash, executing explicitly mapped diagnostic [`tools`](https://github.com/j5onrf/local-ai/tree/main/tools) and [`skills`](https://github.com/j5onrf/local-ai/tree/main/skills) only when requested.
-* **Multi-Turn Chat (`ai` alone):** Initiates an interactive, persistent conversation with local state preservation and multi-turn context memory.
-* **Workspace Agents (`ai init <path>`):** Compiles a path-specific structural tree directly inside your active [project workspace](https://github.com/j5onrf/local-ai/tree/main/projects) using `index-map`, launching a dedicated, codebase-aware agent session primed with your chosen skill file.
+*   **Direct (No Session)**: Sub-millisecond Jaccard matching (`jaccard_search`) instantly routes custom keywords to your local terminal.
+*   **Single-Turn Agent (`ai <query>`):** Returns a single response directly to your shell prompt without loading an active conversation.
+*   **Multi-Turn Chat (`ai` alone):** Starts a persistent terminal session with multi-turn context tracking.
+*   **Workspace Agents (`ai init <path>`):** Indexes your directory into a lightweight codebase graph on-the-fly and boots up a codebase-aware chat.
 
 ---
 
@@ -33,18 +31,31 @@ All configurations are managed through your master blueprint: [`ai-context.md`](
 
 ```console
 ╭──────────────────────────────────────────────╮
-│  >_ Local-AI Agent (v0.8.9.12)               │
+│  >_ Local-AI Agent (v0.8.9.15)               │
 │                                              │
 │  model:     local-model                      │
 │  directory: ...-ai/projects/session-test     │
 │  skill:     init                             │
-│  database:  109 turns (asleep)               │
+│  database:  active (3 facts, 109 turns)      │
 ╰──────────────────────────────────────────────╯
-[sys] Startup context: 92 tokens | Ctrl+C to exit.
+[sys] Startup context: 104 tokens | Ctrl+C to exit.
 
 Agent: Workspace loaded. Awaiting instructions.
 ❯ 
 ```
+
+---
+
+<h2 align="center">Temporal Personality Memory (TPM)</h2>
+
+<p align="center">
+  <em>Evolving with your workspace, learning your habits, and standardizing your identity.</em>
+</p>
+
+* **Origins**: Combines Weaviate Engram's SQLite active reconciliation loop with Noema's hand-editable, local Markdown file system.
+* **Background Extraction**: Spawns a background thread on completion to extract facts without delay.
+* **Dynamic Sync**: Manual edits made to `.agent/tpm.md` are synced back into SQLite at bootup.
+* **Reconciliation**: SQL `INSERT OR REPLACE` overwrites old contradictory facts cleanly.
 
 ---
 
@@ -54,12 +65,13 @@ Agent: Workspace loaded. Awaiting instructions.
 | :---: | :---: | :--- |
 | **Performance** | **Zero-Daemon** | 0% idle CPU/RAM. `Ultra-light` execution. |
 | **Search Engine** | **Jaccard Similarity** | Sub-millisecond keyword and partial-word matching. |
+| **Memory** | **Temporal Personality** | Dynamic, contradiction-free local engram reconciliation (`TPM`). |
 | **Resiliency** | **Fallbacks** | Automatically cascades: `Gemini` → `OpenRouter` → `Local`. |
 | **Safety** | **Zero-Trust Guardrails** | Intercepts destructive commands before shell execution. |
 | **Integration** | **Dynamic Context** | On-demand compilation of system specs and file contents. |
 | **Optimization** | **Token-Slasher** | Custom [`tool`](https://github.com/j5onrf/local-ai/tree/main/tools) and [`skill`](https://github.com/j5onrf/local-ai/tree/main/skills) integration built for minimal token use. |
 | **Interface** | **Conversational TUI** | Rich, multi-turn chat sessions directly in the terminal. |
-| **Auditability** | **Zero-Dependency** | Under 400 lines of standard-library Python. |
+| **Auditability** | **Zero-Dependency** | Under 250 lines of modular, standard-library Python. |
 
 ---
 
@@ -85,20 +97,19 @@ Agent: Workspace loaded. Awaiting instructions.
 | Command | Description |
 | :--- | :--- |
 | **`ai`** | Launch an interactive, multi-turn chat session. |
-| **`ai <query>`** | Get an instant, stateless answer; returns directly to your Bash prompt. |
-| **`ai init <path>`** | Index a directory & launch a codebase-aware, stateful agent session. |
-| **`hs`** | Perform an on-demand keyword search of your active workspace history. |
-| **`hist`** | View your workspace history log (`history.md`). |
+| **`ai <query>`** | Get an instant, one-shot answer, straight back to your shell prompt. |
+| **`ai init <path>`** | Launch (or create) a codebase-aware workspace agent. |
+| **`hs` / `hist`** | Search / view the active workspace history log (`history.md`). |
 
 ### 2. Active Session Commands
 *Typed directly inside an active chat session.*
 
 | Command | Description |
 | :--- | :--- |
-| **`/skill <query>`** *(or `/s`)* | Search and load dynamic specialist skills on-the-fly. |
+| **`/skill <query>`** *(or `/s <query>`)* | Search and load dynamic specialist skills on-the-fly. |
 | **`view file <path>`** *(or `read`)* | Dynamically read local files directly into your model context. |
 | **`-save <tag>`** | Snapshot the current conversation state to your local SQLite database. |
-| **`-load`** *(or `-timeline`)* | Rollback active history to a past SQLite checkpoint. |
+| **`-load`** *(or `-timeline`)* | Rollback active history to a past SQLite checkpoint (with Global Handoff cloning). |
 | **`/f`** / **`/t`** / **`/b`** / **`/a`** | Trigger prompt-generating subroutines: Follow-up, Thinking, Brainstorm, or All. |
 
 ### 3. Modular Toggle & Diagnostic Switches
@@ -106,7 +117,7 @@ Agent: Workspace loaded. Awaiting instructions.
 
 | Command | Description |
 | :--- | :--- |
-| **`/clear`** / **`/reset`** | **Reset** Google session context & clear local. |
+| **`/clear`** / **`/reset`** | **Reset** Google session context, local chat history, and the SQLite TPM table. |
 | **`/d`** / **`/e`** | **Disable** / **Enable** the context-aware grammar & spellchecker. |
 | **`/m`** | **Toggle** long-term memory and TPM reconciliation ON/OFF. |
 | **`/stats`** | **Toggle** real-time generation speed metrics. |
@@ -136,23 +147,37 @@ Add your shortcuts, commands, and workspaces to [`ai-context.md`](https://github
 # (mdcat enables beautiful terminal markdown formatting)
 yay -S mdcat
 
-# 2. Clone the repository locally
+# 2. Install the required requests dependency
+# Arch: sudo pacman -S python-requests
+# Debian/Ubuntu: sudo apt install python3-requests
+# macOS / Other: pip install requests
+sudo pacman -S python-requests
+
+# 3. Clone the repository locally
 git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai
 
-# 3. Inject the environment hook into Bash & reload your profile
+# 4. Inject the environment hook into Bash & reload your profile
 AI_SRC='$HOME/.config/local-ai/ai-hook.sh'
 printf '[ -f "%s" ] && source "%s"\n' "$AI_SRC" "$AI_SRC" >> ~/.bashrc
 source ~/.bashrc
 
-# 4. Optional: Export cloud API keys to enable remote fallback routing
-export GEMINI_API_KEY="AIzaSyYourFullGeminiApiKeyHere"
-export CLOUD_MODEL="gemini-3.1-flash-lite"
-export OPENROUTER_API_KEY="sk-or-v1-YourFullOpenRouterKeyHere"
-export OPENROUTER_MODEL="openrouter/free"
+# 5. Create your private configuration file (No global exports needed!)
+# Fill in only what you use; the rest defaults safely.
+# The agent reads this dynamically on every run with zero terminal restarts.
+nano ~/.config/local-ai/.env
 ```
 
----
+#### Configuration Example (`.env`):
+```env
+# Google Gemini API Configurations
+GEMINI_API_KEY="AIzaSyYourFullGeminiApiKeyHere"
+CLOUD_MODEL="gemini-3.5-flash"
 
-> **Interactive Demo:** Experience the real-time terminal simulations, dynamic Sunset/Nebulae themes, and live agent execution on the [Web Demo Portfolio](https://j5onrf.github.io/local-ai-agent/).
+# OpenRouter API Configurations
+OPENROUTER_API_KEY="sk-or-v1-YourFullOpenRouterKeyHere"
+OPENROUTER_MODEL="openrouter/free"
 
+# Context Limits
+AI_MAX_TOKENS=4096
+```
 
