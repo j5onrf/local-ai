@@ -109,9 +109,9 @@ ai init ~/.config/local-ai/projects/session-test-2 --init ---> session test 2, p
 
 ```properties
 # --- Ai-Prompt-Writer-Imaage - Interactive TUI Console ---
-[TOOL] ~/.config/local-ai/tools/subsec/prompt/ai-prompt-writer-image --cat ---> prompt writer image, image prompt, ip
+# [TOOL] ~/.config/local-ai/tools/subsec/prompt/ai-prompt-writer-image --cat ---> prompt writer image, image prompt, ip
 # --- Ai-Prompt-Writer - Interactive TUI Console ---
-[TOOL] ~/.config/local-ai/tools/subsec/prompt/ai-prompt-writer --cat ---> prompt writer, prompt
+# [TOOL] ~/.config/local-ai/tools/subsec/prompt/ai-prompt-writer --cat ---> prompt writer, prompt
 
 # --- Fusion-Research Engine (Compound MoA / Self-Fusion) ---
 ~/.config/local-ai/tools/agentic/fusion/f_research -r ---> fusion research, fusion, fr, deep research

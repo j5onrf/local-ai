@@ -204,6 +204,15 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
                         sys.stderr.write(f"\n\033[1;31m[API {response.status_code} Error]: {response.text}\033[0m\n")
                         break
                         
+                    # --- DYNAMIC REQUEST LOGGER FOR AI-STATUS ---
+                    try:
+                        provider = "gemini" if "generativelanguage" in url else "openrouter" if "openrouter" in url else None
+                        if provider and cfg_dir:
+                            with open(os.path.join(cfg_dir, ".request_log"), "a", encoding="utf-8") as lf:
+                                lf.write(f"{int(time.time())}|{provider}\n")
+                    except Exception:
+                        pass
+                        
                     first, resolved_model = True, None
                     for line in response.iter_lines():
                         if not line.startswith(b"data:"):
