@@ -297,14 +297,44 @@ def show_memory_status(messages: list, max_context: int = 8192, server_url: str 
     sys.stderr.flush()
     
 def prune_history(history: list, max_tokens: int = None) -> list:
-    """Prunes old messages from conversation history to stay within context windows."""
+    """Prunes old messages from conversation history to stay within context windows.
+    
+    Dynamically queries the active local llama-server to match its context window,
+    falling back safely to the .env limits or 4096 if the server is offline.
+    """
     if len(history) <= 1:
         return history
-    try:
-        target_limit = int(os.environ.get("AI_MAX_TOKENS", 8192)) if max_tokens is None else max_tokens
-    except Exception:
-        target_limit = 8192
 
+    # Determine the context limit
+    target_limit = None
+    if max_tokens is not None:
+        target_limit = max_tokens
+    else:
+        # 1. Attempt to read from environment/env file
+        try:
+            target_limit = int(os.environ.get("AI_MAX_TOKENS", 0))
+        except Exception:
+            pass
+
+    # 2. If no environment override is set, query the live local server to sync limits
+    if not target_limit or target_limit <= 0:
+        try:
+            # Query the running llama-server properties
+            r = _session.get("http://localhost:8080/props", timeout=1.0)
+            if r.status_code == 200:
+                data = r.json()
+                n_ctx = data.get("default_generation_settings", {}).get("n_ctx")
+                if n_ctx and isinstance(n_ctx, int):
+                    # Leave a small safety buffer of 296 tokens for response generation
+                    target_limit = n_ctx - 296
+        except Exception:
+            pass
+
+    # 3. Safe fallback if both env and local server are unavailable (e.g. cold start)
+    if not target_limit or target_limit <= 0:
+        target_limit = 3800  # Safe default for 4096 window
+
+    # Perform pruning
     sys_prompt = history[0]
     current_tokens = len(sys_prompt["content"]) // 4
     selected_messages = []

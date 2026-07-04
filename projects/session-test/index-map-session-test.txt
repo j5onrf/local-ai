@@ -1,5 +1,21 @@
-[json:.agent/session.json] keys:last_interaction_id
+# CODEBASE INDEX MAP (UNIVERSAL ARCHITECTURE REFERENCE)
+# Generated on      : 2026-07-04 15:43
+# Project Workspace : session-test
+# Target Directory  : ~/.config/local-ai/projects/session-test
+# -----------------------------------------------------------------------------------------
+# INSTRUCTIONS:
+# This flat-map represents the structural outline of the codebase. It lists file paths, 
+# imports (imp:), classes (cls:), and functions (fn:) extracted via static AST/regex parsers.
+# Use this map as a lightweight reference to understand architecture, namespaces, and dependencies.
+# Use this map to identify and request ONLY the specific file(s) you need to analyze.
+# -----------------------------------------------------------------------------------------
+# Codebase Modules & Active Architecture:
+#   ├── Test Script.sh           - Define the input array of numbers
+#   ├── history.md               - Workspace History: session-test
+#   ├── index-map-session-test.txt
+#   └── physics.py
+# -----------------------------------------------------------------------------------------
 [shell:Test Script.sh] sum:Define the input array of numbers
-[markdown:history.md] sum:Workspace History: session-test
+[md:history.md] title:Workspace History: session-test
 [txt:index-map-session-test.txt] sum:[json:.agent/session.json] keys:last_interaction_id
-[py:physics.py] fn:calculate_velocity(dist,time)
+[py:physics.py] fn:calculate_velocity

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # Local-Ai Agent [j5onrf] [v0.8.9.16]
-# Path: ~/.config/local-ai/ai-agent.py
 
 import os
 import sys

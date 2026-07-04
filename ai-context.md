@@ -108,7 +108,7 @@ ai init ~/.config/local-ai/projects/session-test-2 --init ---> session test 2, p
 ## 5. TUI (Terminal User Interface) Programs
 
 ```properties
-# --- Ai-Prompt-Writer-Imaage - Interactive TUI Console ---
+# --- Ai-Prompt-Writer-Image - Interactive TUI Console ---
 # [TOOL] ~/.config/local-ai/tools/subsec/prompt/ai-prompt-writer-image --cat ---> prompt writer image, image prompt, ip
 # --- Ai-Prompt-Writer - Interactive TUI Console ---
 # [TOOL] ~/.config/local-ai/tools/subsec/prompt/ai-prompt-writer --cat ---> prompt writer, prompt
