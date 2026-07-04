@@ -31,7 +31,7 @@ All configurations and custom shortcuts are managed in [`ai-context.md`](ai-cont
 
 ```console
 ╭──────────────────────────────────────────────╮
-│  >_ Local-AI Agent            │
+│  >_ Local-AI Agent                           │
 │                                              │
 │  model:     local-model                      │
 │  directory: ...-ai/projects/session-test     │
