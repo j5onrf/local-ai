@@ -88,12 +88,12 @@ ai init ~/.config/local-ai/projects/session-test-2 --init ---> session test 2, p
 [TOOL] ~/.config/local-ai/tools/agentic/system/ai-status --s --leaf ---> ai status, aistat, status, aistatus 
 
 # --- Weather & Live Networking ---
-[TOOL] curl -s "wttr.in/?format=3" --s --cat ---> weather simple, wttr, weather, rain forecast simple
-[TOOL] curl -s wttr.in --s --cat ---> weather full, wttr, weather, rain forecast full
+[TOOL] curl -s "wttr.in/?format=3" --cat ---> weather simple, wttr, weather, rain forecast simple
+[TOOL] curl -s wttr.in --cat ---> weather full, wttr, weather, rain forecast full
 
 
 # --- System Time & Date (Real-time Clock Context) ---
-[TOOL] date --s ---> time, date, current time, what time is it
+[TOOL] date "+Current Time: %I:%M:%S %p %Z on %A, %B %d, %Y" --s ---> time, date, current time, what time is it
 ```
 
 ## 4. Static Aliases & Shell Shortcuts
