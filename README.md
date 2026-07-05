@@ -53,9 +53,6 @@ Agent: Workspace loaded. Awaiting instructions.
 </p>
 
 * **Origins**: Combines [Weaviate Engram](https://github.com/weaviate/engram-python-sdk)'s active reconciliation concepts with [Noema](https://github.com/Fail-Safe/Noema)'s local Markdown file system.
-* **Background Extraction**: Spawns a background thread on completion to extract facts without delay.
-* **Dynamic Sync**: Manual edits made to `.agent/tpm.md` are synced back into SQLite at bootup.
-* **Reconciliation**: SQL `INSERT OR REPLACE` overwrites old contradictory facts cleanly.
 
 ---
 
@@ -66,10 +63,6 @@ Agent: Workspace loaded. Awaiting instructions.
 </p>
 
 * **Origins**: Combines [Graphify](https://github.com/Graphify-Labs/graphify)'s codebase mapping with [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)'s relationship queries.
-* **Active Compiler**: Rebuilds the flat `.txt` map and `.db` graph on startup if either file is missing or outdated.
-* **SQLite Graph**: Stores files, classes, and functions as nodes, mapping their dependencies to call-chain edges.
-* **Multi-Language Support**: Statically parses Python AST alongside lightweight regex profiles for Go, Rust, Lua, and JS/TS.
-* **On-Demand Context**: Prompts for confirmation before injecting call trees and exact function snippets into active context.
 
 ---
 
