@@ -52,7 +52,7 @@ Agent: Workspace loaded. Awaiting instructions.
   <em>Evolving with your workspace, learning your habits, and standardizing your identity.</em>
 </p>
 
-* **Origins**: Combines Weaviate Engram's SQLite active reconciliation loop with Noema's hand-editable, local Markdown file system.
+* **Origins**: Combines [Weaviate Engram](https://github.com/weaviate/engram-python-sdk)'s active reconciliation concepts with [Noema](https://github.com/Fail-Safe/Noema)'s local Markdown file system.
 * **Background Extraction**: Spawns a background thread on completion to extract facts without delay.
 * **Dynamic Sync**: Manual edits made to `.agent/tpm.md` are synced back into SQLite at bootup.
 * **Reconciliation**: SQL `INSERT OR REPLACE` overwrites old contradictory facts cleanly.
