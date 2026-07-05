@@ -2,7 +2,7 @@
   <img alt="Local-AI Agent" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" width="800" />
 </p>
 
-<h1 align="center">Local-AI Agent <kbd>v0.8.9.18</kbd></h1>
+<h1 align="center">Local-AI Agent <kbd>v0.8.9.18 beta</kbd></h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
@@ -65,6 +65,7 @@ Agent: Workspace loaded. Awaiting instructions.
   <em>Building flat shorthand maps and queryable call graphs on-the-fly.</em>
 </p>
 
+* **Origins**: Combines [Graphify](https://github.com/Graphify-Labs/graphify)'s codebase mapping with [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)'s relationship queries using Python.
 * **Active Compiler**: Rebuilds the flat `.txt` map and `.db` graph on startup if either file is missing or outdated.
 * **SQLite Graph**: Stores files, classes, and functions as nodes, mapping their dependencies to call-chain edges.
 * **Multi-Language Support**: Statically parses Python AST alongside lightweight regex profiles for Go, Rust, Lua, and JS/TS.
