@@ -62,7 +62,7 @@ Agent: Workspace loaded. Awaiting instructions.
 <h2 align="center">Codebase Graph Mapper & Relational Index</h2>
 
 <p align="center">
-  <em>Building flat shorthand maps and queryable call graphs on-the-fly.</em>
+  <em>Building flat shorthand maps and queryable call graphs.</em>
 </p>
 
 * **Origins**: Combines [Graphify](https://github.com/Graphify-Labs/graphify)'s codebase mapping with [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)'s relationship queries.
