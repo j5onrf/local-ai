@@ -644,11 +644,11 @@ def run_indexing(target_dir, force=False):
         f"#   architecture overview       - Compiles complete codebase statistics and files\n"
         f"#\n"
         f"# DIRECT EXECUTABLE PATHS:\n"
-        f"#   ~/.config/local-ai/tools/map/index-map-memory trace <symbol>\n"
-        f"#   ~/.config/local-ai/tools/map/index-map-memory blast-radius <symbol>\n"
-        f"#   ~/.config/local-ai/tools/map/index-map-memory snippet <symbol>\n"
-        f"#   ~/.config/local-ai/tools/map/index-map-memory search <pattern>\n"
-        f"#   ~/.config/local-ai/tools/map/index-map-memory architecture\n"
+        f"#   ~/.config/local-ai/tools/map/index-map trace <symbol>\n"
+        f"#   ~/.config/local-ai/tools/map/index-map blast-radius <symbol>\n"
+        f"#   ~/.config/local-ai/tools/map/index-map snippet <symbol>\n"
+        f"#   ~/.config/local-ai/tools/map/index-map search <pattern>\n"
+        f"#   ~/.config/local-ai/tools/map/index-map architecture\n"
         f"# -----------------------------------------------------------------------------------------\n"
     )
     

@@ -92,4 +92,4 @@ Agent: Understood. I have noted your preferences:
 *   **Background Extraction**: Spawns a background thread on completion to extract facts without delay.
 *   **Dynamic Sync**: Manual edits made to `.agent/tpm.md` are synced back into SQLite at bootup.
 *   **Reconciliation**: SQL `INSERT OR REPLACE` overwrites old contradictory facts cleanly.
-```
+
