@@ -97,7 +97,6 @@ Agent: Workspace loaded. Awaiting instructions.
 <h2 align="center">Command Reference</h2>
 
 ### 1. Global Shell Commands
-*Executed directly from your terminal prompt.*
 
 | Command | Description |
 | :--- | :--- |
@@ -107,7 +106,6 @@ Agent: Workspace loaded. Awaiting instructions.
 | **`hs` / `hist`** | Interactively search or view active workspace `history.md`. |
 
 ### 2. Active Session Commands
-*Typed directly inside an active chat session.*
 
 | Command | Description |
 | :--- | :--- |
@@ -118,7 +116,6 @@ Agent: Workspace loaded. Awaiting instructions.
 | **`/f`** / **`/t`** / **`/b`** / **`/a`** | Trigger prompt-generating subroutines: Follow-up, Thinking, Brainstorm, or All. |
 
 ### 3. Modular Toggle & Diagnostic Switches
-*Typed inside an active chat session to adjust settings on-the-fly.*
 
 | Command | Description |
 | :--- | :--- |
