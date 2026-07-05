@@ -71,7 +71,6 @@ Agent: Workspace loaded. Awaiting instructions.
 | Core | Capability | Description |
 | :---: | :---: | :--- |
 | **Performance** | **Zero-Daemon** | 0% idle CPU/RAM. `Ultra-light` execution. |
-| **Memory** | **Temporal Personality** | Dynamic, contradiction-free local engram reconciliation (`TPM`). |
 | **Resiliency** | **Fallbacks** | Automatically cascades: `Gemini` → `OpenRouter` → `Local`. |
 | **Safety** | **Zero-Trust Guardrails** | Intercepts destructive commands before shell execution. |
 | **Integration** | **Dynamic Context** | On-demand compilation of system specs and file contents. |
