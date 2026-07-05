@@ -46,20 +46,6 @@ Agent: Workspace loaded. Awaiting instructions.
 
 ---
 
-<h2 align="center">Core Capabilities</h2>
-
-| Core | Capability | Description |
-| :---: | :---: | :--- |
-| **Performance** | **Zero-Daemon** | 0% idle CPU/RAM. `Ultra-light` execution. |
-| **Resiliency** | **Fallbacks** | Automatically cascades: `Gemini` → `OpenRouter` → `Local`. |
-| **Safety** | **Zero-Trust Guardrails** | Intercepts destructive commands before shell execution. |
-| **Integration** | **Dynamic Context** | On-demand compilation of system specs and file contents. |
-| **Optimization** | **Token-Slasher** | Custom [`tool`](https://github.com/j5onrf/local-ai/tree/main/tools) and [`skill`](https://github.com/j5onrf/local-ai/tree/main/skills) integration built for minimal token use. |
-| **Interface** | **Conversational TUI** | Rich, multi-turn chat sessions directly in the terminal. |
-| **Auditability** | **Zero-Dependency** | Under 350 lines of modular, standard-library Python. |
-
----
-
 <h2 align="center">Temporal Personality Memory (TPM)</h2>
 
 <p align="center">
@@ -77,6 +63,20 @@ Agent: Workspace loaded. Awaiting instructions.
 </p>
 
 * [Graphify](https://github.com/Graphify-Labs/graphify)'s codebase mapping with [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)'s relationship queries.
+
+---
+
+<h2 align="center">Core Capabilities</h2>
+
+| Core | Capability | Description |
+| :---: | :---: | :--- |
+| **Performance** | **Zero-Daemon** | 0% idle CPU/RAM. `Ultra-light` execution. |
+| **Resiliency** | **Fallbacks** | Automatically cascades: `Gemini` → `OpenRouter` → `Local`. |
+| **Safety** | **Zero-Trust Guardrails** | Intercepts destructive commands before shell execution. |
+| **Integration** | **Dynamic Context** | On-demand compilation of system specs and file contents. |
+| **Optimization** | **Token-Slasher** | Custom [`tool`](https://github.com/j5onrf/local-ai/tree/main/tools) and [`skill`](https://github.com/j5onrf/local-ai/tree/main/skills) integration built for minimal token use. |
+| **Interface** | **Conversational TUI** | Rich, multi-turn chat sessions directly in the terminal. |
+| **Auditability** | **Zero-Dependency** | Under 350 lines of modular, standard-library Python. |
 
 ---
 
