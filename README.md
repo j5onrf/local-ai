@@ -66,7 +66,7 @@ Agent: Workspace loaded. Awaiting instructions.
   <em>Evolving with your workspace, learning your habits, and standardizing your identity.</em>
 </p>
 
-* **Origins**: Combines [Weaviate Engram](https://github.com/weaviate/engram-python-sdk)'s active reconciliation concepts with [Noema](https://github.com/Fail-Safe/Noema)'s local Markdown file system.
+* Combines [Weaviate Engram](https://github.com/weaviate/engram-python-sdk)'s active reconciliation concepts with [Noema](https://github.com/Fail-Safe/Noema)'s local Markdown file system.
 
 ---
 
@@ -76,7 +76,7 @@ Agent: Workspace loaded. Awaiting instructions.
   <em>Building flat shorthand maps and queryable call graphs.</em>
 </p>
 
-* **Origins**: Combines [Graphify](https://github.com/Graphify-Labs/graphify)'s codebase mapping with [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)'s relationship queries.
+* Combines [Graphify](https://github.com/Graphify-Labs/graphify)'s codebase mapping with [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)'s relationship queries.
 
 ---
 
@@ -97,7 +97,6 @@ Agent: Workspace loaded. Awaiting instructions.
 <h2 align="center">Command Reference</h2>
 
 ### 1. Global Shell Commands
-*Executed directly from your terminal prompt.*
 
 | Command | Description |
 | :--- | :--- |
@@ -107,7 +106,6 @@ Agent: Workspace loaded. Awaiting instructions.
 | **`hs` / `hist`** | Interactively search or view active workspace `history.md`. |
 
 ### 2. Active Session Commands
-*Typed directly inside an active chat session.*
 
 | Command | Description |
 | :--- | :--- |
@@ -118,7 +116,6 @@ Agent: Workspace loaded. Awaiting instructions.
 | **`/f`** / **`/t`** / **`/b`** / **`/a`** | Trigger prompt-generating subroutines: Follow-up, Thinking, Brainstorm, or All. |
 
 ### 3. Modular Toggle & Diagnostic Switches
-*Typed inside an active chat session to adjust settings on-the-fly.*
 
 | Command | Description |
 | :--- | :--- |
