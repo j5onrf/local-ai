@@ -80,7 +80,7 @@ Agent: Understood. I have noted your preferences:
     *   *SQLite-Backed Graph Model*: Generates a local `index-map-memory-<project>.db` database containing files, classes, and function scopes (`nodes`) and call-chain/inheritance connections (`edges`).
     *   *Multi-Language AST & Regex Parsing*: Parses code targets using standard Python AST visitors and high-speed structural regex profiles for compiled or scripting languages (Rust, Go, JS/TS, C/C++, Lua).
     *   *LSP-Lite Reference Resolver*: Resolves dependency calls heuristically by checking local file bounds, module import statements, and globally unique workspace symbols.
-    *   *Silent Context Injection (`--cat --s`)*: Maps the executable command path to natural-language intent triggers, bypassing manual confirmation gates for background RAG operations.
+    *   *Human-in-the-Loop RAG*: Maps intent triggers to graph queries, prompting for authorization before injecting call trees and function snippets into the context.
     *   *Images & Binaries*: Decodes sizes and dimensions of image assets (PNG/JPG/GIF/SVG) directly from binary headers in microseconds.
 
 ## 7. Context Limits
