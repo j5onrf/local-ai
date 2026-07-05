@@ -111,8 +111,7 @@ Agent: Workspace loaded. Awaiting instructions.
 | :--- | :--- |
 | **`/skill <query>`** *(or `/s`)* | Search and load dynamic specialist skills on-the-fly. |
 | **`view file <path>`** *(or `read`)* | Dynamically read local files directly into your model context. |
-| **`-save <tag>`** | Snapshot the current conversation state to your local SQLite database. |
-| **`-load`** *(or `-timeline`)* | Rollback active history to a past SQLite checkpoint (with Global Handoff cloning). |
+| **`-save <tag>` / `-load`** | Save active states or rollback/clone snapshots (with Global Handoff). |
 | **`/f`** / **`/t`** / **`/b`** / **`/a`** | Trigger prompt-generating subroutines: Follow-up, Thinking, Brainstorm, or All. |
 
 ### 3. Modular Toggle & Diagnostic Switches
@@ -122,8 +121,7 @@ Agent: Workspace loaded. Awaiting instructions.
 | **`/clear`** / **`/reset`** | **Reset** Google session context, local chat history, and the SQLite TPM table. |
 | **`/d`** / **`/e`** | **Disable** / **Enable** the context-aware grammar & spellchecker. |
 | **`/m`** | **Toggle** long-term memory and TPM reconciliation ON/OFF. |
-| **`/stats`** | **Toggle** real-time generation speed metrics. |
-| **`/tok`** | **View** your live token usage capacity and visual progress bar. |
+| **`/stats` / `/tok`** | **Diagnostics**: Toggle real-time speed metrics or view live token usage. |
 
 ---
 
