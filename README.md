@@ -66,6 +66,16 @@ Agent: Workspace loaded. Awaiting instructions.
 
 ---
 
+<h2 align="center">System Administration & Diagnostics</h2>
+
+<p align="center">
+  <em>Inspecting package updates, monitoring system health, and optimizing performance...</em>
+</p>
+
+* [log-checker](../tools/agentic/system/log-checker) and [system-health](../tools/agentic/system/system-health) live diagnostics with [aur-audit](../tools/agentic/system/aur-audit), [security-audit](../tools/agentic/system/security-audit), [update-inspector](../tools/agentic/system/update-inspector) zero-trust auditing, [system-optimizer](../tools/agentic/system/system-optimizer) resource adjustments, [ai-status](../tools/agentic/system/ai-status) routing, and [ai-commit](../tools/agentic/system/ai-commit) hooks.
+
+---
+
 <h2 align="center">Core Capabilities</h2>
 
 | Core | Capability | Description |
