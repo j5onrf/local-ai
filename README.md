@@ -81,6 +81,7 @@ Agent: Workspace loaded. Awaiting instructions.
 | Core | Capability | Description |
 | :---: | :---: | :--- |
 | **Performance** | **Zero-Daemon** | 0% idle CPU/RAM. `Ultra-light` execution. |
+| **Intelligence** | **Scalability** | Optimized from `Qwen3.5 2B` up to frontier models. |
 | **Resiliency** | **Fallbacks** | Automatically cascades: `Gemini` → `OpenRouter` → `Local`. |
 | **Safety** | **Zero-Trust Guardrails** | Intercepts destructive commands before shell execution. |
 | **Integration** | **Dynamic Context** | On-demand compilation of system specs and file contents. |
