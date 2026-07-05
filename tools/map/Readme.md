@@ -1,15 +1,13 @@
-# Codebase Mapping: `index-map` & `index-map-ai`
-
-<div align="center">
-<img width="800" alt="l3od02l3od02l3od" src="https://github.com/user-attachments/assets/db68048f-350a-4a93-afde-70bb8befae68" />
-</div>
+# Codebase Mapping & Relational Knowledge Graph: `index-map`
 
 ---
 
-This subsystem maps your project's directory structure into a lightweight, high-density shorthand index, saving **95% to 99% in token overhead** compared to raw codebase ingestion.
+This subsystem maps your project's directory structure into a lightweight, high-density shorthand index and parallel relational SQLite graph database, saving **95% to 99% in token overhead** compared to raw codebase ingestion.
 
-*   **`index-map` (Recommended Standard):** Parses code files via AST to extract **complete function signatures along with their parameters/arguments**. It then flattens the hierarchy into a custom, high-density flat shorthand that strips all JSON formatting overhead (braces, quotes, indentations). For markdown files, it extracts the top title lines or headers locally, making the tool 100% offline and cost-free (**0 tokens**). Outputs to `index-map-{proj_name}.txt`.
-*   **`index-map-ai` (Optional/Manual):** Identical directory and AST-based mapping as the standard tool, but routes markdown files in small batches of 5 to an LLM (Gemini 3.1 Flash Lite, falling back to OpenRouter or localhost) to write deep, 1-sentence architectural summaries. It uses more tokens but offers enhanced semantic details for documentation.
+*   **`index-map`** Dual-pass workspace analyzer. 
+    *   **Pass 1**: Parses Python source code via AST (and other languages via high-performance structural regex profiles) to extract files, classes, function signatures with arguments, and line-offset boundaries. 
+    *   **Pass 2**: Resolves dependencies and imports to build a relational database (`index-map-memory-{proj_name}.db`) mapping containment (`contains`) and call-chains (`calls`).
+    *   **Output**: Compiles a flat tag-based shorthand (`index-map-{proj_name}.txt`) for immediate prompt context and a relational knowledge database [2]. Runs 100% offline with zero dependencies and **0 token cost**.
 
 ---
 
@@ -21,12 +19,12 @@ This subsystem maps your project's directory structure into a lightweight, high-
 :: ↵ run  Esc: 
 ```
 
-#### SmartCrusher AST Scan (Standard)
+#### Relational Graph & Shorthand AST Scan (Standard)
 ```text
-[sys] Compile index map for session-test? [↵ run  Esc]: 
-Scan target [Default: /home/user/projects/session-test]: 
-ℹ Compiling index map...
-✔ Compressed index-map compiled successfully at: /home/user/projects/session-test/index-map-session-test.txt
+[sys] Compile index map memory for session-test? [↵ run  Esc]: 
+ℹ Compiling relational index graph...
+✔ Compiled index-map: ~/projects/session-test/index-map-session-test.txt
+✔ Created graph database: ~/projects/session-test/index-map-memory-session-test.db
 ```
 
 *Pressing **Enter** at the target prompt defaults to scanning your current active working directory.*
@@ -36,17 +34,29 @@ Scan target [Default: /home/user/projects/session-test]:
 
 ### 🛡️ Dual-Guardrail Safety Gates
 
-To protect your system performance and free-tier API request budgets from accidental runaway folder crawls:
+To protect your system performance and API request budgets from accidental runaway folder crawls:
 
 *   **Pre-Scan Path Disclosure:** The prompt explicitly displays your active working directory path before walking a folder, preventing blind executions.
 *   **Home-Dir Warning Gate:** The filesystem crawler immediately halts and requires explicit, manual keyboard confirmation (`y/N`) if you attempt to scan your entire home directory (`~` or `/home/user`).
-*   **100-Markdown Limit (`index-map-ai` only):** If the directory contains more than 100 markdown files, the AI-integrated scanner automatically aborts the compilation, flashes a warning, and exits safely to protect your token usage.
+
+---
+
+### ⚙️ Human-in-the-Loop Silent Graph Queries
+
+The system integrates directly with your active agent's prompt context [2]. When you or your AI agent need to inspect workspace details, the agent suggests the correct trigger phrase to execute in the CLI [2]:
+
+*   `trace symbol <symbol>`: Resolves and traces the incoming callers and outgoing callees of a function or class [2].
+*   `blast radius <symbol>`: Runs a recursive upstream BFS traversal to find all breaking risks if the symbol is modified [2].
+*   `read function <symbol>`: Uses database line offsets to dynamically print the exact source code block of the target symbol [2].
+*   `find symbol <pattern>`: Performs a rapid, low-level SQL lookup on the codebase index nodes [2].
+*   `architecture overview`: Shows aggregate statistics of files, classes, functions, and relational edges in the workspace.
 
 ---
 
 ### Token Savings Math
 
-*   **JSON Map vs. Flat AST Map (~65% Saved):** Compiling your codebase metadata into the flat, tag-based SmartCrusher shorthand (`index-map-{proj_name}.txt`) completely removes JSON structural syntax overhead (braces, quotes, nested indentations). A codebase with over 100 files is crushed from a bulky 4,000-token JSON down to a tiny, high-density **1,500-token** flat-shorthand map with no loss in semantic fidelity.
-*   **Code Signatures with Arguments:** In the flat AST map, Python functions include their full parameter signatures (e.g., `prune_history(history,max_tokens)`) instead of just flat names. This gives the model maximum API fidelity, allowing it to write correct calls on its first turn without reading the raw files.
+*   **Targeted Snippets vs. Full File Ingestion (~95%+ Saved):** Reading a 10-line function inside an 11KB source file used to consume 2,750 tokens of file read context. Your agent can now run `read function`, fetching *only* the specific code block (roughly 120 tokens) and leaving your context window clean [2].
+*   **JSON Map vs. Flat AST Map (~65% Saved):** Compiling codebase metadata into the flat, tag-based SmartCrusher shorthand completely removes JSON structural syntax overhead (braces, quotes, nested indentations). A codebase with over 100 files is crushed from a bulky 4,000-token JSON down to a tiny, high-density **1,500-token** flat-shorthand map with no loss in semantic fidelity.
+*   **Call-Graph Tracing vs. Broad Greps (~90%+ Saved):** Tracing a call chain previously required reading several source files back-to-back. Relational tracing delivers a precise 5-line structural tree directly to the context, pinpointing targets instantly.
 *   **Images & Binaries (~100% Saved):** Massive assets (like `.png` or `.pdf` files) are cataloged into a ~5-token reference without corrupting terminal output or wasting context window.
-
+```

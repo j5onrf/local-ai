@@ -35,7 +35,7 @@ command_not_found_handler() { command_not_found_handle "$@"; }
 
 ai() {
     if [[ "$1" == "init" ]]; then
-        local path=$(pwd) skills=() name map
+        local path=$(pwd) skills=() name map db
         
         # If the second argument is not empty and does not start with "-", treat it as a path
         if [[ -n "${2:-}" && "${2:-}" != -* ]]; then
@@ -54,9 +54,10 @@ ai() {
         echo "$path" > "$_AI_DIR/.active_cd.$$"
         name=$(basename "$path")
         map="$path/index-map-$name.txt"
+        db="$path/index-map-memory-$name.db"
         
-        # Fast newer-file/directory check
-        [[ ! -f "$map" ]] || [[ -n "$(find "$path" ! -path "$path" -not -path '*/.git/*' -not -path '*/.agent/*' -not -name 'history.md' ! -name "$(basename "$map")" -newer "$map" -print -quit 2>/dev/null)" ]] && {
+        # Fast newer-file/directory or missing database check
+        [[ ! -f "$map" ]] || [[ ! -f "$db" ]] || [[ -n "$(find "$path" ! -path "$path" -not -path '*/.git/*' -not -path '*/.agent/*' -not -name 'history.md' ! -name "$(basename "$map")" -newer "$map" -print -quit 2>/dev/null)" ]] && {
             "$_AI_PYTHON_BIN" "$_AI_DIR/tools/map/index-map" "$path" || return 1
         }
         

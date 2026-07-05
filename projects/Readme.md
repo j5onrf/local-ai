@@ -5,8 +5,9 @@ Local agent workspaces, dynamic memories, save checkpoints, and codebase mapping
 ~ ❯ session
 [02/02] ❯ [session test 2] ai init ~/session-test-2 --init
 :: ↵ run  Esc: 
-ℹ Compiling index map...
-✔ Compressed index-map: ~/session-test-2/index-map-session-test-2.txt
+ℹ Compiling relational index graph...
+✔ Compiled index-map: ~/session-test-2/index-map-session-test-2.txt
+✔ Created graph database: ~/session-test-2/index-map-memory-session-test-2.db
 ╭──────────────────────────────────────────────╮
 │  >_ Local-AI Agent                           │
 │                                              │
@@ -49,6 +50,7 @@ Agent: Understood. I have noted your preferences:
 *   `~/<workspace>/.agent/session.json`: Secure server-side tracking key for cloud APIs.
 *   `~/<workspace>/.agent/tpm.md`: Human-readable personal facts, editable by hand.
 *   `~/<workspace>/index-map-<project>.txt`: Codebase structural blueprint compiled on-the-fly.
+*   `~/<workspace>/index-map-memory-<project>.db`: Active SQLite-backed relational knowledge graph [2].
 *   `~/<workspace>/history.md`: Chronological Markdown conversation ledger.
 
 ## 2. In-Session Commands
@@ -65,29 +67,29 @@ Agent: Understood. I have noted your preferences:
 *   **Global Handoff**: If a checkpoint is not found locally, `/load` scans all other databases to clone it. Allows risk-free sandboxing in fresh folders.
 
 ## 4. On-Demand File Context (Local RAG)
-*   **Command:** `❯ view file <filename>` (or `read`/`show`).
-*   **Execution:** Runs a local `cat` behind the scenes and injects raw file contents into context.
+*   **Whole-File Context**: `❯ view file <filename>` (or `read`/`show`). Runs a local `cat` behind the scenes to append file contents into the context.
+*   **Snippet-Specific Context**: `❯ read function <symbol>`. Queries the relational index database and extracts *only* the specific function or class code block based on line offsets, saving up to 95% in token overhead [2].
 
 ## 5. Security Isolation
 *   **Docker**: Run the agent inside a Docker container to isolate the execution context entirely from your host.
 *   **Vetting**: Scan all custom skills with [NVIDIA SkillSpector](https://github.com/NVIDIA/SkillSpector) before importing.
 
-## 6. Codebase Graph Mapper (v1.5.0)
-*   **Command:** `index-map <dir>` (or automatic on startup).
-*   **Features:**
-    *   *Auto-Create*: Automatically runs `mkdir -p` if the directory does not exist.
-    *   *Top-Level AST*: Parses only top-level nodes for Python/Rust/Go. 100x faster than full walking.
-    *   *Shorthand*: Strips imports and trims function arguments to save 50% in token context.
-    *   *Graphing*: Compiles Obsidian-style `[[wiki-links]]` into a relational link graph.
-    *   *Images*: Byte-level header parsing for PNG/JPG/GIF/SVG dimensions and sizes in microseconds.
+## 6. Codebase Graph Mapper & Relational Index
+*   **Command:** `index-map <dir>` (or automatically executed on startup if the flat map `.txt` or relational `.db` is missing/outdated) [2].
+*   **Core Capabilities:**
+    *   *SQLite-Backed Graph Model*: Generates a local `index-map-memory-<project>.db` database containing files, classes, and function scopes (`nodes`) and call-chain/inheritance connections (`edges`) [2].
+    *   *Multi-Language AST & Regex Parsing*: Parses code targets using standard Python AST visitors and high-speed structural regex profiles for compiled or scripting languages (Rust, Go, JS/TS, C/C++, Lua) [2].
+    *   *LSP-Lite Reference Resolver*: Resolves dependency calls heuristically by checking local file bounds, module import statements, and globally unique workspace symbols [2].
+    *   *Silent Context Injection (`--cat --s`)*: Maps the executable command path to natural-language intent triggers, bypassing manual confirmation gates for background RAG operations [2].
+    *   *Images & Binaries*: Decodes sizes and dimensions of image assets (PNG/JPG/GIF/SVG) directly from binary headers in microseconds.
 
 ## 7. Context Limits
 *   **Inline Override:** `AI_MAX_TOKENS=16000 session-test`
-*   **Global Override:** `export AI_MAX_TOKENS=16000`
+*   **Global Override:** `AI_MAX_TOKENS=16000`
 
 ## 8. Temporal Personality Memory (TPM)
-* **Origins**: Combines Weaviate Engram's SQLite active reconciliation loop with Noema's hand-editable, local Markdown file system.
+*   **Origins**: Combines Weaviate Engram's SQLite active reconciliation loop with Noema's hand-editable, local Markdown file system.
 *   **Background Extraction**: Spawns a background thread on completion to extract facts without delay.
 *   **Dynamic Sync**: Manual edits made to `.agent/tpm.md` are synced back into SQLite at bootup.
 *   **Reconciliation**: SQL `INSERT OR REPLACE` overwrites old contradictory facts cleanly.
-
+```

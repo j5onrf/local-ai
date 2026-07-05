@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.8.9.17]
+# Local-Ai Agent [j5onrf] [v0.8.9.18]
 
 import os
 import sys
@@ -383,6 +383,16 @@ def run_interactive_chat(args: list):
                 chat_history.append({"role": "assistant", "content": ans})
                 if is_agent:
                     subprocess.run([sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "log-turn", safe_name, query, ans])
+                    # Match clean, executable intents in the assistant's response
+                    match = re.search(r'Run:\s*((?:trace symbol|blast radius|read function|find symbol)\s+\S+|architecture overview)', ans)
+                    if match:
+                        suggested_intent = match.group(1).strip()
+                        try:
+                            import readline
+                            readline.set_startup_hook(lambda: readline.insert_text(suggested_intent))
+                        except Exception:
+                            pass
+                    # ----------------------------------------
                     
                     # --- SPIN BACKGROUND RECONCILIATION THREAD ---
                     # Asynchronously updates your local Temporal Personality Memory (TPM)

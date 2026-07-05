@@ -1,21 +1,34 @@
-# CODEBASE INDEX MAP (UNIVERSAL ARCHITECTURE REFERENCE)
-# Generated on      : 2026-07-04 15:43
+# CODEBASE INDEX MAP & STRUCTURAL KNOWLEDGE GRAPH
+# Generated on      : 2026-07-05 01:39
 # Project Workspace : session-test
 # Target Directory  : ~/.config/local-ai/projects/session-test
 # -----------------------------------------------------------------------------------------
-# INSTRUCTIONS:
-# This flat-map represents the structural outline of the codebase. It lists file paths, 
-# imports (imp:), classes (cls:), and functions (fn:) extracted via static AST/regex parsers.
-# Use this map as a lightweight reference to understand architecture, namespaces, and dependencies.
-# Use this map to identify and request ONLY the specific file(s) you need to analyze.
+# AI AGENT STRUCTURAL EXPLORATION INSTRUCTIONS:
+# This directory contains an active SQLite-backed semantic relationship map.
+# If you need to trace dependencies or read code blocks, instruct the user to execute
+# the following intent phrases or command paths. This saves up to 99% in token context.
+#
+# ACTIVE INTENT TRIGGERS (MAPPED VIA AI-CONTEXT.MD):
+#   trace symbol <symbol>       - Traces callers and callees of a function/class
+#   blast radius <symbol>       - Recursively maps upstream breaking risks of a symbol
+#   read function <symbol>      - Extracts the exact code snippet of a target symbol
+#   find symbol <pattern>       - Searches the workspace codebase for matching symbols
+#   architecture overview       - Compiles complete codebase statistics and files
+#
+# DIRECT EXECUTABLE PATHS:
+#   ~/.config/local-ai/tools/map/index-map-memory trace <symbol>
+#   ~/.config/local-ai/tools/map/index-map-memory blast-radius <symbol>
+#   ~/.config/local-ai/tools/map/index-map-memory snippet <symbol>
+#   ~/.config/local-ai/tools/map/index-map-memory search <pattern>
+#   ~/.config/local-ai/tools/map/index-map-memory architecture
 # -----------------------------------------------------------------------------------------
 # Codebase Modules & Active Architecture:
 #   ├── Test Script.sh           - Define the input array of numbers
-#   ├── history.md               - Workspace History: session-test
-#   ├── index-map-session-test.txt
-#   └── physics.py
+#   ├── index-map-memory-session-test.db
+#   ├── physics.py
+#   └── simulation.py            - Description: Runner file for testing velocity metrics
 # -----------------------------------------------------------------------------------------
 [shell:Test Script.sh] sum:Define the input array of numbers
-[md:history.md] title:Workspace History: session-test
-[txt:index-map-session-test.txt] sum:[json:.agent/session.json] keys:last_interaction_id
+[binary/db:index-map-memory-session-test.db]
 [py:physics.py] fn:calculate_velocity
+[py:simulation.py] imp:physics | fn:run_test

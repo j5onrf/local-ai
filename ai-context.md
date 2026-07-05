@@ -13,7 +13,7 @@
 
 ---
 
-## Active Workspace Projects & History Viewer
+## Active Workspace Projects
 
 ```properties
 # --- Session-Test - This is a Project Workspace (Skill-Primed) --
@@ -26,6 +26,13 @@ ai init ~/.config/local-ai/projects/session-test-2 --init ---> session test 2, p
 [TOOL] mdcat history.md | less -R ---> show history, hist, history
 # --- Active Workspace History Searcher ---
 [TOOL] read -p "Search Page: " query && mdcat history.md | grep --color=always -A 15 -B 2 -i "$query" ---> search page, hs
+
+# --- Codebase Structural Tracing & Snippet Retrieval ---
+[TOOL] ~/.config/local-ai/tools/map/index-map trace $1 --cat ---> trace symbol
+[TOOL] ~/.config/local-ai/tools/map/index-map blast-radius $1 --cat ---> blast radius
+[TOOL] ~/.config/local-ai/tools/map/index-map snippet $1 --cat ---> read function
+[TOOL] ~/.config/local-ai/tools/map/index-map search $1 --cat ---> find symbol
+[TOOL] ~/.config/local-ai/tools/map/index-map architecture --cat ---> architecture overview
 ```
 
 ## 1. Workspace Initializers & Bridges
@@ -35,10 +42,10 @@ ai init ~/.config/local-ai/projects/session-test-2 --init ---> session test 2, p
 ~/.config/local-ai/tools/subsec/opencode-bridge/opencode-bridge ---> opencode bridge, bridge, ocb
 
 # --- Odysseus Direct Terminal Launcher ---
-~/.config/local-ai/tools/subsec/odysseus-bridge/odysseus-bridge ---> odysseus bridge, bridge, ody, odb
+# ~/.config/local-ai/tools/subsec/odysseus-bridge/odysseus-bridge ---> odysseus bridge, bridge, ody, odb
 
 # --- Hermes Direct Browser Workspace Launcher ---
-~/.config/local-ai/tools/subsec/hermes-bridge/hermes-bridge ---> hermes bridge, bridge, hmb, herm
+# ~/.config/local-ai/tools/subsec/hermes-bridge/hermes-bridge ---> hermes bridge, bridge, hmb, herm
 ```
 
 ## 2. On-Demand System Prompts & Role Injections (Skills)
@@ -75,7 +82,7 @@ ai init ~/.config/local-ai/projects/session-test-2 --init ---> session test 2, p
 [TOOL] ~/.config/local-ai/tools/agentic/system/update-inspector --leaf ---> update inspector, inspector, ui
 
 # --- Disk Usage ---
-[TOOL] df -h / ---> disk usage, drive usage
+# [TOOL] df -h / ---> disk usage, drive usage
 
 # --- AI Status & Provider Diagnostics ---
 [TOOL] ~/.config/local-ai/tools/agentic/system/ai-status --s --leaf ---> ai status, aistat, status, aistatus 
@@ -98,11 +105,11 @@ ai init ~/.config/local-ai/projects/session-test-2 --init ---> session test 2, p
 # --- AI-Generated Git Commits ---
 ~/.config/local-ai/tools/agentic/system/ai-commit ---> ai-commit, gc, git commit
 
-# --- Index-Map (Structural Repo Profile Compiler) ---
+# --- Index-Map (Graph-Enabled Code Intelligence Engine) ---
 [TOOL] ~/.config/local-ai/tools/map/index-map --cat ---> index map, im
 
 # --- Server Lifecycle Management ---
-~/.config/local-ai/tools/tools/subsec/server/kill-ai-servers ---> killserver, ks
+# ~/.config/local-ai/tools/tools/subsec/server/kill-ai-servers ---> killserver, ks
 ```
 
 ## 5. TUI (Terminal User Interface) Programs
@@ -114,9 +121,9 @@ ai init ~/.config/local-ai/projects/session-test-2 --init ---> session test 2, p
 # [TOOL] ~/.config/local-ai/tools/subsec/prompt/ai-prompt-writer --cat ---> prompt writer, prompt
 
 # --- Fusion-Research Engine (Compound MoA / Self-Fusion) ---
-~/.config/local-ai/tools/agentic/fusion/f_research -r ---> fusion research, fusion, fr, deep research
+# ~/.config/local-ai/tools/agentic/fusion/f_research -r ---> fusion research, fusion, fr, deep research
 # --- AI Deep Research TUI ---
-~/.config/local-ai/tools/subsec/research-tui/deep-research ---> deep research, research, dr
+# ~/.config/local-ai/tools/subsec/research-tui/deep-research ---> deep research, research, dr
 
 # --- Custom TUI Applications ---
 ~/.config/local-ai/tools/subsec/basepage-tui/basepage.py ---> basepage, base, basepage tui, rss
@@ -129,7 +136,7 @@ ai init ~/.config/local-ai/projects/session-test-2 --init ---> session test 2, p
 ~/.config/local-ai/tools/subsec/ai-summary/llmsum.py ---> llmsum, ytsum, summary, sum
 
 # --- Local-Ai Tablet Voice Bridge ---
-~/.config/local-ai/tools/subsec/voice/voice-query ---> voice, voice query, voice bridge
+# ~/.config/local-ai/tools/subsec/voice/voice-query ---> voice, voice query, voice bridge
 ```
 
 ## 6. Graphical Applications & Webapps
@@ -167,9 +174,5 @@ nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-sp
 
 # --- Coding-Triangle-Loop - Interactive TUI Console (((wip))) ---
 [TOOL] ~/.config/local-ai/tools/agentic/coding/coding-triangle-loop --cat ---> coding loop, coding, triangle, loop
-
-# --- Learned System Shortcuts (((wip))) ---
-# ss -tuln ---> how do i view active network ports, active ports, network ports
-# hostnamectl ---> how do i see my system information, system info, hostname
 ```
 
