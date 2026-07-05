@@ -23,7 +23,7 @@ All configurations and custom shortcuts are managed in [`ai-context.md`](ai-cont
 *   **Direct (No Session)**: Sub-millisecond Jaccard matching (`jaccard_search`) instantly routes custom keywords to your local terminal.
 *   **Single-Turn Agent (`ai <query>`):** Returns a single response directly to your shell prompt without loading an active conversation.
 *   **Multi-Turn Chat (`ai` alone):** Starts a persistent terminal session with multi-turn context tracking.
-*   **Workspace Agents (`ai init <path>`):** Indexes your directory into a lightweight codebase graph on-the-fly and boots up a codebase-aware chat.
+*   **Workspace Agents (`ai init <path>`):** Indexes your directory into a lightweight codebase graph and boots up a codebase-aware chat.
 
 ---
 
@@ -128,7 +128,7 @@ Agent: Workspace loaded. Awaiting instructions.
 
 | Command | Description |
 | :--- | :--- |
-| **`/clear`** / **`/reset`** | **Reset** Google session context, local chat history, and the SQLite TPM table. |
+| **`/clear`** / **`/reset`** | **Reset** Session context, local chat history, and the SQLite TPM table. |
 | **`/d`** / **`/e`** | **Disable** / **Enable** the context-aware grammar & spellchecker. |
 | **`/m`** | **Toggle** long-term memory and TPM reconciliation ON/OFF. |
 | **`/stats` / `/tok`** | **Diagnostics**: Toggle real-time speed metrics or view live token usage. |
