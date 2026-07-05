@@ -65,7 +65,7 @@ Agent: Workspace loaded. Awaiting instructions.
   <em>Building flat shorthand maps and queryable call graphs on-the-fly.</em>
 </p>
 
-* **Origins**: Combines [Graphify](https://github.com/Graphify-Labs/graphify)'s codebase mapping with [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)'s relationship queries using Python.
+* **Origins**: Combines [Graphify](https://github.com/Graphify-Labs/graphify)'s codebase mapping with [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)'s relationship queries.
 * **Active Compiler**: Rebuilds the flat `.txt` map and `.db` graph on startup if either file is missing or outdated.
 * **SQLite Graph**: Stores files, classes, and functions as nodes, mapping their dependencies to call-chain edges.
 * **Multi-Language Support**: Statically parses Python AST alongside lightweight regex profiles for Go, Rust, Lua, and JS/TS.
