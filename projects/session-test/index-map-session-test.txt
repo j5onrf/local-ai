@@ -1,5 +1,5 @@
 # CODEBASE INDEX MAP & STRUCTURAL KNOWLEDGE GRAPH
-# Generated on      : 2026-07-05 01:39
+# Generated on      : 2026-07-05 02:52
 # Project Workspace : session-test
 # Target Directory  : ~/.config/local-ai/projects/session-test
 # -----------------------------------------------------------------------------------------
@@ -16,19 +16,21 @@
 #   architecture overview       - Compiles complete codebase statistics and files
 #
 # DIRECT EXECUTABLE PATHS:
-#   ~/.config/local-ai/tools/map/index-map-memory trace <symbol>
-#   ~/.config/local-ai/tools/map/index-map-memory blast-radius <symbol>
-#   ~/.config/local-ai/tools/map/index-map-memory snippet <symbol>
-#   ~/.config/local-ai/tools/map/index-map-memory search <pattern>
-#   ~/.config/local-ai/tools/map/index-map-memory architecture
+#   ~/.config/local-ai/tools/map/index-map trace <symbol>
+#   ~/.config/local-ai/tools/map/index-map blast-radius <symbol>
+#   ~/.config/local-ai/tools/map/index-map snippet <symbol>
+#   ~/.config/local-ai/tools/map/index-map search <pattern>
+#   ~/.config/local-ai/tools/map/index-map architecture
 # -----------------------------------------------------------------------------------------
 # Codebase Modules & Active Architecture:
 #   ├── Test Script.sh           - Define the input array of numbers
+#   ├── history.md               - Workspace History: projects
 #   ├── index-map-memory-session-test.db
 #   ├── physics.py
 #   └── simulation.py            - Description: Runner file for testing velocity metrics
 # -----------------------------------------------------------------------------------------
 [shell:Test Script.sh] sum:Define the input array of numbers
+[md:history.md] title:Workspace History: projects
 [binary/db:index-map-memory-session-test.db]
 [py:physics.py] fn:calculate_velocity
 [py:simulation.py] imp:physics | fn:run_test
