@@ -47,10 +47,48 @@ def load_skill_content(skills_str: str, skills_dir: str, cfg_dir: str) -> str:
 def run_local_tool(cmd: str) -> str:
     try:
         sanitized = re.sub(r'\|\s*(leaf|mdcat|cat|glow)\b.*$', '', cmd.strip()).strip()
-        out = subprocess.check_output(sanitized, shell=True, text=True, timeout=15, env={**os.environ, "AI_CONTEXT_RUN": "1"}).strip()
+        # Dynamic working directory synchronization (forces all tools to run inside your active project)
+        workspace_path = os.environ.get("AI_WORKSPACE_PATH") or os.getcwd()
+        out = subprocess.check_output(
+            sanitized, 
+            shell=True, 
+            text=True, 
+            timeout=15, 
+            cwd=workspace_path, 
+            env={**os.environ, "AI_CONTEXT_RUN": "1"}
+        ).strip()
         return f"{out}\n" if out else "Action executed successfully.\n"
+    except subprocess.CalledProcessError:
+        # Gracefully handle tool execution failures or user cancellations (Ctrl+C)
+        sys.stderr.write(f"\033[1;31m[sys] Tool execution failed or was cancelled.\033[0m\n")
+        sys.stderr.flush()
+        return "__ABORT_TURN__"
     except Exception as e:
-        return f"[SYSTEM ERROR] Failed to run local tool: {e}\n"
+        sys.stderr.write(f"\033[1;31m[sys] Error running tool: {e}\033[0m\n")
+        sys.stderr.flush()
+        return "__ABORT_TURN__"
+
+def run_interactive_tool(cmd: str) -> str:
+    """Runs an interactive terminal tool directly in the user's active foreground shell.
+    
+    By connecting stdout/stdin directly to the terminal, interactive prompts (like read -p)
+    and pagers function natively. Aborts the turn cleanly upon exit.
+    """
+    try:
+        sanitized = re.sub(r'\|\s*(leaf|mdcat|cat|glow)\b.*$', '', cmd.strip()).strip()
+        workspace_path = os.environ.get("AI_WORKSPACE_PATH") or os.getcwd()
+        # Executes with standard streams connected directly to your active terminal window
+        subprocess.run(
+            sanitized, 
+            shell=True, 
+            cwd=workspace_path, 
+            env={**os.environ, "AI_CONTEXT_RUN": "1"}
+        )
+        return "__ABORT_TURN__"
+    except Exception as e:
+        sys.stderr.write(f"\033[1;31m[sys] Error running interactive tool: {e}\033[0m\n")
+        sys.stderr.flush()
+        return "__ABORT_TURN__"
 
 def get_system_context(query: str, context_file: str, stop_words: set, skills_dir: str, cfg_dir: str) -> str:
     q_tokens = context.tokenize(query, stop_words)
@@ -62,9 +100,16 @@ def get_system_context(query: str, context_file: str, stop_words: set, skills_di
             tool = entry.get("cmd", "")
             if tool.startswith("[TOOL]"):
                 tool = tool.replace("[TOOL]", "").strip()
+                
+                # --- DYNAMIC FOREGROUND EXECUTION HOOK ---
+                # If the tool requires interactive input (read -p) or a pager (less, fzf),
+                # we run it natively in the foreground and abort the turn cleanly upon exit.
+                if "read -p" in tool or "less" in tool or "fzf" in tool:
+                    return run_interactive_tool(tool)
+                
                 if " --s" not in tool:
                     if not ui.confirm_tool(tool):
-                        return ""
+                        return "__ABORT_TURN__"
                 if "system" in tool.lower():
                     ensure_mysys_exists(skills_dir, cfg_dir)
                 tool = tool.replace(" --s", "").strip()
@@ -72,8 +117,7 @@ def get_system_context(query: str, context_file: str, stop_words: set, skills_di
                     tool = tool.replace(flag, "")
                 intent_tokens = set(context.tokenize(entry.get("intent", ""), stop_words))
                 
-                # --- PATH-AWARE ARGUMENT PARSER FIX ---
-                # Preserves directory paths (containing /, ~, or .) and prevents Jaccard token-stripping
+                # --- PATH-AWARE ARGUMENT PARSER ---
                 args_list = []
                 for w in query.split():
                     if any(c in w for c in ("/", "~", ".")):

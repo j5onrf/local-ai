@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.8.9.16]
+# Local-Ai Agent [j5onrf] [v0.8.9.17]
 
 import os
 import sys
@@ -361,6 +361,13 @@ def run_interactive_chat(args: list):
                 prompt = f"### SYSTEM INSTRUCTIONS (CRITICAL OVERRIDE):\n{active_system_prompt}\n\n### CODESPACE MAP:\n{query}"
             else:
                 sys_ctx = skills.get_system_context(query, CONTEXT_FILE, STOP_WORDS, SKILLS_DIR, CFG_DIR)
+                
+                # --- NATIVE ABORT INTERCEPTOR ---
+                # If a tool was cancelled or failed, completely abort the completion turn and return to prompt
+                if sys_ctx == "__ABORT_TURN__":
+                    pending_query = None
+                    continue
+                    
                 comb_ctx = (f"{tpm_context}\n\n" if tpm_context else "") + (f"{past_memory}\n\n" if past_memory else "") + sys_ctx
                 prompt = (f"### Real-time System Context:\n{comb_ctx}\n\n" if comb_ctx else "") + f"User Question: {query}"
                 
@@ -404,14 +411,19 @@ def run_interactive_chat(args: list):
 def run_direct_query(args: list):
     """Executes a direct shell query command, explicitly disabling the speed test output."""
     query_parts = args[1:]
-    active_system_prompt = BASE_PROMPT
+    skill_content = ""
     if query_parts and query_parts[-1].startswith("-"):
         skill_content = skills.load_skill_content(query_parts[-1].lstrip("-").lower(), SKILLS_DIR, CFG_DIR)
-        if skill_content:
-            active_system_prompt += f"\n\n### Active Skill/Role Instructions:\n{skill_content}\n"
         query_parts = query_parts[:-1]
+        
+    active_system_prompt = BASE_PROMPT + (f"### Active Skill/Role Instructions:\n{skill_content}\n" if skill_content else "")
     query = " ".join(query_parts)
     sys_ctx = skills.get_system_context(query, CONTEXT_FILE, STOP_WORDS, SKILLS_DIR, CFG_DIR)
+    
+    # If a tool was cancelled or failed, completely abort the completion turn and return to prompt
+    if sys_ctx == "__ABORT_TURN__":
+        sys.exit(130)
+        
     messages = [
         {"role": "system", "content": active_system_prompt},
         {"role": "user", "content": (f"### Real-time System Context:\n{sys_ctx}\n\n" if sys_ctx else "") + f"User Question: {query}"}
@@ -419,7 +431,6 @@ def run_direct_query(args: list):
     # Passes show_stats=False so direct queries remain silent
     stream_llm_response(messages, prefix="AI:", show_stats=False)
     sys.exit(0)
-
 
 def run_matching_search(args: list):
     """Handles single terminal queries, attempting local tool execution first."""
