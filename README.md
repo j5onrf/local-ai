@@ -66,7 +66,7 @@ Agent: Workspace loaded. Awaiting instructions.
   <em>Evolving with your workspace, learning your habits, and standardizing your identity.</em>
 </p>
 
-* Combines [Weaviate Engram](https://github.com/weaviate/engram-python-sdk)'s active reconciliation concepts with [Noema](https://github.com/Fail-Safe/Noema)'s local Markdown file system.
+* [Weaviate Engram](https://github.com/weaviate/engram-python-sdk)'s active reconciliation concepts with [Noema](https://github.com/Fail-Safe/Noema)'s local Markdown file system.
 
 ---
 
@@ -76,7 +76,7 @@ Agent: Workspace loaded. Awaiting instructions.
   <em>Building flat shorthand maps and queryable call graphs.</em>
 </p>
 
-* Combines [Graphify](https://github.com/Graphify-Labs/graphify)'s codebase mapping with [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)'s relationship queries.
+* [Graphify](https://github.com/Graphify-Labs/graphify)'s codebase mapping with [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)'s relationship queries.
 
 ---
 
@@ -179,7 +179,7 @@ OPENROUTER_API_KEY="sk-or-v1-YourFullOpenRouterKeyHere"
 OPENROUTER_MODEL="openrouter/free"
 
 # Context Limits
-AI_MAX_TOKENS=4096
+AI_MAX_TOKENS=8192
 ```
 
 ---
