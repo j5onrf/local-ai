@@ -66,9 +66,9 @@ Agent: Workspace loaded. Awaiting instructions.
 
 ---
 
-<h2 align="center">Core Pillars & Capabilities</h2>
+<h2 align="center">Core Capabilities</h2>
 
-| Pillar | Capability | Description |
+| Core | Capability | Description |
 | :---: | :---: | :--- |
 | **Performance** | **Zero-Daemon** | 0% idle CPU/RAM. `Ultra-light` execution. |
 | **Search Engine** | **Jaccard Similarity** | Sub-millisecond keyword and partial-word matching. |
@@ -78,7 +78,7 @@ Agent: Workspace loaded. Awaiting instructions.
 | **Integration** | **Dynamic Context** | On-demand compilation of system specs and file contents. |
 | **Optimization** | **Token-Slasher** | Custom [`tool`](https://github.com/j5onrf/local-ai/tree/main/tools) and [`skill`](https://github.com/j5onrf/local-ai/tree/main/skills) integration built for minimal token use. |
 | **Interface** | **Conversational TUI** | Rich, multi-turn chat sessions directly in the terminal. |
-| **Auditability** | **Zero-Dependency** | Under 250 lines of modular, standard-library Python. |
+| **Auditability** | **Zero-Dependency** | Under 350 lines of modular, standard-library Python. |
 
 ---
 
