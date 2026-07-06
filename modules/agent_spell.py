@@ -205,8 +205,8 @@ def check_query_spelling(query: str, get_key_fn) -> tuple:
     if not used_grammar_server and not changed_static:
         corrected_query, changed = check_query_spelling_offline(query)
 
+    # Display dynamic line-wrap corrected difference warning
     if changed and corrected_query.strip().lower() != original_input.strip().lower():
-        # Generates the highlighted difference string
         highlighted = highlight_diff(original_input, corrected_query)
         
         sys.stderr.write(
@@ -218,6 +218,8 @@ def check_query_spelling(query: str, get_key_fn) -> tuple:
         
         key = get_key_fn()
         cols = shutil.get_terminal_size().columns or 80
+        
+        # Calculate the exact lines occupied by the warning block
         line1_len = len("[sys] Typos detected. Correct query to:")
         line2_len = 3 + len(corrected_query) + 1
         line3_len = len("   [↵ accept  Tab: edit  d: disable  Esc: skip]: ")
@@ -226,14 +228,26 @@ def check_query_spelling(query: str, get_key_fn) -> tuple:
         lines2 = (line2_len + cols - 1) // cols
         lines3 = (line3_len + cols - 1) // cols
         
-        total_lines = 1 + lines1 + lines2 + lines3
+        total_lines = 1 + lines1 + lines2 + lines3  # +1 for leading newline
+        
+        # Standard fallback clear prompt (if we just cancel/skip)
         clear_prompt = "\r\x1b[K" + "\x1b[1A\r\x1b[K" * (total_lines - 1)
 
         if key in ('\r', '\n', ''):
-            sys.stderr.write(clear_prompt)
-            sys.stderr.write("\033[2;32m[sys] Corrected.\033[0m\n")
+            # --- THE DYNAMIC INLINE MORPH ---
+            # Calculate how many rows the user prompt itself occupied (accounting for terminal wrapping)
+            prompt_len = 2 + len(original_input)  # '❯ ' + query
+            prompt_lines = (prompt_len + cols - 1) // cols
+            
+            # Roll cursor all the way back to the very start of the original user prompt row
+            rollback_distance = (total_lines - 1) + prompt_lines
+            sys.stderr.write(f"\r\x1b[{rollback_distance}A\r\x1b[J")
+            
+            # Redraw your clean prompt with the corrected, unhighlighted query (using 1 space)
+            sys.stderr.write(f"\033[1;30m❯\033[0m {corrected_query}\n")
             sys.stderr.flush()
             return "RUN", corrected_query
+            
         elif key in ('\t', 'e', 'E'):
             sys.stderr.write(clear_prompt)
             sys.stderr.write("\033[2;33m[sys] Returning to editor...\033[0m\n")
