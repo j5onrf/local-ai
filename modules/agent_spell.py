@@ -4,7 +4,6 @@ import sys
 import re
 import json
 import shutil
-import subprocess
 import urllib.parse as urlparse
 import urllib.request as urlreq
 import difflib
@@ -100,13 +99,13 @@ def apply_static_overrides(query: str) -> tuple:
         else:
             corrected_words.append(chunk)
     return "".join(corrected_words), changed
-
-
+    
 def highlight_diff(original: str, corrected: str) -> str:
     """Compares original and corrected strings at the word level and highlights edits.
     
     Uses bold green (1;32) and disables italics, completely removing the underlining.
     """
+    # Split by words while preserving exact whitespace formatting
     orig_words = re.split(r'(\s+)', original)
     corr_words = re.split(r'(\s+)', corrected)
     
@@ -124,72 +123,6 @@ def highlight_diff(original: str, corrected: str) -> str:
                 result.append(chunk)
     return "".join(result)
 
-
-def check_query_spelling_harper(query: str) -> tuple:
-    """Lints the query using the local, offline Rust-based harper-cli.
-    
-    Returns: (corrected_query, changed_boolean)
-    """
-    if not shutil.which("harper-cli"):
-        return query, False
-        
-    temp_path = "/tmp/ai_spell_temp.txt"
-    try:
-        # Write the query to a temp file for harper-cli to lint
-        with open(temp_path, "w", encoding="utf-8") as f:
-            f.write(query)
-            
-        # Run harper-cli lint on the temp file
-        res = subprocess.run(
-            ["harper-cli", "lint", temp_path],
-            capture_output=True,
-            text=True,
-            timeout=2
-        )
-        
-        if not res.stdout.strip():
-            return query, False
-            
-        # Collect all corrections as (col_offset, suggestion) by parsing Harper's multi-line layout
-        edits = []
-        current_col = None
-        for line in res.stdout.splitlines():
-            # 1. Matches line:column pattern in the block header (e.g., test.txt:1:1)
-            col_match = re.search(r':1:(\d+)', line)
-            if col_match:
-                current_col = int(col_match.group(1)) - 1
-                
-            # 2. Matches suggestion pattern in the leaf advice (supporting backticks, single/double quotes)
-            sug_match = re.search(r'Did you mean [`"\'‘]([^`"\'’]+)[`"\'’]', line, re.I)
-            if sug_match and current_col is not None:
-                sug = sug_match.group(1)
-                edits.append((current_col, sug))
-                current_col = None # Reset for next block
-                
-        if not edits:
-            return query, False
-            
-        # Sort edits by column offset descending to apply from back to front safely
-        edits.sort(key=lambda x: -x[0])
-        
-        chars = list(query)
-        changed = False
-        for col, sug in edits:
-            if col < 0 or col >= len(query):
-                continue
-            # Find the boundaries of the original misspelled word starting at col
-            end = col
-            while end < len(query) and query[end].isalnum():
-                end += 1
-            if col < end:
-                chars[col:end] = list(sug)
-                changed = True
-                
-        return "".join(chars), changed
-    except Exception:
-        return query, False
-
-
 def check_query_spelling_offline(query: str) -> tuple:
     words = re.split(r'(\b[a-zA-Z]+\b)', query)
     corrected_words = []
@@ -206,80 +139,74 @@ def check_query_spelling_offline(query: str) -> tuple:
 
 
 def check_query_spelling(query: str, get_key_fn) -> tuple:
-    """Main verification interface. Intercepts typos with static, Harper, and LanguageTool fallbacks."""
+    """Main verification interface. Intercepts typos with static, neural, and TTY fallbacks."""
     original_input = query
     query, changed_static = apply_static_overrides(query)
     corrected_query = query
     changed = changed_static
-    
-    # --- STEP 2: TRY OFFLINE RUST-BASED HARPER LINTER FIRST ---
-    if not changed:
-        corrected_query, changed = check_query_spelling_harper(query)
+    used_grammar_server = False
 
-    # --- STEP 3: FALLBACK TO SEAMLESS LOCAL/CLOUD LANGUAGETOOL ---
-    if not changed:
-        used_grammar_server = False
-        endpoints = [
-            "http://localhost:8010/v2/check",
-            "http://localhost:8081/v2/check",
-            "https://api.languagetool.org/v2/check"
-        ]
-        response_data = None
-        for url in endpoints:
-            form_data = urlparse.urlencode({'text': query, 'language': 'en-US'}).encode('utf-8')
-            req = urlreq.Request(url, data=form_data, method='POST')
-            try:
-                with urlreq.urlopen(req, timeout=1.2) as r:
-                    response_data = json.loads(r.read().decode('utf-8'))
-                    used_grammar_server = True
-                    break
-            except Exception:
-                continue
+    endpoints = [
+        "http://localhost:8010/v2/check",
+        "http://localhost:8081/v2/check",
+        "https://api.languagetool.org/v2/check"
+    ]
+    response_data = None
+    for url in endpoints:
+        form_data = urlparse.urlencode({'text': query, 'language': 'en-US'}).encode('utf-8')
+        req = urlreq.Request(url, data=form_data, method='POST')
+        try:
+            with urlreq.urlopen(req, timeout=1.2) as r:
+                response_data = json.loads(r.read().decode('utf-8'))
+                used_grammar_server = True
+                break
+        except Exception:
+            continue
 
-        if response_data and "matches" in response_data:
-            matches = response_data["matches"]
-            if matches:
-                matches.sort(key=lambda m: m.get("offset", 0), reverse=True)
-                chars = list(query)
-                for match in matches:
-                    offset = match.get("offset")
-                    length = match.get("length")
-                    replacements = match.get("replacements", [])
-                    
-                    if replacements and offset is not None and length is not None:
-                        best_correction = replacements[0].get("value")
-                        if best_correction is not None:
-                            original_word = query[offset : offset + length]
-                            
-                            if original_word.lower() in PROTECTED_WORDS:
-                                continue
-                            
-                            if original_word and best_correction and original_word.isalpha():
-                                local_cand = correct_word(original_word)
-                                if local_cand != original_word and local_cand.lower() != best_correction.lower():
-                                    def get_prio(w):
-                                        w_low = w.lower()
-                                        orig_low = original_word.lower()
-                                        return 1 if (sorted(w_low) == sorted(orig_low)) else 2 if len(w_low) - len(orig_low) == 1 else 3 if len(w_low) - len(orig_low) == 0 else 4
-                                    
-                                    local_prio = get_prio(local_cand)
-                                    api_prio = get_prio(best_correction)
-                                    orig_first = original_word[0].lower()
-                                    api_first = best_correction[0].lower()
-                                    local_first = local_cand[0].lower()
-                                    
-                                    if local_prio < api_prio or (api_first != orig_first and local_first == orig_first):
-                                        best_correction = local_cand
-                            
-                            chars[offset : offset + length] = list(best_correction)
-                            changed = True
-                corrected_query = "".join(chars)
+    if response_data and "matches" in response_data:
+        matches = response_data["matches"]
+        if matches:
+            matches.sort(key=lambda m: m.get("offset", 0), reverse=True)
+            chars = list(query)
+            for match in matches:
+                offset = match.get("offset")
+                length = match.get("length")
+                replacements = match.get("replacements", [])
+                
+                if replacements and offset is not None and length is not None:
+                    best_correction = replacements[0].get("value")
+                    if best_correction is not None:
+                        original_word = query[offset : offset + length]
+                        
+                        if original_word.lower() in PROTECTED_WORDS:
+                            continue
+                        
+                        if original_word and best_correction and original_word.isalpha():
+                            local_cand = correct_word(original_word)
+                            if local_cand != original_word and local_cand.lower() != best_correction.lower():
+                                def get_prio(w):
+                                    w_low = w.lower()
+                                    orig_low = original_word.lower()
+                                    return 1 if (sorted(w_low) == sorted(orig_low)) else 2 if len(w_low) - len(orig_low) == 1 else 3 if len(w_low) - len(orig_low) == 0 else 4
+                                
+                                local_prio = get_prio(local_cand)
+                                api_prio = get_prio(best_correction)
+                                orig_first = original_word[0].lower()
+                                api_first = best_correction[0].lower()
+                                local_first = local_cand[0].lower()
+                                
+                                if local_prio < api_prio or (api_first != orig_first and local_first == orig_first):
+                                    best_correction = local_cand
+                        
+                        chars[offset : offset + length] = list(best_correction)
+                        changed = True
+            corrected_query = "".join(chars)
 
-        if not used_grammar_server and not changed_static:
-            corrected_query, changed = check_query_spelling_offline(query)
+    if not used_grammar_server and not changed_static:
+        corrected_query, changed = check_query_spelling_offline(query)
 
-    # Display dynamic line-wrap corrected difference warning
     if changed and corrected_query.strip().lower() != original_input.strip().lower():
+        # Generates the highlighted difference string
         highlighted = highlight_diff(original_input, corrected_query)
         
         sys.stderr.write(
@@ -322,4 +249,3 @@ def check_query_spelling(query: str, get_key_fn) -> tuple:
             sys.stderr.flush()
             
     return "RUN", original_input
-

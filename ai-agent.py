@@ -16,8 +16,8 @@ CONTEXT_FILE = os.path.join(CFG_DIR, "ai-context.md")
 SKILLS_DIR = os.path.join(CFG_DIR, "skills")
 SESSIONS_DIR = os.path.join(CFG_DIR, "projects", "database")
 BASE_PROMPT = (
-    "Local shell assistant with direct system access.\n"
-    "If <context> is provided, answer directly using only the facts inside it without stating AI limits. Otherwise, answer normally.\n"
+    "Read-only local shell assistant. Never state AI limits.\n"
+    "If <context> is provided, answer directly using only its facts. Otherwise, answer normally.\n"
     "Write full, natural sentences without markdown, headers, bolding, or lists.\n\n"
 )
 

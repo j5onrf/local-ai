@@ -93,7 +93,7 @@ ai init ~/.config/local-ai/projects/session-test-2 --init ---> session test 2, p
 
 
 # --- System Time & Date (Real-time Clock Context) ---
-[TOOL] date "+Current Time: %I:%M:%S %p %Z on %A, %B %d, %Y" --s ---> time, date, current time, what time is it
+[TOOL] date "+Current Time: %I:%M:%S %p %Z on %A, %B %d, %Y" ---> time, date, current time, what time is it
 ```
 
 ## 4. Static Aliases & Shell Shortcuts
