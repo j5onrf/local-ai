@@ -71,7 +71,7 @@ Agent: Understood. I have noted your preferences:
 *   **Snippet-Specific Context**: `❯ read function <symbol>`. Queries the relational index database and extracts *only* the specific function or class code block based on line offsets, saving up to 95% in token overhead.
 
 ## 5. Security Isolation
-*   **Docker**: Run the agent inside a Docker container to isolate the execution context entirely from your host.
+*   **Docker & Symlinking**: Run the agent inside a Docker container to isolate the execution context entirely from your host. You can symlink your local clone (`~/.config/local-ai`) into the container's volume mount directories, allowing you to modify files locally on your host while safely executing and testing them inside a secure sandbox.
 *   **Vetting**: Scan all custom skills with [NVIDIA SkillSpector](https://github.com/NVIDIA/SkillSpector) before importing.
 
 ## 6. Codebase Graph Mapper & Relational Index

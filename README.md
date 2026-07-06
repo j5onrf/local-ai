@@ -72,7 +72,7 @@ Agent: Workspace loaded. Awaiting instructions.
   <em>Inspecting package updates, monitoring system health, and optimizing performance...</em>
 </p>
 
-* [log-checker](../tools/agentic/system/log-checker) and [system-health](../tools/agentic/system/system-health) live diagnostics with [aur-audit](../tools/agentic/system/aur-audit), [security-audit](../tools/agentic/system/security-audit), [update-inspector](../tools/agentic/system/update-inspector) zero-trust auditing, [system-optimizer](../tools/agentic/system/system-optimizer) resource adjustments, [ai-status](../tools/agentic/system/ai-status) routing, and [ai-commit](../tools/agentic/system/ai-commit) hooks.
+* [log-checker](/tools/agentic/system/log-checker) and [system-health](/tools/agentic/system/system-health) live diagnostics with [aur-audit](/tools/agentic/system/aur-audit), [security-audit](/tools/agentic/system/security-audit), [update-inspector](/tools/agentic/system/update-inspector) zero-trust auditing, [system-optimizer](/tools/agentic/system/system-optimizer) resource adjustments, [ai-status](/tools/agentic/system/ai-status) routing, and [ai-commit](/tools/agentic/system/ai-commit) hooks.
 
 ---
 
@@ -122,7 +122,7 @@ Agent: Workspace loaded. Awaiting instructions.
 
 | Command | Description |
 | :--- | :--- |
-| **`/skill <query>`** *(or `/s`)* | Search and load dynamic specialist skills on-the-fly. |
+| **`/skill <query>`** *(or `/s`)* | Search and load dynamic specialist skills. |
 | **`view file <path>`** *(or `read`)* | Dynamically read local files directly into your model context. |
 | **`-save <tag>` / `-load`** | Save active states or rollback/clone snapshots (with Global Handoff). |
 | **`/f`** / **`/t`** / **`/b`** / **`/a`** | Trigger prompt-generating subroutines: Follow-up, Thinking, Brainstorm, or All. |
