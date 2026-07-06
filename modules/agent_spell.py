@@ -6,6 +6,7 @@ import json
 import shutil
 import urllib.parse as urlparse
 import urllib.request as urlreq
+import difflib
 
 TYPO_OVERRIDES = {
     "hellow": "hello", "helow": "hello", "helo": "hello",
@@ -98,7 +99,25 @@ def apply_static_overrides(query: str) -> tuple:
         else:
             corrected_words.append(chunk)
     return "".join(corrected_words), changed
-
+    
+def highlight_diff(original: str, corrected: str) -> str:
+    """Compares original and corrected strings and highlights edits in bold/underlined green.
+    
+    Temporarily disables italics (23m) for the corrected segments to maximize legibility.
+    """
+    matcher = difflib.SequenceMatcher(None, original, corrected)
+    result = []
+    for op, i1, i2, j1, j2 in matcher.get_opcodes():
+        if op == 'equal':
+            result.append(corrected[j1:j2])
+        elif op in ('replace', 'insert'):
+            chunk = corrected[j1:j2]
+            if chunk.strip():
+                # \033[23;1;4;32m makes the chunk Non-Italic, Bold, Underlined, and Green
+                result.append(f"\033[23;1;4;32m{chunk}\033[0m\033[3m")
+            else:
+                result.append(chunk)
+    return "".join(result)
 
 def check_query_spelling_offline(query: str) -> tuple:
     words = re.split(r'(\b[a-zA-Z]+\b)', query)
@@ -183,9 +202,12 @@ def check_query_spelling(query: str, get_key_fn) -> tuple:
         corrected_query, changed = check_query_spelling_offline(query)
 
     if changed and corrected_query.strip().lower() != original_input.strip().lower():
+        # Generates the highlighted difference string
+        highlighted = highlight_diff(original_input, corrected_query)
+        
         sys.stderr.write(
             f"\n\033[2m[sys] Typos detected. Correct query to:\033[0m\n"
-            f"\033[3m   \"{corrected_query}\"\033[0m\n"
+            f"\033[3m   \"{highlighted}\"\033[0m\n"
             f"\033[2m   [↵ accept  Tab: edit  d: disable  Esc: skip]: \033[0m"
         )
         sys.stderr.flush()
