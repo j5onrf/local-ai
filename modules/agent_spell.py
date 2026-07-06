@@ -101,20 +101,24 @@ def apply_static_overrides(query: str) -> tuple:
     return "".join(corrected_words), changed
     
 def highlight_diff(original: str, corrected: str) -> str:
-    """Compares original and corrected strings and highlights edits in bold/underlined green.
+    """Compares original and corrected strings at the word level and highlights edits.
     
-    Temporarily disables italics (23m) for the corrected segments to maximize legibility.
+    Uses bold green (1;32) and disables italics, completely removing the underlining.
     """
-    matcher = difflib.SequenceMatcher(None, original, corrected)
+    # Split by words while preserving exact whitespace formatting
+    orig_words = re.split(r'(\s+)', original)
+    corr_words = re.split(r'(\s+)', corrected)
+    
+    matcher = difflib.SequenceMatcher(None, orig_words, corr_words)
     result = []
     for op, i1, i2, j1, j2 in matcher.get_opcodes():
+        chunk = "".join(corr_words[j1:j2])
         if op == 'equal':
-            result.append(corrected[j1:j2])
+            result.append(chunk)
         elif op in ('replace', 'insert'):
-            chunk = corrected[j1:j2]
             if chunk.strip():
-                # \033[23;1;4;32m makes the chunk Non-Italic, Bold, Underlined, and Green
-                result.append(f"\033[23;1;4;32m{chunk}\033[0m\033[3m")
+                # \033[23;1;32m makes the chunk Non-Italic, Bold, and Green (no 4 underline)
+                result.append(f"\033[23;1;32m{chunk}\033[0m\033[3m")
             else:
                 result.append(chunk)
     return "".join(result)
