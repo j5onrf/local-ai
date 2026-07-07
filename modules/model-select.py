@@ -14,9 +14,9 @@ ENV_PATH = os.path.expanduser("~/.config/local-ai/.env")
 CACHE_PATH = os.path.expanduser("~/.config/local-ai/.openrouter_cache_v2.json")
 
 GEMINI_CURATED = [
+    "gemini-3.1-flash-lite",
     "gemini-3.5-flash",
     "gemini-3.5-pro",
-    "gemini-3.1-flash-lite",
     "gemini-2.5-flash",
     "gemini-2.5-pro",
     "gemini-1.5-flash",
@@ -124,7 +124,7 @@ def load_env_vars():
     vars_dict = {
         "GEMINI_API_KEY": "",
         "OPENROUTER_API_KEY": "",
-        "CLOUD_MODEL": "gemini-3.1-flash-lite",
+        "CLOUD_MODEL": "gemini-3.1-flash-lite",  # Confirmed fallback
         "OPENROUTER_MODEL": "openrouter/free"
     }
     if os.path.exists(ENV_PATH):
