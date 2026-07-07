@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# model-select.py - Minimalist Model Selector TUI 
+# model-select.py - TUI Model Selector with Individual API Toggles
 import os
 import sys
 import re
@@ -57,7 +57,6 @@ def classify_openrouter_models(raw_data):
     free_candidates = []
     paid_candidates = []
     
-    # Curated leading paid models to look for and bubbles to top of list
     elite_paid_patterns = [
         "anthropic/claude-3.5-sonnet",
         "openai/gpt-4o",
@@ -74,7 +73,6 @@ def classify_openrouter_models(raw_data):
         "cohere/command-r-plus"
     ]
     
-    # Priority organizations for free models
     free_priority_keywords = ["openrouter/free", "tencent", "google", "meta-llama", "deepseek", "qwen", "microsoft", "mistralai"]
     
     for item in raw_data:
@@ -124,7 +122,7 @@ def load_env_vars():
     vars_dict = {
         "GEMINI_API_KEY": "",
         "OPENROUTER_API_KEY": "",
-        "CLOUD_MODEL": "gemini-3.1-flash-lite",  # Confirmed fallback
+        "CLOUD_MODEL": "gemini-3.1-flash-lite",
         "OPENROUTER_MODEL": "openrouter/free"
     }
     if os.path.exists(ENV_PATH):
@@ -157,6 +155,31 @@ def update_env(key, value):
     if not updated:
         lines.append(f'{key}="{value}"\n')
         
+    with open(ENV_PATH, "w", encoding="utf-8") as f:
+        f.writelines(lines)
+
+def is_key_active(key):
+    if not os.path.exists(ENV_PATH):
+        return False
+    with open(ENV_PATH, "r", encoding="utf-8") as f:
+        for line in f:
+            if line.strip().startswith(f"{key}="):
+                return True
+    return False
+
+def set_key_commented_state(key, should_comment):
+    if not os.path.exists(ENV_PATH):
+        return
+    with open(ENV_PATH, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+        
+    for i, line in enumerate(lines):
+        match = re.match(rf"^#?\s*({key}\s*=\s*.*)$", line)
+        if match:
+            raw_assignment = match.group(1)
+            lines[i] = f"#{raw_assignment}\n" if should_comment else f"{raw_assignment}\n"
+            break
+            
     with open(ENV_PATH, "w", encoding="utf-8") as f:
         f.writelines(lines)
 
@@ -257,7 +280,6 @@ def get_key():
 def draw_main_menu(selected, gemini_curr, or_curr, message=""):
     sys.stdout.write("\x1b[H\x1b[2J")  # Absolute clear
     
-    # Palette definition
     amber = "\033[38;2;230;120;60m"
     green = "\033[1;32m"
     red = "\033[1;31m"
@@ -268,17 +290,22 @@ def draw_main_menu(selected, gemini_curr, or_curr, message=""):
     keys_active = get_keys_status()
     status_text = f"{green}[ ENABLED ]{reset}" if keys_active else f"{red}[ DISABLED ]{reset}"
     
-    # Curate display name
+    gemini_active = is_key_active("GEMINI_API_KEY")
+    or_active = is_key_active("OPENROUTER_API_KEY")
+    
+    # Establish dynamic model state displays
+    gemini_display = f"{green}{gemini_curr}{reset}" if gemini_active else f"{red}DISABLED (Fallback active){reset}"
+    
     is_or_free = "free" in or_curr.lower()
-    or_free_display = f"{green}{or_curr}{reset}" if is_or_free else f"{dim}None selected{reset}"
-    or_paid_display = f"{green}{or_curr}{reset}" if not is_or_free else f"{dim}None selected{reset}"
+    or_free_display = f"{green}{or_curr}{reset}" if (or_active and is_or_free) else (f"{red}DISABLED{reset}" if not or_active else f"{dim}None selected{reset}")
+    or_paid_display = f"{green}{or_curr}{reset}" if (or_active and not is_or_free) else (f"{red}DISABLED{reset}" if not or_active else f"{dim}None selected{reset}")
     
     sys.stdout.write(f"\n   {bold}  LOCAL-AI CONFIGURATION{reset}\n")
     sys.stdout.write(f"   {dim}────────────────────────────────────────────────────────────{reset}\n\n")
     
     options = [
         f"🔌  Cloud Connection      {status_text}",
-        f"♊  Google Gemini          {green}{gemini_curr}{reset}\n       {dim}Select from curated, lightweight Google endpoints{reset}",
+        f"♊  Google Gemini          {gemini_display}\n       {dim}Select from curated, lightweight Google endpoints{reset}",
         f"🌐  OpenRouter Free       {or_free_display}\n       {dim}Select from the top 20 most popular free models{reset}",
         f"🌐  OpenRouter Paid       {or_paid_display}\n       {dim}Select from the top 20 industry leading paid engines{reset}",
         f"↺  Refresh API Lists      {dim}Query OpenRouter for new endpoints{reset}",
@@ -286,7 +313,6 @@ def draw_main_menu(selected, gemini_curr, or_curr, message=""):
     ]
     
     for i, opt in enumerate(options):
-        # Spacing adjustment for options with subtitles
         spacing = "\n" if i in (1, 2, 3) else ""
         if i == selected:
             sys.stdout.write(f"   {amber}❯{reset}  {bold}{opt}{reset}\n{spacing}")
@@ -300,13 +326,19 @@ def draw_main_menu(selected, gemini_curr, or_curr, message=""):
         sys.stdout.write(f"   {dim}Use ▲/▼ Arrows to navigate, Enter to choose, Q to exit.{reset}\n")
     sys.stdout.flush()
 
-def run_selector(title, models, current):
+def run_selector(title, models, current, key_name):
+    # Add Turn Off option at index 0
+    menu_options = [f"🚫 Turn Off {title}"] + models
     selected = 0
-    if current in models:
-        selected = models.index(current)
+    
+    # Track selection index supporting the offset
+    is_active = is_key_active(key_name)
+    if is_active and current in models:
+        selected = models.index(current) + 1
         
     amber = "\033[38;2;230;120;60m"
     green = "\033[1;32m"
+    red = "\033[1;31m"
     reset = "\033[0m"
     bold = "\033[1m"
     dim = "\033[90m"
@@ -316,12 +348,19 @@ def run_selector(title, models, current):
         sys.stdout.write(f"\n   {bold}  SELECT {title.upper()}:{reset}\n")
         sys.stdout.write(f"   {dim}────────────────────────────────────────────────────────────{reset}\n\n")
         
-        for i, m_name in enumerate(models):
+        for i, opt_name in enumerate(menu_options):
             active_bullet = f"{amber}❯{reset} " if i == selected else "  "
-            if m_name == current:
-                display_line = f"{active_bullet}{green}{m_name} {dim}(active){reset}"
+            
+            if i == 0:  # The Turn Off toggle line
+                if not is_active:
+                    display_line = f"{active_bullet}{red}{opt_name} {dim}(currently disabled){reset}"
+                else:
+                    display_line = f"{active_bullet}{opt_name}"
             else:
-                display_line = f"{active_bullet}{m_name}"
+                if opt_name == current and is_active:
+                    display_line = f"{active_bullet}{green}{opt_name} {dim}(active){reset}"
+                else:
+                    display_line = f"{active_bullet}{opt_name}"
                 
             if i == selected:
                 display_line = f"{bold}{display_line}{reset}"
@@ -334,11 +373,13 @@ def run_selector(title, models, current):
         
         key = get_key()
         if key == 'up':
-            selected = (selected - 1) % len(models)
+            selected = (selected - 1) % len(menu_options)
         elif key == 'down':
-            selected = (selected + 1) % len(models)
+            selected = (selected + 1) % len(menu_options)
         elif key == 'enter':
-            return models[selected]
+            if selected == 0:
+                return "DISABLE"
+            return menu_options[selected]
         elif key in ('esc', 'q'):
             return None
 
@@ -365,29 +406,41 @@ def main():
             elif key == 'down':
                 selected_idx = (selected_idx + 1) % total_options
             elif key == 'enter':
-                if selected_idx == 0:  # Toggle keys
+                if selected_idx == 0:  # Toggle Cloud Connections (Master Switch)
                     is_now_enabled = toggle_env_api_keys()
                     env = load_env_vars()
                     status_text = f"\033[1;32mENABLED\033[0m" if is_now_enabled else f"\033[1;31mDISABLED\033[0m"
                     message = f"✓ Switched Cloud Connection to: {status_text}"
-                elif selected_idx == 1:  # Gemini list
-                    res = run_selector("Gemini", GEMINI_CURATED, gemini_curr)
-                    if res:
+                elif selected_idx == 1:  # Gemini
+                    res = run_selector("Gemini", GEMINI_CURATED, gemini_curr, "GEMINI_API_KEY")
+                    if res == "DISABLE":
+                        set_key_commented_state("GEMINI_API_KEY", True)
+                        message = "✓ Gemini disabled. Automatically falling back to OpenRouter."
+                    elif res:
                         gemini_curr = res
+                        set_key_commented_state("GEMINI_API_KEY", False)  # Re-enable
                         update_env("CLOUD_MODEL", gemini_curr)
-                        message = f"✓ Saved CLOUD_MODEL={gemini_curr} in .env"
-                elif selected_idx == 2:  # OR Free list
-                    res = run_selector("OpenRouter Free", or_free_list, or_curr)
-                    if res:
+                        message = f"✓ Saved CLOUD_MODEL={gemini_curr} and re-enabled Gemini API Key."
+                elif selected_idx == 2:  # OR Free
+                    res = run_selector("OpenRouter", or_free_list, or_curr, "OPENROUTER_API_KEY")
+                    if res == "DISABLE":
+                        set_key_commented_state("OPENROUTER_API_KEY", True)
+                        message = "✓ OpenRouter disabled."
+                    elif res:
                         or_curr = res
+                        set_key_commented_state("OPENROUTER_API_KEY", False)  # Re-enable
                         update_env("OPENROUTER_MODEL", or_curr)
-                        message = f"✓ Saved OPENROUTER_MODEL={or_curr} in .env"
-                elif selected_idx == 3:  # OR Paid list
-                    res = run_selector("OpenRouter Paid", or_paid_list, or_curr)
-                    if res:
+                        message = f"✓ Saved OPENROUTER_MODEL={or_curr} and re-enabled OpenRouter Key."
+                elif selected_idx == 3:  # OR Paid
+                    res = run_selector("OpenRouter", or_paid_list, or_curr, "OPENROUTER_API_KEY")
+                    if res == "DISABLE":
+                        set_key_commented_state("OPENROUTER_API_KEY", True)
+                        message = "✓ OpenRouter disabled."
+                    elif res:
                         or_curr = res
+                        set_key_commented_state("OPENROUTER_API_KEY", False)  # Re-enable
                         update_env("OPENROUTER_MODEL", or_curr)
-                        message = f"✓ Saved OPENROUTER_MODEL={or_curr} in .env"
+                        message = f"✓ Saved OPENROUTER_MODEL={or_curr} and re-enabled OpenRouter Key."
                 elif selected_idx == 4:  # Refresh API lists
                     message = "\033[1;33m↺ Checking OpenRouter for new endpoints...\033[0m"
                     draw_main_menu(selected_idx, gemini_curr, or_curr, message)

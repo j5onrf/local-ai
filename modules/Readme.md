@@ -12,8 +12,7 @@
 
 <div align="center">
   <p><i>Click to view high-resolution version</i></p>
-  <a href="https://github.com/user-attachments/assets/1f61a692-c40e-49d3-b3c9-d56072e6f14e">
-    <img alt="Ai-Commit Thumbnail" src="https://github.com/user-attachments/assets/1f61a692-c40e-49d3-b3c9-d56072e6f14e" width="250" />
+  <a href="https://github.com/user-attachments/assets/ea8591b9-11b2-474d-9255-033b743600b0">
+    <img alt="Ai-Commit Thumbnail" src="https://github.com/user-attachments/assets/ea8591b9-11b2-474d-9255-033b743600b0" width="250" />
   </a>
 </div>
-
