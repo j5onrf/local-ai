@@ -111,7 +111,7 @@ Agent: Workspace loaded. Awaiting instructions.
   <em>Manage your active cloud endpoints, inspect live API rankings, and toggle keys.</em>
 </p>
 
-Run **`model select`** directly from your terminal to launch the interactive configuration window:
+* Run **`model select`** directly from your terminal to launch the interactive **🔌 [Cloud Connection](https://github.com/j5onrf/local-ai/tree/main/modules)**
 
 ---
 
