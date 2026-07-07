@@ -5,6 +5,7 @@ tools/subsec/voice/server.pem
 ai-history
 tools/agentic/fusion/logs
 index-map-local-ai.txt
+.openrouter_cache_v2.json
 .active_cd*
 .request_log
 .agent
