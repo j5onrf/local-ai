@@ -6,6 +6,8 @@
 * **Sensitive Data:** To keep your data private, press **`/d`** on a prompt to disable, or run a local LanguageTool server (ports `8010` or `8081`) to process everything offline.
 * **Scope:** This utility runs exclusively inside the `ai <conversational>` CLI tool. It does not monitor or access any other applications on your system.
 
+---
+
 # Model Selector TUI
 
 <div align="center">

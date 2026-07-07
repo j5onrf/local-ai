@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# model-select.py - Minimalist Apple-style Model Selector TUI 
+# model-select.py - Minimalist Model Selector TUI 
 import os
 import sys
 import re
