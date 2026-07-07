@@ -105,6 +105,16 @@ Agent: Workspace loaded. Awaiting instructions.
 
 ---
 
+<h2 align="center">Model Selector TUI</h2>
+
+<p align="center">
+  <em>Manage your active cloud endpoints, inspect live API rankings, and toggle keys from a minimalist control dashboard.</em>
+</p>
+
+Run **`model select`** directly from your terminal to launch the interactive configuration
+
+---
+
 <h2 align="center">Command Reference</h2>
 
 ### 1. Global Shell Commands

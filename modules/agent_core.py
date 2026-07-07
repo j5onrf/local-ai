@@ -250,11 +250,9 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
                         speed_test.end()
                         
                     if resolved_model and resolved_model != model and sys.stdout.isatty():
-                        home_dir = os.path.expanduser("~")
-                        target_path = os.path.join(home_dir, "ollama_backup") + "/"
                         display_model = resolved_model
-                        if display_model.startswith(target_path):
-                            display_model = display_model.replace(target_path, ".../")
+                        if os.path.isabs(display_model):
+                            display_model = ".../" + os.path.basename(display_model)
                         sys.stdout.write(f"\033[90m[via {display_model}]\033[0m\n")
                         sys.stdout.flush()
                     return "".join(acc)
