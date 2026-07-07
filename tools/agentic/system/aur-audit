@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# aur-audit - Interactive Zero-Trust AUR Package Auditor v1.1.5
+# aur-audit - Interactive Zero-Trust AUR Package Auditor v1.1.6
 
 set -euo pipefail
 
@@ -26,12 +26,29 @@ if [ -z "$PKG_NAME" ]; then
     exit 1
 fi
 
-# 3. Fetch package specifications deterministically
+# 3. Fetch package specifications with an active, rotating terminal spinner
 echo -ne "⠋ Fetching AUR repository data for: \033[1;33m$PKG_NAME\033[0m...\r"
 TEMP_DIR=$(mktemp -d)
 trap 'rm -rf "$TEMP_DIR"' EXIT
 
-if ! git clone --depth 1 "https://aur.archlinux.org/$PKG_NAME.git" "$TEMP_DIR" >/dev/null 2>&1; then
+# Run git clone in the background so we can spin
+git clone --depth 1 "https://aur.archlinux.org/$PKG_NAME.git" "$TEMP_DIR" >/dev/null 2>&1 &
+CLONE_PID=$!
+
+# Dynamic spinner loop
+spin='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+i=0
+while kill -0 "$CLONE_PID" 2>/dev/null; do
+    i=$(( (i+1) % 10 ))
+    echo -ne "\r${spin:$i:1} Fetching AUR repository data for: \033[1;33m$PKG_NAME\033[0m..."
+    sleep 0.1
+done
+
+# Gather exit code of background clone
+wait "$CLONE_PID"
+CLONE_STATUS=$?
+
+if [ "$CLONE_STATUS" -ne 0 ]; then
     echo -e "\x1b[2K\r❌ [CRITICAL ERROR] Failed to retrieve package data for \"$PKG_NAME\"."
     echo "   Ensure your network is active or verify that the package exists on the AUR."
     exit 1
@@ -88,6 +105,7 @@ if [ "${AI_CONTEXT_RUN:-0}" -eq 1 ]; then
     # If running as background context, output the raw compiled prompt and exit
     echo "$PROMPT"
 else
-    # If running directly in the terminal, handoff to AI to stream the audit
+    # If running directly in the terminal, notify the user of the active prefill math
+    echo -e "\033[2m[sys] Ingesting PKGBUILD and auditing with Qwen-35B (prefill processing)..." \033[0m
     python3 "$ALIAS_AI_SCRIPT" --talk "$PROMPT" --aur-audit
 fi
