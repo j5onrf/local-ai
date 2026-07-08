@@ -1,8 +1,8 @@
 # Local Server Configuration (Reasoning Models) (CPU Only / Must Config for GPU)
 
-This directory contains scripts to deploy and manage local `llama-server` instances configured for Qwen reasoning models, enabling reasoning toggles (`/r`) without splitting VRAM or restarting processes.
+This directory contains scripts to deploy and manage local `llama-server` instances configured for Qwen reasoning models, enabling on-the-fly reasoning toggles (`/r`) without splitting VRAM or restarting processes.
 
-*Note: The included `example-server.sh` defaults to **CPU execution**. See below to enable GPU acceleration.*
+*Note: The included `example-server.sh` defaults to **CPU execution** and runs in a headless state.*
 
 ---
 
@@ -14,12 +14,20 @@ To support client-side reasoning overrides while keeping background tools fast, 
 * **`--chat-template-kwargs '{"enable_thinking":false}'`**: **(Critical)** Sets default thinking to **OFF**. Standard queries, skills, and background tools (`/a`, `/f`) execute instantly.
 * **`--reasoning-format deepseek`**: Separates `<think>` tags from `content` to prevent raw output leaks.
 * **`--reasoning-budget-message`**: Injects a clean transition prompt if a token ceiling is reached mid-thought.
+* **`--no-ui`**: Disables the embedded web assets to optimize startup time and reduce memory overhead.
 
 ### GPU Acceleration Setup
 To enable hardware acceleration (CUDA/ROCm/Metal), edit your launcher script and add the **`-ngl`** (number of GPU layers) parameter to the `llama-server` command:
 ```bash
   -ngl 99 \  # Offloads all layers to the GPU
 ```
+
+### Accessing the llama.cpp Web UI
+If you prefer to use the built-in browser-based playground instead of a purely headless backend, edit `example-server.sh` and **remove** the following line:
+```bash
+  --no-ui \
+```
+Once removed, restarting the server allows you to access the interactive web interface directly at `http://localhost:8080`.
 
 ---
 
