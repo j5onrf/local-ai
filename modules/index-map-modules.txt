@@ -1,5 +1,5 @@
 # CODEBASE INDEX MAP & STRUCTURAL KNOWLEDGE GRAPH
-# Generated on      : 2026-07-06 13:39
+# Generated on      : 2026-07-08 11:48
 # Project Workspace : modules
 # Target Directory  : ~/.config/local-ai/modules
 # -----------------------------------------------------------------------------------------
@@ -33,6 +33,7 @@
 #   ├── ai-agent-sessions        - Description: SQLite-backed session, checkpoint, and turn logger with Global Handoff
 #   ├── chat                     - chat - Unified Agentic Brainstorm, Thinking & Follow-up Engine v2.5.1
 #   ├── index-map-memory-modules.db
+#   ├── model-select.py          - model-select.py - Fully Dynamic TUI Model Selector driven by OpenRouter Rankings
 #   └── speed_test.py            - ~/.config/local-ai/modules/speed_test.py
 # -----------------------------------------------------------------------------------------
 [md:Readme.md] title:Spellchecker Privacy Disclosure
@@ -45,4 +46,5 @@
 [file:ai-agent-sessions] sum:#!/usr/bin/env python3
 [file:chat] sum:#!/usr/bin/env python3
 [binary/db:index-map-memory-modules.db]
+[py:model-select.py] imp:json,os,re,requests,select,shutil,subprocess,sys,termios,tty | fn:classify_openrouter_models,load_env_vars,update_env,is_key_active,set_key_commented_state,toggle_env_api_keys,load_cached_lists,save_cached_lists,fetch_openrouter_models,get_key,draw_main_menu,run_selector,get_filtered_list,get_menu_options,main
 [py:speed_test.py] imp:sys,time | fn:start,count_token,end

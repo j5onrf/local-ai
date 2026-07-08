@@ -144,7 +144,7 @@ def stream(messages, prefix, gkey, spinner_class, show_stats: bool = True):
         return None
 
 
-def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", show_stats: bool = False) -> str or None:
+def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", show_stats: bool = False, thinking_budget: int = 0) -> str or None:
     acc = []
     spinner = ui.InlineSpinner()
     try:
@@ -171,7 +171,16 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
                 {"usage": {"include": True}},  # Native server-side token usage tracking
                 180
             ))
-        configs.append(("http://localhost:8080/v1/chat/completions", {}, "local-model", {}, 180))
+        
+        # Universal client-side reasoning control (overrides server-side defaults)
+        local_extra = {}
+        if thinking_budget and thinking_budget > 0:
+            local_extra["thinking_budget_tokens"] = thinking_budget
+            local_extra["chat_template_kwargs"] = {"enable_thinking": True}
+        else:
+            local_extra["chat_template_kwargs"] = {"enable_thinking": False}
+
+        configs.append(("http://localhost:8080/v1/chat/completions", {}, "local-model", local_extra, 180))
         
         for url, headers, model, extra, timeout in configs:
             body = {"messages": messages, "stream": True, **extra}

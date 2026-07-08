@@ -1,5 +1,5 @@
 # CODEBASE INDEX MAP & STRUCTURAL KNOWLEDGE GRAPH
-# Generated on      : 2026-07-05 02:52
+# Generated on      : 2026-07-08 12:55
 # Project Workspace : session-test
 # Target Directory  : ~/.config/local-ai/projects/session-test
 # -----------------------------------------------------------------------------------------
@@ -26,11 +26,14 @@
 #   ├── Test Script.sh           - Define the input array of numbers
 #   ├── history.md               - Workspace History: projects
 #   ├── index-map-memory-session-test.db
+#   ├── index-map-session-test.txt - CODEBASE INDEX MAP & STRUCTURAL KNOWLEDGE GRAPH
 #   ├── physics.py
 #   └── simulation.py            - Description: Runner file for testing velocity metrics
 # -----------------------------------------------------------------------------------------
+[md:.agent/tpm.md] title:tpm
 [shell:Test Script.sh] sum:Define the input array of numbers
 [md:history.md] title:Workspace History: projects
 [binary/db:index-map-memory-session-test.db]
+[txt:index-map-session-test.txt] sum:# CODEBASE INDEX MAP & STRUCTURAL KNOWLEDGE GRAPH
 [py:physics.py] fn:calculate_velocity
 [py:simulation.py] imp:physics | fn:run_test

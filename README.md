@@ -2,7 +2,7 @@
   <img alt="Local-AI Agent" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" width="800" />
 </p>
 
-<h1 align="center">Local-AI Agent <kbd>v0.8.9.20-beta</kbd></h1>
+<h1 align="center">Local-AI Agent <kbd>v0.8.9.21-beta</kbd></h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
@@ -145,6 +145,7 @@ Agent: Workspace loaded. Awaiting instructions.
 | **`/clear`** / **`/reset`** | **Reset** Session context, local chat history, and the SQLite TPM table. |
 | **`/d`** / **`/e`** | **Disable** / **Enable** the context-aware grammar & spellchecker. |
 | **`/m`** | **Toggle** long-term memory and TPM reconciliation ON/OFF. |
+| **`/r`** / **`/r <tokens>`** | **Toggle** reasoning ON/OFF. Supports custom limits (default: 500). |
 | **`/stats` / `/tok`** | **Diagnostics**: Toggle real-time speed metrics or view live token usage. |
 
 ---

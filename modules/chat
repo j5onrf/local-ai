@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# chat - Unified Agentic Brainstorm, Thinking & Follow-up Engine v2.5.1
+# chat - Unified Agentic Brainstorm, Thinking & Follow-up Engine v2.5.2
 # Path: ~/.config/local-ai/modules/chat
 
 import sys
@@ -7,6 +7,12 @@ import os
 import json
 import re
 import urllib.request as urlreq
+
+# Safe import of existing agent UI utilities for InlineSpinner support
+try:
+    import agent_ui as ui
+except ImportError:
+    ui = None
 
 CFG_DIR = os.path.expanduser("~/.config/local-ai")
 
@@ -65,7 +71,7 @@ if is_all_cmd:
             try:
                 with open(path, "r", encoding="utf-8") as f:
                     content = f.read().strip()
-                    # Clean out redundant templates from individual files to keep 2B's attention clear
+                    # Clean out redundant templates from individual files to keep attention clear
                     if "Template:" in content:
                         content = content.split("Template:")[0].strip()
                     prompts[header] = content
@@ -151,15 +157,21 @@ if okey:
         10
     ))
 
-# 180 second timeout for Local models to allow full GGUF VRAM loading on cold boots
-configs.append(("http://localhost:8080/v1/chat/completions", {}, None, {}, 180))
+# 180 second timeout for Local models. Explicitly overrides template reasoning to OFF.
+configs.append(("http://localhost:8080/v1/chat/completions", {}, None, {"chat_template_kwargs": {"enable_thinking": False}}, 180))
 
 for url, headers, model, extra, timeout in configs:
     body = {"messages": history, "stream": True, **extra}
     if model:
         body["model"] = model
     req = urlreq.Request(url, data=json.dumps(body).encode("utf-8"), headers={"Content-Type": "application/json", **headers}, method="POST")
+    spinner = None
     try:
+        # Start inline terminal spinner if TTY is available
+        if ui and sys.stdout.isatty():
+            spinner = ui.InlineSpinner()
+            spinner.start()
+
         with urlreq.urlopen(req, timeout=timeout) as response:
             first_token = True
             chunks = []
@@ -179,7 +191,11 @@ for url, headers, model, extra, timeout in configs:
                     elif "candidates" in data and data["candidates"]:
                         content = data["candidates"][0].get("content", {}).get("parts", [{}])[0].get("text", "")
                     if content:
+                        # Teardown spinner instantly when first chunk arrives
                         if first_token:
+                            if spinner:
+                                spinner.stop()
+                                spinner = None
                             content = content.lstrip()
                             if not content:
                                 continue
@@ -188,6 +204,10 @@ for url, headers, model, extra, timeout in configs:
                 except Exception:
                     pass
             
+            if spinner:
+                spinner.stop()
+                spinner = None
+
             # 6. Post-Processing Stream Clean
             full_text = "".join(chunks).strip()
             lines = [l.strip() for l in full_text.splitlines() if l.strip()]
@@ -223,6 +243,9 @@ for url, headers, model, extra, timeout in configs:
                 sys.stdout.flush()
             sys.exit(0)
     except Exception:
+        if spinner:
+            spinner.stop()
+            spinner = None
         pass
 
 sys.stderr.write("Error: All brainstorm service fallbacks are offline.\n")
