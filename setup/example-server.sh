@@ -38,4 +38,5 @@ exec ionice -c 3 nice -n 19 "$LLAMA_SERVER_BIN" \
   --temp 0.45 \
   --dynatemp-range 0.45 \
   --min-p 0.05 \
+  --no-ui \
   --port "$PORT" >> "$LOG_FILE" 2>&1
