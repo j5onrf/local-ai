@@ -16,7 +16,7 @@ SERV_DIR = "/home/user/models/serv"
 # Map local GGUF filenames to their respective launch scripts
 LOCAL_MODELS = [
     {
-        "name": "Qwen 3.5 2B (Lightweight)",
+        "name": "Qwen 3.5 2B (Ultra-light)",
         "file": "Qwen3.5-2B.gguf",
         "script": "q2b.sh"
     },
