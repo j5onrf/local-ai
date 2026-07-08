@@ -48,9 +48,8 @@ MODELS_DIR = "/home/user/models"
 SERV_DIR = "/home/user/models/serv"
 
 LOCAL_MODELS = [
-    {"name": "Qwen 3.5 2B (Ultra-Light)", "file": "Qwen3.5-2B.gguf", "script": "q2b.sh"},
+    {"name": "Qwen 3.5 2B (Ultra-light)", "file": "Qwen3.5-2B.gguf", "script": "q2b.sh"},
     {"name": "Qwen 3.6 35B (4-bit Uncensored)", "file": "Qwen3.6-35B-A3B.gguf", "script": "q35b.sh"},
-    {"name": "Qwen 3.6 35B (Reasoning-On)", "file": "Qwen3.6-35B-A3B.gguf", "script": "q35b-on.sh"},
 ]
 ```
 
