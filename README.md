@@ -196,11 +196,11 @@ nano ~/.config/local-ai/.env
 # ~/.config/local-ai/.env
 # use "ai status" and "model select"
 
-# Claude Subscription API Configurations
+# Claude API Configurations
 CLAUDE_API_KEY="your-claude-api-key-here"
 CLAUDE_MODEL="claude-fable-5"
 
-# OpenAI Subscription API Configurations
+# OpenAI API Configurations
 OPENAI_API_KEY="your-openai-api-key-here"
 OPENAI_MODEL="gpt-5.5"
 
