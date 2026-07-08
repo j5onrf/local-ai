@@ -1,6 +1,6 @@
 # Local Server Configuration (Reasoning Models) (CPU Only / Must Config for GPU)
 
-This directory contains scripts to deploy and manage local `llama-server` instances configured for Qwen reasoning models, enabling on-the-fly reasoning toggles (`/r`) without splitting VRAM or restarting processes.
+This directory contains scripts to deploy and manage local `llama-server` instances configured for Qwen reasoning models, enabling reasoning toggles (`/r`) without splitting VRAM or restarting processes.
 
 *Note: The included `example-server.sh` defaults to **CPU execution** and runs in a headless state.*
 
