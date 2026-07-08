@@ -54,13 +54,11 @@ def get_key() -> str:
     Uses read-only access on /dev/tty to ensure compatibility inside piped subprocesses.
     """
     try:
-        # Opening as "r" (read-only) is extremely robust and succeeds inside piped subprocesses
         with open("/dev/tty", "r") as tty_file:
             fd = tty_file.fileno()
             old_settings = termios.tcgetattr(fd)
             try:
                 tty.setraw(fd)
-                # Flush pending terminal buffer keys (prevents accidental double-enters)
                 termios.tcflush(fd, termios.TCIFLUSH)
                 char_bytes = os.read(fd, 1)
                 if char_bytes == b'\x1b' and select.select([fd], [], [], 0.05)[0]:
@@ -69,7 +67,6 @@ def get_key() -> str:
             finally:
                 termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
     except Exception:
-        # Fallback to standard stdin if /dev/tty is completely unavailable
         fd = sys.stdin.fileno()
         try:
             old_settings = termios.tcgetattr(fd)
@@ -88,6 +85,19 @@ def get_key() -> str:
                 return char_bytes.decode("utf-8", errors="ignore")
             except Exception:
                 return ""
+
+def get_local_model_name() -> str:
+    """Queries the running llama-server to extract the actual loaded GGUF filename."""
+    import urllib.request as urlreq
+    import json
+    try:
+        # Standard OpenAI models catalog endpoint in llama-server
+        with urlreq.urlopen("http://localhost:8080/v1/models", timeout=0.5) as r:
+            data = json.loads(r.read().decode("utf-8"))
+            model_path = data["data"][0]["id"]
+            return os.path.basename(model_path)
+    except Exception:
+        return "local-model"
 
 def draw_session_box(
     workspace_path: str,
@@ -121,12 +131,21 @@ def draw_session_box(
 
     gkey = os.environ.get("GEMINI_API_KEY")
     okey = os.environ.get("OPENROUTER_API_KEY")
-    if gkey:
+    clakey = os.environ.get("CLAUDE_API_KEY")
+    opakey = os.environ.get("OPENAI_API_KEY")
+
+    # Orderly cascade mapping to determine display model
+    if clakey:
+        model_name = os.environ.get("CLAUDE_MODEL", "claude-fable-5")
+    elif opakey:
+        model_name = os.environ.get("OPENAI_MODEL", "gpt-5.5")
+    elif gkey:
         model_name = os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite")
     elif okey:
         model_name = os.environ.get("OPENROUTER_MODEL", "openrouter/free")
     else:
-        model_name = "local-model"
+        # If offline/local, dynamically fetch the specific GGUF filename
+        model_name = get_local_model_name()
 
     box_width = 46
     title_line = f" >_ Local-AI Agent ({version})" if version else " >_ Local-AI Agent"
@@ -134,7 +153,6 @@ def draw_session_box(
     dir_line   = f" directory: {display_dir}"
     skill_line = f" skill:     {clean_name}" if clean_name else " skill:     default"
     
-    # Consolidates both factual and semantic database memory turns cleanly
     mem_status = f"active ({tpm_count} facts, {db_turns} turns)" if memory_active else "disabled"
     mem_line   = f" database:  {mem_status}" if is_agent else " database:  stateless"
     

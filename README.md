@@ -2,7 +2,7 @@
   <img alt="Local-AI Agent" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" width="800" />
 </p>
 
-<h1 align="center">Local-AI Agent <kbd>v0.8.9.21-beta</kbd></h1>
+<h1 align="center">Local-AI Agent <kbd>v0.8.9.22-beta</kbd></h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
@@ -87,7 +87,7 @@ Agent: Workspace loaded. Awaiting instructions.
 | **Integration** | **Dynamic Context** | On-demand compilation of system specs and file contents. |
 | **Optimization** | **Token-Slasher** | Custom [`tool`](https://github.com/j5onrf/local-ai/tree/main/tools) and [`skill`](https://github.com/j5onrf/local-ai/tree/main/skills) integration built for minimal token use. |
 | **Interface** | **Conversational TUI** | Rich, multi-turn chat sessions directly in the terminal. |
-| **Auditability** | **Zero-Dependency** | Under 350 lines of modular, standard-library Python. |
+| **Auditability** | **Zero-Dependency** | Under 500 lines of modular, standard-library Python. |
 
 ---
 
@@ -193,9 +193,20 @@ nano ~/.config/local-ai/.env
 
 #### Configuration Example (`.env`):
 ```env
+# ~/.config/local-ai/.env
+# use "ai status" and "model select"
+
+# Claude Subscription API Configurations
+CLAUDE_API_KEY="your-claude-api-key-here"
+CLAUDE_MODEL="claude-fable-5"
+
+# OpenAI Subscription API Configurations
+OPENAI_API_KEY="your-openai-api-key-here"
+OPENAI_MODEL="gpt-5.5"
+
 # Google Gemini API Configurations
 GEMINI_API_KEY="AIzaSyYourFullGeminiApiKeyHere"
-CLOUD_MODEL="gemini-3.1-flash-lite"
+GEMINI_MODEL="gemini-3.1-flash-lite"
 
 # OpenRouter API Configurations
 OPENROUTER_API_KEY="sk-or-v1-YourFullOpenRouterKeyHere"

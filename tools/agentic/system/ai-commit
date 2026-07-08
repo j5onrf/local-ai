@@ -4,10 +4,11 @@
 
 set -euo pipefail
 
-# Check if there are any staged changes using Git's optimized quiet early-exit
-if git diff --cached --quiet; then
-    echo "❌ Error: No staged changes found. Run 'git add' first." >&2
-    exit 1
+# Gracefully handle Ctrl+C (SIGINT) to prevent closing parent terminals or windows
+if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+    trap 'echo -e "\n\n👋 Commit aborted."; return 130 2>/dev/null || exit 130' INT
+else
+    trap 'echo -e "\n\n👋 Commit aborted."; exit 130' INT
 fi
 
 # Define paths

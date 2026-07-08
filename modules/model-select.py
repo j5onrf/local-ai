@@ -14,6 +14,7 @@ import requests
 ENV_PATH = os.path.expanduser("~/.config/local-ai/.env")
 CACHE_PATH = os.path.expanduser("~/.config/local-ai/.openrouter_cache_v2.json")
 
+# Fallback defaults used on cold-boots before first API refresh
 GEMINI_CURATED = [
     "gemini-3.1-flash-lite",
     "gemini-3.5-flash",
@@ -24,7 +25,23 @@ GEMINI_CURATED = [
     "gemini-1.5-pro"
 ]
 
-# Initial cold-start defaults mapped exactly to the live weekly rankings (Gemini removed)
+OPENAI_CURATED = [
+    "gpt-5.5",
+    "gpt-5",
+    "o3",
+    "o3-mini",
+    "gpt-4o",
+    "gpt-4o-mini"
+]
+
+CLAUDE_CURATED = [
+    "claude-fable-5",
+    "claude-sonnet-5",
+    "claude-opus-4-8",
+    "claude-opus-4-7",
+    "claude-opus-4-6"
+]
+
 OR_FREE_DEFAULTS = [
     "openrouter/free",
     "nvidia/nemotron-3-ultra:free",
@@ -57,18 +74,39 @@ OR_PAID_DEFAULTS = [
 
 # --- DYNAMIC RANKINGS CLASSIFICATION ENGINE ---
 def classify_openrouter_models(raw_data):
+    """Parses live API listings, categorizing and mapping identifiers for all platforms."""
     if not isinstance(raw_data, list):
-        return OR_FREE_DEFAULTS, OR_PAID_DEFAULTS
+        return OR_FREE_DEFAULTS, OR_PAID_DEFAULTS, GEMINI_CURATED, CLAUDE_CURATED, OPENAI_CURATED
         
     free_candidates = []
     paid_candidates = []
+    gemini_candidates = []
+    openai_candidates = []
+    claude_candidates = []
     
     for item in raw_data:
         model_id = item.get("id", "")
         if not model_id:
             continue
             
-        # Ignore Google Gemini endpoints from the OpenRouter lists to prevent duplicates
+        # Parse direct API endpoints from OpenRouter namespace rules
+        if model_id.startswith("google/gemini"):
+            direct_id = model_id.split("/", 1)[1]
+            direct_id = direct_id.split(":")[0]  # Strip parameters
+            if direct_id not in gemini_candidates:
+                gemini_candidates.append(direct_id)
+        elif model_id.startswith("openai/"):
+            direct_id = model_id.split("/", 1)[1]
+            direct_id = direct_id.split(":")[0]
+            if direct_id not in openai_candidates:
+                openai_candidates.append(direct_id)
+        elif model_id.startswith("anthropic/"):
+            direct_id = model_id.split("/", 1)[1]
+            direct_id = direct_id.split(":")[0]
+            if direct_id not in claude_candidates:
+                claude_candidates.append(direct_id)
+            
+        # Filter OpenRouter-specific UI lists (skipping duplicate Gemini routes)
         if "google/gemini" in model_id.lower() or "google/gemini" in item.get("name", "").lower():
             continue
             
@@ -77,32 +115,43 @@ def classify_openrouter_models(raw_data):
         if "free" in model_id.lower():
             is_free = True
         elif pricing:
-            # Check price structure for true free-tiers (taking string float types into account)
             prompt_cost = float(pricing.get("prompt", 0))
             completion_cost = float(pricing.get("completion", 0))
             if prompt_cost == 0 and completion_cost == 0:
                 is_free = True
                 
         if is_free:
-            free_candidates.append(model_id)
+            if model_id not in free_candidates:
+                free_candidates.append(model_id)
         else:
-            paid_candidates.append(model_id)
-            
-    # Always prioritize openrouter/free as the top option for Free tier
+            if model_id not in paid_candidates:
+                paid_candidates.append(model_id)
+                
+    # Fallback to standard hardcoded curated lines if connection yielded empty results
+    free_candidates = free_candidates or OR_FREE_DEFAULTS
+    paid_candidates = paid_candidates or OR_PAID_DEFAULTS
+    gemini_candidates = gemini_candidates or GEMINI_CURATED
+    openai_candidates = openai_candidates or OPENAI_CURATED
+    claude_candidates = claude_candidates or CLAUDE_CURATED
+    
+    # Always prioritize default OpenRouter free routing at the top
     if "openrouter/free" in free_candidates:
         free_candidates.remove("openrouter/free")
     free_candidates = ["openrouter/free"] + free_candidates
     
-    # Return the FULL sorted lists to cache. Do not slice them here.
-    return free_candidates, paid_candidates
+    return free_candidates, paid_candidates, gemini_candidates, claude_candidates, openai_candidates
 
 # --- STORAGE HANDLING ---
 def load_env_vars():
     vars_dict = {
         "GEMINI_API_KEY": "",
         "OPENROUTER_API_KEY": "",
+        "CLAUDE_API_KEY": "",
+        "OPENAI_API_KEY": "",
         "CLOUD_MODEL": "gemini-3.1-flash-lite",
-        "OPENROUTER_MODEL": "openrouter/free"
+        "OPENROUTER_MODEL": "openrouter/free",
+        "CLAUDE_MODEL": "claude-fable-5",
+        "OPENAI_MODEL": "gpt-5.5"
     }
     if os.path.exists(ENV_PATH):
         with open(ENV_PATH, "r", encoding="utf-8") as f:
@@ -143,7 +192,6 @@ def is_key_active(key):
     with open(ENV_PATH, "r", encoding="utf-8") as f:
         for line in f:
             stripped = line.strip()
-            # Foolproof check: must begin with key name (not a comment symbol)
             if stripped.startswith(f"{key}=") or stripped.startswith(f"{key} ="):
                 return True
     return False
@@ -171,22 +219,28 @@ def toggle_env_api_keys():
         lines = f.readlines()
 
     is_commented = False
+    target_keys = {"GEMINI_API_KEY", "OPENROUTER_API_KEY", "CLAUDE_API_KEY", "OPENAI_API_KEY"}
+    
     for line in lines:
-        if "GEMINI_API_KEY" in line:
-            if line.strip().startswith("#"):
-                is_commented = True
-            break
+        for k in target_keys:
+            if k in line:
+                if line.strip().startswith("#"):
+                    is_commented = True
+                break
 
     new_lines = []
     for line in lines:
-        if "GEMINI_API_KEY" in line or "OPENROUTER_API_KEY" in line:
+        matched_key = None
+        for k in target_keys:
+            if k in line:
+                matched_key = k
+                break
+        if matched_key:
             stripped = line.strip()
             assignment = stripped.lstrip("#").strip()
             if is_commented:
-                # Re-enabling: write uncommented
                 line = f"{assignment}\n"
             else:
-                # Disabling: write commented
                 line = f"#{assignment}\n"
         new_lines.append(line)
 
@@ -206,22 +260,27 @@ def load_cached_lists():
                 data = json.load(f)
                 free = data.get("free", OR_FREE_DEFAULTS)
                 paid = data.get("paid", OR_PAID_DEFAULTS)
-                # Discard old sliced caches automatically to load expansive arrays
-                if paid and len(paid) <= 20:
-                    return OR_FREE_DEFAULTS, OR_PAID_DEFAULTS
-                return free, paid
+                gemini = data.get("gemini", GEMINI_CURATED)
+                claude = data.get("claude", CLAUDE_CURATED)
+                openai = data.get("openai", OPENAI_CURATED)
+                return free, paid, gemini, claude, openai
         except Exception:
             pass
-    return OR_FREE_DEFAULTS, OR_PAID_DEFAULTS
+    return OR_FREE_DEFAULTS, OR_PAID_DEFAULTS, GEMINI_CURATED, CLAUDE_CURATED, OPENAI_CURATED
 
-def save_cached_lists(free_list, paid_list):
+def save_cached_lists(free_list, paid_list, gemini_list, claude_list, openai_list):
     try:
         with open(CACHE_PATH, "w", encoding="utf-8") as f:
-            json.dump({"free": free_list, "paid": paid_list}, f, indent=2)
+            json.dump({
+                "free": free_list,
+                "paid": paid_list,
+                "gemini": gemini_list,
+                "claude": claude_list,
+                "openai": openai_list
+            }, f, indent=2)
     except Exception:
         pass
 
-# --- API INTEGRATION WITH TOP-WEEKLY RANKING ---
 def fetch_openrouter_models(api_key):
     try:
         url = "https://openrouter.ai/api/v1/models?sort=top-weekly"
@@ -239,13 +298,11 @@ def get_key():
     old_settings = termios.tcgetattr(fd)
     try:
         tty.setraw(fd)
-        # Bypasses sys.stdin wrapping to prevent application-level buffering on raw escape blocks
         ch_bytes = os.read(fd, 1)
         if not ch_bytes:
             return None
         ch = ch_bytes.decode('utf-8', errors='ignore')
         if ch == '\x1b':
-            # Safe select timeout on raw file descriptor
             rlist, _, _ = select.select([sys.stdin], [], [], 0.05)
             if rlist:
                 seq_bytes = os.read(fd, 2)
@@ -257,13 +314,13 @@ def get_key():
             return 'esc'
         elif ch in ('\r', '\n'):
             return 'enter'
-        elif ch in ('\x7f', '\x08'):  # Backspace mappings
+        elif ch in ('\x7f', '\x08'):
             return 'backspace'
         return ch
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
-def draw_main_menu(selected, gemini_curr, or_curr, message=""):
+def draw_main_menu(selected, gemini_curr, claude_curr, openai_curr, or_curr, message=""):
     sys.stdout.write("\x1b[H\x1b[2J")
     
     amber = "\033[38;2;230;120;60m"
@@ -275,11 +332,15 @@ def draw_main_menu(selected, gemini_curr, or_curr, message=""):
     
     gemini_active = is_key_active("GEMINI_API_KEY")
     or_active = is_key_active("OPENROUTER_API_KEY")
+    claude_active = is_key_active("CLAUDE_API_KEY")
+    openai_active = is_key_active("OPENAI_API_KEY")
     
-    keys_active = gemini_active or or_active
+    keys_active = gemini_active or or_active or claude_active or openai_active
     status_text = f"{green}[ ENABLED ]{reset}" if keys_active else f"{red}[ DISABLED ]{reset}"
     
-    gemini_display = f"{green}{gemini_curr}{reset}" if gemini_active else f"{red}DISABLED (Fallback active){reset}"
+    gemini_display = f"{green}{gemini_curr}{reset}" if gemini_active else f"{red}DISABLED{reset}"
+    openai_display = f"{green}{openai_curr}{reset}" if openai_active else f"{red}DISABLED{reset}"
+    claude_display = f"{green}{claude_curr}{reset}" if claude_active else f"{red}DISABLED{reset}"
     
     is_or_free = "free" in or_curr.lower()
     or_free_display = f"{green}{or_curr}{reset}" if (or_active and is_or_free) else f"{dim}None selected{reset}"
@@ -291,6 +352,8 @@ def draw_main_menu(selected, gemini_curr, or_curr, message=""):
     options = [
         f"🔌  Cloud Connection      {status_text}",
         f"♊  Google Gemini          {gemini_display}\n       {dim}Select from curated, lightweight Google endpoints{reset}",
+        f"🍎  OpenAI Subscription    {openai_display}\n       {dim}Select from direct, high-performance OpenAI engines{reset}",
+        f"☕  Anthropic Claude       {claude_display}\n       {dim}Select from direct, industry-leading Claude models{reset}",
         f"🌐  OpenRouter Free       {or_free_display}\n       {dim}Select from the top 20 most popular free models{reset}",
         f"🌐  OpenRouter Paid       {or_paid_display}\n       {dim}Select from the top 20 industry leading paid engines{reset}",
         f"↺  Refresh API Lists      {dim}Query OpenRouter for current model rankings{reset}",
@@ -298,7 +361,7 @@ def draw_main_menu(selected, gemini_curr, or_curr, message=""):
     ]
     
     for i, opt in enumerate(options):
-        spacing = "\n" if i in (1, 2, 3) else ""
+        spacing = "\n" if i in (1, 2, 3, 4, 5) else ""
         if i == selected:
             sys.stdout.write(f"   {amber}❯{reset}  {bold}{opt}{reset}\n{spacing}")
         else:
@@ -312,7 +375,6 @@ def draw_main_menu(selected, gemini_curr, or_curr, message=""):
     sys.stdout.flush()
 
 def run_selector(title, full_models_list, current, key_name):
-    # Store mutable states cleanly inside context
     state = {
         "showing_all": False,
         "search_query": ""
@@ -325,7 +387,6 @@ def run_selector(title, full_models_list, current, key_name):
         
     def get_menu_options():
         filtered = get_filtered_list()
-        # Automatically bypass Top 20 slicing if actively typing a filter query
         sub_list = filtered if (state["showing_all"] or state["search_query"]) else filtered[:20]
         return [f"🚫 Turn Off {title}"] + sub_list
         
@@ -348,7 +409,6 @@ def run_selector(title, full_models_list, current, key_name):
         sys.stdout.write(f"\n   {bold}  SELECT {title.upper()}:{reset}\n")
         sys.stdout.write(f"   {dim}────────────────────────────────────────────────────────────{reset}\n\n")
         
-        # Apple-Style Instant Filter Input line (appears when keys are typed)
         if state["search_query"]:
             sys.stdout.write(f"   🔍  Filter: {green}{state['search_query']}{amber}_{reset}\n\n")
             
@@ -377,7 +437,6 @@ def run_selector(title, full_models_list, current, key_name):
                 
             sys.stdout.write(f"     {display_line}\n")
             
-        # Determine scroll indicators for sleek pagination
         more_above = start > 0
         more_below = end < len(menu_options)
         
@@ -400,7 +459,6 @@ def run_selector(title, full_models_list, current, key_name):
             
         sys.stdout.write(f"\n{divider_line}\n")
         
-        # Symmetrical dynamic bottom pagination hints
         if state["search_query"]:
             hint = f"Found {len(menu_options) - 1} matches. Backspace to edit, Esc to clear filter."
         elif not state["showing_all"]:
@@ -450,7 +508,6 @@ def run_selector(title, full_models_list, current, key_name):
                 return "DISABLE"
             return menu_options[selected]
         elif isinstance(key, str) and len(key) == 1:
-            # Capture standard characters typing to drive Instant Filter queries
             if key.isalnum() or key in ('-', ':', '/', '.', '_'):
                 state["search_query"] += key
                 selected = 0
@@ -460,22 +517,23 @@ def run_selector(title, full_models_list, current, key_name):
 def main():
     env = load_env_vars()
     gemini_curr = env["CLOUD_MODEL"]
+    openai_curr = env.get("OPENAI_MODEL", "gpt-5.5")
+    claude_curr = env.get("CLAUDE_MODEL", "claude-fable-5")
     or_curr = env["OPENROUTER_MODEL"]
     
-    or_free_list, or_paid_list = load_cached_lists()
+    or_free_list, or_paid_list, gemini_list, claude_list, openai_list = load_cached_lists()
     
-    # Bulletproof Dynamic Enforcement: Always make sure openrouter/free is at the top of the loaded cache
     if "openrouter/free" in or_free_list:
         or_free_list.remove("openrouter/free")
     or_free_list = ["openrouter/free"] + or_free_list
     
     selected_idx = 0
     message = ""
-    total_options = 6
+    total_options = 8
     
     try:
         while True:
-            draw_main_menu(selected_idx, gemini_curr, or_curr, message)
+            draw_main_menu(selected_idx, gemini_curr, claude_curr, openai_curr, or_curr, message)
             message = ""
             key = get_key()
             
@@ -490,16 +548,36 @@ def main():
                     status_text = f"\033[1;32mENABLED\033[0m" if is_now_enabled else f"\033[1;31mDISABLED\033[0m"
                     message = f"✓ Switched Cloud Connection to: {status_text}"
                 elif selected_idx == 1:  # Gemini
-                    res = run_selector("Gemini", GEMINI_CURATED, gemini_curr, "GEMINI_API_KEY")
+                    res = run_selector("Gemini", gemini_list, gemini_curr, "GEMINI_API_KEY")
                     if res == "DISABLE":
                         set_key_commented_state("GEMINI_API_KEY", True)
-                        message = "✓ Gemini disabled. Automatically falling back to OpenRouter."
+                        message = "✓ Gemini disabled."
                     elif res:
                         gemini_curr = res
                         set_key_commented_state("GEMINI_API_KEY", False)
                         update_env("CLOUD_MODEL", gemini_curr)
                         message = f"✓ Saved CLOUD_MODEL={gemini_curr} and re-enabled Gemini API Key."
-                elif selected_idx == 2:  # OR Free
+                elif selected_idx == 2:  # OpenAI
+                    res = run_selector("OpenAI", openai_list, openai_curr, "OPENAI_API_KEY")
+                    if res == "DISABLE":
+                        set_key_commented_state("OPENAI_API_KEY", True)
+                        message = "✓ OpenAI disabled."
+                    elif res:
+                        openai_curr = res
+                        set_key_commented_state("OPENAI_API_KEY", False)
+                        update_env("OPENAI_MODEL", openai_curr)
+                        message = f"✓ Saved OPENAI_MODEL={openai_curr} and re-enabled OpenAI API Key."
+                elif selected_idx == 3:  # Claude
+                    res = run_selector("Claude", claude_list, claude_curr, "CLAUDE_API_KEY")
+                    if res == "DISABLE":
+                        set_key_commented_state("CLAUDE_API_KEY", True)
+                        message = "✓ Claude disabled."
+                    elif res:
+                        claude_curr = res
+                        set_key_commented_state("CLAUDE_API_KEY", False)
+                        update_env("CLAUDE_MODEL", claude_curr)
+                        message = f"✓ Saved CLAUDE_MODEL={claude_curr} and re-enabled Claude API Key."
+                elif selected_idx == 4:  # OR Free
                     res = run_selector("OpenRouter Free", or_free_list, or_curr, "OPENROUTER_API_KEY")
                     if res == "DISABLE":
                         set_key_commented_state("OPENROUTER_API_KEY", True)
@@ -509,7 +587,7 @@ def main():
                         set_key_commented_state("OPENROUTER_API_KEY", False)
                         update_env("OPENROUTER_MODEL", or_curr)
                         message = f"✓ Saved OPENROUTER_MODEL={or_curr} and re-enabled OpenRouter Key."
-                elif selected_idx == 3:  # OR Paid
+                elif selected_idx == 5:  # OR Paid
                     res = run_selector("OpenRouter Paid", or_paid_list, or_curr, "OPENROUTER_API_KEY")
                     if res == "DISABLE":
                         set_key_commented_state("OPENROUTER_API_KEY", True)
@@ -519,17 +597,17 @@ def main():
                         set_key_commented_state("OPENROUTER_API_KEY", False)
                         update_env("OPENROUTER_MODEL", or_curr)
                         message = f"✓ Saved OPENROUTER_MODEL={or_curr} and re-enabled OpenRouter Key."
-                elif selected_idx == 4:  # Refresh API lists
+                elif selected_idx == 6:  # Refresh API lists
                     message = "\033[1;33m↺ Checking OpenRouter for current model rankings...\033[0m"
-                    draw_main_menu(selected_idx, gemini_curr, or_curr, message)
+                    draw_main_menu(selected_idx, gemini_curr, claude_curr, openai_curr, or_curr, message)
                     raw_data = fetch_openrouter_models(env["OPENROUTER_API_KEY"])
                     if raw_data:
-                        or_free_list, or_paid_list = classify_openrouter_models(raw_data)
-                        save_cached_lists(or_free_list, or_paid_list)
-                        message = f"✓ Successfully synchronized latest model rankings."
+                        or_free_list, or_paid_list, gemini_list, claude_list, openai_list = classify_openrouter_models(raw_data)
+                        save_cached_lists(or_free_list, or_paid_list, gemini_list, claude_list, openai_list)
+                        message = f"✓ Dynamic model rankings & provider APIs synchronized."
                     else:
                         message = "\033[1;31m✗ Connection failed. Keeping cached defaults.\033[0m"
-                elif selected_idx == 5:  # Close
+                elif selected_idx == 7:  # Close
                     break
             elif key == 'q':
                 break
