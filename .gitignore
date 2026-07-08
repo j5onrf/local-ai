@@ -14,3 +14,4 @@ index-map-local-ai.txt
 # Ignore Python cache directories and bytecode
 __pycache__/
 *.pyc
+.spend_ledger.json
