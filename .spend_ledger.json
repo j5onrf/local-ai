@@ -1,0 +1,16 @@
+{
+  "date": "2026-07-08",
+  "total_cost": 0.0,
+  "models": {
+    "/home/j5/models/Qwen3.6-35B-A3B-UD-Q2_K_XL.gguf": {
+      "in": 625,
+      "out": 306,
+      "cost": 0.0
+    },
+    "/home/j5/models/Qwen3.6-35B-A3B-IQ4_NL.gguf": {
+      "in": 2976,
+      "out": 62,
+      "cost": 0.0
+    }
+  }
+}

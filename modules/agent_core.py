@@ -10,6 +10,12 @@ import requests
 import agent_ui as ui
 import agent_cloud
 
+# Safe, optional loading of spend ledger module
+try:
+    import agent_usage as usage_log
+except ImportError:
+    usage_log = None
+
 # Create a shared Session object to manage active connection pooling
 _session = requests.Session()
 
@@ -18,6 +24,27 @@ try:
     import speed_test
 except ImportError:
     speed_test = None
+
+
+def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float,
+                    show_stats: bool, ctx_used: int = None) -> None:
+    """Records a finished turn in the spend ledger and, when stats are on,
+    prints the dim usage line (tokens, turn cost, today's spend, context left)."""
+    if not usage_log:
+        return
+    try:
+        usage_log.record(model, in_tok, out_tok, cost)
+        usage_log.refresh_balance_async(min_age=10)
+        if show_stats and sys.stdout.isatty():
+            ctx_max = None
+            if ctx_used is not None:
+                try:
+                    ctx_max = int(os.environ.get("AI_MAX_TOKENS", 8192))
+                except Exception:
+                    ctx_max = 8192
+            print(usage_log.turn_line(in_tok, out_tok, cost, ctx_used, ctx_max))
+    except Exception:
+        pass
 
 
 # --- FAST-PATH BYTE EXTRACTOR ---
@@ -128,6 +155,9 @@ def stream(messages, prefix, gkey, spinner_class, show_stats: bool = True):
                 speed_test.end()
 
             ans_text = "".join(acc)
+            in_est = (len(body.get("input", "")) + len(body.get("system_instruction", ""))) // 4
+            ctx_est = (sum(len(m.get("content", "")) for m in messages) + len(ans_text)) // 4
+            _log_turn_usage(model, in_est, len(ans_text) // 4, 0.0, show_stats, ctx_est)
 
             if resolved_id:
                 try:
@@ -201,7 +231,7 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
                         except Exception:
                             pass
                         
-                        first, resolved_model = True, None
+                        first, resolved_model, usage_obj = True, None, None
                         for line in response:
                             if not line.startswith(b"data:"):
                                 continue
@@ -215,6 +245,8 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
                                     data = json.loads(dec)
                                     if "model" in data and not resolved_model:
                                         resolved_model = data["model"]
+                                    if isinstance(data.get("usage"), dict):
+                                        usage_obj = data["usage"]
                             except Exception:
                                 pass
 
@@ -236,7 +268,18 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
                         if speed_test and show_stats:
                             speed_test.end()
                         
-                        return "".join(acc)
+                        ans_text = "".join(acc)
+                        u = usage_obj or {}
+                        prompt_chars = sum(len(m.get("content", "")) for m in messages)
+                        in_tok = u.get("prompt_tokens") or prompt_chars // 4
+                        out_tok = u.get("completion_tokens") or len(ans_text) // 4
+                        
+                        # Process daily billing ledger calculations
+                        _log_turn_usage(resolved_model or body.get("model") or url.split('/')[2],
+                                        in_tok, out_tok, u.get("cost") or 0.0,
+                                        show_stats, (prompt_chars + len(ans_text)) // 4)
+
+                        return ans_text
                 except urlerr.HTTPError as e:
                     spinner.stop()
                     if e.code == 429 and retries > 0:

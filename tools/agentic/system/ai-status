@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ai-status - Diagnostics for Local-AI Agent Stack v1.3.8 [j5onrf]
+# ai-status - Diagnostics for Local-AI Agent Stack v1.3.9 [j5onrf]
 
 set -euo pipefail
 
@@ -37,13 +37,15 @@ check_conn() {
     [[ -n "${1:-}" ]] && curl -s -I --connect-timeout 1.5 "$2" >/dev/null && echo 0 || echo 1
 }
 
-# Evaluate all three connections in 3 lines of code
+# Evaluate active connection statuses across all available backends
 gemini_status=$(check_conn "${GEMINI_API_KEY:-}" "https://generativelanguage.googleapis.com")
+openai_status=$(check_conn "${OPENAI_API_KEY:-}" "https://api.openai.com")
+claude_status=$(check_conn "${CLAUDE_API_KEY:-}" "https://api.anthropic.com")
 or_status=$(check_conn "${OPENROUTER_API_KEY:-}" "https://openrouter.ai")
 local_status=$(curl -s -I --connect-timeout 1.0 "http://localhost:8080" >/dev/null && echo 0 || echo 1)
 
-# Fetch cloud-only metrics and prune old logs in a single Python pass
-request_stats="0|0|0|0"
+# Fetch cloud metrics and prune old logs in a single Python pass
+request_stats="0|0|0|0|0|0|0|0"
 log_file="$HOME/.config/local-ai/.request_log"
 if [[ -f "$log_file" ]]; then
     request_stats=$(python3 -c "
@@ -51,8 +53,8 @@ import os, time
 log_file = os.path.expanduser('~/.config/local-ai/.request_log')
 now = int(time.time())
 day_ago, min_ago = now - 86400, now - 60
-rpd = {'gemini': 0, 'openrouter': 0}
-rpm = {'gemini': 0, 'openrouter': 0}
+rpd = {'gemini': 0, 'openrouter': 0, 'openai': 0, 'claude': 0}
+rpm = {'gemini': 0, 'openrouter': 0, 'openai': 0, 'claude': 0}
 valid = []
 try:
     with open(log_file, 'r') as f:
@@ -72,19 +74,22 @@ try:
             f.write(f'{entry}\n')
 except:
     pass
-print(f\"{rpd['gemini']}|{rpm['gemini']}|{rpd['openrouter']}|{rpm['openrouter']}\")
-" || echo "0|0|0|0")
+print(f\"{rpd['gemini']}|{rpm['gemini']}|{rpd['openrouter']}|{rpm['openrouter']}|{rpd['openai']}|{rpm['openai']}|{rpd['claude']}|{rpm['claude']}\")
+" || echo "0|0|0|0|0|0|0|0")
 fi
 
 gemini_rpd=$(echo "$request_stats" | cut -d'|' -f1)
 gemini_rpm=$(echo "$request_stats" | cut -d'|' -f2)
 or_rpd=$(echo "$request_stats" | cut -d'|' -f3)
 or_rpm=$(echo "$request_stats" | cut -d'|' -f4)
+openai_rpd=$(echo "$request_stats" | cut -d'|' -f5)
+openai_rpm=$(echo "$request_stats" | cut -d'|' -f6)
+claude_rpd=$(echo "$request_stats" | cut -d'|' -f7)
+claude_rpm=$(echo "$request_stats" | cut -d'|' -f8)
 
 # Fetch OpenRouter key metadata (usage, limits, tier) on-demand
 or_meta="*Not Available*"
 if [[ $or_status -eq 0 ]]; then
-    # Direct query to OpenRouter's auth/key endpoint with local zero-dependency python JSON parser
     or_meta=$(curl -s -H "Authorization: Bearer $OPENROUTER_API_KEY" "https://openrouter.ai/api/v1/auth/key" | python3 -c "
 import sys, json
 try:
@@ -106,7 +111,6 @@ try:
     models = json.load(sys.stdin).get('data', [])
     free = [m.get('id') for m in models if m.get('id', '').endswith(':free')]
     if free:
-        # Format and show top 5 active free models in the pool
         print(', '.join(free[:15]) + '...')
     else:
         print('None found')
@@ -137,6 +141,14 @@ echo "* **GEMINI_API_KEY**  : $(mask_key "${GEMINI_API_KEY:-}")"
 echo "* **CLOUD_MODEL**     : \`${CLOUD_MODEL:-gemini-3.1-flash-lite}\` (Free Limits: ${gemini_limits})"
 echo "* **GEMINI METRICS**  : \`RPM: ${gemini_rpm} | RPD: ${gemini_rpd}\` (Last 24h rolling)"
 echo ""
+echo "* **OPENAI_API_KEY**  : $(mask_key "${OPENAI_API_KEY:-}")"
+echo "* **OPENAI_MODEL**    : \`${OPENAI_MODEL:-gpt-5.5}\`"
+echo "* **OPENAI METRICS**  : \`RPM: ${openai_rpm} | RPD: ${openai_rpd}\` (Last 24h rolling)"
+echo ""
+echo "* **CLAUDE_API_KEY**  : $(mask_key "${CLAUDE_API_KEY:-}")"
+echo "* **CLAUDE_MODEL**    : \`${CLAUDE_MODEL:-claude-fable-5}\`"
+echo "* **CLAUDE METRICS**  : \`RPM: ${claude_rpm} | RPD: ${claude_rpd}\` (Last 24h rolling)"
+echo ""
 echo "* **OPENROUTER_KEY**  : $(mask_key "${OPENROUTER_API_KEY:-}")"
 echo "* **OPENROUTER_MODEL**: \`${OPENROUTER_MODEL:-openrouter/free}\` (Free Limits: 20 RPM / 200 RPD)"
 if [[ $or_status -eq 0 && "${OPENROUTER_MODEL:-}" == *"free"* ]]; then
@@ -148,13 +160,21 @@ echo -e "\n---\n\n## ENDPOINT STATUS"
 
 # Compact 1-line status printers
 [[ -n "${GEMINI_API_KEY:-}" ]] && echo "* **Google APIs**   : $([[ $gemini_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")" || echo "* **Google APIs**   : *Skipped (No Key)*"
+[[ -n "${OPENAI_API_KEY:-}" ]] && echo "* **OpenAI APIs**   : $([[ $openai_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")" || echo "* **OpenAI APIs**   : *Skipped (No Key)*"
+[[ -n "${CLAUDE_API_KEY:-}" ]] && echo "* **Anthropic APIs**: $([[ $claude_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")" || echo "* **Anthropic APIs**: *Skipped (No Key)*"
 [[ -n "${OPENROUTER_API_KEY:-}" ]] && echo "* **OpenRouter API** : $([[ $or_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")" || echo "* **OpenRouter API** : *Skipped (No Key)*"
 echo -e "* **Local Server**   : $([[ $local_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")\n\n---\n\n## ACTIVE RUNTIME ROUTE"
 
-# Route evaluation matching runtime ai-agent.py exactly
+# Route evaluation matching runtime cascading execution exactly
 if [[ -n "${GEMINI_API_KEY:-}" && $gemini_status -eq 0 ]]; then
     echo "* **Selected Provider**: **Gemini Cloud API**"
     echo "* **Active Model**     : \`${CLOUD_MODEL:-gemini-3.1-flash-lite}\`"
+elif [[ -n "${OPENAI_API_KEY:-}" && $openai_status -eq 0 ]]; then
+    echo "* **Selected Provider**: **OpenAI Subscription API**"
+    echo "* **Active Model**     : \`${OPENAI_MODEL:-gpt-5.5}\`"
+elif [[ -n "${CLAUDE_API_KEY:-}" && $claude_status -eq 0 ]]; then
+    echo "* **Selected Provider**: **Anthropic Claude Subscription API**"
+    echo "* **Active Model**     : \`${CLAUDE_MODEL:-claude-fable-5}\`"
 elif [[ -n "${OPENROUTER_API_KEY:-}" && $or_status -eq 0 ]]; then
     echo "* **Selected Provider**: **OpenRouter API**"
     echo "* **Active Model**     : \`${OPENROUTER_MODEL:-openrouter/free}\`"
