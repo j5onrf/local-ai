@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.8.9.19]
+# Local-Ai Agent [j5onrf] [v0.8.9.20]
 
 import json
 import os
@@ -22,22 +22,27 @@ BASE_PROMPT = (
 )
 
 
-def load_env_file(env_path: str) -> None:
-    """Reads a local .env file and dynamically loads keys into os.environ if present."""
-    if not os.path.exists(env_path):
+def load_env_file(path: str) -> None:
+    """Loads KEY=value pairs from a .env file into the environment.
+    Real environment variables always win, so `AI_BACKEND=local ai` still overrides."""
+    if not os.path.exists(path):
         return
     try:
-        with open(env_path, "r", encoding="utf-8") as f:
+        with open(path, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
-                if not line or line.startswith("#"):
+                if not line or line.startswith("#") or "=" not in line:
                     continue
-                parts = line.split("=", 1)
-                if len(parts) == 2:
-                    key, val = parts[0].strip(), parts[1].strip()
-                    # Strip surrounding quotes if present
-                    if val.startswith(('"', "'")) and val.endswith(('"', "'")):
-                        val = val[1:-1]
+                key, _, val = line.partition("=")
+                key = key.strip()
+                if key.startswith("export "):
+                    key = key[len("export "):].strip()
+                val = val.strip()
+                # Unquoted values may carry an inline comment (KEY=x  # note)
+                if not val.startswith(('"', "'")):
+                    val = re.split(r"\s+#", val, maxsplit=1)[0].strip()
+                val = val.strip('"').strip("'")
+                if key and key not in os.environ:
                     os.environ[key] = val
     except Exception:
         pass
@@ -93,6 +98,36 @@ STOP_WORDS = {
     "in",
     "how",
 }
+
+
+def workspace_safe_name(workspace_path: str, home_dir: str) -> str:
+    """Derives the per-workspace database key from a workspace path."""
+    safe = workspace_path[len(home_dir):].lstrip("/") if workspace_path.startswith(home_dir) else workspace_path
+    return safe.replace("/", "-").strip("-") or "home"
+
+
+def workspace_db_counts(safe_name: str) -> tuple:
+    """Reads (turns, tpm facts) for a workspace from its SQLite database."""
+    turns = facts = 0
+    try:
+        res = subprocess.run(
+            [sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "get-count", safe_name],
+            capture_output=True,
+            text=True
+        )
+        turns = int(res.stdout.strip())
+    except Exception:
+        pass
+    try:
+        res = subprocess.run(
+            [sys.executable, f"{CFG_DIR}/modules/ai-agent-memories", "get-tpm-count", safe_name],
+            capture_output=True,
+            text=True
+        )
+        facts = int(res.stdout.strip())
+    except Exception:
+        pass
+    return turns, facts
 
 
 def sync_md_to_sqlite(workspace: str, workspace_path: str) -> None:
@@ -267,12 +302,7 @@ def run_interactive_chat(args: list):
 
     workspace_path = os.environ.get("AI_WORKSPACE_PATH", os.getcwd())
     home_dir = os.path.expanduser("~")
-    safe_name = (
-        workspace_path[len(home_dir) :].lstrip("/")
-        if workspace_path.startswith(home_dir)
-        else workspace_path
-    )
-    safe_name = safe_name.replace("/", "-").strip("-") or "home"
+    safe_name = workspace_safe_name(workspace_path, home_dir)
 
     chat_history = [{"role": "system", "content": active_system_prompt}]
     pending_query = " ".join(args[1:]) if len(args) > 1 else None
@@ -289,35 +319,7 @@ def run_interactive_chat(args: list):
     db_turns = 0
     tpm_count = 0
     if is_agent:
-        try:
-            res = subprocess.run(
-                [
-                    sys.executable,
-                    f"{CFG_DIR}/modules/ai-agent-sessions",
-                    "get-count",
-                    safe_name,
-                ],
-                capture_output=True,
-                text=True,
-            )
-            db_turns = int(res.stdout.strip())
-        except Exception:
-            pass
-        try:
-            # Query the database to retrieve the count of active compiled facts
-            res_tpm = subprocess.run(
-                [
-                    sys.executable,
-                    f"{CFG_DIR}/modules/ai-agent-memories",
-                    "get-tpm-count",
-                    safe_name,
-                ],
-                capture_output=True,
-                text=True,
-            )
-            tpm_count = int(res_tpm.stdout.strip())
-        except Exception:
-            pass
+        db_turns, tpm_count = workspace_db_counts(safe_name)
 
     ui.draw_session_box(
         workspace_path,

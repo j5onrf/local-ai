@@ -168,7 +168,7 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
                     "HTTP-Referer": "https://github.com/j5onrf/local-ai"
                 },
                 os.environ.get("OPENROUTER_MODEL", "openrouter/free"),
-                {},
+                {"usage": {"include": True}},  # Native server-side token usage tracking
                 180
             ))
         configs.append(("http://localhost:8080/v1/chat/completions", {}, "local-model", {}, 180))

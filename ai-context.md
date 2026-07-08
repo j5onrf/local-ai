@@ -116,7 +116,7 @@ ai init ~/.config/local-ai/projects/session-test-2 --init ---> session test 2, p
 
 ```properties
 # --- Dynamic Local-AI Model Select TUI  ---
-~/.config/local-ai/modules/model-select.py ---> model select, model selector, mst
+~/.config/local-ai/modules/model-select.py ---> model select, model selector, model selection, mst
 
 # --- Ai-Prompt-Writer-Image - Interactive TUI Console ---
 # [TOOL] ~/.config/local-ai/tools/subsec/prompt/ai-prompt-writer-image --cat ---> prompt writer image, image prompt, ip

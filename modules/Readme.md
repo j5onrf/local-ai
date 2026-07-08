@@ -8,7 +8,7 @@
 
 ---
 
-# Model Selector TUI
+# Model Select TUI
 
 <div align="center">
   <p><i>Click to view high-resolution version</i></p>

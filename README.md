@@ -2,7 +2,7 @@
   <img alt="Local-AI Agent" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" width="800" />
 </p>
 
-<h1 align="center">Local-AI Agent <kbd>v0.8.9.19-beta</kbd></h1>
+<h1 align="center">Local-AI Agent <kbd>v0.8.9.20-beta</kbd></h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
@@ -111,7 +111,7 @@ Agent: Workspace loaded. Awaiting instructions.
   <em>Manage your active cloud endpoints, inspect live API rankings, and toggle keys.</em>
 </p>
 
-* Run **`model select`** directly from your terminal to launch the interactive **🔌 [Cloud Connection](https://github.com/j5onrf/local-ai/tree/main/modules)**
+* Run **`model select`** directly from your terminal to launch the interactive **[Cloud Connection](https://github.com/j5onrf/local-ai/tree/main/modules)**
 
 ---
 
