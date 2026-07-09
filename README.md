@@ -1,8 +1,8 @@
 <p align="center">
-  <img alt="Local-AI Agent" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" width="800" />
+  <img alt="Local-AI Agent" src="https://github.com/user-attachments/assets/85c2b0f7-428f-4df1-bdaf-1cffcb259ad9" width="200" />
 </p>
 
-<h1 align="center">Local-AI Agent <kbd>v0.9.0-beta</kbd></h1>
+<h1 align="center">Local-AI Agent <kbd>v0.9.1-beta</kbd></h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
@@ -216,6 +216,21 @@ OPENROUTER_MODEL="openrouter/free"
 # Context Limits
 AI_MAX_TOKENS=8192
 ```
+
+---
+
+<div align="center">
+  <details>
+    <summary style="cursor: pointer; color: #94A3B8; outline: none;">
+      <i>Click to expand ecosystem diagram</i>
+      <br />
+      <!-- The image is now just a summary component with no underlying hyperlink -->
+      <img alt="Local-Ai Agent Banner Preview" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" width="250" style="border-radius: 6px;" />
+    </summary>
+    <br />
+    <img alt="Local-Ai Agent Banner" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" width="800" style="border-radius: 8px;" />
+  </details>
+</div>
 
 ---
 
