@@ -240,6 +240,7 @@ AI_MAX_TOKENS=8192
 - [ ] **Optimization Audits:** Run latency profiling and memory alignment passes on connection pooling and stream processing modules.
 - [ ] **Security Validation:** Implement automated file boundary testing to verify directory containment and authorization overrides.
 - [ ] **Final Code Optimizations:** Use strongest frontier coding model with exclusive finishing coding-skill.md to run a final pass and optimize final production ready product.
+- [ ] **Finalize Logo:** Decide on final logo from concept art.
 - [ ] **Stable Tag Deployment:** Publish official **`v1.0.0`** production-stable release!
 
 ---
