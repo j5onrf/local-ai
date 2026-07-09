@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <code>gpt-5.5</code> &nbsp; <code>claude-fable-5</code> &nbsp; <code>gemini-3.1-flash-lite</code> &nbsp; <code>openrouter/free</code> &nbsp; <code>Local GGUF</code>
+  <code>gpt-5.5</code> &nbsp; <code>claude-fable-5</code> &nbsp; <code>gemini-3.5-flash</code> &nbsp; <code>openrouter/free</code> &nbsp; <code>Local GGUF</code>
 </p>
 
 ---
@@ -49,7 +49,7 @@ All configurations and custom shortcuts are managed in [`ai-context.md`](ai-cont
 │  skill:     init codef                       │
 │  database:  active (3 facts, 109 turns)      │
 ╰──────────────────────────────────────────────╯
-[sys] Startup context: 160 tokens | Ctrl+C to exit.
+[sys] Startup context: 210 tokens | Ctrl+C to exit.
 
 Agent: Workspace loaded. Awaiting instructions.
 ❯
@@ -240,6 +240,7 @@ AI_MAX_TOKENS=8192
 - [ ] **Optimization Audits:** Run latency profiling and memory alignment passes on connection pooling and stream processing modules.
 - [ ] **Security Validation:** Implement automated file boundary testing to verify directory containment and authorization overrides.
 - [ ] **Final Code Optimizations:** Use strongest frontier coding model with exclusive finishing coding-skill.md to run a final pass and optimize final production ready product.
+- [ ] **Clean and Condense:** Only keep what is needed and useful.
 - [ ] **Finalize Logo:** Decide on final logo from concept art.
 - [ ] **Stable Tag Deployment:** Publish official **`v1.0.0`** production-stable release!
 
