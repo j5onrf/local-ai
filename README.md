@@ -2,7 +2,7 @@
   <img alt="Local-AI Agent" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" width="800" />
 </p>
 
-<h1 align="center">Local-AI Agent <kbd>v0.8.9.22-beta</kbd></h1>
+<h1 align="center">Local-AI Agent <kbd>v0.9.0-beta</kbd></h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <code>Gemini-3.1-flash-lite</code> &nbsp; <code>Openrouter/free</code> &nbsp; <code>Local-Ai Model</code>
+  <code>gpt-5.5</code> &nbsp; <code>claude-fable-5</code> &nbsp; <code>gemini-3.1-flash-lite</code> &nbsp; <code>openrouter/free</code> &nbsp; <code>Local GGUF</code>
 </p>
 
 ---
@@ -33,12 +33,12 @@ All configurations and custom shortcuts are managed in [`ai-context.md`](ai-cont
 ╭──────────────────────────────────────────────╮
 │  >_ Local-AI Agent                           │
 │                                              │
-│  model:     local-model                      │
+│  model:     Qwen3.6-35B-A3B.gguf             │
 │  directory: ...-ai/projects/session-test     │
 │  skill:     init                             │
 │  database:  active (3 facts, 109 turns)      │
 ╰──────────────────────────────────────────────╯
-[sys] Startup context: 104 tokens | Ctrl+C to exit.
+[sys] Startup context: 160 tokens | Ctrl+C to exit.
 
 Agent: Workspace loaded. Awaiting instructions.
 ❯ 
@@ -69,7 +69,7 @@ Agent: Workspace loaded. Awaiting instructions.
 <h2 align="center">System Administration & Diagnostics</h2>
 
 <p align="center">
-  <em>Inspecting package updates, monitoring system health, and optimizing performance...</em>
+  <em>Inspecting package updates, monitoring system health, and optimizing performance.</em>
 </p>
 
 * [log-checker](/tools/agentic/system/log-checker) and [system-health](/tools/agentic/system/system-health) live diagnostics with [aur-audit](/tools/agentic/system/aur-audit), [security-audit](/tools/agentic/system/security-audit), [update-inspector](/tools/agentic/system/update-inspector) zero-trust auditing, [system-optimizer](/tools/agentic/system/system-optimizer) resource adjustments, [ai-status](/tools/agentic/system/ai-status) routing, and [ai-commit](/tools/agentic/system/ai-commit) hooks.
@@ -83,7 +83,7 @@ Agent: Workspace loaded. Awaiting instructions.
 | **Performance** | **Zero-Daemon** | 0% idle CPU/RAM. `Ultra-light` execution. |
 | **Intelligence** | **Scalability** | Optimized from `Qwen3.5 2B` up to frontier models. |
 | **Resiliency** | **Fallbacks** | `Gemini` → `OpenAI` → `Claude` → `OpenRouter` → `Local`. |
-| **Safety** | **Zero-Trust Guardrails** | Intercepts destructive commands before shell execution. |
+| **Safety** | **Zero-Trust Guardrails** | Intercepts out-of-bounds commands and edits for manual approval. |
 | **Integration** | **Dynamic Context** | On-demand compilation of system specs and file contents. |
 | **Optimization** | **Token-Slasher** | Custom [`tool`](https://github.com/j5onrf/local-ai/tree/main/tools) and [`skill`](https://github.com/j5onrf/local-ai/tree/main/skills) integration built for minimal token use. |
 | **Interface** | **Conversational TUI** | Rich, multi-turn chat sessions directly in the terminal. |
@@ -111,7 +111,7 @@ Agent: Workspace loaded. Awaiting instructions.
   <em>Manage your active cloud endpoints, inspect live API rankings, and toggle keys.</em>
 </p>
 
-* Run **`model select`** directly from your terminal to launch the interactive **[Cloud Connection](https://github.com/j5onrf/local-ai/tree/main/modules)**
+* Run **`model select`** directly from your terminal to launch the interactive **[Cloud Connection](https://github.com/j5onrf/local-ai/tree/main/modules)** TUI.
 
 ---
 
@@ -144,6 +144,7 @@ Agent: Workspace loaded. Awaiting instructions.
 | :--- | :--- |
 | **`/clear`** / **`/reset`** | **Reset** Session context, local chat history, and the SQLite TPM table. |
 | **`/d`** / **`/e`** | **Disable** / **Enable** the context-aware grammar & spellchecker. |
+| **`/g`** | **Toggle** workspace confirmation gates ON/OFF (autonomous editing mode). |
 | **`/m`** | **Toggle** long-term memory and TPM reconciliation ON/OFF. |
 | **`/r`** / **`/r <tokens>`** | **Toggle** reasoning ON/OFF. Supports custom limits (default: 500). |
 | **`/stats` / `/tok`** | **Diagnostics**: Toggle real-time speed metrics or view live token usage. |
@@ -215,6 +216,19 @@ OPENROUTER_MODEL="openrouter/free"
 # Context Limits
 AI_MAX_TOKENS=8192
 ```
+
+---
+
+<h2 align="center">Roadmap to v1.0.0</h2>
+
+<p align="center">
+  <em>The final performance and security passes before the official stable release.</em>
+</p>
+
+- [ ] **Dynamic Stress-Testing:** Conduct continuous context-window pressure tests across standard (GGUF) and deep reasoning backends.
+- [ ] **Optimization Audits:** Run latency profiling and memory alignment passes on connection pooling and stream processing modules.
+- [ ] **Security Validation:** Implement automated file boundary testing to verify directory containment and authorization overrides.
+- [ ] **Stable Tag Deployment:** Publish official **`v1.0.0`** production-stable release!
 
 ---
 

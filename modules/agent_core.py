@@ -7,6 +7,7 @@ import time
 import urllib.request as urlreq
 import urllib.error as urlerr
 import requests
+import difflib
 import agent_ui as ui
 import agent_cloud
 
@@ -26,33 +27,9 @@ except ImportError:
     speed_test = None
 
 
-def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float,
-                    show_stats: bool, ctx_used: int = None) -> None:
-    """Records a finished turn in the spend ledger and, when stats are on,
-    prints the dim usage line (tokens, turn cost, today's spend, context left)."""
-    if not usage_log:
-        return
-    try:
-        usage_log.record(model, in_tok, out_tok, cost)
-        usage_log.refresh_balance_async(min_age=10)
-        if show_stats and sys.stdout.isatty():
-            ctx_max = None
-            if ctx_used is not None:
-                try:
-                    ctx_max = int(os.environ.get("AI_MAX_TOKENS", 8192))
-                except Exception:
-                    ctx_max = 8192
-            print(usage_log.turn_line(in_tok, out_tok, cost, ctx_used, ctx_max))
-    except Exception:
-        pass
-
-
 # --- FAST-PATH BYTE EXTRACTOR ---
 def extract_stream_content(line_bytes: bytes) -> str:
-    """Performs raw byte-level searching to extract streaming tokens.
-    
-    Bypasses full-line string decoding and dictionary creation entirely for a major CPU speedup.
-    """
+    """Performs raw byte-level searching to extract streaming tokens."""
     idx = line_bytes.find(b'"content":"')
     if idx == -1:
         idx = line_bytes.find(b'"text":"')
@@ -155,9 +132,6 @@ def stream(messages, prefix, gkey, spinner_class, show_stats: bool = True):
                 speed_test.end()
 
             ans_text = "".join(acc)
-            in_est = (len(body.get("input", "")) + len(body.get("system_instruction", ""))) // 4
-            ctx_est = (sum(len(m.get("content", "")) for m in messages) + len(ans_text)) // 4
-            _log_turn_usage(model, in_est, len(ans_text) // 4, 0.0, show_stats, ctx_est)
 
             if resolved_id:
                 try:
@@ -180,12 +154,277 @@ def stream(messages, prefix, gkey, spinner_class, show_stats: bool = True):
         return None
 
 
-def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", show_stats: bool = False, thinking_budget: int = 0) -> str or None:
+# --- ACTIVE WORKSPACE EDITING AGENT RULES ---
+_EDIT_TOOLS = [
+    {"type": "function", "function": {
+        "name": "read_file",
+        "description": "Read a text file from the project. Returns its content.",
+        "parameters": {"type": "object", "properties": {
+            "path": {"type": "string", "description": "Path relative to the project root"}},
+            "required": ["path"]}}},
+    {"type": "function", "function": {
+        "name": "write_file",
+        "description": "Create or overwrite a text file in the project with the given content.",
+        "parameters": {"type": "object", "properties": {
+            "path": {"type": "string", "description": "Path relative to the project root"},
+            "content": {"type": "string", "description": "Full new file content"}},
+            "required": ["path", "content"]}}},
+    {"type": "function", "function": {
+        "name": "list_dir",
+        "description": "List files and directories at a path inside the project.",
+        "parameters": {"type": "object", "properties": {
+            "path": {"type": "string", "description": "Path relative to the project root, '' for the root"}},
+            "required": []}}},
+    {"type": "function", "function": {
+        "name": "run_command",
+        "description": "Run a shell command in the project root. The user must approve it first.",
+        "parameters": {"type": "object", "properties": {
+            "command": {"type": "string"}},
+            "required": ["command"]}}},
+]
+
+EDIT_SYSTEM_ADD = (
+    "\n\n### EDIT MODE (overrides any read-only rules above):\n"
+    "You are an active coding agent with write access to the project at {ws}. "
+    "Use your tools to inspect and modify files directly instead of describing changes. "
+    "After modifying files or executing scripts, reply briefly: what you changed, where, and why."
+)
+
+TOOLS_SYSTEM_ADD = (
+    "\n\n### WORKING TOOLS:\n"
+    "You have operational capabilities to read, write, and execute files: {names}. The project root is {ws} — relative "
+    "paths resolve there and run_command executes there."
+)
+
+TOOL_VERBS = {
+    "read_file": "checking",
+    "write_file": "updating",
+    "list_dir": "checking",
+    "run_command": "executing"
+}
+
+
+def _safe_path(workspace: str, p: str) -> str:
+    """Canonicalizes target paths safely to evaluate directories."""
+    root = os.path.realpath(workspace)
+    return os.path.realpath(os.path.join(root, os.path.expanduser(p or "")))
+
+
+def _is_outside_workspace(workspace: str, full_path: str) -> bool:
+    """Verifies if a specific path boundary is outside your allowed project workspace."""
+    root = os.path.realpath(workspace)
+    return full_path != root and not full_path.startswith(root + os.sep)
+
+
+def _run_edit_tool(name: str, args: dict, workspace: str, spinner=None) -> str:
+    """Runs a single local filesystem tool, evaluating security gating profiles."""
+    import subprocess
+    gates_active = os.environ.get("AI_CONFIRM_GATES", "1") == "1"
+
+    if name == "read_file":
+        full = _safe_path(workspace, args.get("path", ""))
+        outside = _is_outside_workspace(workspace, full)
+        
+        # Hard Security: Always prompt if requesting items outside active projects
+        if outside or gates_active:
+            reason = f"read {full} (OUTSIDE workspace)" if outside else f"read file {args.get('path')}"
+            if not sys.stdout.isatty() or not ui.confirm_tool(reason):
+                return f"[denied] the user blocked reading operations for safety: {reason}"
+                
+        try:
+            with open(full, "r", encoding="utf-8", errors="replace") as f:
+                return f.read(60000)
+        except Exception as e:
+            return f"[error] failed to read file: {e}"
+
+    if name == "write_file":
+        full = _safe_path(workspace, args.get("path", ""))
+        content = args.get("content", "")
+        outside = _is_outside_workspace(workspace, full)
+        exists = os.path.exists(full)
+        
+        # Colorized Unified Terminal Diff Output
+        if sys.stdout.isatty():
+            if exists:
+                try:
+                    with open(full, "r", encoding="utf-8", errors="replace") as f:
+                        old = f.read()
+                    diff = difflib.unified_diff(
+                        old.splitlines(),
+                        content.splitlines(),
+                        fromfile=f"a/{args.get('path')}",
+                        tofile=f"b/{args.get('path')}",
+                        lineterm=""
+                    )
+                    diff_text = "\n".join(diff)
+                    if diff_text:
+                        color_lines = []
+                        for line in diff_text.splitlines():
+                            if line.startswith("+"):
+                                color_lines.append(f"\033[32m{line}\033[0m")
+                            elif line.startswith("-"):
+                                color_lines.append(f"\033[31m{line}\033[0m")
+                            elif line.startswith("@"):
+                                color_lines.append(f"\033[36m{line}\033[0m")
+                            else:
+                                color_lines.append(line)
+                        sys.stderr.write("\n" + "\n".join(color_lines) + "\n\n")
+                except Exception:
+                    sys.stderr.write(f"\033[2m  {args.get('path')} — existing file modification\033[0m\n")
+            else:
+                sys.stderr.write(f"\033[2m  {args.get('path')} — new file, {len(content.splitlines())} lines\033[0m\n")
+
+        # Confirm before writes
+        if outside or gates_active:
+            verb = "overwrite" if exists else "create"
+            where = f"{full} (OUTSIDE workspace)" if outside else args.get("path")
+            reason = f"{verb} {where} ({len(content)} chars)"
+            if not sys.stdout.isatty() or not ui.confirm_tool(reason):
+                return f"[denied] the user blocked file write operations: {reason}"
+
+        try:
+            os.makedirs(os.path.dirname(full) or workspace, exist_ok=True)
+            with open(full, "w", encoding="utf-8") as f:
+                f.write(content)
+            return f"wrote {len(content)} chars to {args.get('path')}"
+        except Exception as e:
+            return f"[error] failed to write file: {e}"
+
+    if name == "list_dir":
+        full = _safe_path(workspace, args.get("path", ""))
+        outside = _is_outside_workspace(workspace, full)
+        
+        if outside or gates_active:
+            reason = f"list directory {full} (OUTSIDE workspace)" if outside else f"list files in {args.get('path') or '.'}"
+            if not sys.stdout.isatty() or not ui.confirm_tool(reason):
+                return f"[denied] the user blocked directory listing: {reason}"
+        try:
+            entries = sorted(os.listdir(full))
+            return "\n".join((e + "/" if os.path.isdir(os.path.join(full, e)) else e) for e in entries) or "(empty)"
+        except Exception as e:
+            return f"[error] failed to list files: {e}"
+
+    if name == "run_command":
+        cmd = args.get("command", "")
+        if not sys.stdout.isatty():
+            return "[denied] no terminal available to approve command execution"
+            
+        # Shell commands can execute anything — respect standard toggle gates
+        if gates_active:
+            if not ui.confirm_tool(f"execute: $ {cmd}"):
+                return "[denied] user rejected command execution"
+        else:
+            sys.stderr.write(f"\033[2m  Executing command autonomously: $ {cmd}\033[0m\n")
+
+        shell = os.environ.get("SHELL") or "/bin/sh"
+        if spinner:
+            spinner.start("running")
+        try:
+            res = subprocess.run([shell, "-lc", cmd], cwd=workspace, capture_output=True, text=True, timeout=300)
+        except subprocess.TimeoutExpired:
+            return "[error] command timed out after 300 seconds"
+        finally:
+            if spinner:
+                spinner.stop()
+        out = ((res.stdout or "") + (("\n" + res.stderr) if res.stderr else "")).strip()[:10000]
+        if res.returncode != 0:
+            return f"(exit {res.returncode})\n{out}" if out else f"(exit {res.returncode}, no output)"
+        return out or "(exit 0, no output)"
+
+    return f"[error] unknown tool {name}"
+
+
+def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: int, spinner) -> str or None:
+    """Executes a multi-turn non-streaming agent round-trip loop supporting tool evaluations."""
+    workspace = os.environ.get("AI_WORKSPACE_PATH", os.getcwd())
+    
+    # Inject workspace agent configurations to active system instructions in-place
+    if messages and messages[0]["role"] == "system":
+        if "### EDIT MODE" not in messages[0]["content"]:
+            messages[0]["content"] += EDIT_SYSTEM_ADD.format(ws=workspace)
+            messages[0]["content"] += TOOLS_SYSTEM_ADD.format(
+                names="read_file, write_file, list_dir, run_command", ws=workspace)
+            
+    resolved_model = None
+    for _round in range(10):
+        body_tools = dict(body)
+        body_tools["messages"] = messages  # CRUCIAL: Send mutated conversation thread containing tool answers
+        body_tools["stream"] = False      # Multi-turn tool execution operates in non-streaming batch mode
+        body_tools["tools"] = _EDIT_TOOLS
+        
+        req = urlreq.Request(
+            url,
+            data=json.dumps(body_tools).encode("utf-8"),
+            headers={"Content-Type": "application/json", **headers},
+            method="POST"
+        )
+        spinner.start()
+        try:
+            with urlreq.urlopen(req, timeout=timeout) as r:
+                resp = json.loads(r.read().decode("utf-8"))
+        except Exception as e:
+            sys.stderr.write(f"\033[90m[sys] API response error: {e}\033[0m\n")
+            return None
+        finally:
+            spinner.stop()
+            
+        resolved_model = resp.get("model") or resolved_model
+        choices = resp.get("choices") or [{}]
+        msg = choices[0].get("message") or {}
+        calls = msg.get("tool_calls")
+        
+        # If no tool calls are returned, agent processing is complete
+        if not calls:
+            ans = msg.get("content") or ""
+            if sys.stdout.isatty():
+                sys.stdout.write("\r\x1b[2K\rAgent: ")
+            print(ans)
+            return ans
+            
+        # Append the assistant's intent to use tools
+        messages.append(msg)
+        
+        for tc in calls:
+            fname = tc.get("function", {}).get("name", "")
+            try:
+                args = json.loads(tc.get("function", {}).get("arguments") or "{}")
+            except Exception:
+                args = {}
+                
+            brief = str(args.get("path") or args.get("command") or "")[:100]
+            verb = TOOL_VERBS.get(fname, "working")
+            print(f"\033[2m∗ {verb} · {fname} {brief}\033[0m")
+            
+            if spinner and fname in ("read_file", "list_dir"):
+                spinner.start(verb)
+            try:
+                result = _run_edit_tool(fname, args, workspace, spinner)
+            except Exception as e:
+                result = f"[tool error] {e}"
+            finally:
+                if spinner:
+                    spinner.stop()
+                    
+            # Record the tool output so the model sees the execution result in its next loop iteration
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tc.get("id", ""),
+                "name": fname,
+                "content": result
+            })
+            
+    return None
+
+
+def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", show_stats: bool = False, thinking_budget: int = 0, is_agent: bool = False) -> str or None:
     acc = []
     spinner = ui.InlineSpinner()
     try:
+        # Prune conversation history locally to fit payloads safely within context limits
+        pruned_messages = prune_history(messages)
+
         # Load API connections dynamically from the external cloud mapping module
-        configs = agent_cloud.get_active_configs(messages)
+        configs = agent_cloud.get_active_configs(pruned_messages)
 
         # Set up local model payload with universal template reasoning overrides
         local_extra = {}
@@ -196,7 +435,7 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
             local_extra["chat_template_kwargs"] = {"enable_thinking": False}
 
         local_body = {
-            "messages": messages,
+            "messages": pruned_messages,
             "stream": True,
             "model": "local-model",
             **local_extra
@@ -206,6 +445,13 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
         configs.append(("http://localhost:8080/v1/chat/completions", {}, local_body, 180))
 
         for url, headers, body, timeout in configs:
+            # If running as active agentic workspace session, route through multi-round tool execution loop
+            if is_agent:
+                ans = agentic_turn(messages, url, headers, body, timeout, spinner)
+                if ans is not None:
+                    return ans
+                continue
+
             req = urlreq.Request(
                 url,
                 data=json.dumps(body).encode("utf-8"),
@@ -231,7 +477,7 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
                         except Exception:
                             pass
                         
-                        first, resolved_model, usage_obj = True, None, None
+                        first, resolved_model = True, None
                         for line in response:
                             if not line.startswith(b"data:"):
                                 continue
@@ -245,8 +491,6 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
                                     data = json.loads(dec)
                                     if "model" in data and not resolved_model:
                                         resolved_model = data["model"]
-                                    if isinstance(data.get("usage"), dict):
-                                        usage_obj = data["usage"]
                             except Exception:
                                 pass
 
@@ -268,18 +512,15 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
                         if speed_test and show_stats:
                             speed_test.end()
                         
-                        ans_text = "".join(acc)
-                        u = usage_obj or {}
-                        prompt_chars = sum(len(m.get("content", "")) for m in messages)
-                        in_tok = u.get("prompt_tokens") or prompt_chars // 4
-                        out_tok = u.get("completion_tokens") or len(ans_text) // 4
-                        
-                        # Process daily billing ledger calculations
-                        _log_turn_usage(resolved_model or body.get("model") or url.split('/')[2],
-                                        in_tok, out_tok, u.get("cost") or 0.0,
-                                        show_stats, (prompt_chars + len(ans_text)) // 4)
+                        # Display active model name under /stats toggle switch
+                        if show_stats and resolved_model and sys.stdout.isatty():
+                            display_model = resolved_model
+                            if os.path.isabs(display_model):
+                                display_model = ".../" + os.path.basename(display_model)
+                            sys.stdout.write(f"\033[90m[via {display_model}]\033[0m\n")
+                            sys.stdout.flush()
 
-                        return ans_text
+                        return "".join(acc)
                 except urlerr.HTTPError as e:
                     spinner.stop()
                     if e.code == 429 and retries > 0:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.8.9.22]
+# Local-Ai Agent [j5onrf] [v0.9.0]
 
 import json
 import os
@@ -17,6 +17,21 @@ SKILLS_DIR = os.path.join(CFG_DIR, "skills")
 SESSIONS_DIR = os.path.join(CFG_DIR, "projects", "database")
 BASE_PROMPT = (
     "Read-only local shell assistant.\n"
+    "If <context> is provided, answer directly using only its facts. Otherwise, answer normally.\n"
+    "Write full, natural sentences without markdown, headers, bolding, or lists.\n\n"
+)
+
+BASE_PROMPT_CHAT = (
+    "Read-only local shell assistant.\n"
+    "If <context> is provided, answer directly using only its facts. Otherwise, answer normally.\n"
+    "Write full, natural sentences without markdown, headers, bolding, or lists.\n\n"
+    "### Conversational Guidelines:\n"
+    "- Role: Active, natural, and highly articulate conversational assistant.\n"
+    "- Tone: Professional, warm, objective, and intellectually engaging.\n\n"
+)
+
+BASE_PROMPT_AGENT = (
+    "Active local project workspace developer agent.\n"
     "If <context> is provided, answer directly using only its facts. Otherwise, answer normally.\n"
     "Write full, natural sentences without markdown, headers, bolding, or lists.\n\n"
 )
@@ -167,8 +182,11 @@ def background_tpm_update(user_msg: str, assistant_msg: str, workspace: str, wor
         pass
 
 
-def stream_llm_response(messages: list, prefix: str = "AI: ", show_stats: bool = True, thinking_budget: int = 0) -> str or None:
-    return core.stream_response(messages, prefix, CFG_DIR, show_stats, thinking_budget)
+# Helper to stream and count tokens for the speed-test (updated with reasoning budget support)
+def stream_llm_response(
+    messages: list, prefix: str = "AI: ", show_stats: bool = True, thinking_budget: int = 0, is_agent: bool = False
+) -> str or None:
+    return core.stream_response(messages, prefix, CFG_DIR, show_stats, thinking_budget, is_agent)
 
 
 def run_interactive_chat(args: list):
@@ -182,10 +200,28 @@ def run_interactive_chat(args: list):
             skills_list.append(arg.lstrip("-").lower())
     skills_list = list(dict.fromkeys(skills_list))
 
-    skill_content = skills.load_skill_content(" ".join(skills_list), SKILLS_DIR, CFG_DIR)
+    skill_content = skills.load_skill_content(
+        " ".join(skills_list), SKILLS_DIR, CFG_DIR
+    )
+    
+    # 1. Select the dynamic base prompt based on workspace or conversational status
+    if is_agent:
+        base_p = BASE_PROMPT_AGENT
+    else:
+        # Load the warm chat baseline by default for conversational sessions
+        base_p = BASE_PROMPT_CHAT if not skills_list else BASE_PROMPT
+    
     active_system_prompt = (
-        skill_content if (is_agent and skill_content) else
-        (BASE_PROMPT + (f"\n\n### Active Skill/Role Instructions:\n{skill_content}\n" if skill_content else ""))
+        skill_content
+        if (is_agent and skill_content)
+        else (
+            base_p
+            + (
+                f"\n\n### Active Skill/Role Instructions:\n{skill_content}\n"
+                if skill_content
+                else ""
+            )
+        )
     )
 
     workspace_path = os.environ.get("AI_WORKSPACE_PATH", os.getcwd())
@@ -201,6 +237,9 @@ def run_interactive_chat(args: list):
     show_stats = True
     reasoning_active = False
     reasoning_budget = 500
+    
+    # Initialize the default secure confirmation gates setting
+    os.environ["AI_CONFIRM_GATES"] = "1"
 
     if is_agent:
         sync_md_to_sqlite(safe_name, workspace_path)
@@ -231,9 +270,21 @@ def run_interactive_chat(args: list):
                     spell_active = query == "/e"
                     print(f"\033[1;33m[sys] Spellchecker {'enabled' if spell_active else 'disabled'}.\033[0m\n")
                     continue
+                # --- UNIFIED MEMORY LAYER TOGGLE (/m) ---
                 if query == "/m":
                     memory_active = not memory_active
-                    print(f"\033[1;33m[sys] Long-term memory and TPM reconciliation {'enabled' if memory_active else 'disabled'}.\033[0m\n")
+                    print(
+                        f"\033[1;33m[sys] Long-term memory and TPM reconciliation {'enabled' if memory_active else 'disabled'}.\033[0m\n"
+                    )
+                    continue
+
+                # --- CONFIRMATION GATES TOGGLE (/g) ---
+                if query == "/g":
+                    gates_active = os.environ.get("AI_CONFIRM_GATES", "1") == "1"
+                    new_state = "0" if gates_active else "1"
+                    os.environ["AI_CONFIRM_GATES"] = new_state
+                    status = "enabled" if new_state == "1" else "disabled (autonomous mode active)"
+                    print(f"\033[1;33m[sys] Agent confirmation gates {status}.\033[0m\n")
                     continue
 
                 # --- REASONING TOGGLE (/r <tokens> or /r) ---
@@ -364,11 +415,13 @@ def run_interactive_chat(args: list):
                 except Exception:
                     pass
 
+            # Explicitly passes your dynamic show_stats state parameter and reasoning budget
             ans = stream_llm_response(
-                core.prune_history(chat_history),
+                chat_history,
                 prefix="Agent:" if is_agent else "AI:",
                 show_stats=show_stats,
                 thinking_budget=reasoning_budget if reasoning_active else 0,
+                is_agent=is_agent,
             )
             if ans:
                 chat_history.append({"role": "assistant", "content": ans})
