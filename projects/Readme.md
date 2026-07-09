@@ -50,7 +50,7 @@ Agent: Understood. I have noted your preferences:
 *   `~/.config/local-ai/.spend_ledger.json`: Local-only daily token and API cost ledger (git-ignored).
 *   `~/<workspace>/.agent/session.json`: Secure server-side tracking key for cloud APIs.
 *   `~/<workspace>/.agent/tpm.md`: Human-readable personal facts, editable by hand.
-*   `~/<workspace>/index-map-<project>.txt`: Codebase structural blueprint compiled on-the-fly.
+*   `~/<workspace>/index-map-<project>.txt`: Codebase structural blueprint compiled.
 *   `~/<workspace>/index-map-memory-<project>.db`: Active SQLite-backed relational knowledge graph.
 *   `~/<workspace>/history.md`: Chronological Markdown conversation ledger.
 
@@ -58,7 +58,7 @@ Agent: Understood. I have noted your preferences:
 *   **`/clear` / `/reset`**: Wipes local history, deletes cloud session, deletes `history.md`, and SQL-deletes your facts/turns.
 *   **`/g`**: **Toggle Confirmation Gates** ON/OFF. Toggling gates off enables autonomous workspace editing.
 *   **`/m`**: Unifies and toggles long-term memory and TPM reconciliation ON/OFF.
-*   **`/r` / `/r [limit]`**: **Toggle Deep Reasoning** ON/OFF on-the-fly (defaults to 500 tokens, or set custom token limit).
+*   **`/r` / `/r [limit]`**: **Toggle Deep Reasoning** ON/OFF (defaults to 500 tokens, or set custom token limit).
 *   **`/stats`**: Toggles real-time generation speed metrics (`speed_test.py`), token spend ledger, and active model indicators ON/OFF.
 *   **`/tok`**: Displays live context window usage progress bar.
 *   **`/skill <search>`** (or `/s`): Search and load custom skills dynamically.
