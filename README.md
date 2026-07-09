@@ -44,7 +44,7 @@ All configurations and custom shortcuts are managed in [`ai-context.md`](ai-cont
 ╭──────────────────────────────────────────────╮
 │  >_ Local-AI Agent                           │
 │                                              │
-│  model:     claude-fable-5                   │
+│  model:     Qwen3.6-35B-A3B.gguf             │
 │  directory: ...-ai/projects/session-test     │
 │  skill:     init codef                       │
 │  database:  active (3 facts, 109 turns)      │
