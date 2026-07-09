@@ -25,6 +25,17 @@ All configurations and custom shortcuts are managed in [`ai-context.md`](ai-cont
 *   **Multi-Turn Chat (`ai` alone):** Starts a persistent terminal session with multi-turn context tracking.
 *   **Workspace Agents (`ai init <path>`):** Indexes your directory into a lightweight codebase graph and boots up a codebase-aware chat.
 
+<div align="center">
+  <details>
+    <summary style="cursor: pointer; color: #94A3B8; outline: none;">
+      <i>Click to expand ecosystem diagram</i>
+      <br />
+    </summary>
+    <br />
+    <img alt="Local-Ai Agent Banner" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" width="800" style="border-radius: 8px;" />
+  </details>
+</div>
+
 ---
 
 <h2 align="center">CLI Launch Interface</h2>
@@ -33,15 +44,15 @@ All configurations and custom shortcuts are managed in [`ai-context.md`](ai-cont
 ╭──────────────────────────────────────────────╮
 │  >_ Local-AI Agent                           │
 │                                              │
-│  model:     Qwen3.6-35B-A3B.gguf             │
+│  model:     claude-fable-5                   │
 │  directory: ...-ai/projects/session-test     │
-│  skill:     init                             │
+│  skill:     init codef                       │
 │  database:  active (3 facts, 109 turns)      │
 ╰──────────────────────────────────────────────╯
 [sys] Startup context: 160 tokens | Ctrl+C to exit.
 
 Agent: Workspace loaded. Awaiting instructions.
-❯ 
+❯
 ```
 
 ---
@@ -219,21 +230,6 @@ AI_MAX_TOKENS=8192
 
 ---
 
-<div align="center">
-  <details>
-    <summary style="cursor: pointer; color: #94A3B8; outline: none;">
-      <i>Click to expand ecosystem diagram</i>
-      <br />
-      <!-- The image is now just a summary component with no underlying hyperlink -->
-      <img alt="Local-Ai Agent Banner Preview" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" width="250" style="border-radius: 6px;" />
-    </summary>
-    <br />
-    <img alt="Local-Ai Agent Banner" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" width="800" style="border-radius: 8px;" />
-  </details>
-</div>
-
----
-
 <h2 align="center">Roadmap to v1.0.0</h2>
 
 <p align="center">
@@ -252,4 +248,5 @@ AI_MAX_TOKENS=8192
 
 *   **License**: Licensed under the permissive [MIT License](LICENSE).
 *   **Contributions**: Special thanks to [suyadnya](https://github.com/wibawasuyadnya) for the `.env` configuration architecture, macOS compatibility investigations, and high-velocity alias designs. Contributions are always welcome.
+
 
