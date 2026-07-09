@@ -1,5 +1,8 @@
 # Local Server Configuration (Reasoning Models) (CPU Only / Must Config for GPU)
 
+*   **Verified Backend:** `llama.cpp` (Build `9753` / Commit `7c082bc41`)
+*   **Tested Compiler:** `GNU 16.1.1` for Linux `x86_64`
+
 This directory contains scripts to deploy and manage local `llama-server` instances configured for Qwen reasoning models, enabling reasoning toggles (`/r`) without splitting VRAM or restarting processes.
 
 *Note: The included `example-server.sh` defaults to **CPU execution** and runs in a headless state.*
@@ -68,3 +71,4 @@ LOCAL_MODELS = [
    ```
    * Use **▲/▼ Arrows** to select a model and press **Enter** to switch.
    * Select **Unload All Local Models** to completely free up system RAM/VRAM.
+

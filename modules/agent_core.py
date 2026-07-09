@@ -27,9 +27,33 @@ except ImportError:
     speed_test = None
 
 
+def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float,
+                    show_stats: bool, ctx_used: int = None) -> None:
+    """Records a finished turn in the spend ledger and, when stats are on,
+    prints the dim usage line (tokens, turn cost, today's spend, context left)."""
+    if not usage_log:
+        return
+    try:
+        usage_log.record(model, in_tok, out_tok, cost)
+        usage_log.refresh_balance_async(min_age=10)
+        if show_stats and sys.stdout.isatty():
+            ctx_max = None
+            if ctx_used is not None:
+                try:
+                    ctx_max = int(os.environ.get("AI_MAX_TOKENS", 8192))
+                except Exception:
+                    ctx_max = 8192
+            print(usage_log.turn_line(in_tok, out_tok, cost, ctx_used, ctx_max))
+    except Exception:
+        pass
+
+
 # --- FAST-PATH BYTE EXTRACTOR ---
 def extract_stream_content(line_bytes: bytes) -> str:
-    """Performs raw byte-level searching to extract streaming tokens."""
+    """Performs raw byte-level searching to extract streaming tokens.
+    
+    Bypasses full-line string decoding and dictionary creation entirely for a major CPU speedup.
+    """
     idx = line_bytes.find(b'"content":"')
     if idx == -1:
         idx = line_bytes.find(b'"text":"')
@@ -132,6 +156,9 @@ def stream(messages, prefix, gkey, spinner_class, show_stats: bool = True):
                 speed_test.end()
 
             ans_text = "".join(acc)
+            in_est = (len(body.get("input", "")) + len(body.get("system_instruction", ""))) // 4
+            ctx_est = (sum(len(m.get("content", "")) for m in messages) + len(ans_text)) // 4
+            _log_turn_usage(model, in_est, len(ans_text) // 4, 0.0, show_stats, ctx_est)
 
             if resolved_id:
                 try:
@@ -309,7 +336,6 @@ def _run_edit_tool(name: str, args: dict, workspace: str, spinner=None) -> str:
         if not sys.stdout.isatty():
             return "[denied] no terminal available to approve command execution"
             
-        # Shell commands can execute anything — respect standard toggle gates
         if gates_active:
             if not ui.confirm_tool(f"execute: $ {cmd}"):
                 return "[denied] user rejected command execution"
@@ -379,6 +405,14 @@ def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: i
             if sys.stdout.isatty():
                 sys.stdout.write("\r\x1b[2K\rAgent: ")
             print(ans)
+            
+            # Log and display token and context metrics for the workspace turn
+            prompt_chars = sum(len(m.get("content", "")) for m in messages)
+            in_tok = prompt_chars // 4
+            out_tok = len(ans) // 4
+            _log_turn_usage(resolved_model or body.get("model") or "local-model",
+                            in_tok, out_tok, 0.0, True, in_tok + out_tok)
+            
             return ans
             
         # Append the assistant's intent to use tools
@@ -420,11 +454,8 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
     acc = []
     spinner = ui.InlineSpinner()
     try:
-        # Prune conversation history locally to fit payloads safely within context limits
-        pruned_messages = prune_history(messages)
-
         # Load API connections dynamically from the external cloud mapping module
-        configs = agent_cloud.get_active_configs(pruned_messages)
+        configs = agent_cloud.get_active_configs(messages)
 
         # Set up local model payload with universal template reasoning overrides
         local_extra = {}
@@ -435,7 +466,7 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
             local_extra["chat_template_kwargs"] = {"enable_thinking": False}
 
         local_body = {
-            "messages": pruned_messages,
+            "messages": messages,
             "stream": True,
             "model": "local-model",
             **local_extra
@@ -512,15 +543,16 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
                         if speed_test and show_stats:
                             speed_test.end()
                         
-                        # Display active model name under /stats toggle switch
-                        if show_stats and resolved_model and sys.stdout.isatty():
-                            display_model = resolved_model
-                            if os.path.isabs(display_model):
-                                display_model = ".../" + os.path.basename(display_model)
-                            sys.stdout.write(f"\033[90m[via {display_model}]\033[0m\n")
-                            sys.stdout.flush()
+                        ans_text = "".join(acc)
+                        prompt_chars = sum(len(m.get("content", "")) for m in messages)
+                        in_tok = prompt_chars // 4
+                        out_tok = len(ans_text) // 4
+                        
+                        # Process daily billing ledger calculations
+                        _log_turn_usage(resolved_model or body.get("model") or url.split('/')[2],
+                                        in_tok, out_tok, 0.0, show_stats, in_tok + out_tok)
 
-                        return "".join(acc)
+                        return ans_text
                 except urlerr.HTTPError as e:
                     spinner.stop()
                     if e.code == 429 and retries > 0:

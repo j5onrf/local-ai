@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.9.1]
+# Local-Ai Agent [j5onrf] [v0.9.1.1]
 
 import json
 import os
