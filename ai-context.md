@@ -59,6 +59,9 @@ ai init ~/.config/local-ai/projects/session-test-2 --init ---> session test 2, p
 ## 3. Dynamic Context-Injected Tools (RAG)
 
 ```properties
+# --- Firecrawl Web Scraper (Live URL Markdown Ingestion) ---
+[TOOL] ~/.config/local-ai/tools/agentic/web/firecrawl $1 ---> firecrawl, scrape website, scrape url, extract text
+
 # --- Dynamic Host Profiler & System Analytics ---
 [TOOL] cat ~/.config/local-ai/skills/system/mysys.md --leaf ---> mysys, show mysys, view sys, mysys doc
 [TOOL] ~/.config/local-ai/tools/generate-profile ---> generate profile, update sys profile, sync mysys
@@ -177,5 +180,3 @@ nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-sp
 
 # --- Coding-Triangle-Loop - Interactive TUI Console (((wip))) ---
 [TOOL] ~/.config/local-ai/tools/agentic/coding/coding-triangle-loop --cat ---> coding loop, coding, triangle, loop
-```
-
