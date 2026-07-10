@@ -1,8 +1,8 @@
 <p align="center">
-  <img alt="Local-AI Agent" src="https://github.com/user-attachments/assets/85c2b0f7-428f-4df1-bdaf-1cffcb259ad9" width="200" />
+  <img alt="Local-AI Agent" src="https://github.com/user-attachments/assets/25622d28-3606-41c4-9fda-9a3b072547d2" width="200" />
 </p>
 
-<h1 align="center">Local-AI Agent <kbd>v0.9.1-beta</kbd></h1>
+<h1 align="center">Local-AI Agent <kbd>v0.9.1.1-beta</kbd></h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
