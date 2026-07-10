@@ -214,7 +214,11 @@ CLAUDE_MODEL="claude-fable-5"
 
 # OpenAI API Configurations
 OPENAI_API_KEY="your-openai-api-key-here"
-OPENAI_MODEL="gpt-5.5"
+OPENAI_MODEL="gpt-5.6"
+
+# x.AI Grok Subscription API Configurations
+XAI_API_KEY="xai-your-grok-api-key-here"
+XAI_MODEL="grok-4.5"
 
 # Google Gemini API Configurations
 GEMINI_API_KEY="AIzaSyYourFullGeminiApiKeyHere"
