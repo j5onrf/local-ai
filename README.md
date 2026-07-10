@@ -1,5 +1,5 @@
 <p align="center">
-  <img alt="Local-AI Agent" src="https://github.com/j5onrf/local-ai/blob/main/logo.svg" width="250" />
+  <img alt="Local-AI Agent" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" width="800" />
 </p>
 
 <h1 align="center">Local-AI Agent <kbd>v0.9.1.1-beta</kbd></h1>
@@ -24,17 +24,6 @@ All configurations and custom shortcuts are managed in [`ai-context.md`](ai-cont
 *   **Single-Turn Agent (`ai <query>`):** Returns a single response directly to your shell prompt without loading an active conversation.
 *   **Multi-Turn Chat (`ai` alone):** Starts a persistent terminal session with multi-turn context tracking.
 *   **Workspace Agents (`ai init <path>`):** Indexes your directory into a lightweight codebase graph and boots up a codebase-aware chat.
-
-<div align="center">
-  <details>
-    <summary style="cursor: pointer; color: #94A3B8; outline: none;">
-      <i>Click to expand ecosystem diagram</i>
-      <br />
-    </summary>
-    <br />
-    <img alt="Local-Ai Agent Banner" src="https://github.com/user-attachments/assets/56fe2b60-0cbe-4f51-bc27-a35516f1088f" width="800" style="border-radius: 8px;" />
-  </details>
-</div>
 
 ---
 
