@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.9.1.1]
+# Local-Ai Agent [j5onrf] [v0.9.1.2]
 
 import json
 import os
@@ -116,6 +116,16 @@ def sync_md_to_sqlite(workspace: str, workspace_path: str) -> None:
         except Exception:
             pass
 
+def validate_flat_schema(data: dict) -> bool:
+    """Verifies that the decoded JSON is strictly a flat dictionary of non-empty string keys and values."""
+    try:
+        if not isinstance(data, dict):
+            return False
+        # Ensure every key and value in the dictionary is a non-empty string
+        return all(isinstance(k, str) and k.strip() and isinstance(v, str) for k, v in data.items())
+    except Exception:
+        return False
+
 
 def background_tpm_update(user_msg: str, assistant_msg: str, workspace: str, workspace_path: str):
     cleaned = user_msg.lower().strip()
@@ -167,9 +177,15 @@ def background_tpm_update(user_msg: str, assistant_msg: str, workspace: str, wor
             llm_out = res_data["choices"][0]["message"].get("content", "").strip()
 
         llm_out = re.sub(r"^```json\s*|\s*```$", "", llm_out, flags=re.IGNORECASE).strip()
-        parsed_json = json.loads(llm_out)
+        
+        # Safely attempt to decode the JSON stream
+        try:
+            parsed_json = json.loads(llm_out)
+        except Exception:
+            parsed_json = None
 
-        if parsed_json and isinstance(parsed_json, dict):
+        # Verify the structure is strictly a flat string-to-string dictionary
+        if parsed_json and validate_flat_schema(parsed_json):
             mem_tool = f"{CFG_DIR}/modules/ai-agent-memories"
             _run_cmd([sys.executable, mem_tool, "tpm-reconcile", workspace], json.dumps(parsed_json))
             res_get = _run_cmd([sys.executable, mem_tool, "tpm-get", workspace])
