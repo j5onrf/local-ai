@@ -208,23 +208,23 @@ nano ~/.config/local-ai/.env
 # ~/.config/local-ai/.env
 # use "ai status" and "model select"
 
-# Claude API Configurations
+# Claude API
 CLAUDE_API_KEY="your-claude-api-key-here"
 CLAUDE_MODEL="claude-fable-5"
 
-# OpenAI API Configurations
+# OpenAI API
 OPENAI_API_KEY="your-openai-api-key-here"
 OPENAI_MODEL="gpt-5.6"
 
-# x.AI Grok API Configurations
+# x.AI Grok API
 XAI_API_KEY="xai-your-grok-api-key-here"
 XAI_MODEL="grok-4.5"
 
-# Google Gemini API Configurations
+# Google Gemini API
 GEMINI_API_KEY="AIzaSyYourFullGeminiApiKeyHere"
 GEMINI_MODEL="gemini-3.1-flash-lite"
 
-# OpenRouter API Configurations
+# OpenRouter API
 OPENROUTER_API_KEY="sk-or-v1-YourFullOpenRouterKeyHere"
 OPENROUTER_MODEL="openrouter/free"
 
