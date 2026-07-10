@@ -92,8 +92,8 @@ Agent: Workspace loaded. Awaiting instructions.
 | Core | Capability | Description |
 | :---: | :---: | :--- |
 | **Performance** | **Zero-Daemon** | 0% idle CPU/RAM. `Ultra-light` execution. |
-| **Intelligence** | **Scalability** | Optimized from `Qwen3.5 2B` up to frontier models. |
-| **Resiliency** | **Fallbacks** | `Gemini` → `OpenAI` → `Claude` → `OpenRouter` → `Local`. |
+| **Intelligence** | **Scalability** | Optimized from `Qwen3.5-2B` up to frontier models. |
+| **Resiliency** | **Fallbacks** | `Gemini` → `OpenAI` → `Claude` → `xAI` → `OpenRouter` → `GGUF`. |
 | **Safety** | **Zero-Trust Guardrails** | Intercepts out-of-bounds commands and edits for manual approval. |
 | **Integration** | **Dynamic Context** | On-demand compilation of system specs and file contents. |
 | **Optimization** | **Token-Slasher** | Custom [`tool`](https://github.com/j5onrf/local-ai/tree/main/tools) and [`skill`](https://github.com/j5onrf/local-ai/tree/main/skills) integration built for minimal token use. |
