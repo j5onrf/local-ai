@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <code>gpt-5.6</code> &nbsp; <code>claude-fable-5</code> &nbsp; <code>gemini-3.5-flash</code> &nbsp; <code>openrouter/free</code> &nbsp; <code>Local GGUF</code>
+  <code>gpt</code> &nbsp; <code>claude</code> &nbsp; <code>grok</code> &nbsp; <code>gemini</code> &nbsp; <code>openrouter</code> &nbsp; <code>local</code>
 </p>
 
 ---
