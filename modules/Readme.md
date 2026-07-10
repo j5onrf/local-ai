@@ -12,7 +12,7 @@
 
 <div align="center">
   <p><i>Click to view high-resolution version</i></p>
-  <a href="https://github.com/user-attachments/assets/c680ef12-7da1-4004-b54e-dd438c14c321">
-    <img alt="Ai-Commit Thumbnail" src="https://github.com/user-attachments/assets/c680ef12-7da1-4004-b54e-dd438c14c321" width="250" />
+  <a href="https://github.com/user-attachments/assets/cf01e342-810c-4a2b-ace5-157aecf04bd7">
+    <img alt="Ai-Commit Thumbnail" src="https://github.com/user-attachments/assets/cf01e342-810c-4a2b-ace5-157aecf04bd7" width="250" />
   </a>
 </div>

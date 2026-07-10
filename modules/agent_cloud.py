@@ -76,7 +76,24 @@ def get_active_configs(messages: list) -> list:
             30
         ))
 
-    # 4. OpenRouter API Configurations
+    # 4. x.AI Grok Subscription API (Supporting grok-4.5)
+    xai_key = os.environ.get("XAI_API_KEY")
+    if xai_key:
+        xai_model = os.environ.get("XAI_MODEL", os.environ.get("CLOUD_MODEL", "grok-4.5"))
+        body = {
+            "model": xai_model,
+            "messages": messages,
+            "stream": True
+        }
+        headers = {"Authorization": f"Bearer {xai_key}"}
+        configs.append((
+            "https://api.x.ai/v1/chat/completions",
+            headers,
+            body,
+            30
+        ))
+
+    # 5. OpenRouter API Configurations
     openrouter_key = os.environ.get("OPENROUTER_API_KEY")
     if openrouter_key:
         openrouter_model = os.environ.get("OPENROUTER_MODEL", "openrouter/free")
