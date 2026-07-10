@@ -216,7 +216,7 @@ CLAUDE_MODEL="claude-fable-5"
 OPENAI_API_KEY="your-openai-api-key-here"
 OPENAI_MODEL="gpt-5.6"
 
-# x.AI Grok Subscription API Configurations
+# x.AI Grok API Configurations
 XAI_API_KEY="xai-your-grok-api-key-here"
 XAI_MODEL="grok-4.5"
 
