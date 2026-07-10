@@ -13,15 +13,25 @@
 
 ---
 
-## Active Workspace Projects
+## Active Session / Workspace / Projects
 
 ```properties
 # --- Session-Test - This is a Project Workspace (Skill-Primed) --
 ai init ~/.config/local-ai/projects/session-test --init ---> session test, projects session, projects
 ai init ~/.config/local-ai/projects/session-test-2 --init ---> session test 2, projects session, projects
+```
 
+## Core Session & Context Retrieval
+
+```properties
 # --- Dynamic File Reader ---
 [TOOL] cat $1 ---> view file, read file, show file, vf
+
+# --- Active Workspace Memory Viewer ---
+[TOOL] mdcat .agent/tpm.md | less -R ---> show memories, mem
+# --- Active Workspace Memory Searcher ---
+[TOOL] read -p "Search Memories: " query && mdcat .agent/tpm.md | grep --color=always -A 5 -B 2 -i "$query" ---> search memories, ms
+
 # --- Active Workspace History Viewer ---
 [TOOL] mdcat history.md | less -R ---> show history, hist, history
 # --- Active Workspace History Searcher ---
@@ -35,28 +45,7 @@ ai init ~/.config/local-ai/projects/session-test-2 --init ---> session test 2, p
 [TOOL] ~/.config/local-ai/tools/map/index-map architecture --cat ---> architecture overview
 ```
 
-## 1. Workspace Initializers & Bridges
-
-```properties
-# --- OpenCode Direct Terminal Launcher ---
-~/.config/local-ai/tools/subsec/opencode-bridge/opencode-bridge ---> opencode bridge, bridge, ocb
-
-# --- Odysseus Direct Terminal Launcher ---
-# ~/.config/local-ai/tools/subsec/odysseus-bridge/odysseus-bridge ---> odysseus bridge, bridge, ody, odb
-
-# --- Hermes Direct Browser Workspace Launcher ---
-# ~/.config/local-ai/tools/subsec/hermes-bridge/hermes-bridge ---> hermes bridge, bridge, hmb, herm
-```
-
-## 2. On-Demand System Prompts & Role Injections (Skills)
-
-```properties
-# [TOOL] cat ~/.config/local-ai/skills/identity/business/mybiz.md --leaf ---> mybiz, show business profile, view mybiz
-# [TOOL] cat ~/.config/local-ai/skills/identity/marketing/strategy.md --leaf ---> marketing strategy, growth strategy, view marketing
-# [TOOL] cat ~/.config/local-ai/skills/identity/workout/routine.md --leaf ---> routine, fitness profile, workout routine
-```
-
-## 3. Dynamic Context-Injected Tools (RAG)
+## 1. Dynamic Context-Injected Tools (RAG)
 
 ```properties
 # --- Firecrawl Web Scraper (Live URL Markdown Ingestion) ---
@@ -84,9 +73,6 @@ ai init ~/.config/local-ai/projects/session-test-2 --init ---> session test 2, p
 # --- Pending Updates ---
 [TOOL] ~/.config/local-ai/tools/agentic/system/update-inspector --leaf ---> update inspector, inspector, ui
 
-# --- Disk Usage ---
-# [TOOL] df -h / ---> disk usage, drive usage
-
 # --- AI Status & Provider Diagnostics ---
 [TOOL] ~/.config/local-ai/tools/agentic/system/ai-status --s ---> ai status, aistat, status, aistatus 
 
@@ -94,9 +80,30 @@ ai init ~/.config/local-ai/projects/session-test-2 --init ---> session test 2, p
 [TOOL] curl -s "wttr.in/?format=3" --cat ---> weather simple, wttr, weather, rain forecast simple
 [TOOL] curl -s wttr.in --cat ---> weather full, wttr, weather, rain forecast full
 
-
 # --- System Time & Date (Real-time Clock Context) ---
 [TOOL] date "+Current Time: %I:%M:%S %p %Z on %A, %B %d, %Y" ---> time, date, current time, what time is it
+
+# --- Disk Usage ---
+# [TOOL] df -h / ---> disk usage, drive usage
+```
+
+## 2. Workspace Initializers & Bridges
+
+```properties
+# --- OpenCode Direct Terminal Launcher ---
+# ~/.config/local-ai/tools/subsec/opencode-bridge/opencode-bridge ---> opencode bridge, bridge, ocb
+# --- Odysseus Direct Terminal Launcher ---
+# ~/.config/local-ai/tools/subsec/odysseus-bridge/odysseus-bridge ---> odysseus bridge, bridge, ody, odb
+# --- Hermes Direct Browser Workspace Launcher ---
+# ~/.config/local-ai/tools/subsec/hermes-bridge/hermes-bridge ---> hermes bridge, bridge, hmb, herm
+```
+
+## 3. System Prompts & Role Injections (Skills)
+
+```properties
+# [TOOL] cat ~/.config/local-ai/skills/identity/business/mybiz.md --leaf ---> mybiz, show business profile, view mybiz
+# [TOOL] cat ~/.config/local-ai/skills/identity/marketing/strategy.md --leaf ---> marketing strategy, growth strategy, view marketing
+# [TOOL] cat ~/.config/local-ai/skills/identity/workout/routine.md --leaf ---> routine, fitness profile, workout routine
 ```
 
 ## 4. Static Aliases & Shell Shortcuts
