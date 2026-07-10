@@ -17,6 +17,7 @@
 
     <!-- Outer Head Boundary -->
     <rect x="40" y="20" width="140" height="160" rx="12" fill="none" stroke="url(#metalGrad)" stroke-width="7" />
+    <rect x="60" y="2" width="100" height="196" rx="12" fill="none" stroke="url(#metalGrad)" stroke-width="7" />
 
     <!-- CLI Terminal Eyes -->
     <path d="M 76 72 L 92 82 L 76 92" fill="none" stroke="url(#cyanGlow)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
