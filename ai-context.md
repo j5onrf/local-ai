@@ -116,7 +116,7 @@ ai init ~/.config/local-ai/projects/session-test-2 --init ---> session test 2, p
 ~/.config/local-ai/tools/agentic/system/ai-commit ---> ai-commit, gc, git commit
 
 # --- Index-Map (Graph-Enabled Code Intelligence Engine) ---
-[TOOL] ~/.config/local-ai/tools/map/index-map --cat ---> index map, im
+[TOOL] ~/.config/local-ai/tools/map/index-map --cat ---> index map, imap
 
 # --- Server Lifecycle Management ---
 # ~/.config/local-ai/tools/tools/subsec/server/kill-ai-servers ---> killserver, ks

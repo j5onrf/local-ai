@@ -10,6 +10,7 @@ index-map-local-ai.txt
 .request_log
 .agent
 .env
+.state.json
 
 # Ignore Python cache directories and bytecode
 __pycache__/

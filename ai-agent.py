@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.9.1.2]
+# Local-Ai Agent [j5onrf] [v0.9.1.3]
 
 import json
 import os
@@ -127,6 +127,24 @@ def validate_flat_schema(data: dict) -> bool:
         return False
 
 
+def _save_state(key: str, value: bool) -> None:
+    """Saves a terminal interface configuration state directly to your local .state.json config file."""
+    state_path = os.path.join(CFG_DIR, ".state.json")
+    data = {"spell_active": True, "show_stats": True}
+    if os.path.exists(state_path):
+        try:
+            with open(state_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            pass
+    data[key] = value
+    try:
+        with open(state_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+    except Exception:
+        pass
+
+
 def background_tpm_update(user_msg: str, assistant_msg: str, workspace: str, workspace_path: str):
     cleaned = user_msg.lower().strip()
     if len(cleaned) < 8 or cleaned in ("hello", "hi", "hey", "exit", "quit", "q", "/clear", "/reset", "/stats", "/tok", "/m", "/r"):
@@ -248,14 +266,24 @@ def run_interactive_chat(args: list):
     pending_query = " ".join(args[1:]) if len(args) > 1 else None
     clean_name = " ".join(skills_list)
 
-    spell_active = not is_agent
-    memory_active = True
+    # Load persistent configurations from localized .state.json, defaulting both to True (Enabled)
+    spell_active = True
     show_stats = True
-    reasoning_active = False
-    reasoning_budget = 500
+    state_path = os.path.join(CFG_DIR, ".state.json")
+    if os.path.exists(state_path):
+        try:
+            with open(state_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                spell_active = data.get("spell_active", True)
+                show_stats = data.get("show_stats", True)
+        except Exception:
+            pass
+            
+    memory_active = True
     
-    # Initialize the default secure confirmation gates setting
-    os.environ["AI_CONFIRM_GATES"] = "1"
+    # Reasoning parameters
+    reasoning_active = False # Disabled by default inside CLI chat loops
+    reasoning_budget = 500   # Default budget allocation when active
 
     if is_agent:
         sync_md_to_sqlite(safe_name, workspace_path)
@@ -282,9 +310,12 @@ def run_interactive_chat(args: list):
                 if query.lower() in ("exit", "quit", "q"):
                     print("\r\033[1;33mExiting conversation.\033[0m")
                     sys.exit(0)
-                if query in ("/d", "/e"):
-                    spell_active = query == "/e"
-                    print(f"\033[1;33m[sys] Spellchecker {'enabled' if spell_active else 'disabled'}.\033[0m\n")
+                # --- SPELLCHECKER TOGGLE (/spell or /sp) ---
+                if query in ("/spell", "/sp"):
+                    spell_active = not spell_active
+                    # Commit the change persistently to your local state file
+                    _save_state("spell_active", spell_active)
+                    print(f"\033[1;32m[sys] Spellchecker {'enabled' if spell_active else 'disabled'}.\033[0m\n")
                     continue
                 # --- UNIFIED MEMORY LAYER TOGGLE (/m) ---
                 if query == "/m":
@@ -323,9 +354,13 @@ def run_interactive_chat(args: list):
                         print(f"\033[1;33m[sys] Deep reasoning (thinking mode) {status}.\033[0m\n")
                     continue
 
+                # --- STATS ON-DEMAND TOGGLE ---
                 if query == "/stats":
                     show_stats = not show_stats
-                    print(f"\033[1;33m[sys] Generation statistics {'enabled' if show_stats else 'disabled'}.\033[0m\n")
+                    _save_state("show_stats", show_stats)  # <-- Executes the save
+                    print(
+                        f"\033[1;32m[sys] Generation statistics {'enabled' if show_stats else 'disabled'}.\033[0m\n"
+                    )
                     continue
 
                 # --- NATIVE FULL SESSION CLEAR ---
