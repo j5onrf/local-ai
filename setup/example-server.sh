@@ -32,6 +32,7 @@ exec ionice -c 3 nice -n 19 "$LLAMA_SERVER_BIN" \
   --reasoning-format deepseek \
   --reasoning-budget -1 \
   --reasoning-budget-message " ... reasoning budget exceeded, let's answer now.\n" \
+  --chat-template-kwargs '{"enable_thinking":false}' \
   --context-shift \
   --jinja \
   --temp 0.45 \
