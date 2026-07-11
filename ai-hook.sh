@@ -57,7 +57,7 @@ ai() {
         db="$path/index-map-memory-$name.db"
         
         # Fast newer-file/directory or missing database check
-        [[ ! -f "$map" ]] || [[ ! -f "$db" ]] || [[ -n "$(find "$path" ! -path "$path" -not -path '*/.git/*' -not -path '*/.agent/*' -not -name 'history.md' ! -name "$(basename "$map")" -newer "$map" -print -quit 2>/dev/null)" ]] && {
+        [[ ! -f "$map" ]] || [[ ! -f "$db" ]] || [[ "$path" -nt "$map" ]] || [[ -n "$(find "$path" ! -path "$path" -not -path '*/.git/*' -not -path '*/.agent/*' -not -name 'history.md' ! -name "$(basename "$map")" -newer "$map" -print -quit 2>/dev/null)" ]] && {
             "$_AI_PYTHON_BIN" "$_AI_DIR/tools/map/index-map" "$path" || return 1
         }
         
