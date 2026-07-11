@@ -120,3 +120,19 @@ I created broken_format.json with a missing comma between the `"value"` and `"st
 
 ---
 
+## [2026-07-11 14:37] User:
+hello
+
+### Agent:
+Hello! How can I help you today?
+
+---
+
+## [2026-07-11 14:37] User:
+hello
+
+### Agent:
+Hello! How can I help you today?
+
+---
+

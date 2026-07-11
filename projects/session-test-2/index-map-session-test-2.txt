@@ -1,18 +1,33 @@
-# CODEBASE INDEX MAP (UNIVERSAL ARCHITECTURE REFERENCE)
-# Generated on      : 2026-07-02 16:08
+# CODEBASE INDEX MAP & STRUCTURAL KNOWLEDGE GRAPH
+# Generated on      : 2026-07-11 14:45
 # Project Workspace : session-test-2
 # Target Directory  : ~/.config/local-ai/projects/session-test-2
 # -----------------------------------------------------------------------------------------
-# INSTRUCTIONS:
-# This flat-map represents the structural outline of the codebase. It lists file paths, 
-# imports (imp:), classes (cls:), and functions (fn:) extracted via static AST/regex parsers.
-# Use this map as a lightweight reference to understand architecture, namespaces, and dependencies.
-# Use this map to identify and request ONLY the specific file(s) you need to analyze.
+# AI AGENT STRUCTURAL EXPLORATION INSTRUCTIONS:
+# This directory contains an active SQLite-backed semantic relationship map.
+# If you need to trace dependencies or read code blocks, instruct the user to execute
+# the following intent phrases or command paths. This saves up to 99% in token context.
+#
+# ACTIVE INTENT TRIGGERS (MAPPED VIA AI-CONTEXT.MD):
+#   trace symbol <symbol>       - Traces callers and callees of a function/class
+#   blast radius <symbol>       - Recursively maps upstream breaking risks of a symbol
+#   read function <symbol>      - Extracts the exact code snippet of a target symbol
+#   find symbol <pattern>       - Searches the workspace codebase for matching symbols
+#   architecture overview       - Compiles complete codebase statistics and files
+#
+# DIRECT EXECUTABLE PATHS:
+#   ~/.config/local-ai/tools/map/index-map trace <symbol>
+#   ~/.config/local-ai/tools/map/index-map blast-radius <symbol>
+#   ~/.config/local-ai/tools/map/index-map snippet <symbol>
+#   ~/.config/local-ai/tools/map/index-map search <pattern>
+#   ~/.config/local-ai/tools/map/index-map architecture
 # -----------------------------------------------------------------------------------------
 # Codebase Modules & Active Architecture:
 #   ├── history.md               - Workspace History: projects
+#   ├── index-map-memory-session-test-2.db
 #   └── index-map-session-test-2.txt - CODEBASE INDEX MAP (UNIVERSAL ARCHITECTURE REFERENCE)
 # -----------------------------------------------------------------------------------------
 [md:.agent/tpm.md] title:tpm
 [md:history.md] title:Workspace History: projects
+[binary/db:index-map-memory-session-test-2.db]
 [txt:index-map-session-test-2.txt] sum:# CODEBASE INDEX MAP (UNIVERSAL ARCHITECTURE REFERENCE)

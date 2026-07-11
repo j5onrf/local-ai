@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.9.1.4]
+# Local-Ai Agent [j5onrf] [v0.9.2.0]
 
 import json
 import os
@@ -452,7 +452,12 @@ def run_interactive_chat(args: list):
             if is_init_map:
                 prompt = f"### SYSTEM INSTRUCTIONS (CRITICAL OVERRIDE):\n{active_system_prompt}\n\n### CODESPACE MAP:\n{query}"
             else:
-                sys_ctx = skills.get_system_context(query, CONTEXT_FILE, STOP_WORDS, SKILLS_DIR, CFG_DIR)
+                # Secure Bypass: Do not trigger codebase tools or file reads on the startup initialization turn
+                if query.startswith("init") and "--init" in query:
+                    sys_ctx = ""
+                else:
+                    sys_ctx = skills.get_system_context(query, CONTEXT_FILE, STOP_WORDS, SKILLS_DIR, CFG_DIR)
+                
                 if sys_ctx == "__ABORT_TURN__":
                     sys_ctx = ""
 

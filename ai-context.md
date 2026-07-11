@@ -19,6 +19,7 @@
 # --- Session-Test - This is a Project Workspace (Skill-Primed) --
 ai init ~/.config/local-ai/projects/session-test --init ---> session test, projects session, projects
 ai init ~/.config/local-ai/projects/session-test-2 --init ---> session test 2, projects session, projects
+ai init ~/.config/local-ai/projects/session-test-3 --init ---> session test 3, projects session, projects
 ```
 
 ## Core Session & Context Retrieval

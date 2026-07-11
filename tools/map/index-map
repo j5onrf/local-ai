@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# index-map [Graph-Enabled Workspace Intelligence Engine] v1.5.1
+# index-map [Graph-Enabled Workspace Intelligence Engine] v1.5.5
 
 import os, re, ast, json, fnmatch, time, sys, warnings, sqlite3
 
@@ -624,31 +624,11 @@ def run_indexing(target_dir, force=False):
         
     date_str = time.strftime('%Y-%m-%d %H:%M')
     
-# ADVANCED CODE INTELLIGENCE AI AGENT INSTRUCTIONS
+# ADVANCED CODE INTELLIGENCE SYSTEM INDEX MAP
     header = (
-        f"# CODEBASE INDEX MAP & STRUCTURAL KNOWLEDGE GRAPH\n"
-        f"# Generated on      : {date_str}\n"
-        f"# Project Workspace : {proj_name}\n"
-        f"# Target Directory  : {display_dir}\n"
-        f"# -----------------------------------------------------------------------------------------\n"
-        f"# AI AGENT STRUCTURAL EXPLORATION INSTRUCTIONS:\n"
-        f"# This directory contains an active SQLite-backed semantic relationship map.\n"
-        f"# If you need to trace dependencies or read code blocks, instruct the user to execute\n"
-        f"# the following intent phrases or command paths. This saves up to 99% in token context.\n"
-        f"#\n"
-        f"# ACTIVE INTENT TRIGGERS (MAPPED VIA AI-CONTEXT.MD):\n"
-        f"#   trace symbol <symbol>       - Traces callers and callees of a function/class\n"
-        f"#   blast radius <symbol>       - Recursively maps upstream breaking risks of a symbol\n"
-        f"#   read function <symbol>      - Extracts the exact code snippet of a target symbol\n"
-        f"#   find symbol <pattern>       - Searches the workspace codebase for matching symbols\n"
-        f"#   architecture overview       - Compiles complete codebase statistics and files\n"
-        f"#\n"
-        f"# DIRECT EXECUTABLE PATHS:\n"
-        f"#   ~/.config/local-ai/tools/map/index-map trace <symbol>\n"
-        f"#   ~/.config/local-ai/tools/map/index-map blast-radius <symbol>\n"
-        f"#   ~/.config/local-ai/tools/map/index-map snippet <symbol>\n"
-        f"#   ~/.config/local-ai/tools/map/index-map search <pattern>\n"
-        f"#   ~/.config/local-ai/tools/map/index-map architecture\n"
+        f"# CODEBASE INDEX MAP | Generated: {date_str} | Workspace: {proj_name} | Path: {display_dir}\n"
+        f"# Active symbols and structural connections mapped in the local SQLite graph DB.\n"
+        f"# Intents: trace symbol <sym> | blast radius <sym> | read function <sym> | find symbol <pat> | architecture overview\n"
         f"# -----------------------------------------------------------------------------------------\n"
     )
     

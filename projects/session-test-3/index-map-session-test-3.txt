@@ -1,0 +1,8 @@
+# CODEBASE INDEX MAP | Generated: 2026-07-11 15:34 | Workspace: session-test-3 | Path: ~/.config/local-ai/projects/session-test-3
+# Active symbols and structural connections mapped in the local SQLite graph DB.
+# Intents: trace symbol <sym> | blast radius <sym> | read function <sym> | find symbol <pat> | architecture overview
+# -----------------------------------------------------------------------------------------
+# Codebase Modules & Active Architecture:
+#   └── index-map-memory-session-test-3.db
+# -----------------------------------------------------------------------------------------
+[binary/db:index-map-memory-session-test-3.db]
