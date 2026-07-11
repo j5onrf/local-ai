@@ -50,10 +50,7 @@ def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float,
 
 # --- FAST-PATH BYTE EXTRACTOR ---
 def extract_stream_content(line_bytes: bytes) -> str:
-    """Performs raw byte-level searching to extract streaming tokens.
-    
-    Bypasses full-line string decoding and dictionary creation entirely for a major CPU speedup.
-    """
+    """Performs raw byte-level searching to extract streaming tokens."""
     idx = line_bytes.find(b'"content":"')
     if idx == -1:
         idx = line_bytes.find(b'"text":"')
@@ -270,21 +267,6 @@ def _run_edit_tool(name: str, args: dict, workspace: str, spinner=None) -> str:
         outside = _is_outside_workspace(workspace, full)
         exists = os.path.exists(full)
         
-        # Local Syntactic Guardrail: Verify Python syntax before committing writes
-        if full.endswith(".py"):
-            import ast
-            try:
-                ast.parse(content)
-            except SyntaxError as e:
-                return f"[error] Write blocked. Python syntax verification failed: {e.msg} on line {e.lineno}. Please correct this syntax error and try writing again."
-                
-        # Local Syntactic Guardrail: Verify JSON formatting before committing writes
-        if full.endswith(".json"):
-            try:
-                json.loads(content)
-            except Exception as e:
-                return f"[error] Write blocked. JSON validation failed: {e}. Please correct the JSON formatting and try writing again."
-        
         # Colorized Unified Terminal Diff Output
         if sys.stdout.isatty():
             if exists:
@@ -357,6 +339,7 @@ def _run_edit_tool(name: str, args: dict, workspace: str, spinner=None) -> str:
         else:
             sys.stderr.write(f"\033[2m  Executing command autonomously: $ {cmd}\033[0m\n")
 
+        # Standard non-login shell to preserve active Herdr session environments
         shell = os.environ.get("SHELL") or "/bin/sh"
         if spinner:
             spinner.start("running")
@@ -375,7 +358,7 @@ def _run_edit_tool(name: str, args: dict, workspace: str, spinner=None) -> str:
     return f"[error] unknown tool {name}"
 
 
-def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: int, spinner) -> str or None:
+def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: int, spinner, show_stats: bool = False) -> str or None:
     """Executes a multi-turn non-streaming agent round-trip loop supporting tool evaluations."""
     workspace = os.environ.get("AI_WORKSPACE_PATH", os.getcwd())
     
@@ -426,7 +409,7 @@ def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: i
             in_tok = prompt_chars // 4
             out_tok = len(ans) // 4
             _log_turn_usage(resolved_model or body.get("model") or "local-model",
-                            in_tok, out_tok, 0.0, True, in_tok + out_tok)
+                            in_tok, out_tok, 0.0, show_stats, in_tok + out_tok)
             
             return ans
             
@@ -493,7 +476,7 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
         for url, headers, body, timeout in configs:
             # If running as active agentic workspace session, route through multi-round tool execution loop
             if is_agent:
-                ans = agentic_turn(messages, url, headers, body, timeout, spinner)
+                ans = agentic_turn(messages, url, headers, body, timeout, spinner, show_stats)
                 if ans is not None:
                     return ans
                 continue
