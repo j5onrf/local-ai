@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Local-Ai Agent Hook v0.8.9.12
+# Local-Ai Agent Hook v0.9.2.0
 
 [[ $- != *i* ]] && return
 

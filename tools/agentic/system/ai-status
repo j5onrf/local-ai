@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ai-status - Diagnostics for Local-AI Agent Stack v1.3.9 [j5onrf]
+# ai-status - Diagnostics for Local-AI Agent Stack v1.4.0 [j5onrf]
 
 set -euo pipefail
 
@@ -41,11 +41,12 @@ check_conn() {
 gemini_status=$(check_conn "${GEMINI_API_KEY:-}" "https://generativelanguage.googleapis.com")
 openai_status=$(check_conn "${OPENAI_API_KEY:-}" "https://api.openai.com")
 claude_status=$(check_conn "${CLAUDE_API_KEY:-}" "https://api.anthropic.com")
+xai_status=$(check_conn "${XAI_API_KEY:-}" "https://api.x.ai")
 or_status=$(check_conn "${OPENROUTER_API_KEY:-}" "https://openrouter.ai")
 local_status=$(curl -s -I --connect-timeout 1.0 "http://localhost:8080" >/dev/null && echo 0 || echo 1)
 
 # Fetch cloud metrics and prune old logs in a single Python pass
-request_stats="0|0|0|0|0|0|0|0"
+request_stats="0|0|0|0|0|0|0|0|0|0"
 log_file="$HOME/.config/local-ai/.request_log"
 if [[ -f "$log_file" ]]; then
     request_stats=$(python3 -c "
@@ -53,8 +54,8 @@ import os, time
 log_file = os.path.expanduser('~/.config/local-ai/.request_log')
 now = int(time.time())
 day_ago, min_ago = now - 86400, now - 60
-rpd = {'gemini': 0, 'openrouter': 0, 'openai': 0, 'claude': 0}
-rpm = {'gemini': 0, 'openrouter': 0, 'openai': 0, 'claude': 0}
+rpd = {'gemini': 0, 'openrouter': 0, 'openai': 0, 'claude': 0, 'grok': 0}
+rpm = {'gemini': 0, 'openrouter': 0, 'openai': 0, 'claude': 0, 'grok': 0}
 valid = []
 try:
     with open(log_file, 'r') as f:
@@ -74,8 +75,8 @@ try:
             f.write(f'{entry}\n')
 except:
     pass
-print(f\"{rpd['gemini']}|{rpm['gemini']}|{rpd['openrouter']}|{rpm['openrouter']}|{rpd['openai']}|{rpm['openai']}|{rpd['claude']}|{rpm['claude']}\")
-" || echo "0|0|0|0|0|0|0|0")
+print(f\"{rpd['gemini']}|{rpm['gemini']}|{rpd['openrouter']}|{rpm['openrouter']}|{rpd['openai']}|{rpm['openai']}|{rpd['claude']}|{rpm['claude']}|{rpd['grok']}|{rpm['grok']}\")
+" || echo "0|0|0|0|0|0|0|0|0|0")
 fi
 
 gemini_rpd=$(echo "$request_stats" | cut -d'|' -f1)
@@ -86,6 +87,8 @@ openai_rpd=$(echo "$request_stats" | cut -d'|' -f5)
 openai_rpm=$(echo "$request_stats" | cut -d'|' -f6)
 claude_rpd=$(echo "$request_stats" | cut -d'|' -f7)
 claude_rpm=$(echo "$request_stats" | cut -d'|' -f8)
+grok_rpd=$(echo "$request_stats" | cut -d'|' -f9)
+grok_rpm=$(echo "$request_stats" | cut -d'|' -f10)
 
 # Fetch OpenRouter key metadata (usage, limits, tier) on-demand
 or_meta="*Not Available*"
@@ -149,6 +152,10 @@ echo "* **CLAUDE_API_KEY**  : $(mask_key "${CLAUDE_API_KEY:-}")"
 echo "* **CLAUDE_MODEL**    : \`${CLAUDE_MODEL:-claude-fable-5}\`"
 echo "* **CLAUDE METRICS**  : \`RPM: ${claude_rpm} | RPD: ${claude_rpd}\` (Last 24h rolling)"
 echo ""
+echo "* **XAI_API_KEY**     : $(mask_key "${XAI_API_KEY:-}")"
+echo "* **XAI_MODEL**       : \`${XAI_MODEL:-grok-4.5}\`"
+echo "* **XAI METRICS**     : \`RPM: ${grok_rpm} | RPD: ${grok_rpd}\` (Last 24h rolling)"
+echo ""
 echo "* **OPENROUTER_KEY**  : $(mask_key "${OPENROUTER_API_KEY:-}")"
 echo "* **OPENROUTER_MODEL**: \`${OPENROUTER_MODEL:-openrouter/free}\` (Free Limits: 20 RPM / 200 RPD)"
 if [[ $or_status -eq 0 && "${OPENROUTER_MODEL:-}" == *"free"* ]]; then
@@ -162,6 +169,7 @@ echo -e "\n---\n\n## ENDPOINT STATUS"
 [[ -n "${GEMINI_API_KEY:-}" ]] && echo "* **Google APIs**   : $([[ $gemini_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")" || echo "* **Google APIs**   : *Skipped (No Key)*"
 [[ -n "${OPENAI_API_KEY:-}" ]] && echo "* **OpenAI APIs**   : $([[ $openai_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")" || echo "* **OpenAI APIs**   : *Skipped (No Key)*"
 [[ -n "${CLAUDE_API_KEY:-}" ]] && echo "* **Anthropic APIs**: $([[ $claude_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")" || echo "* **Anthropic APIs**: *Skipped (No Key)*"
+[[ -n "${XAI_API_KEY:-}" ]] && echo "* **x.AI APIs**      : $([[ $xai_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")" || echo "* **x.AI APIs**      : *Skipped (No Key)*"
 [[ -n "${OPENROUTER_API_KEY:-}" ]] && echo "* **OpenRouter API** : $([[ $or_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")" || echo "* **OpenRouter API** : *Skipped (No Key)*"
 echo -e "* **Local Server**   : $([[ $local_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")\n\n---\n\n## ACTIVE RUNTIME ROUTE"
 
@@ -175,6 +183,9 @@ elif [[ -n "${OPENAI_API_KEY:-}" && $openai_status -eq 0 ]]; then
 elif [[ -n "${CLAUDE_API_KEY:-}" && $claude_status -eq 0 ]]; then
     echo "* **Selected Provider**: **Anthropic Claude Subscription API**"
     echo "* **Active Model**     : \`${CLAUDE_MODEL:-claude-fable-5}\`"
+elif [[ -n "${XAI_API_KEY:-}" && $xai_status -eq 0 ]]; then
+    echo "* **Selected Provider**: **x.AI Grok Subscription API**"
+    echo "* **Active Model**     : \`${XAI_MODEL:-grok-4.5}\`"
 elif [[ -n "${OPENROUTER_API_KEY:-}" && $or_status -eq 0 ]]; then
     echo "* **Selected Provider**: **OpenRouter API**"
     echo "* **Active Model**     : \`${OPENROUTER_MODEL:-openrouter/free}\`"
