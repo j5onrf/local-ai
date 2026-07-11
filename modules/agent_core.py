@@ -270,6 +270,21 @@ def _run_edit_tool(name: str, args: dict, workspace: str, spinner=None) -> str:
         outside = _is_outside_workspace(workspace, full)
         exists = os.path.exists(full)
         
+        # Local Syntactic Guardrail: Verify Python syntax before committing writes
+        if full.endswith(".py"):
+            import ast
+            try:
+                ast.parse(content)
+            except SyntaxError as e:
+                return f"[error] Write blocked. Python syntax verification failed: {e.msg} on line {e.lineno}. Please correct this syntax error and try writing again."
+                
+        # Local Syntactic Guardrail: Verify JSON formatting before committing writes
+        if full.endswith(".json"):
+            try:
+                json.loads(content)
+            except Exception as e:
+                return f"[error] Write blocked. JSON validation failed: {e}. Please correct the JSON formatting and try writing again."
+        
         # Colorized Unified Terminal Diff Output
         if sys.stdout.isatty():
             if exists:

@@ -104,3 +104,19 @@ Creation of ~/external_leak_test.txt was denied as it is outside the workspace.
 
 ---
 
+## [2026-07-11 12:33] User:
+Please create a python file named broken_syntax.py. Intentionally write a syntax error (such as a missing colon after a def statement) to trigger my syntax guardrail. Let yourself read the error, correct the code, and write the valid python file.
+
+### Agent:
+I created broken_syntax.py with a missing colon after the `def` statement, which triggered the syntax guardrail error "expected ':' on line 1". I then corrected the code by adding the colon and wrote the valid file successfully.
+
+---
+
+## [2026-07-11 12:34] User:
+Please write a JSON file named broken_format.json. Intentionally trigger my JSON guardrail by leaving out a comma between two keys, then read the error, correct the JSON, and write the valid file.
+
+### Agent:
+I created broken_format.json with a missing comma between the `"value"` and `"status"` keys, which triggered the JSON guardrail error "Expecting ',' delimiter: line 4". I corrected it by adding the comma and wrote the valid JSON file successfully.
+
+---
+
