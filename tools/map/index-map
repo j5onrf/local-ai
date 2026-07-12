@@ -1,13 +1,23 @@
 #!/usr/bin/env python3
-# index-map [Graph-Enabled Workspace Intelligence Engine] v1.5.5
+# index-map [Graph-Enabled Workspace Intelligence Engine] v1.6.0
 
-import os, re, ast, json, fnmatch, time, sys, warnings, sqlite3
+import os, re, ast, json, fnmatch, time, sys, warnings, sqlite3, struct
+import urllib.request as urlreq
 
 try: import tty, termios, select
 except ImportError: pass
 
 try: import readline
 except ImportError: pass
+
+# --- OPTIONAL SQLITE-VEC INTEGRATION ---
+try:
+    import sqlite_vec
+    HAS_VEC = True
+except ImportError:
+    HAS_VEC = False
+
+EMBEDDING_SERVER = "http://localhost:8080"
 
 # --- GLOBAL LANGUAGE PATTERNS FOR REGEX PARSING (NON-PYTHON) ---
 LANG_RULES = {
@@ -330,12 +340,52 @@ def analyze_generic_file(filepath):
     if is_binary(filepath): return {"type": f"binary/{ext}"}
     return {"type": ext, "summary": get_text_summary(filepath, 15, False, False) or "Empty file"}
 
+# --- SQLITE-VEC HELPER FUNCTIONS ---
+def load_vec_extension(conn):
+    if not HAS_VEC:
+        return False
+    try:
+        conn.enable_load_extension(True)
+        sqlite_vec.load(conn)
+        conn.enable_load_extension(False)
+        return True
+    except Exception as e:
+        sys.stderr.write(f"\033[90m[sys] Warning: Failed to load sqlite-vec: {e}\033[0m\n")
+        return False
+
+def get_embedding(text, server_url=EMBEDDING_SERVER):
+    text = text.replace("\n", " ").strip()[:3000]
+    if not text:
+        return None
+    try:
+        payload = {"input": text, "model": "text-embedding-ada-002"}
+        req = urlreq.Request(
+            f"{server_url}/v1/embeddings",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST"
+        )
+        with urlreq.urlopen(req, timeout=3) as res:
+            data = json.loads(res.read().decode("utf-8"))
+            return data["data"][0]["embedding"]
+    except Exception:
+        return None
+
+def detect_embedding_dim(server_url=EMBEDDING_SERVER):
+    emb = get_embedding("test", server_url)
+    return len(emb) if emb else 384
+
+def serialize_vec(vector):
+    """Serializes a float array into direct binary bytes for sqlite-vec execution."""
+    return struct.pack(f"{len(vector)}f", *vector)
+
 # --- DATABASE MANAGEMENT & GRAPH BUILDING ---
-def init_db(db_path):
+def init_db(db_path, use_vec=False, dim=384):
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute("DROP TABLE IF EXISTS edges")
     cursor.execute("DROP TABLE IF EXISTS nodes")
+    cursor.execute("DROP TABLE IF EXISTS nodes_vec")
     cursor.execute("""
     CREATE TABLE nodes (
         id TEXT PRIMARY KEY,
@@ -358,6 +408,16 @@ def init_db(db_path):
     cursor.execute("CREATE INDEX idx_nodes_type ON nodes(type)")
     cursor.execute("CREATE INDEX idx_edges_source ON edges(source)")
     cursor.execute("CREATE INDEX idx_edges_target ON edges(target)")
+    
+    if use_vec:
+        loaded = load_vec_extension(conn)
+        if loaded:
+            cursor.execute(f"""
+            CREATE VIRTUAL TABLE nodes_vec USING vec0(
+                id INTEGER PRIMARY KEY,
+                embedding float[{dim}]
+            )""")
+            
     conn.commit()
     return conn
 
@@ -372,6 +432,21 @@ def find_db_path(start_dir=None):
         if parent == curr: break
         curr = parent
     return None
+
+def insert_node(conn, node_id, name, ntype, filepath, lang, meta_dict, text_to_embed, use_vec, server_url):
+    cursor = conn.cursor()
+    cursor.execute("INSERT OR REPLACE INTO nodes VALUES (?, ?, ?, ?, ?, ?)", 
+                    (node_id, name, ntype, filepath, lang, json.dumps(meta_dict)))
+    
+    if use_vec and text_to_embed:
+        rowid = cursor.lastrowid
+        emb = get_embedding(text_to_embed, server_url)
+        if emb:
+            try:
+                cursor.execute("INSERT INTO nodes_vec(id, embedding) VALUES (?, ?)", 
+                                (rowid, serialize_vec(emb)))
+            except Exception as e:
+                sys.stderr.write(f"\033[90m[sys] Vector write failed on row {rowid}: {e}\033[0m\n")
 
 # --- CORE ALGORITHM: RESOLVING EXPLICIT AND HEURISTIC DEPENDENCIES ---
 def resolve_and_insert_edges(conn, raw_calls, file_imports):
@@ -448,7 +523,7 @@ def compile_ascii_tree(target_dir: str) -> str:
 
 # --- COMPRESSED SHORTHAND COMPILER ---
 def compile_flat_shorthand(skeleton):
-    lines = []
+    lines = []  # <-- Initialize the empty list here
     for rel_path, data in sorted(skeleton.items()):
         t = data.get("type", "file")
         if t == "python":
@@ -504,11 +579,25 @@ def run_indexing(target_dir, force=False):
             if sys.stdin.readline().strip().lower() not in ['y', 'yes']: safe_exit(0)
         except: safe_exit(0)
 
-    sys.stderr.write("ℹ Compiling relational index graph...\n"); sys.stderr.flush()
-    
+    # 1. Establish SQLite Database Connections
     proj_name = os.path.basename(target_dir)
     db_path = os.path.join(target_dir, f"index-map-memory-{proj_name}.db")
-    db_conn = init_db(db_path)
+    
+    # Check if local embedding model server is active and get model dimensions
+    use_vec = HAS_VEC
+    embedding_dim = 384
+    if use_vec:
+        sys.stderr.write("ℹ Probing local embedding server for dimensional limits...\n"); sys.stderr.flush()
+        detected_dim = detect_embedding_dim(EMBEDDING_SERVER)
+        if detected_dim:
+            embedding_dim = detected_dim
+            sys.stderr.write(f"✔ Active embedding model resolved ({embedding_dim} dimensions detected).\n"); sys.stderr.flush()
+        else:
+            use_vec = False
+            sys.stderr.write("\033[90m[sys] Local embedding server offline. Building relational graph only.\033[0m\n"); sys.stderr.flush()
+            
+    sys.stderr.write("ℹ Compiling relational index graph...\n"); sys.stderr.flush()
+    db_conn = init_db(db_path, use_vec=use_vec, dim=embedding_dim)
     
     default_ignored = {
         '.git', '__pycache__', 'logs', '.auto-f', 'node_modules', 
@@ -538,13 +627,13 @@ def run_indexing(target_dir, force=False):
                 
             ext = os.path.splitext(file)[1].lower()
             
-            # Add file node to DB
-            db_conn.execute("INSERT OR REPLACE INTO nodes VALUES (?, ?, ?, ?, ?, ?)", 
-                            (f"file:{rel_path}", rel_path, 'file', rel_path, ext.lstrip('.'), json.dumps({})))
+            # File Node Registration
+            insert_node(db_conn, f"file:{rel_path}", rel_path, 'file', rel_path, ext.lstrip('.'), {}, rel_path, use_vec, EMBEDDING_SERVER)
             
             if ext == '.py':
                 try:
                     with open(filepath, 'r', encoding='utf-8', errors='replace') as f: content = f.read()
+                    lines = content.splitlines()
                     with warnings.catch_warnings():
                         warnings.simplefilter("ignore", SyntaxWarning)
                         tree = ast.parse(content, filename=filepath)
@@ -566,14 +655,16 @@ def run_indexing(target_dir, force=False):
                     # Store structures into local SQLite Nodes & Structural Containment Edges
                     for c_name, c_start, c_end in visitor.classes:
                         class_id = f"class:{rel_path}:{c_name}"
-                        db_conn.execute("INSERT OR REPLACE INTO nodes VALUES (?, ?, ?, ?, ?, ?)", 
-                                        (class_id, c_name, 'class', rel_path, 'python', json.dumps({'line_start': c_start, 'line_end': c_end})))
+                        class_code = "\n".join(lines[max(0, c_start-1):c_end]).strip()
+                        insert_node(db_conn, class_id, c_name, 'class', rel_path, 'python', 
+                                    {'line_start': c_start, 'line_end': c_end}, class_code, use_vec, EMBEDDING_SERVER)
                         db_conn.execute("INSERT OR IGNORE INTO edges VALUES (?, ?, ?)", (f"file:{rel_path}", class_id, 'contains'))
                         
                     for f_name, parent_class, f_start, f_end, f_args in visitor.functions:
                         func_id = f"func:{rel_path}:{parent_class}:{f_name}" if parent_class else f"func:{rel_path}:{f_name}"
-                        db_conn.execute("INSERT OR REPLACE INTO nodes VALUES (?, ?, ?, ?, ?, ?)", 
-                                        (func_id, f_name, 'function', rel_path, 'python', json.dumps({'line_start': f_start, 'line_end': f_end, 'args': f_args})))
+                        func_code = "\n".join(lines[max(0, f_start-1):f_end]).strip()
+                        insert_node(db_conn, func_id, f_name, 'function', rel_path, 'python', 
+                                    {'line_start': f_start, 'line_end': f_end, 'args': f_args}, func_code, use_vec, EMBEDDING_SERVER)
                         
                         container_id = f"class:{rel_path}:{parent_class}" if parent_class else f"file:{rel_path}"
                         db_conn.execute("INSERT OR IGNORE INTO edges VALUES (?, ?, ?)", (container_id, func_id, 'contains'))
@@ -584,6 +675,12 @@ def run_indexing(target_dir, force=False):
                 parsed = parse_non_python_file(filepath, ext)
                 raw_calls[rel_path] = parsed['calls']
                 
+                try:
+                    with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                        file_lines = f.read().splitlines()
+                except Exception:
+                    file_lines = []
+                
                 skeleton[rel_path] = {
                     "type": ext.lstrip('.'),
                     "classes": [c[0] for c in parsed['classes']],
@@ -592,14 +689,16 @@ def run_indexing(target_dir, force=False):
                 
                 for c_name, c_start, c_end in parsed['classes']:
                     class_id = f"class:{rel_path}:{c_name}"
-                    db_conn.execute("INSERT OR REPLACE INTO nodes VALUES (?, ?, ?, ?, ?, ?)", 
-                                    (class_id, c_name, 'class', rel_path, ext.lstrip('.'), json.dumps({'line_start': c_start, 'line_end': c_end})))
+                    class_code = "\n".join(file_lines[max(0, c_start-1):c_end]).strip() if file_lines else ""
+                    insert_node(db_conn, class_id, c_name, 'class', rel_path, ext.lstrip('.'), 
+                                {'line_start': c_start, 'line_end': c_end}, class_code, use_vec, EMBEDDING_SERVER)
                     db_conn.execute("INSERT OR IGNORE INTO edges VALUES (?, ?, ?)", (f"file:{rel_path}", class_id, 'contains'))
                     
                 for f_name, parent_class, f_start, f_end, f_args in parsed['functions']:
                     func_id = f"func:{rel_path}:{parent_class}:{f_name}" if parent_class else f"func:{rel_path}:{f_name}"
-                    db_conn.execute("INSERT OR REPLACE INTO nodes VALUES (?, ?, ?, ?, ?, ?)", 
-                                    (func_id, f_name, 'function', rel_path, ext.lstrip('.'), json.dumps({'line_start': f_start, 'line_end': f_end, 'args': f_args})))
+                    func_code = "\n".join(file_lines[max(0, f_start-1):f_end]).strip() if file_lines else ""
+                    insert_node(db_conn, func_id, f_name, 'function', rel_path, ext.lstrip('.'), 
+                                {'line_start': f_start, 'line_end': f_end, 'args': f_args}, func_code, use_vec, EMBEDDING_SERVER)
                     
                     container_id = f"class:{rel_path}:{parent_class}" if parent_class else f"file:{rel_path}"
                     db_conn.execute("INSERT OR IGNORE INTO edges VALUES (?, ?, ?)", (container_id, func_id, 'contains'))
@@ -818,6 +917,57 @@ def run_custom_query(sql_str):
         print(f"❌ SQL Syntax Execution Error: {e}")
     conn.close()
 
+# --- HYBRID/SEMANTIC SEARCH ---
+def search_symbols(pattern, server_url=EMBEDDING_SERVER):
+    db = find_db_path()
+    if not db:
+        print("❌ Database not found.")
+        return
+    conn = sqlite3.connect(db)
+    
+    # Attempt to load sqlite-vec for active semantic searches
+    use_vec = False
+    if HAS_VEC:
+        try:
+            conn.enable_load_extension(True)
+            sqlite_vec.load(conn)
+            conn.enable_load_extension(False)
+            cursor = conn.cursor()
+            cursor.execute("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='nodes_vec'")
+            if cursor.fetchone()[0] > 0:
+                use_vec = True
+        except:
+            pass
+            
+    cursor = conn.cursor()
+    if use_vec:
+        emb = get_embedding(pattern, server_url)
+        if emb:
+            print(f"\n\033[1;32m[Semantic Search Matches for: '{pattern}']\033[0m")
+            try:
+                cursor.execute("""
+                SELECT n.id, n.type, n.filepath, v.distance 
+                FROM nodes_vec v
+                JOIN nodes n ON n.rowid = v.id
+                WHERE embedding MATCH ? AND k = 10
+                ORDER BY distance ASC
+                """, (serialize_vec(emb),))
+                res = cursor.fetchall()
+                for rid, rtype, rpath, dist in res:
+                    print(f"  - \033[1;36m{rid}\033[0m [{rtype}] ({rpath}) [dist: {dist:.4f}]")
+                conn.close()
+                return
+            except Exception as e:
+                sys.stderr.write(f"\033[90m[sys] Semantic query failed: {e}. Falling back to LIKE...\033[0m\n")
+                
+    # Direct database fallback when offline or lacking dependencies
+    cursor.execute("SELECT id, type, filepath FROM nodes WHERE name LIKE ? OR filepath LIKE ? LIMIT 50", (f"%{pattern}%", f"%{pattern}%"))
+    res = cursor.fetchall()
+    print(f"\n\033[1;32m[Matches Found: {len(res)}]\033[0m")
+    for rid, rtype, rpath in res:
+        print(f"  - \033[1;36m{rid}\033[0m [{rtype}] ({rpath})")
+    conn.close()
+
 # --- CLI ARGUMENT ROUTING ---
 def main():
     args = sys.argv[1:]
@@ -853,16 +1003,7 @@ Commands:
     elif cmd == "search":
         if len(args) < 2:
             print("❌ Must provide a search pattern."); return
-        db = find_db_path()
-        if not db: print("❌ Database not found."); return
-        conn = sqlite3.connect(db)
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, type, filepath FROM nodes WHERE name LIKE ? LIMIT 50", (f"%{args[1]}%",))
-        res = cursor.fetchall()
-        print(f"\n\033[1;32m[Matches Found: {len(res)}]\033[0m")
-        for rid, rtype, rpath in res:
-            print(f"  - \033[1;36m{rid}\033[0m [{rtype}] ({rpath})")
-        conn.close()
+        search_symbols(args[1], EMBEDDING_SERVER)
     elif cmd == "trace":
         if len(args) < 2: print("❌ Must specify a class or function symbol."); return
         trace_symbol(args[1])

@@ -2,7 +2,7 @@
   <img alt="Local-AI Agent" src="https://github.com/j5onrf/local-ai/blob/main/logo.png" width="800" />
 </p>
 
-<h1 align="center">Local-AI Agent <kbd>v0.9.2.0-beta</kbd></h1>
+<h1 align="center">Local-AI Agent <kbd>v0.9.2.1-beta</kbd></h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
@@ -59,10 +59,10 @@ Agent: Workspace loaded. Awaiting instructions.
 <h2 align="center">Codebase Graph Mapper & Relational Index</h2>
 
 <p align="center">
-  <em>Building flat shorthand maps and queryable call graphs.</em>
+  <em>Building semantic codebase maps and queryable relational graphs.</em>
 </p>
 
-* [Graphify](https://github.com/Graphify-Labs/graphify)'s codebase mapping with [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)'s relationship queries.
+* [Graphify](https://github.com/Graphify-Labs/graphify)'s codebase mapping and [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)'s relational queries, supercharged with local semantic vector search via [sqlite-vec](https://github.com/asg017/sqlite-vec).
 
 ---
 
@@ -175,11 +175,16 @@ Add your shortcuts, commands, and workspaces to [`ai-context.md`](https://github
 # (mdcat enables beautiful terminal markdown formatting)
 yay -S mdcat
 
-# 2. Install the required requests dependency
-# Arch: sudo pacman -S python-requests
-# Debian/Ubuntu: sudo apt install python3-requests
-# macOS / Other: pip install requests
+# 2. Install required system dependencies
+# (Arch: python-requests | Debian: python3-requests)
 sudo pacman -S python-requests
+
+# 2.5 Optional: Install local vector-database extensions
+# (Enables high-performance semantic search over your codebase)
+# Arch: yay -S python-sqlite-vec
+# Debian/Ubuntu: pip install sqlite-vec --break-system-packages
+# macOS / Other: pip install sqlite-vec
+yay -S python-sqlite-vec
 
 # 3. Clone the repository locally
 git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai
