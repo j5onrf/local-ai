@@ -176,14 +176,12 @@ Add your shortcuts, commands, and workspaces to [`ai-context.md`](https://github
 yay -S mdcat
 
 # 2. Install required system dependencies
-# Arch: sudo pacman -S python-requests
 # Debian/Ubuntu: sudo apt install python3-requests
 # macOS / Other: pip install requests
 sudo pacman -S python-requests
 
 # 2.5 Optional: Install local vector-database extensions
 # (Enables high-performance semantic search over your codebase)
-# Arch: yay -S python-sqlite-vec
 # Debian/Ubuntu: pip install sqlite-vec --break-system-packages
 # macOS / Other: pip install sqlite-vec
 yay -S python-sqlite-vec
