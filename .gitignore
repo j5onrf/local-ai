@@ -11,6 +11,7 @@ index-map-local-ai.txt
 .agent
 .env
 .state.json
+tools/email/.email
 
 # Ignore Python cache directories and bytecode
 __pycache__/

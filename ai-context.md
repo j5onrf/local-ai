@@ -112,6 +112,9 @@ ai init ~/.config/local-ai/projects/session-test-3 --init ---> session test 3, p
 ## 4. Static Aliases & Shell Shortcuts
 
 ```properties
+# --- Email Automation & Secure Alert Dispatcher ---
+[TOOL] ~/.config/local-ai/tools/email/email-agent ---> email agent
+
 # --- Local-Ai Agent Blueprint (CheatSheet) ---
 ~/.config/local-ai/tools/blueprint --s --leaf ---> cheatsheet, bp, cs, blueprint
 
