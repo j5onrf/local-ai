@@ -175,7 +175,7 @@ Add your shortcuts, commands, and workspaces to [`ai-context.md`](https://github
 # (mdcat enables beautiful terminal markdown formatting)
 yay -S mdcat
 
-# 2. Install required system dependencies
+# 2. Install required system dependencies (Reduces latency)
 # Debian/Ubuntu: sudo apt install python3-requests
 # macOS / Other: pip install requests
 sudo pacman -S python-requests
