@@ -3,18 +3,18 @@ Local agent workspaces, dynamic memories, save checkpoints, and codebase mapping
 
 ```console
 ~ ❯ session
-[02/02] ❯ [session test] ai init ~/session-test --init
-:: ↵ run  Esc:
+[01/03] ❯ [session test] ai init ~/session-test --init
+:: ↵ run  Esc: 
 ℹ Probing local embedding server for dimensional limits...
 ✔ Active embedding model resolved (384 dimensions detected).
 ℹ Compiling relational index graph...
-✔ Compiled index-map: ~/session-test/index-map-session-test.txt
-✔ Created graph database: ~/session-test/index-map-memory-session-test.db
+✔ Compiled index-map: ~/projects/session-test/index-map-session-test.txt
+✔ Created graph database: ~/projects/session-test/index-map-memory-session-test.db
 ╭──────────────────────────────────────────────╮
-│  >_ Local-AI Agent                           │
+│  >_ Local-Ai Agent                           │
 │                                              │
 │  model:     Qwen3.6-35B-A3B.gguf             │
-│  directory: ...i/projects/session-test       │
+│  directory: ...-ai/projects/session-test     │
 │  skill:     init                             │
 │  database:  active (3 facts, 26 turns)       │
 ╰──────────────────────────────────────────────╯
@@ -31,7 +31,8 @@ Agent: Hello! How can I assist you with your Python project today?
 ❯ /clear
 [sys] Conversation history, cloud session, and local TPM memory cleared.
 
-❯ I am working as a Lead Python Developer. I prefer using Helix for editing files, and my favorite shell is Bash.
+❯ I am working as a Lead Python Developer. I prefer using Helix for editing 
+files, and my favorite shell is Bash.
 Agent: Understood. I have noted your preferences:
 
 *   **Role:** Lead Python Developer
@@ -63,7 +64,7 @@ Agent: Understood. I have noted your preferences:
 *   **`/r` / `/r [limit]`**: **Toggle Deep Reasoning** ON/OFF (defaults to 500 tokens, or set custom token limit).
 *   **`/stats`**: Toggles real-time generation speed metrics (`speed_test.py`), token spend ledger, and active model indicators ON/OFF.
 *   **`/tok`**: Displays live context window usage progress bar.
-*   **`/skill <search>`** (or `/s`): Search and load custom skills dynamically.
+*   **`/skill <search>`** (or `/s`): Search and load custom skills dynamically. Upgraded with **interactive, character-by-character keypress filtering**—instantly narrow down and load custom specialists directly inside the selection terminal.
 *   **`Esc` or `Right Arrow`**: Instantly bypasses memory/tool authorization prompts.
 
 ## 3. Checkpoints & Handoff (Save States)
@@ -73,7 +74,7 @@ Agent: Understood. I have noted your preferences:
 
 ## 4. On-Demand File Context (Local RAG)
 *   **Whole-File Context**: `❯ view file <filename>` (or `read`/`show`). Runs a local `cat` behind the scenes to append file contents into the context.
-*   **Snippet-Specific Context**: `❯ read function <symbol>`. Queries the relational index database and extracts *only* the specific function or class code block based on line offsets, saving up to 95% in token overhead.
+*   **Snippet-Specific Context**: `❯ read function <symbol>`. Queries the relational index database and extracts *only* the specific function or class source code block based on line offsets, saving up to 95% in token overhead.
 
 ## 5. Security & Execution Isolation
 *   **Mode Segregation**: Standard conversational sessions (`ai`) and single-shot queries (`ai <query>`) operate in strict **read-only** mode. Active file-editing and command execution capabilities are strictly restricted to workspace agent sessions (`ai init`).
@@ -85,10 +86,11 @@ Agent: Understood. I have noted your preferences:
 ## 6. Codebase Graph Mapper & Relational Index
 *   **Command:** `index-map <dir>` (or automatically executed on startup if the flat map `.txt` or relational `.db` is missing/outdated).
 *   **Core Capabilities:**
+    *   *In-Process Vector Space (sqlite-vec)*: Integrates `sqlite-vec` to automatically embed and search raw codeblocks conceptually. Automatically probes and calibrates your active local embedding server dimensions (e.g. 384, 512, 1024) at startup and populates a parallel virtual `nodes_vec` table mapped using SQLite's implicit `rowid` [1.1.9, 1.3.9].
     *   *SQLite-Backed Graph Model*: Generates a local `index-map-memory-<project>.db` database containing files, classes, and function scopes (`nodes`) and call-chain/inheritance connections (`edges`).
     *   *Multi-Language AST & Regex Parsing*: Parses code targets using standard Python AST visitors and high-speed structural regex profiles for compiled or scripting languages (Rust, Go, JS/TS, C/C++, Lua).
     *   *LSP-Lite Reference Resolver*: Resolves dependency calls heuristically by checking local file bounds, module import statements, and globally unique workspace symbols.
-    *   *Human-in-the-Loop RAG*: Maps intent triggers to graph queries, prompting for authorization before injecting call trees and function snippets into the context.
+    *   *Human-in-the-Loop RAG*: Maps intent triggers to graph and vector queries, prompting for authorization before injecting call trees, semantic search matches, and function snippets into the context.
     *   *Images & Binaries*: Decodes sizes and dimensions of image assets (PNG/JPG/GIF/SVG) directly from binary headers in microseconds.
 
 ## 7. Context Limits
