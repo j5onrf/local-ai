@@ -4,11 +4,10 @@
 import os, re, ast, json, fnmatch, time, sys, warnings, sqlite3, struct
 import urllib.request as urlreq
 
-try: import tty, termios, select
-except ImportError: pass
-
-try: import readline
-except ImportError: pass
+try:
+    import tty, termios, select
+except ImportError:
+    pass
 
 # --- OPTIONAL SQLITE-VEC INTEGRATION ---
 try:
@@ -126,33 +125,26 @@ def is_binary(filepath):
         with open(filepath, 'rb') as f: return b'\x00' in f.read(1024)
     except Exception: return True
 
-def get_text_summary(filepath, limit=15, is_shell=False, strip_hash=True):
+def get_file_summary(filepath, limit=15, is_shell=False):
+    """Consolidated, high-speed single-pass text summary and description extractor."""
+    if not os.path.isfile(filepath) or is_binary(filepath):
+        return ""
     try:
         with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
             for _ in range(limit):
                 line = f.readline()
                 if not line: break
-                stripped = line.strip()
-                if not stripped or (is_shell and stripped.startswith('#!')): continue
-                if not strip_hash: return stripped[:120]
-                if stripped.startswith('#'): return stripped.lstrip('# ').strip()[:120]
-                if not is_shell: return stripped[:120]
-        return ""
-    except: return ""
-
-def extract_file_description(filepath: str) -> str:
-    if not os.path.isfile(filepath) or is_binary(filepath): return ""
-    try:
-        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-            lines = [f.readline().strip() for _ in range(3)]
-        for line in lines:
-            if not line or line.startswith("#!"): continue
-            if line.startswith("#") or line.startswith("//"):
-                cleaned = line.lstrip("#/ \t").strip()
-                if cleaned.lower().startswith("file:") or "path:" in cleaned.lower(): continue
-                return cleaned[:100]
-        return ""
-    except Exception: return ""
+                s = line.strip()
+                if not s or s.startswith('#!'):
+                    continue
+                # Clean up common commenting prefixes natively in a fast slice check
+                s = s.lstrip('#/ \t')
+                if s.lower().startswith(("file:", "path:")):
+                    continue
+                return s[:100].strip()
+    except Exception:
+        pass
+    return ""
 
 # --- AST VISITOR FOR PYTHON SYMBOLS & INTERNAL CALLS ---
 class PythonGraphVisitor(ast.NodeVisitor):
@@ -184,11 +176,8 @@ class PythonGraphVisitor(ast.NodeVisitor):
         self.generic_visit(node)
         self.current_class = prev_class
 
-    def visit_FunctionDef(self, node):
-        self.visit_any_func(node)
-
-    def visit_AsyncFunctionDef(self, node):
-        self.visit_any_func(node)
+    def visit_FunctionDef(self, node): self.visit_any_func(node)
+    def visit_AsyncFunctionDef(self, node): self.visit_any_func(node)
 
     def visit_any_func(self, node):
         prev_func = self.current_function
@@ -234,7 +223,8 @@ def parse_non_python_file(filepath, ext):
     current_class, current_func = None, None
     for idx, line in enumerate(lines, 1):
         clean_line = line.strip()
-        if not clean_line or clean_line.startswith('//') or clean_line.startswith('/*') or clean_line.startswith('--') or clean_line.startswith('#'):
+        # High-speed sub-slice index lookup bypasses slow multi-startswith evaluations
+        if not clean_line or clean_line[:2] in ('//', '/*', '--') or clean_line[0] == '#':
             continue
             
         class_match = re.search(rules['class_pattern'], clean_line)
@@ -263,7 +253,6 @@ def parse_non_python_file(filepath, ext):
         
     return {'classes': classes, 'functions': functions, 'calls': calls, 'imports': []}
 
-# --- EXTRACT STATIC METADATA ---
 def analyze_markdown_file(filepath):
     try:
         with open(filepath, 'r', encoding='utf-8', errors='ignore') as f: content = f.read()
@@ -333,12 +322,12 @@ def analyze_qml_file(filepath):
     except: return {"type": "qml", "error": "Unparseable"}
 
 def analyze_shell_file(filepath):
-    return {"type": "shell", "summary": get_text_summary(filepath, 10, True, True) or "Shell Module"}
+    return {"type": "shell", "summary": get_file_summary(filepath, 10, True) or "Shell Module"}
 
 def analyze_generic_file(filepath):
     ext = os.path.splitext(filepath)[1].lstrip('.').lower() or "file"
     if is_binary(filepath): return {"type": f"binary/{ext}"}
-    return {"type": ext, "summary": get_text_summary(filepath, 15, False, False) or "Empty file"}
+    return {"type": ext, "summary": get_file_summary(filepath, 15) or "Empty file"}
 
 # --- SQLITE-VEC HELPER FUNCTIONS ---
 def load_vec_extension(conn):
@@ -457,6 +446,25 @@ def insert_node(conn, node_id, name, ntype, filepath, lang, meta_dict, text_to_e
             except Exception as e:
                 sys.stderr.write(f"\033[90m[sys] Vector write failed on row {rowid}: {e}\033[0m\n")
 
+# --- CONSOLIDATED STRUCTURAL WRITE HELPER (DEDUPLICATED) ---
+def _commit_structures_to_db(db_conn, rel_path, ext_label, classes, functions, file_lines, use_vec):
+    """Consolidated structure-node inserter for classes and functions across all languages."""
+    for name, start, end in classes:
+        class_id = f"class:{rel_path}:{name}"
+        code = "\n".join(file_lines[max(0, start-1):end]).strip() if file_lines else ""
+        insert_node(db_conn, class_id, name, 'class', rel_path, ext_label, 
+                    {'line_start': start, 'line_end': end}, code, use_vec, EMBEDDING_SERVER)
+        db_conn.execute("INSERT OR IGNORE INTO edges VALUES (?, ?, ?)", (f"file:{rel_path}", class_id, 'contains'))
+        
+    for name, parent_class, start, end, args in functions:
+        func_id = f"func:{rel_path}:{parent_class}:{name}" if parent_class else f"func:{rel_path}:{name}"
+        code = "\n".join(file_lines[max(0, start-1):end]).strip() if file_lines else ""
+        insert_node(db_conn, func_id, name, 'function', rel_path, ext_label, 
+                    {'line_start': start, 'line_end': end, 'args': args}, code, use_vec, EMBEDDING_SERVER)
+        
+        container = f"class:{rel_path}:{parent_class}" if parent_class else f"file:{rel_path}"
+        db_conn.execute("INSERT OR IGNORE INTO edges VALUES (?, ?, ?)", (container, func_id, 'contains'))
+
 # --- CORE ALGORITHM: RESOLVING EXPLICIT AND HEURISTIC DEPENDENCIES ---
 def resolve_and_insert_edges(conn, raw_calls, file_imports):
     cursor = conn.cursor()
@@ -465,8 +473,7 @@ def resolve_and_insert_edges(conn, raw_calls, file_imports):
     
     target_map = {}
     for tid, name, ntype, filepath in all_targets:
-        if name not in target_map: target_map[name] = []
-        target_map[name].append((tid, filepath, ntype))
+        target_map.setdefault(name, []).append((tid, filepath, ntype))
         
     edges_to_insert = []
     for filepath, calls in raw_calls.items():
@@ -504,68 +511,69 @@ def resolve_and_insert_edges(conn, raw_calls, file_imports):
             if resolved_target:
                 edges_to_insert.append((caller_id, resolved_target, 'calls'))
                 
-    for s, t, et in edges_to_insert:
-        try: cursor.execute("INSERT OR IGNORE INTO edges VALUES (?, ?, ?)", (s, t, et))
-        except: pass
+    try:
+        # High-speed batch sqlite executemany replaces slower looping evaluations
+        cursor.executemany("INSERT OR IGNORE INTO edges VALUES (?, ?, ?)", edges_to_insert)
+    except Exception:
+        pass
     conn.commit()
 
 # --- ASCII TREE BUILDER ---
 def compile_ascii_tree(target_dir: str) -> str:
     files_to_check = []
-    for file in sorted(os.listdir(target_dir)):
-        path = os.path.join(target_dir, file)
-        if os.path.isfile(path): files_to_check.append(("", file, path))
-    modules_path = os.path.join(target_dir, "modules")
-    if os.path.isdir(modules_path):
-        for file in sorted(os.listdir(modules_path)):
-            path = os.path.join(modules_path, file)
-            if os.path.isfile(path): files_to_check.append(("modules", file, path))
+    # Compact directory scanner loop
+    for root in (target_dir, os.path.join(target_dir, "modules")):
+        if os.path.isdir(root):
+            sub = "modules" if "modules" in root else ""
+            files_to_check.extend((sub, f, os.path.join(root, f)) for f in sorted(os.listdir(root)) if os.path.isfile(os.path.join(root, f)))
+            
     if not files_to_check: return ""
     lines = ["# Codebase Modules & Active Architecture:"]
     total = len(files_to_check)
     for idx, (subdir, name, path) in enumerate(files_to_check):
         display_name = os.path.join(subdir, name) if subdir else name
-        desc = extract_file_description(path)
+        desc = get_file_summary(path)
         connector = "└── " if idx == total - 1 else "├── "
         lines.append(f"#   {connector}{display_name:<24} - {desc}" if desc else f"#   {connector}{display_name}")
     return "\n".join(lines) + "\n# -----------------------------------------------------------------------------------------\n"
 
 # --- COMPRESSED SHORTHAND COMPILER ---
 def compile_flat_shorthand(skeleton):
-    lines = []  # <-- Initialize the empty list here
+    lines = []
     for rel_path, data in sorted(skeleton.items()):
         t = data.get("type", "file")
+        meta_parts = []
+        
         if t == "python":
-            imp = f"imp:{','.join(data.get('imports', []))}" if data.get('imports') else ""
-            cls = f"cls:{','.join(data.get('classes', []))}" if data.get('classes') else ""
-            fn = f"fn:{','.join(data.get('functions', []))}" if data.get('functions') else ""
-            meta = " | ".join(filter(None, [imp, cls, fn]))
-            lines.append(f"[py:{rel_path}] {meta}" if meta else f"[py:{rel_path}]")
+            meta_parts = [
+                f"imp:{','.join(data['imports'])}" if data.get('imports') else "",
+                f"cls:{','.join(data['classes'])}" if data.get('classes') else "",
+                f"fn:{','.join(data['functions'])}" if data.get('functions') else ""
+            ]
+        elif t in ("rust", "go", "lua", "qml"):
+            meta_parts = [
+                f"cls:{','.join(data['classes'])}" if data.get('classes') else "",
+                f"fn:{','.join(data['functions'])}" if data.get('functions') else ""
+            ]
         elif t == "markdown":
-            title = f"title:{data.get('title', '')}" if data.get('title') else ""
-            tags = f"tags:{','.join(data.get('tags', []))}" if data.get('tags') else ""
-            links = f"links:{','.join(data.get('links', []))}" if data.get('links') else ""
-            meta = " | ".join(filter(None, [title, tags, links]))
-            lines.append(f"[md:{rel_path}] {meta}" if meta else f"[md:{rel_path}]")
+            meta_parts = [
+                f"title:{data['title']}" if data.get('title') else "",
+                f"tags:{','.join(data['tags'])}" if data.get('tags') else "",
+                f"links:{','.join(data['links'])}" if data.get('links') else ""
+            ]
         elif t.startswith("image/"):
-            dim = f"dim:{data.get('dim', '')}" if data.get('dim') else ""
-            sz = f"size:{data.get('size', '')}" if data.get('size') else ""
-            meta = " | ".join(filter(None, [dim, sz]))
-            lines.append(f"[{t}:{rel_path}] {meta}" if meta else f"[{t}:{rel_path}]")
-        elif t in ("rust", "go", "qml"):
-            cls = f"cls:{','.join(data.get('classes', []))}" if data.get('classes') else ""
-            fn = f"fn:{','.join(data.get('functions', []))}" if data.get('functions') else ""
-            meta = " | ".join(filter(None, [cls, fn]))
-            lines.append(f"[{t}:{rel_path}] {meta}" if meta else f"[{t}:{rel_path}]")
-        elif t == "lua":
-            fn = f"fn:{','.join(data.get('functions', []))}" if data.get('functions') else ""
-            lines.append(f"[{t}:{rel_path}] {fn}" if fn else f"[{t}:{rel_path}]")
+            meta_parts = [
+                f"dim:{data['dim']}" if data.get('dim') else "",
+                f"size:{data['size']}" if data.get('size') else ""
+            ]
         elif t == "json":
-            keys = f"keys:{','.join(data.get('keys', []))}" if data.get('keys') else ""
-            lines.append(f"[{t}:{rel_path}] {keys}" if keys else f"[{t}:{rel_path}]")
+            meta_parts = [f"keys:{','.join(data['keys'])}" if data.get('keys') else ""]
         else:
             summary = data.get("summary", "").replace("\n", " ").strip()
-            lines.append(f"[{t}:{rel_path}] sum:{summary}" if summary else f"[{t}:{rel_path}]")
+            meta_parts = [f"sum:{summary}" if summary else ""]
+            
+        meta = " | ".join(filter(None, meta_parts))
+        lines.append(f"[{t}:{rel_path}] {meta}" if meta else f"[{t}:{rel_path}]")
     return "\n".join(lines)
 
 # --- CORE INDEXER ---
@@ -573,13 +581,13 @@ def run_indexing(target_dir, force=False):
     is_interactive = sys.stdin.isatty() and sys.stderr.isatty()
     if is_interactive and not force:
         try:
-            sys.stderr.write(f"\033[2m[sys] Compile index map memory for \033[1;36m{os.path.basename(target_dir)}\033[0;2m? [↵ run  Esc]: \033[0m")
+            sys.stderr.write("\r\x1b[2K\033[2mℹ Mapping workspace... [Confirming compile]\033[0m")
             sys.stderr.flush()
             key = get_key()
             if key in ('\x03', '\x1b', 'n', 'N'):
-                sys.stderr.write("\r\x1b[K\033[2;31m[sys] Bypassed mapping execution.\033[0m\n")
+                sys.stderr.write("\r\x1b[2K\033[2;31m[sys] Bypassed mapping execution.\033[0m\n")
                 sys.stderr.flush(); safe_exit(0)
-            sys.stderr.write("\r\x1b[K"); sys.stderr.flush()
+            sys.stderr.write("\r\x1b[2K"); sys.stderr.flush()
         except: pass
 
     if target_dir == os.path.expanduser("~"):
@@ -596,16 +604,21 @@ def run_indexing(target_dir, force=False):
     use_vec = HAS_VEC
     embedding_dim = 384
     if use_vec:
-        sys.stderr.write("ℹ Probing local embedding server for dimensional limits...\n"); sys.stderr.flush()
+        sys.stderr.write("\r\x1b[2K\033[2mℹ Mapping workspace... [Probing local embedding server]\033[0m")
+        sys.stderr.flush()
         detected_dim = detect_embedding_dim(EMBEDDING_SERVER)
         if detected_dim:
             embedding_dim = detected_dim
-            sys.stderr.write(f"✔ Active embedding model resolved ({embedding_dim} dimensions detected).\n"); sys.stderr.flush()
+            sys.stderr.write(f"\r\x1b[2K\033[2mℹ Mapping workspace... [Embedding server found ({embedding_dim} dim)]\033[0m")
+            sys.stderr.flush()
         else:
             use_vec = False
-            sys.stderr.write("\033[90m[sys] Local embedding server offline. Building relational graph only.\033[0m\n"); sys.stderr.flush()
+            sys.stderr.write("\r\x1b[2K\033[2mℹ Mapping workspace... [Embedding server offline. Using relational graph only]\033[0m")
+            sys.stderr.flush()
+            time.sleep(0.6) # Slight pause so warning can be read
             
-    sys.stderr.write("ℹ Compiling relational index graph...\n"); sys.stderr.flush()
+    sys.stderr.write("\r\x1b[2K\033[2mℹ Mapping workspace... [Compiling relational index graph]\033[0m")
+    sys.stderr.flush()
     db_conn, use_vec = init_db(db_path, use_vec=use_vec, dim=embedding_dim)
     
     default_ignored = {
@@ -661,22 +674,8 @@ def run_indexing(target_dir, force=False):
                         "functions": [f[0] for f in visitor.functions]
                     }
                     
-                    # Store structures into local SQLite Nodes & Structural Containment Edges
-                    for c_name, c_start, c_end in visitor.classes:
-                        class_id = f"class:{rel_path}:{c_name}"
-                        class_code = "\n".join(lines[max(0, c_start-1):c_end]).strip()
-                        insert_node(db_conn, class_id, c_name, 'class', rel_path, 'python', 
-                                    {'line_start': c_start, 'line_end': c_end}, class_code, use_vec, EMBEDDING_SERVER)
-                        db_conn.execute("INSERT OR IGNORE INTO edges VALUES (?, ?, ?)", (f"file:{rel_path}", class_id, 'contains'))
-                        
-                    for f_name, parent_class, f_start, f_end, f_args in visitor.functions:
-                        func_id = f"func:{rel_path}:{parent_class}:{f_name}" if parent_class else f"func:{rel_path}:{f_name}"
-                        func_code = "\n".join(lines[max(0, f_start-1):f_end]).strip()
-                        insert_node(db_conn, func_id, f_name, 'function', rel_path, 'python', 
-                                    {'line_start': f_start, 'line_end': f_end, 'args': f_args}, func_code, use_vec, EMBEDDING_SERVER)
-                        
-                        container_id = f"class:{rel_path}:{parent_class}" if parent_class else f"file:{rel_path}"
-                        db_conn.execute("INSERT OR IGNORE INTO edges VALUES (?, ?, ?)", (container_id, func_id, 'contains'))
+                    # Store Python structure directly to DB
+                    _commit_structures_to_db(db_conn, rel_path, 'python', visitor.classes, visitor.functions, lines, use_vec)
                 except Exception as e:
                     skeleton[rel_path] = {"type": "python", "error": f"AST error: {e}"}
                     
@@ -696,21 +695,8 @@ def run_indexing(target_dir, force=False):
                     "functions": [f[0] for f in parsed['functions']]
                 }
                 
-                for c_name, c_start, c_end in parsed['classes']:
-                    class_id = f"class:{rel_path}:{c_name}"
-                    class_code = "\n".join(file_lines[max(0, c_start-1):c_end]).strip() if file_lines else ""
-                    insert_node(db_conn, class_id, c_name, 'class', rel_path, ext.lstrip('.'), 
-                                {'line_start': c_start, 'line_end': c_end}, class_code, use_vec, EMBEDDING_SERVER)
-                    db_conn.execute("INSERT OR IGNORE INTO edges VALUES (?, ?, ?)", (f"file:{rel_path}", class_id, 'contains'))
-                    
-                for f_name, parent_class, f_start, f_end, f_args in parsed['functions']:
-                    func_id = f"func:{rel_path}:{parent_class}:{f_name}" if parent_class else f"func:{rel_path}:{f_name}"
-                    func_code = "\n".join(file_lines[max(0, f_start-1):f_end]).strip() if file_lines else ""
-                    insert_node(db_conn, func_id, f_name, 'function', rel_path, ext.lstrip('.'), 
-                                {'line_start': f_start, 'line_end': f_end, 'args': f_args}, func_code, use_vec, EMBEDDING_SERVER)
-                    
-                    container_id = f"class:{rel_path}:{parent_class}" if parent_class else f"file:{rel_path}"
-                    db_conn.execute("INSERT OR IGNORE INTO edges VALUES (?, ?, ?)", (container_id, func_id, 'contains'))
+                # Store multi-language structure directly to DB
+                _commit_structures_to_db(db_conn, rel_path, ext.lstrip('.'), parsed['classes'], parsed['functions'], file_lines, use_vec)
             else:
                 dispatch = {
                     '.md': analyze_markdown_file, '.sh': analyze_shell_file, '.bash': analyze_shell_file,
@@ -748,11 +734,13 @@ def run_indexing(target_dir, force=False):
     output_file = os.path.join(target_dir, f"index-map-{proj_name}.txt")
     
     try:
-        with open(output_file, 'w', encoding='utf-8') as f: f.write(flat_map)
-        print(f"✔ Compiled index-map: {output_file.replace(home_dir, '~')}")
-        print(f"✔ Created graph database: {db_path.replace(home_dir, '~')}")
+        with open(output_file, 'w', encoding='utf-8') as f: fill = f.write(flat_map)
+        # Overwrite the progress line with a single, clean, 1-line confirmation
+        sys.stderr.write(f"\r\x1b[2K\033[1;32m✔ Mapping complete! [{proj_name} index-map & SQLite graph database updated]\033[0m\n")
+        sys.stderr.flush()
     except Exception as e:
-        print(f"❌ Error: Failed to write output files. {e}")
+        sys.stderr.write(f"\r\x1b[2K\033[1;31m❌ Error: Failed to write output files: {e}\033[0m\n")
+        sys.stderr.flush()
 
 # --- QUERY TOOL: SHOW ARCHITECTURAL STATISTICS ---
 def show_architecture():

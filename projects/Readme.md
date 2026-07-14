@@ -5,11 +5,7 @@ Local agent workspaces, dynamic memories, save checkpoints, and codebase mapping
 ~ ❯ session
 [01/03] ❯ [session test] ai init ~/session-test --init
 :: ↵ run  Esc: 
-ℹ Probing local embedding server for dimensional limits...
-✔ Active embedding model resolved (384 dimensions detected).
-ℹ Compiling relational index graph...
-✔ Compiled index-map: ~/projects/session-test/index-map-session-test.txt
-✔ Created graph database: ~/projects/session-test/index-map-memory-session-test.db
+✔ Mapping complete! [session-test index-map & SQLite graph database updated]
 ╭──────────────────────────────────────────────╮
 │  >_ Local-Ai Agent                           │
 │                                              │
