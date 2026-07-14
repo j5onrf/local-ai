@@ -1,4 +1,4 @@
-# CODEBASE INDEX MAP | Generated: 2026-07-12 18:42 | Workspace: session-test | Path: ~/.config/local-ai/projects/session-test
+# CODEBASE INDEX MAP | Generated: 2026-07-14 11:20 | Workspace: session-test | Path: ~/.config/local-ai/projects/session-test
 # Active symbols and structural connections mapped in the local SQLite graph DB.
 # Intents: trace symbol <sym> | blast radius <sym> | read function <sym> | find symbol <pat> | architecture overview
 # -----------------------------------------------------------------------------------------
@@ -6,7 +6,9 @@
 #   ├── Test Script.sh           - Define the input array of numbers
 #   ├── broken_format.json
 #   ├── broken_syntax.py
+#   ├── history.md               - Workspace History: projects
 #   ├── index-map-memory-session-test.db
+#   ├── index-map-session-test.txt - Active symbols and structural connections mapped in the local SQLite graph DB.
 #   ├── physics.py
 #   ├── sandbox_test.txt
 #   └── simulation.py            - Description: Runner file for testing velocity metrics
@@ -14,7 +16,9 @@
 [shell:Test Script.sh] sum:Define the input array of numbers
 [json:broken_format.json] keys:name,value,status
 [py:broken_syntax.py] fn:calculate_sum
+[md:history.md] title:Workspace History: projects
 [binary/db:index-map-memory-session-test.db]
+[txt:index-map-session-test.txt] sum:# CODEBASE INDEX MAP | Generated: 2026-07-12 18:42 | Workspace: session-test | Path: ~/.config/local-ai/projects/session
 [py:physics.py] fn:calculate_velocity
 [txt:sandbox_test.txt] sum:Secure edit loop verification successful.
 [py:simulation.py] imp:physics | fn:run_test

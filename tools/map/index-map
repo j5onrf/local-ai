@@ -383,9 +383,19 @@ def serialize_vec(vector):
 def init_db(db_path, use_vec=False, dim=384):
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
+    
+    # 1. Load the vector extension FIRST so SQLite recognizes the vec0 module
+    vec_loaded = False
+    if use_vec:
+        vec_loaded = load_vec_extension(conn)
+        
     cursor.execute("DROP TABLE IF EXISTS edges")
     cursor.execute("DROP TABLE IF EXISTS nodes")
-    cursor.execute("DROP TABLE IF EXISTS nodes_vec")
+    
+    # 2. Only attempt to drop the virtual table if the module is loaded
+    if vec_loaded:
+        cursor.execute("DROP TABLE IF EXISTS nodes_vec")
+        
     cursor.execute("""
     CREATE TABLE nodes (
         id TEXT PRIMARY KEY,
@@ -409,17 +419,16 @@ def init_db(db_path, use_vec=False, dim=384):
     cursor.execute("CREATE INDEX idx_edges_source ON edges(source)")
     cursor.execute("CREATE INDEX idx_edges_target ON edges(target)")
     
-    if use_vec:
-        loaded = load_vec_extension(conn)
-        if loaded:
-            cursor.execute(f"""
-            CREATE VIRTUAL TABLE nodes_vec USING vec0(
-                id INTEGER PRIMARY KEY,
-                embedding float[{dim}]
-            )""")
+    # 3. Create virtual table if loaded
+    if vec_loaded:
+        cursor.execute(f"""
+        CREATE VIRTUAL TABLE nodes_vec USING vec0(
+            id INTEGER PRIMARY KEY,
+            embedding float[{dim}]
+        )""")
             
     conn.commit()
-    return conn
+    return conn, vec_loaded
 
 def find_db_path(start_dir=None):
     if not start_dir: start_dir = os.getcwd()
@@ -597,7 +606,7 @@ def run_indexing(target_dir, force=False):
             sys.stderr.write("\033[90m[sys] Local embedding server offline. Building relational graph only.\033[0m\n"); sys.stderr.flush()
             
     sys.stderr.write("ℹ Compiling relational index graph...\n"); sys.stderr.flush()
-    db_conn = init_db(db_path, use_vec=use_vec, dim=embedding_dim)
+    db_conn, use_vec = init_db(db_path, use_vec=use_vec, dim=embedding_dim)
     
     default_ignored = {
         '.git', '__pycache__', 'logs', '.auto-f', 'node_modules', 
