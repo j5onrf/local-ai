@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+# 1. Dynamically query the currently active workspace (uses JSON jq or fallback to awk)
+CURRENT_WS=$(hyprctl activeworkspace -j | jq -r '.id' 2>/dev/null || hyprctl activeworkspace | awk '{print $3}')
+
+# Fallback check to default to workspace 1 if workspace retrieval returns blank
+if [[ -z "$CURRENT_WS" ]]; then
+    CURRENT_WS=1
+fi
+
+# --- Lazygit (Left) ---
+if pgrep -f "lazygit" > /dev/null; then
+    # Pull existing window to your active workspace
+    hyprctl dispatch movetoworkspacesilent "${CURRENT_WS},class:^(lazygit)$" >/dev/null 2>&1
+else
+    # Inject a dynamic rule targeting your active workspace
+    hyprctl keyword windowrule "workspace ${CURRENT_WS} silent,class:^(lazygit)$" >/dev/null 2>&1
+    # Launch Kitty directly in the fetch config directory
+    hyprctl dispatch exec "kitty --class lazygit --directory $HOME/.config/fetch lazygit" >/dev/null 2>&1
+    # Small pause to guarantee chronological split (ensures lazygit tiles first/left)
+    sleep 0.2
+fi
+
+# --- Kitty Terminal (Right) ---
+if pgrep -f "fetch-terminal" > /dev/null; then
+    # Pull existing terminal to your active workspace
+    hyprctl dispatch movetoworkspacesilent "${CURRENT_WS},class:^(fetch-terminal)$" >/dev/null 2>&1
+else
+    # Inject a dynamic rule targeting your active workspace
+    hyprctl keyword windowrule "workspace ${CURRENT_WS} silent,class:^(fetch-terminal)$" >/dev/null 2>&1
+    
+    # Store the interactive bash commands (which automatically loads your .bashrc and expands aliases)
+    INNER_CMD='cd '"$HOME"'/.config/fetch; if read -e -p "${PS1@P}" -i "ai-commit"; then history -s "$REPLY"; history -a; eval "$REPLY"; fi; exec bash'
+    
+    # Launch Kitty with interactive bash (-i) to run the isolated command string
+    hyprctl dispatch exec "kitty --class fetch-terminal --directory $HOME/.config/fetch --title '~/.config/fetch' bash -i -c '$INNER_CMD'" >/dev/null 2>&1
+fi
+
+echo "Workspace reset complete: State --GitCom (Active WS: ${CURRENT_WS})"

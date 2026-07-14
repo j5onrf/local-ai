@@ -181,9 +181,8 @@ nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-sp
 
 # --- State & Workflow Management ---
 ~/.config/local-ai/tools/subsec/hyprstate/work ---> hyprstate work, work, hs, hyprstate
-~/.config/local-ai/tools/subsec/hyprstate/clean ---> hyprstate clean, clean, hs, hyprstate
-~/.config/local-ai/tools/subsec/hyprstate/gitcom ---> hyprstate gitcom, gitcom, gcom, hs, hyprstate
-~/.config/local-ai/tools/subsec/hyprstate/media ---> hyprstate media, media, hs, hyprstate
+~/.config/local-ai/tools/subsec/hyprstate/gitcom ---> hyprstate gitcom, gitcom
+~/.config/local-ai/tools/subsec/hyprstate/gitcom2 ---> hyprstate gitcom 2, gitcom
 ```
 
 ## 8. Testing (Concepts & Prototypes)
