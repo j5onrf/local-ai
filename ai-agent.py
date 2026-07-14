@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.9.2.1]
+# Local-Ai Agent [j5onrf] [v0.9.2.2]
 
 import json
 import os
@@ -15,6 +15,7 @@ CFG_DIR = os.path.expanduser("~/.config/local-ai")
 CONTEXT_FILE = os.path.join(CFG_DIR, "ai-context.md")
 SKILLS_DIR = os.path.join(CFG_DIR, "skills")
 SESSIONS_DIR = os.path.join(CFG_DIR, "projects", "database")
+
 BASE_PROMPT = (
     "Read-only local shell assistant.\n"
     "If <context> is provided, answer directly using only its facts. Otherwise, answer normally.\n"
@@ -94,6 +95,7 @@ STOP_WORDS = {
 
 
 def workspace_safe_name(workspace_path: str, home_dir: str) -> str:
+    """Derives the per-workspace database key from a workspace path."""
     safe = workspace_path[len(home_dir):].lstrip("/") if workspace_path.startswith(home_dir) else workspace_path
     return safe.replace("/", "-").strip("-") or "home"
 
@@ -116,6 +118,7 @@ def sync_md_to_sqlite(workspace: str, workspace_path: str) -> None:
         except Exception:
             pass
 
+
 def validate_flat_schema(data: dict) -> bool:
     """Verifies that the decoded JSON is strictly a flat dictionary of non-empty string keys and values."""
     try:
@@ -130,7 +133,7 @@ def validate_flat_schema(data: dict) -> bool:
 def _save_state(key: str, value: bool) -> None:
     """Saves a terminal interface configuration state directly to your local .state.json config file."""
     state_path = os.path.join(CFG_DIR, ".state.json")
-    data = {"spell_active": True, "show_stats": True}
+    data = {"spell_active": True, "show_stats": True, "memory_active": True}
     if os.path.exists(state_path):
         try:
             with open(state_path, "r", encoding="utf-8") as f:
@@ -266,9 +269,10 @@ def run_interactive_chat(args: list):
     pending_query = " ".join(args[1:]) if len(args) > 1 else None
     clean_name = " ".join(skills_list)
 
-    # Load persistent configurations from localized .state.json, defaulting both to True (Enabled)
+    # Load persistent configurations from localized .state.json, defaulting all to True (Enabled)
     spell_active = True
     show_stats = True
+    memory_active = True
     state_path = os.path.join(CFG_DIR, ".state.json")
     if os.path.exists(state_path):
         try:
@@ -276,11 +280,10 @@ def run_interactive_chat(args: list):
                 data = json.load(f)
                 spell_active = data.get("spell_active", True)
                 show_stats = data.get("show_stats", True)
+                memory_active = data.get("memory_active", True)
         except Exception:
             pass
             
-    memory_active = True
-    
     # Reasoning parameters
     reasoning_active = False # Disabled by default inside CLI chat loops
     reasoning_budget = 500   # Default budget allocation when active
@@ -320,8 +323,10 @@ def run_interactive_chat(args: list):
                 # --- UNIFIED MEMORY LAYER TOGGLE (/m) ---
                 if query == "/m":
                     memory_active = not memory_active
+                    # Commit the change persistently to your local state file
+                    _save_state("memory_active", memory_active)
                     print(
-                        f"\033[1;33m[sys] Long-term memory and TPM reconciliation {'enabled' if memory_active else 'disabled'}.\033[0m\n"
+                        f"\033[1;32m[sys] Long-term memory and TPM reconciliation {'enabled' if memory_active else 'disabled'}.\033[0m\n"
                     )
                     continue
 
@@ -432,6 +437,7 @@ def run_interactive_chat(args: list):
                         continue
                     if res.returncode == 3:
                         memory_active = False
+                        _save_state("memory_active", False)
                     past_memory = res.stdout.strip()
                 except Exception:
                     pass
@@ -520,7 +526,7 @@ def run_direct_query(args: list):
     sys_ctx = skills.get_system_context(query, CONTEXT_FILE, STOP_WORDS, SKILLS_DIR, CFG_DIR)
 
     if sys_ctx == "__ABORT_TURN__":
-        sys.exit(130)
+        sys_exit(130)
 
     messages = [
         {"role": "system", "content": active_system_prompt},
