@@ -267,6 +267,21 @@ def _run_edit_tool(name: str, args: dict, workspace: str, spinner=None) -> str:
         outside = _is_outside_workspace(workspace, full)
         exists = os.path.exists(full)
         
+        # Local Syntactic Guardrail: Verify Python syntax before committing writes
+        if full.endswith(".py"):
+            import ast
+            try:
+                ast.parse(content)
+            except SyntaxError as e:
+                return f"[error] Write blocked. Python syntax verification failed: {e.msg} on line {e.lineno}. Please correct this syntax error and try writing again."
+                
+        # Local Syntactic Guardrail: Verify JSON formatting before committing writes
+        if full.endswith(".json"):
+            try:
+                json.loads(content)
+            except Exception as e:
+                return f"[error] Write blocked. JSON validation failed: {e}. Please correct the JSON formatting and try writing again."
+
         # Colorized Unified Terminal Diff Output
         if sys.stdout.isatty():
             if exists:
@@ -339,7 +354,7 @@ def _run_edit_tool(name: str, args: dict, workspace: str, spinner=None) -> str:
         else:
             sys.stderr.write(f"\033[2m  Executing command autonomously: $ {cmd}\033[0m\n")
 
-        # Standard non-login shell to preserve active Herdr session environments
+        # Standard login shell to load developer environment profiles
         shell = os.environ.get("SHELL") or "/bin/sh"
         if spinner:
             spinner.start("running")
@@ -376,22 +391,25 @@ def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: i
         body_tools["stream"] = False      # Multi-turn tool execution operates in non-streaming batch mode
         body_tools["tools"] = _EDIT_TOOLS
         
-        req = urlreq.Request(
-            url,
-            data=json.dumps(body_tools).encode("utf-8"),
-            headers={"Content-Type": "application/json", **headers},
-            method="POST"
-        )
         spinner.start()
+        # Record start time to calculate network latency and t/s metrics
+        start_time = time.time()
         try:
-            with urlreq.urlopen(req, timeout=timeout) as r:
-                resp = json.loads(r.read().decode("utf-8"))
+            # Reuses the warm pooled _session connection to bypass socket handshake latency
+            res = _session.post(
+                url,
+                json=body_tools,
+                headers={"Content-Type": "application/json", **headers},
+                timeout=timeout
+            )
+            resp = res.json()
         except Exception as e:
             sys.stderr.write(f"\033[90m[sys] API response error: {e}\033[0m\n")
             return None
         finally:
             spinner.stop()
             
+        elapsed_time = time.time() - start_time
         resolved_model = resp.get("model") or resolved_model
         choices = resp.get("choices") or [{}]
         msg = choices[0].get("message") or {}
@@ -404,10 +422,25 @@ def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: i
                 sys.stdout.write("\r\x1b[2K\rAgent: ")
             print(ans)
             
-            # Log and display token and context metrics for the workspace turn
+            # Print calculated speed and latency metrics for the final workspace completion turn
             prompt_chars = sum(len(m.get("content", "")) for m in messages)
             in_tok = prompt_chars // 4
             out_tok = len(ans) // 4
+            
+            # Extract server-side generation timings if returned by llama-server
+            timings = resp.get("timings") or {}
+            pred_ms = timings.get("predicted_ms")
+            if pred_ms and isinstance(pred_ms, (int, float)):
+                generation_time = pred_ms / 1000.0
+            else:
+                generation_time = elapsed_time
+            
+            if show_stats and sys.stdout.isatty():
+                tps = out_tok / generation_time if generation_time > 0 else 0
+                sys.stdout.write(f"\033[90m [{out_tok} tokens | {generation_time:.2f}s | {tps:.2f} t/s]\033[0m\n")
+                sys.stdout.flush()
+            
+            # Log and display token and context metrics for the workspace turn
             _log_turn_usage(resolved_model or body.get("model") or "local-model",
                             in_tok, out_tok, 0.0, show_stats, in_tok + out_tok)
             
@@ -511,18 +544,6 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
                             if not line.startswith(b"data:"):
                                 continue
                             
-                            # Parse metadata (model and usage) on every line safely
-                            try:
-                                dec = line.decode("utf-8").strip()
-                                if dec.startswith("data:"):
-                                    dec = dec[5:].strip()
-                                if dec and dec != "[DONE]":
-                                    data = json.loads(dec)
-                                    if "model" in data and not resolved_model:
-                                        resolved_model = data["model"]
-                            except Exception:
-                                pass
-
                             content = extract_stream_content(line)
                             if content:
                                 if first:
@@ -537,6 +558,17 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
                                 acc.append(content)
                                 if speed_test and show_stats:
                                     speed_test.count_token(content)
+                            else:
+                                try:
+                                    dec = line.decode("utf-8").strip()
+                                    if dec.startswith("data:"):
+                                        dec = dec[5:].strip()
+                                    if dec and dec != "[DONE]":
+                                        data = json.loads(dec)
+                                        if "model" in data and not resolved_model:
+                                            resolved_model = data["model"]
+                                except Exception:
+                                    pass
                         print("")
                         if speed_test and show_stats:
                             speed_test.end()
@@ -580,7 +612,8 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
 
 def get_accurate_token_count(text: str, server_url: str = "http://localhost:8080") -> int:
     try:
-        res = requests.post(f"{server_url}/tokenize", json={"content": text}, timeout=3)
+        # Use the pooled _session object to drastically reduce connection handshake latency
+        res = _session.post(f"{server_url}/tokenize", json={"content": text}, timeout=3)
         return len(res.json().get("tokens", []))
     except Exception:
         return len(text) // 4
