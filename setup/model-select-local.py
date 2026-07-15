@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# model-select-local.py - Standalone Local Offline Model Selector with Auto-CPU Control
+# model-select-local.py - Standalone Local Offline Model Selector
 import os
 import sys
 import re
@@ -10,52 +10,27 @@ import subprocess
 import select
 import time
 
-MODELS_DIR = "/home/user/models"
-SERV_DIR = "/home/user/models/serv"
-STATE_FILE = "/tmp/cpu_mode_state"
+MODELS_DIR = "/home/j5/models"
+SERV_DIR = "/home/j5/models/serv"
 
 # Map local GGUF filenames to their respective launch scripts
 LOCAL_MODELS = [
+    {
+        "name": "minicpm5-1b-agentic-tooluse.Q4_K_M",
+        "file": "minicpm5-1b.gguf",
+        "script": "mini.sh"
+    },
     {
         "name": "Qwen 3.5 2B (Ultra-light)",
         "file": "Qwen3.5-2B.gguf",
         "script": "q2b.sh"
     },
-    {
+        {
         "name": "Qwen 3.6 35B (4-bit Uncensored)",
-        "file": "Qwen3.6-35B-A3B.gguf",
+        "file": "Qwen3.6-35B-A3B-IQ4_NL.gguf",
         "script": "q35b.sh"
     }
 ]
-
-# --- CPU POWER AUTOMATION ---
-def set_cpu_chill():
-    """Sets CPU to OLLAMA CHILL (Powersave + 3.5 GHz Cap) and updates state."""
-    try:
-        subprocess.run(
-            ["sudo", "cpupower", "frequency-set", "-g", "powersave", "--max", "3.5GHz"],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-        )
-        with open(STATE_FILE, "w") as f:
-            f.write("chill")
-        if shutil.which("notify-send"):
-            subprocess.run(["notify-send", "CPU Mode", "OLLAMA CHILL (3.5 GHz) - Auto", "-u", "low", "-t", "2000"])
-    except Exception:
-        pass
-
-def set_cpu_balanced():
-    """Sets CPU to BALANCED (Powersave + 4.4 GHz Max) and updates state."""
-    try:
-        subprocess.run(
-            ["sudo", "cpupower", "frequency-set", "-g", "powersave", "--max", "4.4GHz"],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-        )
-        with open(STATE_FILE, "w") as f:
-            f.write("balanced")
-        if shutil.which("notify-send"):
-            subprocess.run(["notify-send", "CPU Mode", "BALANCED (Dynamic) - Auto", "-u", "normal", "-t", "2000"])
-    except Exception:
-        pass
 
 # --- PROCESS STATUS DETECTION ---
 def get_current_running_model():
@@ -219,14 +194,6 @@ def main():
     total_options = len(LOCAL_MODELS) + 2
     message = ""
     
-    # Initialize state if file doesn't exist
-    if not os.path.exists(STATE_FILE):
-        try:
-            with open(STATE_FILE, "w") as f:
-                f.write("balanced")
-        except Exception:
-            pass
-    
     try:
         while True:
             active_model = get_current_running_model()
@@ -249,13 +216,10 @@ def main():
                     message = "\033[1;33m↺ Releasing current server and flushing RAM pages...\033[0m"
                     draw_menu(selected, active_model, message)
                     
-                    # 1. Stop running servers & clear RAM
+                    # Stop running servers
                     stop_all_engines()
                     
-                    # 2. Automatically engage CPU OLLAMA CHILL (3.5 GHz)
-                    set_cpu_chill()
-                    
-                    # 3. Launch target model
+                    # Launch target
                     if launch_local_server(target_model["script"]):
                         message = f"\033[1;32m✓ Initialized {target_model['name']} on Port 8080.\033[0m"
                     else:
@@ -264,15 +228,9 @@ def main():
                 elif selected == len(LOCAL_MODELS):  # Clean exit/Stop all
                     message = "\033[1;33m↺ Shutting down active local engines...\033[0m"
                     draw_menu(selected, active_model, message)
-                    
-                    # 1. Stop all engines & clear RAM
                     stop_all_engines()
-                    
-                    # 2. Automatically restore CPU to BALANCED (4.4 GHz Max)
-                    set_cpu_balanced()
-                    
                     message = "\033[1;32m✓ Engines stopped. Local RAM cleared successfully.\033[0m"
-                elif selected == len(LOCAL_MODELS) + 1:  # Close settings TUI (leaves server running)
+                elif selected == len(LOCAL_MODELS) + 1:  # Close settings
                     break
             elif key == 'q':
                 break
