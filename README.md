@@ -193,19 +193,18 @@ git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai
 echo '[ -f "$HOME/.config/local-ai/ai-hook.sh" ] && source "$HOME/.config/local-ai/ai-hook.sh"' >> ~/.bashrc
 source ~/.bashrc
 
-# 5. Create your private configuration file (No global exports needed!)
-# Fill in only what you use; the rest defaults safely.
-# The agent reads this dynamically on every run with zero terminal restarts.
+# 5. Create your private configuration file (Dynamically hot-reloaded)
+# Fill only what you use; remaining values default safely.
 nano ~/.config/local-ai/.env
 ```
 
 #### Configuration Example (`.env`):
-*(Supports any OpenAI-compatible API key, e.g., DeepSeek, Groq)*
 
 ```env
 # =========================================================================
 # Dynamic Fallback Cascade (Top-Down Key Order)
-# use "ai status" and "model select"
+# Supports any OpenAI-compatible API key, e.g., DeepSeek, Groq
+# Use "ai status" and "model select"
 # =========================================================================
 
 # 1. Primary Model (Active)
