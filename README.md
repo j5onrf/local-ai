@@ -33,7 +33,7 @@ All configurations and custom shortcuts are managed in [`ai-context.md`](ai-cont
 ╭──────────────────────────────────────────────╮
 │  >_ Local-AI Agent                           │
 │                                              │
-│  model:     Qwen3.6-35B-A3B.gguf             │
+│  model:     Qwen3.6-35B-A3B-claude-4.7.gguf  │
 │  directory: ...-ai/projects/session-test     │
 │  skill:     init codef                       │
 │  database:  active (3 facts, 109 turns)      │

@@ -9,7 +9,7 @@ Local agent workspaces, dynamic memories, save checkpoints, and codebase mapping
 ╭──────────────────────────────────────────────╮
 │  >_ Local-Ai Agent                           │
 │                                              │
-│  model:     Qwen3.6-35B-A3B.gguf             │
+│  model:     Qwen3.6-35B-A3B-claude-4.7.gguf  │
 │  directory: ...-ai/projects/session-test     │
 │  skill:     init                             │
 │  database:  active (3 facts, 26 turns)       │
