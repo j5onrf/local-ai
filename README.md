@@ -82,7 +82,7 @@ Agent: Workspace loaded. Awaiting instructions.
 | :---: | :---: | :--- |
 | **Performance** | **Zero-Daemon** | 0% idle CPU/RAM. `Ultra-light` execution. |
 | **Intelligence** | **Scalability** | Optimized from `Qwen3.5-2B` up to frontier models. |
-| **Resiliency** | **Fallbacks** | `Gemini` → `OpenAI` → `Claude` → `xAI` → `OpenRouter` → `GGUF`. |
+| **Resiliency** | **Fallbacks** | **Top-Down Cascade**: `.env` order: `Provider` → `GGUF`. |
 | **Safety** | **Zero-Trust Guardrails** | Intercepts out-of-bounds commands and edits for manual approval. |
 | **Safety** | **Type-Safe Validation** | Enforces [Pydantic AI](https://github.com/pydantic/pydantic-ai)'s schema concepts natively. |
 | **Safety** | **Syntactic Guardrails** | [OpenAI Agents](https://github.com/openai/openai-agents-python)-style self-correcting `.py`/`.json` writes. |
@@ -201,31 +201,37 @@ nano ~/.config/local-ai/.env
 
 #### Configuration Example (`.env`):
 ```env
+# =========================================================================
+# local-ai Configuration & Cascading Priority Chain
+# (The physical top-down order of these active keys defines your fallback cascade)
+# =========================================================================
 # ~/.config/local-ai/.env
 # use "ai status" and "model select"
 
-# Claude API
-CLAUDE_API_KEY="your-claude-api-key-here"
-CLAUDE_MODEL="claude-fable-5"
-
-# OpenAI API
-OPENAI_API_KEY="your-openai-api-key-here"
-OPENAI_MODEL="gpt-5.6"
-
-# x.AI Grok API
-XAI_API_KEY="xai-your-grok-api-key-here"
-XAI_MODEL="grok-4.5"
-
-# Google Gemini API
+# 1. Primary Model (Active)
 GEMINI_API_KEY="AIzaSyYourFullGeminiApiKeyHere"
 GEMINI_MODEL="gemini-3.1-flash-lite"
 
-# OpenRouter API
+# 2. First Fallback (Active)
 OPENROUTER_API_KEY="sk-or-v1-YourFullOpenRouterKeyHere"
 OPENROUTER_MODEL="openrouter/free"
 
-# Context Limits
-AI_MAX_TOKENS=8192
+# 3. Second Fallback (Active)
+OPENAI_API_KEY="your-openai-api-key-here"
+OPENAI_MODEL="gpt-5.6"
+
+# 4. Third Fallback (Active)
+CLAUDE_API_KEY="your-claude-api-key-here"
+CLAUDE_MODEL="claude-fable-5"
+
+# 5. Fourth Fallback (Active)
+XAI_API_KEY="xai-your-grok-api-key-here"
+XAI_MODEL="grok-4.5"
+
+# =========================================================================
+# Offline/Local Settings (Static Context Window)
+# =========================================================================
+AI_MAX_TOKENS="8192"
 ```
 
 ---

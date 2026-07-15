@@ -1,117 +1,108 @@
 # File: ~/.config/local-ai/modules/agent_cloud.py
+# Dynamic Cloud Cascade Engine (Top-Down .env Priority)
+
 import os
+import re
+import json
+
+ENV_PATH = os.path.expanduser("~/.config/local-ai/.env")
 
 def get_active_configs(messages: list) -> list:
-    """Compiles active cloud API configurations, mapping payloads to provider-specific schemas.
-    
-    Returns a list of tuples: (url, headers, body, timeout)
-    """
+    """Compiles active cloud API configurations, prioritizing them based on their top-down order in .env."""
     configs = []
+    if not os.path.exists(ENV_PATH):
+        return configs
 
-    # 1. Google Gemini API (via OpenAI-compatibility Endpoint)
-    gemini_key = os.environ.get("GEMINI_API_KEY")
-    if gemini_key:
-        gemini_model = os.environ.get("GEMINI_MODEL", os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"))
-        body = {
-            "model": gemini_model,
-            "messages": messages,
-            "stream": True
-        }
-        headers = {"Authorization": f"Bearer {gemini_key}"}
-        configs.append((
-            "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-            headers,
-            body,
-            30
-        ))
+    # Standard OpenAI-compatible endpoint mappings
+    url_map = {
+        "GEMINI_API_KEY": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+        "OPENAI_API_KEY": "https://api.openai.com/v1/chat/completions",
+        "XAI_API_KEY": "https://api.x.ai/v1/chat/completions",
+        "OPENROUTER_API_KEY": "https://openrouter.ai/api/v1/chat/completions"
+    }
 
-    # 2. OpenAI Subscription API (Supporting gpt-5.5)
-    openai_key = os.environ.get("OPENAI_API_KEY")
-    if openai_key:
-        openai_model = os.environ.get("OPENAI_MODEL", os.environ.get("CLOUD_MODEL", "gpt-5.5"))
-        body = {
-            "model": openai_model,
-            "messages": messages,
-            "stream": True
-        }
-        headers = {"Authorization": f"Bearer {openai_key}"}
-        configs.append((
-            "https://api.openai.com/v1/chat/completions",
-            headers,
-            body,
-            30
-        ))
-
-    # 3. Anthropic Claude Subscription API (Supporting claude-fable-5)
-    claude_key = os.environ.get("CLAUDE_API_KEY")
-    if claude_key:
-        claude_model = os.environ.get("CLAUDE_MODEL", os.environ.get("CLOUD_MODEL", "claude-fable-5"))
-        
-        # Format messages for Anthropic (Extract System instructions to top-level key)
-        claude_messages = []
-        system_prompt = None
-        for m in messages:
-            if m.get("role") == "system":
-                system_prompt = m.get("content")
-            else:
-                claude_messages.append({"role": m.get("role"), "content": m.get("content")})
-        
-        body = {
-            "model": claude_model,
-            "messages": claude_messages,
-            "stream": True,
-            "max_tokens": 4096
-        }
-        if system_prompt:
-            body["system"] = system_prompt
-            
-        headers = {
-            "x-api-key": claude_key,
-            "anthropic-version": "2023-06-01"
-        }
-        configs.append((
-            "https://api.anthropic.com/v1/messages",
-            headers,
-            body,
-            30
-        ))
-
-    # 4. x.AI Grok Subscription API (Supporting grok-4.5)
-    xai_key = os.environ.get("XAI_API_KEY")
-    if xai_key:
-        xai_model = os.environ.get("XAI_MODEL", os.environ.get("CLOUD_MODEL", "grok-4.5"))
-        body = {
-            "model": xai_model,
-            "messages": messages,
-            "stream": True
-        }
-        headers = {"Authorization": f"Bearer {xai_key}"}
-        configs.append((
-            "https://api.x.ai/v1/chat/completions",
-            headers,
-            body,
-            30
-        ))
-
-    # 5. OpenRouter API Configurations
-    openrouter_key = os.environ.get("OPENROUTER_API_KEY")
-    if openrouter_key:
-        openrouter_model = os.environ.get("OPENROUTER_MODEL", "openrouter/free")
-        body = {
-            "model": openrouter_model,
-            "messages": messages,
-            "stream": True,
-            "usage": {"include": True}
-        }
-        headers = {
-            "Authorization": f"Bearer {openrouter_key}",
-            "HTTP-Referer": "https://github.com/j5onrf/local-ai"
-        }
-        configs.append((
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers,
-            body,
-            180
-        ))
+    try:
+        with open(ENV_PATH, "r", encoding="utf-8") as f:
+            for line in f:
+                line_strip = line.strip()
+                # Skip comments and empty lines
+                if not line_strip or line_strip.startswith("#"):
+                    continue
+                
+                # Match any active key assignment (e.g. GEMINI_API_KEY="your-key")
+                match = re.match(r"^([A-Z0-9_]+_API_KEY|[A-Z0-9_]+_KEY)\s*=\s*\"?([^\"]*)\"?$", line_strip)
+                if match:
+                    key_name, key_val = match.groups()
+                    if not key_val.strip():
+                        continue
+                        
+                    provider = key_name.split("_")[0].lower() # e.g., 'gemini', 'openai'
+                    
+                    # 1. SPECIAL CASE: Anthropic Claude (Uses different headers/endpoints)
+                    if key_name == "CLAUDE_API_KEY":
+                        model = os.environ.get("CLAUDE_MODEL", "claude-fable-5")
+                        
+                        # Extract system instructions to top-level key for Anthropic schema
+                        claude_messages = []
+                        system_prompt = None
+                        for m in messages:
+                            if m.get("role") == "system":
+                                                    system_prompt = m.get("content")
+                            else:
+                                                    claude_messages.append({"role": m.get("role"), "content": m.get("content")})
+                        
+                        body = {
+                            "model": model,
+                            "messages": claude_messages,
+                            "stream": True,
+                            "max_tokens": 4096
+                        }
+                        if system_prompt:
+                            body["system"] = system_prompt
+                            
+                        headers = {
+                            "x-api-key": key_val,
+                            "anthropic-version": "2023-06-01"
+                        }
+                        configs.append((
+                            "https://api.anthropic.com/v1/messages",
+                            headers,
+                            body,
+                            30
+                        ))
+                    
+                    # 2. GENERAL CASE: Any OpenAI-Compatible Provider
+                    else:
+                        url = url_map.get(key_name)
+                        if url:
+                            # Map default fallback models dynamically per provider
+                            fallback_model = {
+                                "gemini": "gemini-3.1-flash-lite",
+                                "openai": "gpt-5.5",
+                                "xai": "grok-4.5"
+                            }.get(provider, "default-model")
+                            
+                            model_var_name = "OPENROUTER_MODEL" if provider == "openrouter" else f"{provider.upper()}_MODEL"
+                            model_name = os.environ.get(model_var_name) or fallback_model
+                            
+                            body = {
+                                "model": model_name,
+                                "messages": messages,
+                                "stream": True
+                            }
+                            
+                            # Inject OpenRouter usage tracking if applicable
+                            if provider == "openrouter":
+                                body["usage"] = {"include": True}
+                                
+                            headers = {"Authorization": f"Bearer {key_val}"}
+                            if provider == "openrouter":
+                                headers["HTTP-Referer"] = "https://github.com/j5onrf/local-ai"
+                                
+                            # Timeout: 180s for OpenRouter routing, 30s for direct APIs
+                            timeout = 180 if provider == "openrouter" else 30
+                            configs.append((url, headers, body, timeout))
+    except Exception:
+        pass
 
     return configs

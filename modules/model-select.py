@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # model-select.py - Fully Dynamic TUI Model Selector driven by OpenRouter Rankings
+# Path: ~/.config/local-ai/modules/model-select.py
+
 import os
 import sys
 import re
@@ -163,7 +165,7 @@ def load_env_vars():
         "CLAUDE_API_KEY": "",
         "OPENAI_API_KEY": "",
         "XAI_API_KEY": "",
-        "CLOUD_MODEL": "gemini-3.1-flash-lite",
+        "GEMINI_MODEL": "gemini-3.1-flash-lite",
         "OPENROUTER_MODEL": "openrouter/free",
         "CLAUDE_MODEL": "claude-fable-5",
         "OPENAI_MODEL": "gpt-5.5",
@@ -181,6 +183,7 @@ def load_env_vars():
     return vars_dict
 
 def update_env(key, value):
+    """Updates model parameters in-place, fully preserving custom top-down line priorities."""
     if not os.path.exists(ENV_PATH):
         return
     with open(ENV_PATH, "r", encoding="utf-8") as f:
@@ -203,16 +206,20 @@ def update_env(key, value):
         f.writelines(lines)
 
 def is_key_active(key):
+    """Checks if an API key is uncommented and active in your configuration."""
     if not os.path.exists(ENV_PATH):
         return False
     with open(ENV_PATH, "r", encoding="utf-8") as f:
         for line in f:
             stripped = line.strip()
             if stripped.startswith(f"{key}=") or stripped.startswith(f"{key} ="):
-                return True
+                val = stripped.split("=", 1)[1].strip().strip('"').strip("'")
+                if val and "your" not in val.lower() and "here" not in val.lower():
+                    return True
     return False
 
 def set_key_commented_state(key, should_comment):
+    """Comments or uncomments a key, fully preserving its original top-down priority."""
     if not os.path.exists(ENV_PATH):
         return
     with open(ENV_PATH, "r", encoding="utf-8") as f:
@@ -371,10 +378,11 @@ def draw_main_menu(selected, gemini_curr, claude_curr, openai_curr, grok_curr, o
     keys_active = gemini_active or or_active or claude_active or openai_active or grok_active
     status_text = f"{green}[ ENABLED ]{reset}" if keys_active else f"{red}[ DISABLED ]{reset}"
     
-    gemini_display = f"{green}{gemini_curr}{reset}" if gemini_active else f"{red}DISABLED{reset}"
-    openai_display = f"{green}{openai_curr}{reset}" if openai_active else f"{red}DISABLED{reset}"
-    claude_display = f"{green}{claude_curr}{reset}" if claude_active else f"{red}DISABLED{reset}"
-    grok_display = f"{green}{grok_curr}{reset}" if grok_active else f"{red}DISABLED{reset}"
+    # Gray out the model selections if their respective keys are not active in .env
+    gemini_display = f"{green}{gemini_curr}{reset}" if gemini_active else f"{red}DISABLED (grayed out){reset}"
+    openai_display = f"{green}{openai_curr}{reset}" if openai_active else f"{red}DISABLED (grayed out){reset}"
+    claude_display = f"{green}{claude_curr}{reset}" if claude_active else f"{red}DISABLED (grayed out){reset}"
+    grok_display = f"{green}{grok_curr}{reset}" if grok_active else f"{red}DISABLED (grayed out){reset}"
     
     is_or_free = "free" in or_curr.lower()
     or_free_display = f"{green}{or_curr}{reset}" if (or_active and is_or_free) else f"{dim}None selected{reset}"
@@ -396,7 +404,6 @@ def draw_main_menu(selected, gemini_curr, claude_curr, openai_curr, grok_curr, o
     ]
     
     for i, opt in enumerate(options):
-        # Dynamically map spacing offsets to fit the new selection lineup
         spacing = "\n" if i in (1, 2, 3, 4, 5, 6) else ""
         if i == selected:
             sys.stdout.write(f"   {amber}❯{reset}  {bold}{opt}{reset}\n{spacing}")
@@ -556,7 +563,7 @@ def main():
     sys.stdout.flush()
 
     env = load_env_vars()
-    gemini_curr = env["CLOUD_MODEL"]
+    gemini_curr = env["GEMINI_MODEL"]
     openai_curr = env.get("OPENAI_MODEL", "gpt-5.5")
     claude_curr = env.get("CLAUDE_MODEL", "claude-fable-5")
     grok_curr = env.get("XAI_MODEL", "grok-4.5")
@@ -596,8 +603,8 @@ def main():
                     elif res:
                         gemini_curr = res
                         set_key_commented_state("GEMINI_API_KEY", False)
-                        update_env("CLOUD_MODEL", gemini_curr)
-                        message = f"✓ Saved CLOUD_MODEL={gemini_curr} and re-enabled Gemini API Key."
+                        update_env("GEMINI_MODEL", gemini_curr)
+                        message = f"✓ Saved GEMINI_MODEL={gemini_curr} and re-enabled Gemini API Key."
                 elif selected_idx == 2:  # OpenAI
                     res = run_selector("OpenAI", openai_list, openai_curr, "OPENAI_API_KEY")
                     if res == "DISABLE":

@@ -2,7 +2,7 @@
 
 # Configuration
 PORT=8080
-MODEL_PATH="/home/user/models/Qwen3.6-35B-A3B-Claude-4.7-Opus-abliterated.Q4_K_S.gguf"
+MODEL_PATH="/home/user/models/Huihui-Qwen3.6-35B-A3B-Claude-4.7-Opus-abliterated.Q4_K_S.gguf"
 LOG_DIR="/home/user/models/serv"
 LOG_FILE="$LOG_DIR/server.log"
 
