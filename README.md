@@ -200,13 +200,13 @@ nano ~/.config/local-ai/.env
 ```
 
 #### Configuration Example (`.env`):
+*(Supports any OpenAI-compatible API key, e.g., DeepSeek, Groq)*
 
 ```env
 # =========================================================================
-# local-ai Configuration & Cascading Priority Chain
-# (The physical top-down order of these active keys defines your fallback cascade)
-# =========================================================================
+# Dynamic Fallback Cascade (Top-Down Key Order)
 # use "ai status" and "model select"
+# =========================================================================
 
 # 1. Primary Model (Active)
 GEMINI_API_KEY="AIzaSyYourFullGeminiApiKeyHere"

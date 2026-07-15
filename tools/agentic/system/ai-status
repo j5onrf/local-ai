@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
-# ai-status - Diagnostics for Local-AI Agent Stack v1.4.0 [j5onrf]
+# ai-status - Diagnostics for Local-AI Agent Stack v1.5.0 [j5onrf]
+# Path: ~/.config/local-ai/tools/agentic/system/ai-status
 
 set -euo pipefail
 
-# Helper to dynamically map Gemini rate limits based on current CLOUD_MODEL
+ENV_PATH="$HOME/.config/local-ai/.env"
+LOG_FILE="$HOME/.config/local-ai/.request_log"
+
+# Helper to dynamically map Gemini rate limits based on current GEMINI_MODEL
 get_gemini_limits() {
     local model="${1:-gemini-3.1-flash-lite}"
     local m_low; m_low=$(echo "$model" | tr '[:upper:]' '[:lower:]')
@@ -37,18 +41,56 @@ check_conn() {
     [[ -n "${1:-}" ]] && curl -s -I --connect-timeout 1.5 "$2" >/dev/null && echo 0 || echo 1
 }
 
-# Evaluate active connection statuses across all available backends
-gemini_status=$(check_conn "${GEMINI_API_KEY:-}" "https://generativelanguage.googleapis.com")
-openai_status=$(check_conn "${OPENAI_API_KEY:-}" "https://api.openai.com")
-claude_status=$(check_conn "${CLAUDE_API_KEY:-}" "https://api.anthropic.com")
-xai_status=$(check_conn "${XAI_API_KEY:-}" "https://api.x.ai")
-or_status=$(check_conn "${OPENROUTER_API_KEY:-}" "https://openrouter.ai")
-local_status=$(curl -s -I --connect-timeout 1.0 "http://localhost:8080" >/dev/null && echo 0 || echo 1)
+# --- DYNAMIC TOP-DOWN SCRIPT PARSING ---
+# Parse .env sequentially to find active API keys, fallback models, and priorities
+active_providers=()
+active_keys=()
+active_models=()
+
+if [[ -f "$ENV_PATH" ]]; then
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        stripped=$(echo "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' 2>/dev/null || echo "$line")
+        [[ -z "$stripped" || "$stripped" == "#"* ]] && continue
+        
+        # Match active key assignments: e.g. GEMINI_API_KEY="xxx"
+        if [[ "$stripped" =~ ^([A-Z0-9_]+_API_KEY|[A-Z0-9_]+_KEY)=\"?(.*)\"?$ ]]; then
+            k_name="${BASH_REMATCH[1]}"
+            k_val="${BASH_REMATCH[2]}"
+            k_val=$(echo "$k_val" | sed -e 's/"$//' -e "s/'$//" 2>/dev/null || echo "$k_val")
+            
+            # Skip placeholders
+            if [[ -n "$k_val" && "$k_val" != *"your"* && "$k_val" != *"here"* ]]; then
+                provider=$(echo "$k_name" | cut -d'_' -f1 | tr '[:upper:]' '[:lower:]')
+                
+                # Find matching model variable name in .env
+                m_var="OPENROUTER_MODEL"
+                if [[ "$provider" != "openrouter" ]]; then
+                    m_var="$(echo "$provider" | tr '[:lower:]' '[:upper:]')_MODEL"
+                fi
+                
+                # Extract model setting from .env in-place
+                m_val=$(grep -E "^${m_var}=" "$ENV_PATH" | cut -d'=' -f2 | tr -d '"'\'' ' || echo "")
+                if [[ -z "$m_val" ]]; then
+                    # Dynamic defaults matching agent_cloud.py
+                    if [[ "$provider" == "gemini" ]]; then m_val="gemini-3.1-flash-lite"
+                    elif [[ "$provider" == "openai" ]]; then m_val="gpt-5.5"
+                    elif [[ "$provider" == "claude" ]]; then m_val="claude-fable-5"
+                    elif [[ "$provider" == "xai" ]]; then m_val="grok-4.5"
+                    else m_val="default-model"
+                    fi
+                fi
+                
+                active_providers+=("$provider")
+                active_keys+=("$k_val")
+                active_models+=("$m_val")
+            fi
+        fi
+    done < "$ENV_PATH"
+fi
 
 # Fetch cloud metrics and prune old logs in a single Python pass
 request_stats="0|0|0|0|0|0|0|0|0|0"
-log_file="$HOME/.config/local-ai/.request_log"
-if [[ -f "$log_file" ]]; then
+if [[ -f "$LOG_FILE" ]]; then
     request_stats=$(python3 -c "
 import os, time
 log_file = os.path.expanduser('~/.config/local-ai/.request_log')
@@ -90,9 +132,17 @@ claude_rpm=$(echo "$request_stats" | cut -d'|' -f8)
 grok_rpd=$(echo "$request_stats" | cut -d'|' -f9)
 grok_rpm=$(echo "$request_stats" | cut -d'|' -f10)
 
-# Fetch OpenRouter key metadata (usage, limits, tier) on-demand
+# Check individual connectivity
+gemini_status=$(check_conn "${GEMINI_API_KEY:-}" "https://generativelanguage.googleapis.com")
+openai_status=$(check_conn "${OPENAI_API_KEY:-}" "https://api.openai.com")
+claude_status=$(check_conn "${CLAUDE_API_KEY:-}" "https://api.anthropic.com")
+xai_status=$(check_conn "${XAI_API_KEY:-}" "https://api.x.ai")
+or_status=$(check_conn "${OPENROUTER_API_KEY:-}" "https://openrouter.ai")
+local_status=$(curl -s -I --connect-timeout 1.0 "http://localhost:8080" >/dev/null && echo 0 || echo 1)
+
+# Fetch OpenRouter key metadata on-demand
 or_meta="*Not Available*"
-if [[ $or_status -eq 0 ]]; then
+if [[ $or_status -eq 0 && -n "${OPENROUTER_API_KEY:-}" ]]; then
     or_meta=$(curl -s -H "Authorization: Bearer $OPENROUTER_API_KEY" "https://openrouter.ai/api/v1/auth/key" | python3 -c "
 import sys, json
 try:
@@ -105,9 +155,9 @@ except Exception:
 " || echo "API Unreachable")
 fi
 
-# Fetch active OpenRouter free models dynamically on-demand
+# Fetch OpenRouter active free models on-demand
 or_free_list="*Not Available*"
-if [[ $or_status -eq 0 && "${OPENROUTER_MODEL:-}" == *"free"* ]]; then
+if [[ $or_status -eq 0 && "${OPENROUTER_MODEL:-}" == *"free"* && -n "${OPENROUTER_API_KEY:-}" ]]; then
     or_free_list=$(curl -s "https://openrouter.ai/api/v1/models" | python3 -c "
 import sys, json
 try:
@@ -136,12 +186,12 @@ except:
 " || echo "Local Server")
 fi
 
-# Retrieve the dynamic limits based on the active CLOUD_MODEL
-gemini_limits=$(get_gemini_limits "${CLOUD_MODEL:-gemini-3.1-flash-lite}")
+# Retrieve the dynamic limits based on the active GEMINI_MODEL
+gemini_limits=$(get_gemini_limits "${GEMINI_MODEL:-gemini-3.1-flash-lite}")
 
 echo -e "# ACTIVE AI ROUTING DIAGNOSTICS\n\n> **AI Instructions:**\n> Summarize the active provider, model, and its 24h RPD count in 1-2 direct, unformatted sentences.\n> If fallback is active, briefly state why.\n\n---\n\n## CREDENTIALS & CONFIGURATION"
 echo "* **GEMINI_API_KEY**  : $(mask_key "${GEMINI_API_KEY:-}")"
-echo "* **CLOUD_MODEL**     : \`${CLOUD_MODEL:-gemini-3.1-flash-lite}\` (Free Limits: ${gemini_limits})"
+echo "* **GEMINI_MODEL**     : \`${GEMINI_MODEL:-gemini-3.1-flash-lite}\` (Free Limits: ${gemini_limits})"
 echo "* **GEMINI METRICS**  : \`RPM: ${gemini_rpm} | RPD: ${gemini_rpd}\` (Last 24h rolling)"
 echo ""
 echo "* **OPENAI_API_KEY**  : $(mask_key "${OPENAI_API_KEY:-}")"
@@ -158,7 +208,7 @@ echo "* **XAI METRICS**     : \`RPM: ${grok_rpm} | RPD: ${grok_rpd}\` (Last 24h 
 echo ""
 echo "* **OPENROUTER_KEY**  : $(mask_key "${OPENROUTER_API_KEY:-}")"
 echo "* **OPENROUTER_MODEL**: \`${OPENROUTER_MODEL:-openrouter/free}\` (Free Limits: 20 RPM / 200 RPD)"
-if [[ $or_status -eq 0 && "${OPENROUTER_MODEL:-}" == *"free"* ]]; then
+if [[ $or_status -eq 0 && "${OPENROUTER_MODEL:-}" == *"free"* && -n "${OPENROUTER_API_KEY:-}" ]]; then
     echo "* **FREE POOL ROUTES**: \`${or_free_list}\`"
 fi
 echo "* **OPENROUTER_USAGE**: \`${or_meta}\`"
@@ -173,25 +223,36 @@ echo -e "\n---\n\n## ENDPOINT STATUS"
 [[ -n "${OPENROUTER_API_KEY:-}" ]] && echo "* **OpenRouter API** : $([[ $or_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")" || echo "* **OpenRouter API** : *Skipped (No Key)*"
 echo -e "* **Local Server**   : $([[ $local_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")\n\n---\n\n## ACTIVE RUNTIME ROUTE"
 
-# Route evaluation matching runtime cascading execution exactly
-if [[ -n "${GEMINI_API_KEY:-}" && $gemini_status -eq 0 ]]; then
-    echo "* **Selected Provider**: **Gemini Cloud API**"
-    echo "* **Active Model**     : \`${CLOUD_MODEL:-gemini-3.1-flash-lite}\`"
-elif [[ -n "${OPENAI_API_KEY:-}" && $openai_status -eq 0 ]]; then
-    echo "* **Selected Provider**: **OpenAI Subscription API**"
-    echo "* **Active Model**     : \`${OPENAI_MODEL:-gpt-5.5}\`"
-elif [[ -n "${CLAUDE_API_KEY:-}" && $claude_status -eq 0 ]]; then
-    echo "* **Selected Provider**: **Anthropic Claude Subscription API**"
-    echo "* **Active Model**     : \`${CLAUDE_MODEL:-claude-fable-5}\`"
-elif [[ -n "${XAI_API_KEY:-}" && $xai_status -eq 0 ]]; then
-    echo "* **Selected Provider**: **x.AI Grok Subscription API**"
-    echo "* **Active Model**     : \`${XAI_MODEL:-grok-4.5}\`"
-elif [[ -n "${OPENROUTER_API_KEY:-}" && $or_status -eq 0 ]]; then
-    echo "* **Selected Provider**: **OpenRouter API**"
-    echo "* **Active Model**     : \`${OPENROUTER_MODEL:-openrouter/free}\`"
-elif [[ $local_status -eq 0 ]]; then
-    echo "* **Selected Provider**: **Local AI Server**"
-    echo "* **Active Model**     : \`${local_model}\`"
-else
-    echo "* **Selected Provider**: *None / All Offline*"
+# Evaluate active runtime route dynamically based on actual .env priority order
+resolved_provider="*None / All Offline*"
+resolved_model="*None*"
+
+for i in "${!active_providers[@]}"; do
+    provider="${active_providers[$i]}"
+    key_val="${active_keys[$i]}"
+    model_val="${active_models[$i]}"
+    
+    # Map domain for verification
+    domain="https://api.openai.com"
+    if [[ "$provider" == "gemini" ]]; then domain="https://generativelanguage.googleapis.com"
+    elif [[ "$provider" == "claude" ]]; then domain="https://api.anthropic.com"
+    elif [[ "$provider" == "xai" ]]; then domain="https://api.x.ai"
+    elif [[ "$provider" == "openrouter" ]]; then domain="https://openrouter.ai"
+    fi
+    
+    status=$(check_conn "$key_val" "$domain")
+    if [[ $status -eq 0 ]]; then
+        resolved_provider=$(echo "$provider" | tr '[:lower:]' '[:upper:]' | sed 's/XAI/x.AI/; s/CLAUDE/Anthropic Claude/; s/GEMINI/Google Gemini/; s/OPENAI/OpenAI/; s/OPENROUTER/OpenRouter/')
+        resolved_model="$model_val"
+        break
+    fi
+done
+
+# If all cloud routes are offline or skipped, check the local server
+if [[ "$resolved_provider" == "*None / All Offline*" && $local_status -eq 0 ]]; then
+    resolved_provider="Local AI Server"
+    resolved_model="$local_model"
 fi
+
+echo "* **Selected Provider**: **${resolved_provider}**"
+echo "* **Active Model**     : \`${resolved_model}\`"
