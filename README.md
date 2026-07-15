@@ -82,7 +82,7 @@ Agent: Workspace loaded. Awaiting instructions.
 | :---: | :---: | :--- |
 | **Performance** | **Zero-Daemon** | 0% idle CPU/RAM. `Ultra-light` execution. |
 | **Intelligence** | **Scalability** | Optimized from `Qwen3.5-2B` up to frontier models. |
-| **Resiliency** | **Fallbacks** | **Top-Down Cascade**: `.env` order: `Provider` → `GGUF`. |
+| **Resiliency** | **Fallbacks** | Top-Down Cascade: `.env` order: `Provider` → `GGUF`. |
 | **Safety** | **Zero-Trust Guardrails** | Intercepts out-of-bounds commands and edits for manual approval. |
 | **Safety** | **Type-Safe Validation** | Enforces [Pydantic AI](https://github.com/pydantic/pydantic-ai)'s schema concepts natively. |
 | **Safety** | **Syntactic Guardrails** | [OpenAI Agents](https://github.com/openai/openai-agents-python)-style self-correcting `.py`/`.json` writes. |
