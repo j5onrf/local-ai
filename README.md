@@ -193,7 +193,7 @@ git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai
 echo '[ -f "$HOME/.config/local-ai/ai-hook.sh" ] && source "$HOME/.config/local-ai/ai-hook.sh"' >> ~/.bashrc
 source ~/.bashrc
 
-# 5. Create your private configuration file (Dynamically hot-reloaded)
+# 5. Create your private configuration file
 # Fill only what you use; remaining values default safely.
 nano ~/.config/local-ai/.env
 ```
