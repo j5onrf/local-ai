@@ -200,12 +200,12 @@ nano ~/.config/local-ai/.env
 ```
 
 #### Configuration Example (`.env`):
+
 ```env
 # =========================================================================
 # local-ai Configuration & Cascading Priority Chain
 # (The physical top-down order of these active keys defines your fallback cascade)
 # =========================================================================
-# ~/.config/local-ai/.env
 # use "ai status" and "model select"
 
 # 1. Primary Model (Active)
