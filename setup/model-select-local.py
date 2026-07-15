@@ -10,24 +10,19 @@ import subprocess
 import select
 import time
 
-MODELS_DIR = "/home/j5/models"
-SERV_DIR = "/home/j5/models/serv"
+MODELS_DIR = "/home/user/models"
+SERV_DIR = "/home/user/models/serv"
 
 # Map local GGUF filenames to their respective launch scripts
 LOCAL_MODELS = [
     {
-        "name": "minicpm5-1b-agentic-tooluse.Q4_K_M",
-        "file": "minicpm5-1b.gguf",
-        "script": "mini.sh"
-    },
-    {
         "name": "Qwen 3.5 2B (Ultra-light)",
-        "file": "Qwen3.5-2B.gguf",
+        "file": "Qwen3.5-2B-Claude-4.6-OS-Auto-Variable-HERETIC-UNCENSORED-THINKING.Q4_K_S.gguf",
         "script": "q2b.sh"
     },
         {
         "name": "Qwen 3.6 35B (4-bit Uncensored)",
-        "file": "Qwen3.6-35B-A3B-IQ4_NL.gguf",
+        "file": "Huihui-Qwen3.6-35B-A3B-Claude-4.7-Opus-abliterated.Q4_K_S.gguf",
         "script": "q35b.sh"
     }
 ]
