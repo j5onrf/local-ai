@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# File: ~/.config/local-ai/modules/ai-agent-sessions [v0.8.9.12]
-# Description: SQLite-backed session, checkpoint, and turn logger with Global Handoff
+# File: ~/.config/local-ai/modules/ai-agent-sessions [v0.9.3.2]
+# Description: SQLite-backed session, checkpoint, and turn logger with Global Handoff and sub-agent registry
 
 import sys
 import os
@@ -8,7 +8,9 @@ import json
 import sqlite3
 import time
 import re
+import glob
 from contextlib import closing
+from typing import List
 
 CFG_DIR = os.path.expanduser("~/.config/local-ai")
 SESSIONS_DIR = os.path.join(CFG_DIR, "projects", "database")
@@ -20,28 +22,82 @@ STOP_WORDS = {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "o
 def tokenize(text: str) -> List[str]: 
     return [w for w in TOKEN_RE.sub(" ", text.lower()).split() if len(w) > 1 and w not in STOP_WORDS] if text else []
 
-# Dynamic imports for sibling helpers
 sys.path.append(os.path.expanduser("~/.config/local-ai/modules"))
 try:
     import agent_ui as ui
     get_key = ui.get_key
 except ImportError:
     def get_key() -> str:
-        # Fallback inline key getter if UI module is absent
         import tty, termios, select
         fd = sys.stdin.fileno()
         try: old = termios.tcgetattr(fd)
         except Exception: return sys.stdin.read(1)
         try:
             tty.setraw(fd)
-            r = os.read(fd, 1)
-            if r == b'\x1b' and select.select([fd], [], [], 0.05)[0]:
+            b = os.read(fd, 1)
+            if b == b'\x1b' and select.select([fd], [], [], 0.05)[0]:
                 b += os.read(fd, 2)
             return b.decode("utf-8", errors="ignore")
         except Exception: return ""
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old)
-            if tty_file: tty_file.close()
+
+
+def connect_db(db_path: str) -> sqlite3.Connection:
+    conn = sqlite3.connect(db_path, timeout=30.0)
+    try:
+        conn.execute("PRAGMA journal_mode=WAL;")
+    except Exception:
+        pass
+    return conn
+
+
+def get_sub_agent_id(workspace: str, target_pid: int = None) -> int:
+    """Discovers the active sub-agent number. Returns 0 for primary (no badge), 1 for sub-agent #1, etc."""
+    session_dir = os.path.join(CFG_DIR, ".active_sessions")
+    os.makedirs(session_dir, exist_ok=True)
+    
+    current_pid = target_pid or os.getpid()
+    pattern = os.path.join(session_dir, f"{workspace}-*.session")
+    
+    active_pids = []
+    for fpath in glob.glob(pattern):
+        try:
+            fname = os.path.basename(fpath)
+            pid_str = fname.replace(f"{workspace}-", "").replace(".session", "")
+            pid = int(pid_str)
+            os.kill(pid, 0)
+            active_pids.append(pid)
+        except (ValueError, OSError):
+            try:
+                os.remove(fpath)
+            except OSError:
+                pass
+                
+    if current_pid not in active_pids:
+        active_pids.append(current_pid)
+        
+    active_pids.sort()
+    agent_index = active_pids.index(current_pid)
+    
+    my_file = os.path.join(session_dir, f"{workspace}-{current_pid}.session")
+    try:
+        with open(my_file, "w", encoding="utf-8") as f:
+            f.write(str(agent_index))
+    except Exception:
+        pass
+        
+    return agent_index
+
+
+def cleanup_sub_agent(workspace: str, target_pid: int = None) -> None:
+    current_pid = target_pid or os.getpid()
+    my_file = os.path.join(CFG_DIR, ".active_sessions", f"{workspace}-{current_pid}.session")
+    try:
+        if os.path.exists(my_file):
+            os.remove(my_file)
+    except Exception:
+        pass
 
 
 def print_session_box(workspace: str) -> None:
@@ -49,7 +105,7 @@ def print_session_box(workspace: str) -> None:
     turns, checkpoints, tpm_count = 0, 0, 0
     if os.path.exists(db_path):
         try:
-            with closing(sqlite3.connect(db_path, timeout=10)) as conn:
+            with closing(connect_db(db_path)) as conn:
                 cur = conn.cursor()
                 cur.execute("SELECT COUNT(*) FROM turns WHERE workspace = ?", (workspace,))
                 turns = cur.fetchone()[0]
@@ -57,17 +113,27 @@ def print_session_box(workspace: str) -> None:
                 checkpoints = cur.fetchone()[0]
                 cur.execute("SELECT COUNT(*) FROM tpm_memories")
                 tpm_count = cur.fetchone()[0]
-        except Exception: pass
+        except Exception: 
+            pass
+
     home_dir = os.path.expanduser("~")
     ws_path = os.environ.get("AI_WORKSPACE_PATH") or (os.path.join(home_dir, workspace.replace("-", "/")) if workspace.startswith(".config") else workspace.replace("-", "/"))
     disp = ws_path.replace(home_dir, "~", 1) if ws_path.startswith(home_dir) else ws_path
-    if len(disp) > 28: disp = "..." + disp[-25:]
+    if len(disp) > 28: 
+        disp = "..." + disp[-25:]
+
     model = os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite") if os.environ.get("GEMINI_API_KEY") else os.environ.get("OPENROUTER_MODEL", "openrouter/free") if os.environ.get("OPENROUTER_API_KEY") else "local-model"
     skill = " ".join(s.lstrip("-") for s in os.environ.get("AI_ACTIVE_SKILL", "").split()) or "default"
     box_w = 46
     
+    ppid = os.getppid()
+    agent_num = get_sub_agent_id(workspace, ppid)
+    
+    # Render with badge starting at [sub-agent #1] for the second window (agent_num == 1)
+    title_text = f" >_ Local-AI Agent  [sub-agent #{agent_num}]" if agent_num > 0 else " >_ Local-AI Agent"
+    
     lines = [
-        " >_ Local-AI Session Manager", "", 
+        title_text, "", 
         f" model:     {model}", 
         f" directory: {disp}", 
         f" skill:     {skill}", 
@@ -86,7 +152,7 @@ def print_session_box(workspace: str) -> None:
 
 def init_db(workspace: str) -> None:
     db_path = os.path.join(SESSIONS_DIR, f"{workspace}.db")
-    with closing(sqlite3.connect(db_path, timeout=10)) as conn:
+    with closing(connect_db(db_path)) as conn:
         cur = conn.cursor()
         cur.execute("CREATE TABLE IF NOT EXISTS checkpoints (id INTEGER PRIMARY KEY AUTOINCREMENT, workspace TEXT NOT NULL, tag TEXT NOT NULL, history TEXT NOT NULL, timestamp INTEGER NOT NULL)")
         cur.execute("CREATE TABLE IF NOT EXISTS turns (id INTEGER PRIMARY KEY AUTOINCREMENT, workspace TEXT NOT NULL, user_msg TEXT NOT NULL, assistant_msg TEXT NOT NULL, tokens TEXT NOT NULL, timestamp INTEGER NOT NULL)")
@@ -104,7 +170,7 @@ def save_checkpoint(workspace: str, tag: str) -> None:
         sys.stderr.write("\033[1;31m[session-mgr] Invalid history data received via stdin.\033[0m\n")
         sys.exit(1)
     db_path = os.path.join(SESSIONS_DIR, f"{workspace}.db")
-    with closing(sqlite3.connect(db_path, timeout=10)) as conn:
+    with closing(connect_db(db_path)) as conn:
         cur = conn.cursor()
         cur.execute("INSERT INTO checkpoints (workspace, tag, history, timestamp) VALUES (?, ?, ?, ?)", (workspace, tag, hist_data, int(time.time())))
         conn.commit()
@@ -115,7 +181,7 @@ def rollback_checkpoint(workspace: str) -> None:
     db_path = os.path.join(SESSIONS_DIR, f"{workspace}.db")
     rows = []
     if os.path.exists(db_path):
-        with closing(sqlite3.connect(db_path, timeout=10)) as conn:
+        with closing(connect_db(db_path)) as conn:
             cur = conn.cursor()
             cur.execute("SELECT tag, history, timestamp FROM checkpoints WHERE workspace = ? ORDER BY timestamp DESC", (workspace,))
             rows = cur.fetchall()
@@ -123,7 +189,6 @@ def rollback_checkpoint(workspace: str) -> None:
     is_global = False
     global_rows = []
     
-    # GLOBAL HANDOFF: If no local checkpoints exist, scan for other workspace backups
     if not rows:
         is_global = True
         for file in os.listdir(SESSIONS_DIR):
@@ -131,8 +196,13 @@ def rollback_checkpoint(workspace: str) -> None:
                 other_ws = file[:-3]
                 other_db = os.path.join(SESSIONS_DIR, file)
                 try:
-                    with closing(sqlite3.connect(other_db, timeout=2)) as conn2:
-                        other_cur = conn2.cursor()
+                    conn2 = sqlite3.connect(other_db, timeout=5.0)
+                    try:
+                        conn2.execute("PRAGMA journal_mode=WAL;")
+                    except Exception:
+                        pass
+                    with closing(conn2) as conn_global:
+                        other_cur = conn_global.cursor()
                         other_cur.execute("SELECT tag, history, timestamp FROM checkpoints ORDER BY timestamp DESC")
                         for tag, history, ts in other_cur.fetchall():
                             global_rows.append((tag, history, ts, other_ws))
@@ -156,8 +226,10 @@ def rollback_checkpoint(workspace: str) -> None:
         else:
             tag, history, ts = item
             src_info = ""
-        try: turns_len = len(json.loads(history))
-        except Exception: turns_len = 0
+        try: 
+            turns_len = len(json.loads(history))
+        except Exception: 
+            turns_len = 0
         date_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(ts))
         sys.stderr.write(f"[{idx}] \033[1;32m{tag}\033[0m ({turns_len} turns){src_info} - {date_str}\n")
         
@@ -168,15 +240,18 @@ def rollback_checkpoint(workspace: str) -> None:
     try:
         key = ""
         while True:
-            if not key: key = get_key()
+            if not key: 
+                key = get_key()
             if not key:
                 sys.stderr.write("\033[?25h\033[1;30mSelect Index: \033[0m")
                 sys.stderr.flush()
                 try:
                     with open("/dev/tty", "r+", encoding="utf-8") as tty_in:
                         key = tty_in.readline().strip()
-                except KeyboardInterrupt: key = '\x1b'
-                except Exception: key = ''
+                except KeyboardInterrupt: 
+                    key = '\x1b'
+                except Exception: 
+                    key = ''
             if key in ('\x03', '\x1b', 'q', 'Q', ''):
                 sys.stderr.write("\r\x1b[KCancelled.\n")
                 sys.exit(0)
@@ -184,9 +259,8 @@ def rollback_checkpoint(workspace: str) -> None:
                 selected_item = display_rows[int(key)]
                 if is_global:
                     tag, history, ts, src_ws = selected_item
-                    # Clone the global checkpoint dynamically into your fresh workspace database
                     init_db(workspace)
-                    with closing(sqlite3.connect(db_path, timeout=10)) as conn3:
+                    with closing(connect_db(db_path)) as conn3:
                         cur3 = conn3.cursor()
                         cur3.execute("INSERT OR REPLACE INTO checkpoints (workspace, tag, history, timestamp) VALUES (?, ?, ?, ?)", (workspace, tag, history, int(time.time())))
                         conn3.commit()
@@ -213,7 +287,7 @@ def log_turn(workspace: str, user_msg: str, assistant_msg: str) -> None:
     tokens_str = " ".join([w for w in cleaned.split() if len(w) > 1 and w not in STOP_WORDS])
     
     db_path = os.path.join(SESSIONS_DIR, f"{workspace}.db")
-    with closing(sqlite3.connect(db_path, timeout=10)) as conn:
+    with closing(connect_db(db_path)) as conn:
         cur = conn.cursor()
         cur.execute("INSERT INTO turns (workspace, user_msg, assistant_msg, tokens, timestamp) VALUES (?, ?, ?, ?, ?)", (workspace, user_msg, assistant_msg, tokens_str, int(time.time())))
         conn.commit()
@@ -222,18 +296,18 @@ def log_turn(workspace: str, user_msg: str, assistant_msg: str) -> None:
 def get_turns_count(workspace: str) -> None:
     db_path = os.path.join(SESSIONS_DIR, f"{workspace}.db")
     if os.path.exists(db_path):
-        with closing(sqlite3.connect(db_path, timeout=10)) as conn:
+        with closing(connect_db(db_path)) as conn:
             cur = conn.cursor()
             cur.execute("SELECT COUNT(*) FROM turns WHERE workspace = ?", (workspace,))
             print(cur.fetchone()[0])
     else:
         print(0)
         
+
 def clear_turns(workspace: str) -> None:
-    """Wipes all logged conversational turns from the turns table for this workspace."""
     db_path = os.path.join(SESSIONS_DIR, f"{workspace}.db")
     if os.path.exists(db_path):
-        with closing(sqlite3.connect(db_path, timeout=10)) as conn:
+        with closing(connect_db(db_path)) as conn:
             cur = conn.cursor()
             cur.execute("DELETE FROM turns WHERE workspace = ?", (workspace,))
             conn.commit()
@@ -241,7 +315,8 @@ def clear_turns(workspace: str) -> None:
 
 if __name__ == "__main__":
     args = sys.argv[1:]
-    if not args: sys.exit(1)
+    if not args: 
+        sys.exit(1)
     cmd = args[0]
     if cmd == "show-tok":
         try:
@@ -252,7 +327,8 @@ if __name__ == "__main__":
         except Exception as e:
             sys.stderr.write(f"[session-mgr] Error rendering memory: {e}\n")
         sys.exit(0)
-    if len(args) < 2: sys.exit(1)
+    if len(args) < 2: 
+        sys.exit(1)
     workspace_name = args[1]
     init_db(workspace_name)
     if cmd == "save":
@@ -267,3 +343,9 @@ if __name__ == "__main__":
         get_turns_count(workspace_name)
     elif cmd == "clear":
         clear_turns(workspace_name)
+    elif cmd == "get-sub-id":
+        target_pid = int(args[2]) if len(args) > 2 else os.getppid()
+        print(get_sub_agent_id(workspace_name, target_pid))
+    elif cmd == "cleanup-sub":
+        target_pid = int(args[2]) if len(args) > 2 else os.getppid()
+        cleanup_sub_agent(workspace_name, target_pid)

@@ -91,7 +91,6 @@ def get_local_model_name() -> str:
     import urllib.request as urlreq
     import json
     try:
-        # Standard OpenAI models catalog endpoint in llama-server
         with urlreq.urlopen("http://localhost:8080/v1/models", timeout=0.5) as r:
             data = json.loads(r.read().decode("utf-8"))
             model_path = data["data"][0]["id"]
@@ -107,7 +106,8 @@ def draw_session_box(
     tpm_count: int,
     memory_active: bool,
     active_system_prompt: str,
-    clean_name: str
+    clean_name: str,
+    sub_id: Optional[int] = None
 ) -> None:
     """Draws a clean system status and information frame in the console."""
     version = ""
@@ -134,7 +134,6 @@ def draw_session_box(
     clakey = os.environ.get("CLAUDE_API_KEY")
     opakey = os.environ.get("OPENAI_API_KEY")
 
-    # Orderly cascade mapping to determine display model
     if clakey:
         model_name = os.environ.get("CLAUDE_MODEL", "claude-fable-5")
     elif opakey:
@@ -144,11 +143,16 @@ def draw_session_box(
     elif okey:
         model_name = os.environ.get("OPENROUTER_MODEL", "openrouter/free")
     else:
-        # If offline/local, dynamically fetch the specific GGUF filename
         model_name = get_local_model_name()
 
     box_width = 46
-    title_line = f" >_ Local-AI Agent ({version})" if version else " >_ Local-AI Agent"
+    
+    # Format elegant header badge
+    if sub_id:
+        title_line = f" >_ Local-AI Agent  [sub-agent #{sub_id}]"
+    else:
+        title_line = f" >_ Local-AI Agent ({version})" if version else " >_ Local-AI Agent"
+        
     model_line = f" model:     {model_name}"
     dir_line   = f" directory: {display_dir}"
     skill_line = f" skill:     {clean_name}" if clean_name else " skill:     default"

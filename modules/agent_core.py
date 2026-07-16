@@ -11,16 +11,13 @@ import difflib
 import agent_ui as ui
 import agent_cloud
 
-# Safe, optional loading of spend ledger module
 try:
     import agent_usage as usage_log
 except ImportError:
     usage_log = None
 
-# Create a shared Session object to manage active connection pooling
 _session = requests.Session()
 
-# --- OPTIONAL SPEED-TEST HOOK ---
 try:
     import speed_test
 except ImportError:
@@ -48,7 +45,6 @@ def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float,
         pass
 
 
-# --- FAST-PATH BYTE EXTRACTOR ---
 def extract_stream_content(line_bytes: bytes) -> str:
     """Performs raw byte-level searching to extract streaming tokens."""
     idx = line_bytes.find(b'"content":"')
@@ -79,7 +75,6 @@ def extract_stream_content(line_bytes: bytes) -> str:
         return line_bytes[start:end].decode("utf-8", errors="ignore")
 
 
-# --- CASCADING COMPLETION ENGINES ---
 def stream(messages, prefix, gkey, spinner_class, show_stats: bool = True):
     workspace = os.environ.get("AI_WORKSPACE_PATH", os.getcwd())
     sf = os.path.join(workspace, ".agent", "session.json")
@@ -178,7 +173,6 @@ def stream(messages, prefix, gkey, spinner_class, show_stats: bool = True):
         return None
 
 
-# --- ACTIVE WORKSPACE EDITING AGENT RULES ---
 _EDIT_TOOLS = [
     {"type": "function", "function": {
         "name": "read_file",
@@ -229,19 +223,16 @@ TOOL_VERBS = {
 
 
 def _safe_path(workspace: str, p: str) -> str:
-    """Canonicalizes target paths safely to evaluate directories."""
     root = os.path.realpath(workspace)
     return os.path.realpath(os.path.join(root, os.path.expanduser(p or "")))
 
 
 def _is_outside_workspace(workspace: str, full_path: str) -> bool:
-    """Verifies if a specific path boundary is outside your allowed project workspace."""
     root = os.path.realpath(workspace)
     return full_path != root and not full_path.startswith(root + os.sep)
 
 
 def _run_edit_tool(name: str, args: dict, workspace: str, spinner=None) -> str:
-    """Runs a single local filesystem tool, evaluating security gating profiles."""
     import subprocess
     gates_active = os.environ.get("AI_CONFIRM_GATES", "1") == "1"
 
@@ -249,7 +240,6 @@ def _run_edit_tool(name: str, args: dict, workspace: str, spinner=None) -> str:
         full = _safe_path(workspace, args.get("path", ""))
         outside = _is_outside_workspace(workspace, full)
         
-        # Hard Security: Always prompt if requesting items outside active projects
         if outside or gates_active:
             reason = f"read {full} (OUTSIDE workspace)" if outside else f"read file {args.get('path')}"
             if not sys.stdout.isatty() or not ui.confirm_tool(reason):
@@ -267,7 +257,6 @@ def _run_edit_tool(name: str, args: dict, workspace: str, spinner=None) -> str:
         outside = _is_outside_workspace(workspace, full)
         exists = os.path.exists(full)
         
-        # Local Syntactic Guardrail: Verify Python syntax before committing writes
         if full.endswith(".py"):
             import ast
             try:
@@ -275,14 +264,12 @@ def _run_edit_tool(name: str, args: dict, workspace: str, spinner=None) -> str:
             except SyntaxError as e:
                 return f"[error] Write blocked. Python syntax verification failed: {e.msg} on line {e.lineno}. Please correct this syntax error and try writing again."
                 
-        # Local Syntactic Guardrail: Verify JSON formatting before committing writes
         if full.endswith(".json"):
             try:
                 json.loads(content)
             except Exception as e:
                 return f"[error] Write blocked. JSON validation failed: {e}. Please correct the JSON formatting and try writing again."
 
-        # Colorized Unified Terminal Diff Output
         if sys.stdout.isatty():
             if exists:
                 try:
@@ -313,7 +300,6 @@ def _run_edit_tool(name: str, args: dict, workspace: str, spinner=None) -> str:
             else:
                 sys.stderr.write(f"\033[2m  {args.get('path')} — new file, {len(content.splitlines())} lines\033[0m\n")
 
-        # Confirm before writes
         if outside or gates_active:
             verb = "overwrite" if exists else "create"
             where = f"{full} (OUTSIDE workspace)" if outside else args.get("path")
@@ -354,7 +340,6 @@ def _run_edit_tool(name: str, args: dict, workspace: str, spinner=None) -> str:
         else:
             sys.stderr.write(f"\033[2m  Executing command autonomously: $ {cmd}\033[0m\n")
 
-        # Standard login shell to load developer environment profiles
         shell = os.environ.get("SHELL") or "/bin/sh"
         if spinner:
             spinner.start("running")
@@ -374,10 +359,8 @@ def _run_edit_tool(name: str, args: dict, workspace: str, spinner=None) -> str:
 
 
 def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: int, spinner, show_stats: bool = False) -> str or None:
-    """Executes a multi-turn non-streaming agent round-trip loop supporting tool evaluations."""
     workspace = os.environ.get("AI_WORKSPACE_PATH", os.getcwd())
     
-    # Inject workspace agent configurations to active system instructions in-place
     if messages and messages[0]["role"] == "system":
         if "### EDIT MODE" not in messages[0]["content"]:
             messages[0]["content"] += EDIT_SYSTEM_ADD.format(ws=workspace)
@@ -387,15 +370,13 @@ def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: i
     resolved_model = None
     for _round in range(10):
         body_tools = dict(body)
-        body_tools["messages"] = messages  # CRUCIAL: Send mutated conversation thread containing tool answers
-        body_tools["stream"] = False      # Multi-turn tool execution operates in non-streaming batch mode
+        body_tools["messages"] = messages
+        body_tools["stream"] = False      
         body_tools["tools"] = _EDIT_TOOLS
         
         spinner.start()
-        # Record start time to calculate network latency and t/s metrics
         start_time = time.time()
         try:
-            # Reuses the warm pooled _session connection to bypass socket handshake latency
             res = _session.post(
                 url,
                 json=body_tools,
@@ -415,19 +396,16 @@ def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: i
         msg = choices[0].get("message") or {}
         calls = msg.get("tool_calls")
         
-        # If no tool calls are returned, agent processing is complete
         if not calls:
             ans = msg.get("content") or ""
             if sys.stdout.isatty():
                 sys.stdout.write("\r\x1b[2K\rAgent: ")
             print(ans)
             
-            # Print calculated speed and latency metrics for the final workspace completion turn
             prompt_chars = sum(len(m.get("content", "")) for m in messages)
             in_tok = prompt_chars // 4
             out_tok = len(ans) // 4
             
-            # Extract server-side generation timings if returned by llama-server
             timings = resp.get("timings") or {}
             pred_ms = timings.get("predicted_ms")
             if pred_ms and isinstance(pred_ms, (int, float)):
@@ -440,13 +418,11 @@ def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: i
                 sys.stdout.write(f"\033[90m [{out_tok} tokens | {generation_time:.2f}s | {tps:.2f} t/s]\033[0m\n")
                 sys.stdout.flush()
             
-            # Log and display token and context metrics for the workspace turn
             _log_turn_usage(resolved_model or body.get("model") or "local-model",
                             in_tok, out_tok, 0.0, show_stats, in_tok + out_tok)
             
             return ans
             
-        # Append the assistant's intent to use tools
         messages.append(msg)
         
         for tc in calls:
@@ -470,7 +446,6 @@ def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: i
                 if spinner:
                     spinner.stop()
                     
-            # Record the tool output so the model sees the execution result in its next loop iteration
             messages.append({
                 "role": "tool",
                 "tool_call_id": tc.get("id", ""),
@@ -485,10 +460,8 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
     acc = []
     spinner = ui.InlineSpinner()
     try:
-        # Load API connections dynamically from the external cloud mapping module
         configs = agent_cloud.get_active_configs(messages)
 
-        # Set up local model payload with universal template reasoning overrides
         local_extra = {}
         if thinking_budget and thinking_budget > 0:
             local_extra["thinking_budget_tokens"] = thinking_budget
@@ -503,11 +476,9 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
             **local_extra
         }
         
-        # Append the local endpoint to the bottom of the execution order list
         configs.append(("http://localhost:8080/v1/chat/completions", {}, local_body, 180))
 
         for url, headers, body, timeout in configs:
-            # If running as active agentic workspace session, route through multi-round tool execution loop
             if is_agent:
                 ans = agentic_turn(messages, url, headers, body, timeout, spinner, show_stats)
                 if ans is not None:
@@ -578,7 +549,6 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
                         in_tok = prompt_chars // 4
                         out_tok = len(ans_text) // 4
                         
-                        # Process daily billing ledger calculations
                         _log_turn_usage(resolved_model or body.get("model") or url.split('/')[2],
                                         in_tok, out_tok, 0.0, show_stats, in_tok + out_tok)
 
@@ -602,8 +572,10 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
                     sys.stderr.write(f"\033[90m[sys] {host} failed: {e}\033[0m\n")
                     break
     except KeyboardInterrupt:
-        try: spinner.stop()
-        except Exception: pass
+        try: 
+            spinner.stop()
+        except Exception: 
+            pass
         sys.stderr.write("\n\r\x1b[2K\r[sys] Interrupted.\n")
         sys.stderr.flush()
         return "".join(acc) if 'acc' in locals() else None
@@ -612,7 +584,6 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
 
 def get_accurate_token_count(text: str, server_url: str = "http://localhost:8080") -> int:
     try:
-        # Use the pooled _session object to drastically reduce connection handshake latency
         res = _session.post(f"{server_url}/tokenize", json={"content": text}, timeout=3)
         return len(res.json().get("tokens", []))
     except Exception:
@@ -630,6 +601,7 @@ def show_memory_status(messages: list, max_context: int = 8192, server_url: str 
     sys.stderr.write(f"\033[2m[sys] Remaining: {max_context - total_toks} tokens\033[0m\n\n")
     sys.stderr.flush()
     
+
 def prune_history(history: list, max_tokens: int = None) -> list:
     """Prunes old messages from conversation history to stay within context windows."""
     if len(history) <= 1:

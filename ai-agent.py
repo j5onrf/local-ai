@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.9.2.5]
+# Local-Ai Agent [j5onrf] [v0.9.3.0]
 
 import json
 import os
@@ -124,7 +124,6 @@ def validate_flat_schema(data: dict) -> bool:
     try:
         if not isinstance(data, dict):
             return False
-        # Ensure every key and value in the dictionary is a non-empty string
         return all(isinstance(k, str) and k.strip() and isinstance(v, str) for k, v in data.items())
     except Exception:
         return False
@@ -199,13 +198,11 @@ def background_tpm_update(user_msg: str, assistant_msg: str, workspace: str, wor
 
         llm_out = re.sub(r"^```json\s*|\s*```$", "", llm_out, flags=re.IGNORECASE).strip()
         
-        # Safely attempt to decode the JSON stream
         try:
             parsed_json = json.loads(llm_out)
         except Exception:
             parsed_json = None
 
-        # Verify the structure is strictly a flat string-to-string dictionary
         if parsed_json and validate_flat_schema(parsed_json):
             mem_tool = f"{CFG_DIR}/modules/ai-agent-memories"
             _run_cmd([sys.executable, mem_tool, "tpm-reconcile", workspace], json.dumps(parsed_json))
@@ -219,11 +216,21 @@ def background_tpm_update(user_msg: str, assistant_msg: str, workspace: str, wor
         pass
 
 
-# Helper to stream and count tokens for the speed-test (updated with reasoning budget support)
 def stream_llm_response(
     messages: list, prefix: str = "AI: ", show_stats: bool = True, thinking_budget: int = 0, is_agent: bool = False
 ) -> str or None:
     return core.stream_response(messages, prefix, CFG_DIR, show_stats, thinking_budget, is_agent)
+
+
+def clean_exit(safe_name: str = None) -> None:
+    """Cleans up visual sub-agent registration trackers cleanly before process termination."""
+    if safe_name:
+        try:
+            _run_cmd([sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "cleanup-sub", safe_name, str(os.getpid())])
+        except Exception:
+            pass
+    print("\r\033[1;33mExiting conversation.\033[0m")
+    sys.exit(0)
 
 
 def run_interactive_chat(args: list):
@@ -241,11 +248,9 @@ def run_interactive_chat(args: list):
         " ".join(skills_list), SKILLS_DIR, CFG_DIR
     )
     
-    # 1. Select the dynamic base prompt based on workspace or conversational status
     if is_agent:
         base_p = BASE_PROMPT_AGENT
     else:
-        # Load the warm chat baseline by default for conversational sessions
         base_p = BASE_PROMPT_CHAT if not skills_list else BASE_PROMPT
     
     active_system_prompt = (
@@ -269,7 +274,6 @@ def run_interactive_chat(args: list):
     pending_query = " ".join(args[1:]) if len(args) > 1 else None
     clean_name = " ".join(skills_list)
 
-    # Load persistent configurations from localized .state.json, defaulting all to True (Enabled)
     spell_active = True
     show_stats = True
     memory_active = True
@@ -284,15 +288,29 @@ def run_interactive_chat(args: list):
         except Exception:
             pass
             
-    # Reasoning parameters
-    reasoning_active = False # Disabled by default inside CLI chat loops
-    reasoning_budget = 500   # Default budget allocation when active
+    reasoning_active = False
+    reasoning_budget = 500
 
     if is_agent:
         sync_md_to_sqlite(safe_name, workspace_path)
 
     db_turns, tpm_count = workspace_db_counts(safe_name) if is_agent else (0, 0)
-    ui.draw_session_box(workspace_path, home_dir, is_agent, db_turns, tpm_count, memory_active, active_system_prompt, clean_name)
+    
+    # Query the sub-agent ID dynamically on startup
+    sub_id = None
+    if is_agent:
+        try:
+            sub_id_str = _run_cmd([sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "get-sub-id", safe_name, str(os.getpid())])
+            # Only render badge if sub_id_str is greater than 0
+            if sub_id_str.isdigit() and int(sub_id_str) > 0:
+                sub_id = int(sub_id_str)
+        except Exception:
+            pass
+
+    ui.draw_session_box(
+        workspace_path, home_dir, is_agent, db_turns, tpm_count, memory_active, 
+        active_system_prompt, clean_name, sub_id=sub_id
+    )
 
     try:
         while True:
@@ -311,19 +329,16 @@ def run_interactive_chat(args: list):
                 if not query:
                     continue
                 if query.lower() in ("exit", "quit", "q"):
-                    print("\r\033[1;33mExiting conversation.\033[0m")
-                    sys.exit(0)
+                    clean_exit(safe_name if is_agent else None)
                 # --- SPELLCHECKER TOGGLE (/spell or /sp) ---
                 if query in ("/spell", "/sp"):
                     spell_active = not spell_active
-                    # Commit the change persistently to your local state file
                     _save_state("spell_active", spell_active)
                     print(f"\033[1;32m[sys] Spellchecker {'enabled' if spell_active else 'disabled'}.\033[0m\n")
                     continue
                 # --- UNIFIED MEMORY LAYER TOGGLE (/m) ---
                 if query == "/m":
                     memory_active = not memory_active
-                    # Commit the change persistently to your local state file
                     _save_state("memory_active", memory_active)
                     print(
                         f"\033[1;32m[sys] Long-term memory and TPM reconciliation {'enabled' if memory_active else 'disabled'}.\033[0m\n"
@@ -362,7 +377,7 @@ def run_interactive_chat(args: list):
                 # --- STATS ON-DEMAND TOGGLE ---
                 if query == "/stats":
                     show_stats = not show_stats
-                    _save_state("show_stats", show_stats)  # <-- Executes the save
+                    _save_state("show_stats", show_stats)  
                     print(
                         f"\033[1;32m[sys] Generation statistics {'enabled' if show_stats else 'disabled'}.\033[0m\n"
                     )
@@ -373,11 +388,9 @@ def run_interactive_chat(args: list):
                     sys.stdout.write("\033[2m[sys] Syncing and recompiling codespace map...\033[0m\r")
                     sys.stdout.flush()
                     
-                    # 1. Run the background index-map compiler
                     map_tool = f"{CFG_DIR}/tools/map/index-map"
                     subprocess.run([sys.executable, map_tool, workspace_path])
                     
-                    # 2. Re-read the newly compiled flat text summary
                     proj_name = os.path.basename(workspace_path)
                     txt_path = os.path.join(workspace_path, f"index-map-{proj_name}.txt")
                     if os.path.exists(txt_path):
@@ -385,7 +398,6 @@ def run_interactive_chat(args: list):
                             with open(txt_path, "r", encoding="utf-8") as f:
                                 new_shorthand = f.read().strip()
                                 
-                            # 3. Dynamically update the codespace map inside chat_history in-place
                             updated_map = False
                             for msg in chat_history:
                                 if "### CODESPACE MAP:" in msg["content"]:
@@ -437,7 +449,7 @@ def run_interactive_chat(args: list):
                     elif action == "DISABLE":
                         spell_active = False
 
-            if query.startswith(("/skill", "/s")) or query.startswith(("/skill ", "/s ")):
+            if query.startswith(("/", "-")) and (query.startswith(("/skill", "/s")) or query.startswith(("/skill ", "/s "))):
                 res = subprocess.run([sys.executable, f"{CFG_DIR}/modules/agent_skills.py", safe_name, query], input=json.dumps(chat_history), stdout=subprocess.PIPE, text=True)
                 if res.stdout.strip():
                     try:
@@ -493,7 +505,6 @@ def run_interactive_chat(args: list):
             if is_init_map:
                 prompt = f"### SYSTEM INSTRUCTIONS (CRITICAL OVERRIDE):\n{active_system_prompt}\n\n### CODESPACE MAP:\n{query}"
             else:
-                # Secure Bypass: Do not trigger codebase tools or file reads on the startup initialization turn
                 if query.startswith("init") and "--init" in query:
                     sys_ctx = ""
                 else:
@@ -512,7 +523,6 @@ def run_interactive_chat(args: list):
                 except Exception:
                     pass
 
-            # Explicitly passes your dynamic show_stats state parameter and reasoning budget
             ans = stream_llm_response(
                 chat_history,
                 prefix="Agent:" if is_agent else "AI:",
@@ -545,8 +555,7 @@ def run_interactive_chat(args: list):
                         except Exception:
                             pass
     except KeyboardInterrupt:
-        print("\n\r\033[1;33mExiting conversation.\033[0m")
-        sys.exit(0)
+        clean_exit(safe_name if is_agent else None)
 
 
 def run_direct_query(args: list):
@@ -561,7 +570,7 @@ def run_direct_query(args: list):
     sys_ctx = skills.get_system_context(query, CONTEXT_FILE, STOP_WORDS, SKILLS_DIR, CFG_DIR)
 
     if sys_ctx == "__ABORT_TURN__":
-        sys_exit(130)
+        sys.exit(130)
 
     messages = [
         {"role": "system", "content": active_system_prompt},

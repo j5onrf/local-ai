@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# File: ~/.config/local-ai/modules/ai-agent-memories [v0.8.9.12]
+# File: ~/.config/local-ai/modules/ai-agent-memories [v0.9.3.0]
 # Description: SQLite-backed semantic recall and Temporal Personality Memory (TPM) manager
 
 import sys
@@ -39,13 +39,25 @@ except ImportError:
             termios.tcsetattr(fd, termios.TCSADRAIN, old)
 
 
+def connect_db(db_path: str) -> sqlite3.Connection:
+    """Wrapper to generate WAL-enabled concurrent SQLite connections with safety timeouts."""
+    conn = sqlite3.connect(db_path, timeout=30.0)
+    try:
+        conn.execute("PRAGMA journal_mode=WAL;")
+    except Exception:
+        pass
+    return conn
+
+
 def search_past_context(workspace: str, query: str) -> None:
     """Semantic Recall: Searches and injects highly relevant past conversation turns."""
     q_tokens = set(tokenize(query))
-    if not q_tokens: return
+    if not q_tokens: 
+        return
     db_path = os.path.join(SESSIONS_DIR, f"{workspace}.db")
-    if not os.path.exists(db_path): return
-    with closing(sqlite3.connect(db_path, timeout=10)) as conn:
+    if not os.path.exists(db_path): 
+        return
+    with closing(connect_db(db_path)) as conn:
         cur = conn.cursor()
         cur.execute("SELECT user_msg, assistant_msg, tokens, timestamp FROM turns WHERE workspace = ?", (workspace,))
         rows = cur.fetchall()
@@ -55,7 +67,8 @@ def search_past_context(workspace: str, query: str) -> None:
         score = len(q_tokens & t_tokens) / len(q_tokens | t_tokens) if (q_tokens & t_tokens) else 0.0
         if score >= 0.35:
             candidates.append((score, user_msg, assistant_msg, ts))
-    if not candidates: return
+    if not candidates: 
+        return
     candidates.sort(key=lambda x: -x[0])
     num_opts, current_idx = len(candidates), 0
     sys.stderr.write("\033[?25l")
@@ -65,7 +78,8 @@ def search_past_context(workspace: str, query: str) -> None:
             _, user_msg, assistant_msg, ts = candidates[current_idx]
             idx_str = f"[{current_idx + 1:02d}/{num_opts:02d}] ❯ " if num_opts > 1 else ""
             disp = user_msg.strip().replace("\n", " ")
-            if len(disp) > 40: disp = disp[:47] + "..."
+            if len(disp) > 40: 
+                disp = disp[:47] + "..."
             date_str = time.strftime('%Y-%m-%d %H:%M', time.localtime(ts))
             sys.stderr.write(f"\r\x1b[K\033[2m{idx_str}[memory] ({date_str})\033[0m\n\r\x1b[K\033[3m   \"{disp}\"\033[0m [↵ load  d: disable  Esc/Arrows: skip]: ")
             sys.stderr.flush()
@@ -106,7 +120,7 @@ def tpm_reconcile(workspace: str) -> None:
     if not parsed or not isinstance(parsed, dict):
         sys.exit(0)
     db_path = os.path.join(SESSIONS_DIR, f"{workspace}.db")
-    with closing(sqlite3.connect(db_path, timeout=10)) as conn:
+    with closing(connect_db(db_path)) as conn:
         cur = conn.cursor()
         now = int(time.time())
         for k, v in parsed.items():
@@ -125,7 +139,7 @@ def tpm_get(workspace: str) -> None:
     if not os.path.exists(db_path):
         return
     try:
-        with closing(sqlite3.connect(db_path, timeout=10)) as conn:
+        with closing(connect_db(db_path)) as conn:
             cur = conn.cursor()
             cur.execute("SELECT key, value FROM tpm_memories ORDER BY key")
             rows = cur.fetchall()
@@ -143,7 +157,7 @@ def tpm_clear(workspace: str) -> None:
     """Wipes all compiled facts from the tpm_memories table."""
     db_path = os.path.join(SESSIONS_DIR, f"{workspace}.db")
     if os.path.exists(db_path):
-        with closing(sqlite3.connect(db_path, timeout=10)) as conn:
+        with closing(connect_db(db_path)) as conn:
             cur = conn.cursor()
             cur.execute("DELETE FROM tpm_memories")
             conn.commit()
@@ -154,7 +168,7 @@ def get_tpm_count(workspace: str) -> None:
     db_path = os.path.join(SESSIONS_DIR, f"{workspace}.db")
     if os.path.exists(db_path):
         try:
-            with closing(sqlite3.connect(db_path, timeout=10)) as conn:
+            with closing(connect_db(db_path)) as conn:
                 cur = conn.cursor()
                 cur.execute("SELECT COUNT(*) FROM tpm_memories")
                 print(cur.fetchone()[0])
@@ -166,7 +180,8 @@ def get_tpm_count(workspace: str) -> None:
 
 if __name__ == "__main__":
     args = sys.argv[1:]
-    if len(args) < 2: sys.exit(1)
+    if len(args) < 2: 
+        sys.exit(1)
     cmd, workspace_name = args[0], args[1]
     if cmd == "get-context":
         search_past_context(workspace_name, args[2] if len(args) > 2 else "")

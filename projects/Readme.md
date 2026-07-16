@@ -7,7 +7,7 @@ Local agent workspaces, dynamic memories, save checkpoints, and codebase mapping
 :: ↵ run  Esc: 
 ✔ Mapping complete! [session-test index-map & SQLite graph database updated]
 ╭──────────────────────────────────────────────╮
-│  >_ Local-Ai Agent                           │
+│  >_ Local-AI Agent  [sub-agent #1]           │
 │                                              │
 │  model:     Qwen3.6-35B-A3B-claude-4.7.gguf  │
 │  directory: ...-ai/projects/session-test     │
@@ -50,12 +50,13 @@ Agent: Understood. I have noted your preferences:
 
 ## 1. Directory Structure
 *   `~/.config/local-ai/projects/database/*.db`: Isolated SQLite database managing history per workspace.
+*   `~/.config/local-ai/.active_sessions/`: Ephemeral directory managing process tracking PIDs.
 *   `~/.config/local-ai/.spend_ledger.json`: Local-only daily token and API cost ledger (git-ignored).
 *   `~/<workspace>/.agent/session.json`: Secure server-side tracking key for cloud APIs.
-*   `~/<workspace>/.agent/tpm.md`: Human-readable personal facts, editable by hand.
+*   `~/<workspace>/.agent/tpm.md`: Unified, human-readable personal facts, editable by hand.
 *   `~/<workspace>/index-map-<project>.txt`: Codebase structural blueprint compiled.
 *   `~/<workspace>/index-map-memory-<project>.db`: Active SQLite-backed relational knowledge graph.
-*   `~/<workspace>/history.md`: Chronological Markdown conversation ledger.
+*   `~/<workspace>/history.md`: Shared chronological Markdown conversation ledger.
 
 ## 2. In-Session Commands
 *   **`/clear` / `/reset`**: Wipes local history, deletes cloud session, deletes `history.md`, and SQL-deletes your facts/turns.
@@ -77,14 +78,7 @@ Agent: Understood. I have noted your preferences:
 *   **Whole-File Context**: `❯ view file <filename>` (or `read`/`show`). Runs a local `cat` behind the scenes to append file contents into the context.
 *   **Snippet-Specific Context**: `❯ read function <symbol>`. Queries the relational index database and extracts *only* the specific function or class source code block based on line offsets, saving up to 95% in token overhead.
 
-## 5. Security & Execution Isolation
-*   **Mode Segregation**: Standard conversational sessions (`ai`) and single-shot queries (`ai <query>`) operate in strict **read-only** mode. Active file-editing and command execution capabilities are strictly restricted to workspace agent sessions (`ai init`).
-*   **Workspace Boundary Lock**: Even when confirmation gates are disabled (`/g`), any attempt by the agent to read, write, or list files outside the active workspace directory (e.g., in `~` or system root `/`) **always** forces a manual `[Y/n]` authorization prompt.
-*   **Visual Line-Diffs**: Before applying any file modification, the agent renders a colorized unified line-diff directly in your terminal so changes can be inspected before approval.
-*   **Docker & Symlinking**: Run the agent inside a Docker container to isolate the execution context entirely from your host. You can symlink your local clone (`~/.config/local-ai`) into the container's volume mount directories, allowing you to modify files locally on your host while safely executing and testing them inside a secure sandbox.
-*   **Vetting**: Scan all custom skills with [NVIDIA SkillSpector](https://github.com/NVIDIA/SkillSpector) before importing.
-
-## 6. Codebase Graph Mapper & Relational Index
+## 5. Codebase Graph Mapper & Relational Index
 *   **Command:** `index-map <dir>` (or automatically executed on startup if the flat map `.txt` or relational `.db` is missing/outdated).
 *   **Core Capabilities:**
     *   *In-Process Vector Space (sqlite-vec)*: Integrates `sqlite-vec` to automatically embed and search raw codeblocks conceptually. Automatically probes and calibrates your active local embedding server dimensions (e.g. 384, 512, 1024) at startup and populates a parallel virtual `nodes_vec` table mapped using SQLite's implicit `rowid` [1.1.9, 1.3.9].
@@ -94,20 +88,28 @@ Agent: Understood. I have noted your preferences:
     *   *Human-in-the-Loop RAG*: Maps intent triggers to graph and vector queries, prompting for authorization before injecting call trees, semantic search matches, and function snippets into the context.
     *   *Images & Binaries*: Decodes sizes and dimensions of image assets (PNG/JPG/GIF/SVG) directly from binary headers in microseconds.
 
-## 7. Context Limits
-*   **Inline Override:** `AI_MAX_TOKENS=16000 session-test`
-*   **Global Override:** `AI_MAX_TOKENS=16000`
-
-## 8. Temporal Personality Memory (TPM)
+## 6. Temporal Personality Memory (TPM)
 *   **Origins**: Combines Weaviate Engram's SQLite active reconciliation loop with Noema's hand-editable, local Markdown file system.
 *   **Background Extraction**: Spawns a background thread on completion to extract facts without delay.
 *   **Dynamic Sync**: Manual edits made to `.agent/tpm.md` are synced back into SQLite at bootup.
 *   **Reconciliation**: SQL `INSERT OR REPLACE` overwrites old contradictory facts cleanly.
 
-## 9. Decentralized Workspace Subagents
+## 7. Workspace Subagents
 *   **Origins**: Inspired by the modular, context-isolated subagent designs of Vercel's [Eve](https://github.com/vercel/eve).
-*   **Asynchronous Context Isolation**: Instead of loading all guidelines into a single, expensive, thread-blocking system prompt, you can parallelize tasks across independent terminal panes:
-    *   *Branching (`-save <tag>`)*: Commit your active session state and conversational history directly to your workspace database.
-    *   *Sandboxing (`-load`)*: Open a new terminal pane, initialize a fresh workspace clone (`ai init`), and execute `-load` to clone your saved session checkpoint over the Global Handoff. The subagent works with a completely clean, isolated context window.
-    *   *Merging (`/sync`)*: Once the subagent finishes making its file modifications, return to your main agent terminal and run `/sync`. The main agent instantly ingests the modifications directly into its relational call-graph and vector space database without losing any of its active conversational history.
-
+*   **Asynchronous Context Isolation**: You can parallelize development tasks across independent terminal panes (e.g., using Tmux, Kitty, or WezTerm windows). Each terminal acts as an active workspace partner:
+    *   *Visual Tracking Badges*: Standalone agents launch clean without visual clutter. If you open a second terminal for the same codebase, the discovery registry dynamically assigns sequential badges (e.g., `[sub-agent #1]`, `[sub-agent #2]`) to help you keep track of your active panes.
+    *   *Self-Cleaning Process Registry*: Ephemeral files in `.active_sessions/` track active PIDs. Stale files from unexpected window closures are automatically garbage-collected on the next initialization.
+    *   *Safe SQLite Concurrency*: SQLite WAL (Write-Ahead Logging) mode and busy timeouts are configured across all modules. If multiple agents attempt concurrent database writes (e.g., during turn logging or memory commits), operations are queued cleanly without write locks.
+    *   *Unified Preferences (TPM)*: Reconciled facts are updated globally in SQLite and output to `~/<workspace>/.agent/tpm.md`. This ensures parallel agents always align with your style preferences.
+    *   *Sequence Log*: Sub-agents write their completions sequentially back to the main `history.md` markdown file, maintaining an ordered chronological record of all file edits and conversations.
+    
+## 8. Security & Execution Isolation
+*   **Mode Segregation**: Standard conversational sessions (`ai`) and single-shot queries (`ai <query>`) operate in strict **read-only** mode. Active file-editing and command execution capabilities are strictly restricted to workspace agent sessions (`ai init`).
+*   **Workspace Boundary Lock**: Even when confirmation gates are disabled (`/g`), any attempt by the agent to read, write, or list files outside the active workspace directory (e.g., in `~` or system root `/`) **always** forces a manual `[Y/n]` authorization prompt.
+*   **Visual Line-Diffs**: Before applying any file modification, the agent renders a colorized unified line-diff directly in your terminal so changes can be inspected before approval.
+*   **Docker & Symlinking**: Run the agent inside a Docker container to isolate the execution context entirely from your host. You can symlink your local clone (`~/.config/local-ai`) into the container's volume mount directories, allowing you to modify files locally on your host while safely executing and testing them inside a secure sandbox.
+*   **Vetting**: Scan all custom skills with [NVIDIA SkillSpector](https://github.com/NVIDIA/SkillSpector) before importing.
+    
+## 9. Context Limits
+*   **Inline Override:** `AI_MAX_TOKENS=16000 session-test`
+*   **Global Override:** `AI_MAX_TOKENS=16000`

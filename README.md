@@ -2,7 +2,7 @@
   <img alt="Local-AI Agent" src="https://github.com/j5onrf/local-ai/blob/main/logo.png" width="800" />
 </p>
 
-<h1 align="center">Local-AI Agent <kbd>v0.9.2.5-beta</kbd></h1>
+<h1 align="center">Local-AI Agent <kbd>v0.9.3.0-beta</kbd></h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
@@ -90,7 +90,7 @@ Agent: Workspace loaded. Awaiting instructions.
 | **Integration** | **Dynamic Context** | On-demand compilation of system specs and file contents. |
 | **Optimization** | **Token-Slasher** | Custom [`tool`](https://github.com/j5onrf/fetch/tree/main/tools) and [`skill`](https://github.com/j5onrf/fetch/tree/main/skills) integration built for minimal token use. |
 | **Interface** | **Conversational TUI** | Rich, multi-turn chat sessions directly in the terminal. |
-| **Auditability** | **Zero-Dependency** | Under 500 lines of modular, standard-library Python. |
+| **Auditability** | **Zero-Dependency** | Under 700 lines of modular, standard-library Python. |
 
 ---
 

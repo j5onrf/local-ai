@@ -12,6 +12,7 @@ index-map-local-ai.txt
 .env
 .state.json
 tools/email/.email
+.active_sessions
 
 # Ignore Python cache directories and bytecode
 __pycache__/
