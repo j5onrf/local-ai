@@ -35,7 +35,7 @@ All configurations and custom shortcuts are managed in [`ai-context.md`](ai-cont
 │                                              │
 │  model:     Qwen3.6-35B-A3B-claude-4.7.gguf  │
 │  directory: ...-ai/projects/session-test     │
-│  skill:     init codef                       │
+│  skill:     init                             │
 │  database:  active (3 facts, 109 turns)      │
 ╰──────────────────────────────────────────────╯
 [sys] Startup context: 210 tokens | Ctrl+C to exit.

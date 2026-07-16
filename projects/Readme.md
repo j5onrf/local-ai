@@ -11,7 +11,7 @@ Local agent workspaces, dynamic memories, save checkpoints, and codebase mapping
 │                                              │
 │  model:     Qwen3.6-35B-A3B-claude-4.7.gguf  │
 │  directory: ...-ai/projects/session-test     │
-│  skill:     init                             │
+│  skill:     init codeb                       │
 │  database:  active (3 facts, 26 turns)       │
 ╰──────────────────────────────────────────────╯
 [sys] Startup context: 160 tokens | Ctrl+C to exit.
