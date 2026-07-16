@@ -1,7 +1,7 @@
 # Local-AI Agent Blueprint
 
 > **Syntax**: `[command / execution] ──> [intent1], [intent2], [intent3]`  
-> **Delimiter**: `" ──> "` (Three-dash arrow with a trailing space)
+> **Delimiter**: `" ---> "` (Three-dash arrow with a trailing space)
 
 ---
 
@@ -13,30 +13,20 @@
 
 ---
 
-## Active Session / Workspace / Projects
+## 1. Active Workspaces & Session Control
 
 ```properties
-# --- Session-Test - This is a Project Workspace (Skill-Primed) --
+# --- Active Project Workspace Initialization ---
 ai init ~/.config/local-ai/projects/session-test --init ---> session test, projects session, projects
 ai init ~/.config/local-ai/projects/session-test-2 --init ---> session test 2, projects session, projects
 ai init ~/.config/local-ai/projects/session-test-3 --init ---> session test 3, projects session, projects
 ```
 
-## Core Session & Context Retrieval
+## 2. Codebase Mapping & Relational Context
 
 ```properties
-# --- Dynamic File Reader ---
-[TOOL] cat $1 ---> view file, read file, show file, vf
-
-# --- Active Workspace Memory Viewer ---
-[TOOL] mdcat .agent/tpm.md | less -R ---> show memories, mem
-# --- Active Workspace Memory Searcher ---
-[TOOL] read -p "Search Memories: " query && mdcat .agent/tpm.md | grep --color=always -A 5 -B 2 -i "$query" ---> search memories, ms
-
-# --- Active Workspace History Viewer ---
-[TOOL] mdcat history.md | less -R ---> show history, hist, history
-# --- Active Workspace History Searcher ---
-[TOOL] read -p "Search Page: " query && mdcat history.md | grep --color=always -A 15 -B 2 -i "$query" ---> search page, hs
+# --- Index-Map (Graph-Enabled Code Intelligence Engine) ---
+[TOOL] ~/.config/local-ai/tools/map/index-map --cat ---> index map, imap
 
 # --- Codebase Structural Tracing & Snippet Retrieval ---
 [TOOL] ~/.config/local-ai/tools/map/index-map trace $1 --cat ---> trace symbol
@@ -48,15 +38,36 @@ ai init ~/.config/local-ai/projects/session-test-3 --init ---> session test 3, p
 [TOOL] ~/.config/local-ai/tools/map/index-map search $1 --cat ---> find symbol, semantic search, find concept, search code
 ```
 
-## 1. Dynamic Context-Injected Tools (RAG)
+## 3. Core Retrieval, Scraping & Web Research
 
 ```properties
-# --- Firecrawl Web Scraper (Live URL Markdown Ingestion) ---
-[TOOL] ~/.config/local-ai/tools/agentic/web/firecrawl $1 ---> firecrawl, scrape website, scrape url, extract text
+# --- Web-Reader (Web Scraper & YouTube Subtitle Extractor) ---
+[TOOL] ~/.config/local-ai/tools/agentic/web/web-reader web $1 ---> web reader, webr
+[TOOL] ~/.config/local-ai/tools/agentic/web/web-reader youtube $1 ---> web reader yt, webr
 
-# --- Dynamic Host Profiler & System Analytics ---
-[TOOL] cat ~/.config/local-ai/skills/system/mysys.md --leaf ---> mysys, show mysys, view sys, mysys doc
-[TOOL] ~/.config/local-ai/tools/generate-profile ---> generate profile, update sys profile, sync mysys
+# --- Dynamic File Reader ---
+[TOOL] cat $1 ---> view file, read file, show file, vf
+
+# --- Active Workspace Memory Viewer & Searcher ---
+[TOOL] mdcat .agent/tpm.md | less -R ---> show memories, mem
+[TOOL] read -p "Search Memories: " query && mdcat .agent/tpm.md | grep --color=always -A 5 -B 2 -i "$query" ---> search memories, ms
+
+# --- Active Workspace History Viewer & Searcher ---
+[TOOL] mdcat history.md | less -R ---> show history, hist, history
+[TOOL] read -p "Search Page: " query && mdcat history.md | grep --color=always -A 15 -B 2 -i "$query" ---> search page, hs
+```
+
+## 4. System Diagnostics & Performance Optimization
+
+```properties
+# --- AI Status & Provider Diagnostics ---
+[TOOL] ~/.config/local-ai/tools/agentic/system/ai-status --s ---> ai status, aistat, status, aistatus 
+
+# --- System Resources & Diagnosis (System Health) ---
+[TOOL] ~/.config/local-ai/tools/agentic/system/system-health ---> system health, sysh, health, system diagnosis, why is my system slow
+
+# --- System Logs & Diagnostics (Compressed Stream Triage) ---
+[TOOL] ~/.config/local-ai/tools/agentic/system/log-checker ---> log checker, ailog, log check, check errors, system crashed, events
 
 # --- Pre-Install Zero-Trust AUR Package & PKGBUILD Auditor ---
 [TOOL] ~/.config/local-ai/tools/agentic/system/aur-audit ---> aur audit, audit package
@@ -67,17 +78,12 @@ ai init ~/.config/local-ai/projects/session-test-3 --init ---> session test 3, p
 # --- System Optimization (Improve System Performance) ---
 [TOOL] ~/.config/local-ai/tools/agentic/system/system-optimizer --leaf ---> system optimizer, sysop, optimize
 
-# --- System Logs & Diagnostics (Compressed Stream Triage) ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/log-checker ---> log checker, ailog, log check, check errors, system crashed, events
+# --- Dynamic Host Profiler & System Analytics ---
+[TOOL] cat ~/.config/local-ai/skills/system/mysys.md --leaf ---> mysys, show mysys, view sys, mysys doc
+[TOOL] ~/.config/local-ai/tools/generate-profile ---> generate profile, update sys profile, sync mysys
 
-# --- System Resources & Diagnosis (System Health) ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/system-health ---> system health, sysh, health, system diagnosis, why is my system slow
-
-# --- Pending Updates ---
+# --- Pending System Updates ---
 [TOOL] ~/.config/local-ai/tools/agentic/system/update-inspector --leaf ---> update inspector, inspector, ui
-
-# --- AI Status & Provider Diagnostics ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/ai-status --s ---> ai status, aistat, status, aistatus 
 
 # --- Weather & Live Networking ---
 [TOOL] curl -s "wttr.in/?format=3" --cat ---> weather simple, wttr, weather, rain forecast simple
@@ -85,82 +91,49 @@ ai init ~/.config/local-ai/projects/session-test-3 --init ---> session test 3, p
 
 # --- System Time & Date (Real-time Clock Context) ---
 [TOOL] date "+Current Time: %I:%M:%S %p %Z on %A, %B %d, %Y" ---> time, date, current time, what time is it
-
-# --- Disk Usage ---
-# [TOOL] df -h / ---> disk usage, drive usage
 ```
 
-## 2. Workspace Initializers & Bridges
+## 5. Interactive TUI (Terminal User Interface) Programs
 
 ```properties
-# --- OpenCode Direct Terminal Launcher ---
-# ~/.config/local-ai/tools/subsec/opencode-bridge/opencode-bridge ---> opencode bridge, bridge, ocb
-# --- Odysseus Direct Terminal Launcher ---
-# ~/.config/local-ai/tools/subsec/odysseus-bridge/odysseus-bridge ---> odysseus bridge, bridge, ody, odb
-# --- Hermes Direct Browser Workspace Launcher ---
-# ~/.config/local-ai/tools/subsec/hermes-bridge/hermes-bridge ---> hermes bridge, bridge, hmb, herm
+# --- Dynamic Local-AI Model Select TUI ---
+~/.config/local-ai/modules/model-select.py ---> model select, model selector, model selection, mst
+
+# --- Email TUI Monitor & Inbox Browser ---
+[TOOL] ~/.config/local-ai/tools/email/email-agent ---> list emails, email agent, show unread mails
+
+# --- Custom Basepage & BaseTracker RSS TUI Applications ---
+~/.config/local-ai/tools/subsec/basepage-tui/basepage.py ---> basepage, base, basepage tui, rss
+~/.config/local-ai/tools/subsec/basepage-tui/basetracker.py ---> basetracker, base, basetracker tui
+
+# --- Media & Volume Controllers (Pure Reactive Winamp-TUI) ---
+~/.config/local-ai/tools/subsec/media/media.py ---> tuiamp, winamp, media
+
+# --- Article & YouTube Text-Snippet Summarizers ---
+~/.config/local-ai/tools/subsec/ai-summary/llmsum.py ---> llmsum, ytsum, summary, sum
+
+# --- Local Stopwatch TUI Utility ---
+~/.config/local-ai/tools/subsec/stopwatch/stopwatch.py ---> stopwatch py, sw, stopwatch
+~/.config/local-ai/tools/subsec/stopwatch/stopwatch.sh ---> stopwatch sh, sw, stopwatch
+
+# --- Shell Notes Utility ---
+~/.config/local-ai/tools/subsec/notes/notes.sh ---> notes, open notes, add to notes
+
+# --- Local Window Manager (Hyprland) State Controllers ---
+~/.config/local-ai/tools/subsec/hyprstate/work ---> hyprstate work, work, hs, hyprstate
+~/.config/local-ai/tools/subsec/hyprstate/gitcom ---> hyprstate gitcom, gitcom
+~/.config/local-ai/tools/subsec/hyprstate/gitcom2 ---> hyprstate gitcom 2, gitcom
 ```
 
-## 3. System Prompts & Role Injections (Skills)
+## 6. Graphical Integration & Workspace Launchers
 
 ```properties
-# [TOOL] cat ~/.config/local-ai/skills/identity/business/mybiz.md --leaf ---> mybiz, show business profile, view mybiz
-# [TOOL] cat ~/.config/local-ai/skills/identity/marketing/strategy.md --leaf ---> marketing strategy, growth strategy, view marketing
-# [TOOL] cat ~/.config/local-ai/skills/identity/workout/routine.md --leaf ---> routine, fitness profile, workout routine
-```
-
-## 4. Static Aliases & Shell Shortcuts
-
-```properties
-# --- Email Automation & Secure Alert Dispatcher ---
-[TOOL] ~/.config/local-ai/tools/email/email-agent ---> email agent
-
-# --- Local-Ai Agent Blueprint (CheatSheet) ---
+# --- Local-Ai Agent Blueprint (System CheatSheet Viewer) ---
 ~/.config/local-ai/tools/blueprint --s --leaf ---> cheatsheet, bp, cs, blueprint
 
 # --- AI-Generated Git Commits ---
 ~/.config/local-ai/tools/agentic/system/ai-commit ---> ai-commit, gc, git commit
 
-# --- Index-Map (Graph-Enabled Code Intelligence Engine) ---
-[TOOL] ~/.config/local-ai/tools/map/index-map --cat ---> index map, imap
-
-# --- Server Lifecycle Management ---
-# ~/.config/local-ai/tools/tools/subsec/server/kill-ai-servers ---> killserver, ks
-```
-
-## 5. TUI (Terminal User Interface) Programs
-
-```properties
-# --- Dynamic Local-AI Model Select TUI  ---
-~/.config/local-ai/modules/model-select.py ---> model select, model selector, model selection, mst
-
-# --- Ai-Prompt-Writer-Image - Interactive TUI Console ---
-# [TOOL] ~/.config/local-ai/tools/subsec/prompt/ai-prompt-writer-image --cat ---> prompt writer image, image prompt, ip
-# --- Ai-Prompt-Writer - Interactive TUI Console ---
-# [TOOL] ~/.config/local-ai/tools/subsec/prompt/ai-prompt-writer --cat ---> prompt writer, prompt
-
-# --- Fusion-Research Engine (Compound MoA / Self-Fusion) ---
-# ~/.config/local-ai/tools/agentic/fusion/f_research -r ---> fusion research, fusion, fr, deep research
-# --- AI Deep Research TUI ---
-# ~/.config/local-ai/tools/subsec/research-tui/deep-research ---> deep research, research, dr
-
-# --- Custom TUI Applications ---
-~/.config/local-ai/tools/subsec/basepage-tui/basepage.py ---> basepage, base, basepage tui, rss
-~/.config/local-ai/tools/subsec/basepage-tui/basetracker.py ---> basetracker, base, basetracker tui
-
-# --- Media & Volume Controllers (Pure Reactive) ---
-~/.config/local-ai/tools/subsec/media/media.py ---> tuiamp, winamp, media
-
-# --- Article & YouTube Summarizers ---
-~/.config/local-ai/tools/subsec/ai-summary/llmsum.py ---> llmsum, ytsum, summary, sum
-
-# --- Local-Ai Tablet Voice Bridge ---
-# ~/.config/local-ai/tools/subsec/voice/voice-query ---> voice, voice query, voice bridge
-```
-
-## 6. Graphical Applications & Webapps
-
-```properties
 # --- System App Launcher (Ultra-Light Rofi-TUI) ---
 ~/.config/local-ai/tools/subsec/app-launcher/app-launcher.py ---> app launcher, app
 
@@ -169,27 +142,44 @@ omarchy-launch-webapp https://music.youtube.com/ ---> youtube music, yt, music, 
 nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-spotify-bunker" --app=https://open.spotify.com/ >/dev/null 2>&1 & ---> spotify music, spotify, music
 ```
 
-## 7. Subsection Applications
 
-```properties
-# --- Stopwatch ---
-~/.config/local-ai/tools/subsec/stopwatch/stopwatch.py ---> stopwatch py, sw, stopwatch
-~/.config/local-ai/tools/subsec/stopwatch/stopwatch.sh ---> stopwatch sh, sw, stopwatch
+# =========================================================================
+# === ARCHIVED & LEGACY PROFILES (SKIPPED DURING ACTIVE CONTEXT RUNS) ===
+# =========================================================================
 
-# --- Notes ---
-~/.config/local-ai/tools/subsec/notes/notes.sh ---> notes, open notes, add to notes
+# --- Firecrawl Web Scraper (Replaced by ultra-light web-reader) ---
+# [TOOL] ~/.config/local-ai/tools/agentic/web/firecrawl $1 ---> firecrawl, scrape website, scrape url, extract text
 
-# --- State & Workflow Management ---
-~/.config/local-ai/tools/subsec/hyprstate/work ---> hyprstate work, work, hs, hyprstate
-~/.config/local-ai/tools/subsec/hyprstate/gitcom ---> hyprstate gitcom, gitcom
-~/.config/local-ai/tools/subsec/hyprstate/gitcom2 ---> hyprstate gitcom 2, gitcom
-```
+# --- Workspace Initializers & Bridges ---
+# [TOOL] ~/.config/local-ai/tools/subsec/opencode-bridge/opencode-bridge ---> opencode bridge, bridge, ocb
+# [TOOL] ~/.config/local-ai/tools/subsec/odysseus-bridge/odysseus-bridge ---> odysseus bridge, bridge, ody, odb
+# [TOOL] ~/.config/local-ai/tools/subsec/hermes-bridge/hermes-bridge ---> hermes bridge, bridge, hmb, herm
 
-## 8. Testing (Concepts & Prototypes)
-```properties
-# --- Pixel-Browse - Headless Visual Web Ingestion (((wip))) ---
-[TOOL] ~/.config/local-ai/tools/subsec/headless-chromium/pixel-browse --cat ---> pixel browse, headless, chromium, pixel browser
+# --- System Prompts & Role Injections (Skills) ---
+# [TOOL] cat ~/.config/local-ai/skills/identity/business/mybiz.md --leaf ---> mybiz, show business profile, view mybiz
+# [TOOL] cat ~/.config/local-ai/skills/identity/marketing/strategy.md --leaf ---> marketing strategy, growth strategy, view marketing
+# [TOOL] cat ~/.config/local-ai/skills/identity/workout/routine.md --leaf ---> routine, fitness profile, workout routine
 
-# --- Coding-Triangle-Loop - Interactive TUI Console (((wip))) ---
+# --- Disk Usage ---
+# [TOOL] df -h / ---> disk usage, drive usage
+
+# --- Server Lifecycle Management ---
+# ~/.config/local-ai/tools/tools/subsec/server/kill-ai-servers ---> killserver, ks
+
+# --- Prompt Engineering TUIs ---
+# [TOOL] ~/.config/local-ai/tools/subsec/prompt/ai-prompt-writer-image --cat ---> prompt writer image, image prompt, ip
+# [TOOL] ~/.config/local-ai/tools/subsec/prompt/ai-prompt-writer --cat ---> prompt writer, prompt
+
+# --- Research Engines ---
+# ~/.config/local-ai/tools/agentic/fusion/f_research -r ---> fusion research, fusion, fr, deep research
+# ~/.config/local-ai/tools/subsec/research-tui/deep-research ---> deep research, research, dr
+
+# --- Local-Ai Tablet Voice Bridge ---
+# ~/.config/local-ai/tools/subsec/voice/voice-query ---> voice, voice query, voice bridge
+
+# --- Pixel-Browse - Headless Visual Web Ingestion (wip) ---
+# [TOOL] ~/.config/local-ai/tools/subsec/headless-chromium/pixel-browse --cat ---> pixel browse, headless, chromium, pixel browser
+
+# --- Coding-Triangle-Loop - Interactive TUI Console (wip) ---
 # [TOOL] ~/.config/local-ai/tools/agentic/coding/coding-triangle-loop --cat ---> coding loop, coding, triangle, loop
 ```

@@ -25,8 +25,6 @@ exec uwsm app -- llama-server \
   -t 6 \
   -b 512 \
   -ub 128 \
-  --cache-type-k q8_0 \
-  --cache-type-v q8_0 \
   --flash-attn on \
   --reasoning on \
   --reasoning-format deepseek \
