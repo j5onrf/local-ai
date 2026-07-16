@@ -369,7 +369,7 @@ def run_interactive_chat(args: list):
                     continue
 
                 # --- CODESPACE SYNC (/sync) ---
-                if query == "/sync":
+                if query in ("/sync", "/re"):
                     sys.stdout.write("\033[2m[sys] Syncing and recompiling codespace map...\033[0m\r")
                     sys.stdout.flush()
                     
