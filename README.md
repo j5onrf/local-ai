@@ -203,10 +203,8 @@ nano ~/.config/local-ai/.env
 #### Configuration Example (`.env`):
 
 ```env
-# =========================================================================
 # Dynamic Fallback Cascade (Top-Down Key Order)
 # Supports any OpenAI-compatible API key, e.g., DeepSeek, Groq
-# =========================================================================
 # Use "ai status" and "model select"
 
 # 1. Primary Model (Active)
@@ -229,9 +227,7 @@ CLAUDE_MODEL="claude-fable-5"
 XAI_API_KEY="xai-your-grok-api-key-here"
 XAI_MODEL="grok-4.5"
 
-# =========================================================================
 # Offline/Local Settings (Static Context Window)
-# =========================================================================
 AI_MAX_TOKENS="8192"
 ```
 
