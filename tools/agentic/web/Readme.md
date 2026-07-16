@@ -1,11 +1,12 @@
-<h2 align="center">Firecrawl</h2>
-
-add to .env
-
 ### Firecrawl Scraper API Configurations
+
+add to ~/.config/local-ai/.env
+
 FIRECRAWL_API_KEY="your-firecrawl-api-key-here"
 
-<h2 align="center">Web Scraper & YouTube Subtitle Extractor: web-reader</h2>
+---
+
+# Web Scraper & YouTube Subtitle Extractor: web-reader
 
 <p align="center">
   <em>On-device webpage markdown conversion and timestamp-free YouTube transcript extraction.</em>
