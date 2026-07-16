@@ -35,13 +35,17 @@ Agent: Understood. I have noted your preferences:
 *   **Editor:** Helix
 *   **Shell:** Bash
 
+❯ /sync
+✔ Mapping complete! [session-test index-map & SQLite graph database updated]
+[sys] Codespace map and relational SQLite graph successfully synchronized.
+
 ❯ /tok
 
-[sys] Context Window: 487/8192 tokens
-[sys] Usage: [█░░░░░░░░░░░░░░░░░░░] 5.9%
-[sys] Remaining: 7705 tokens
+[sys] Context Window: 838/8192 tokens
+[sys] Usage: [██░░░░░░░░░░░░░░░░░░] 10.2%
+[sys] Remaining: 7354 tokens
 
-❯
+❯ 
 ```
 
 ## 1. Directory Structure
@@ -59,6 +63,7 @@ Agent: Understood. I have noted your preferences:
 *   **`/m`**: Unifies and toggles long-term memory and TPM reconciliation ON/OFF.
 *   **`/r` / `/r [limit]`**: **Toggle Deep Reasoning** ON/OFF (defaults to 500 tokens, or set custom token limit).
 *   **`/stats`**: Toggles real-time generation speed metrics (`speed_test.py`), token spend ledger, and active model indicators ON/OFF.
+*   **`/sync`**: **Sync & Recompile Codespace**. Instantly runs `index-map` in the background and re-injects the updated codebase AST and semantic vector index into your active session memory in real-time. This pulls in any modifications made by subagents or manual edits without restarting.
 *   **`/tok`**: Displays live context window usage progress bar.
 *   **`/skill <search>`** (or `/s`): Search and load custom skills dynamically. Upgraded with **interactive, character-by-character keypress filtering**—instantly narrow down and load custom specialists directly inside the selection terminal.
 *   **`Esc` or `Right Arrow`**: Instantly bypasses memory/tool authorization prompts.
@@ -98,4 +103,11 @@ Agent: Understood. I have noted your preferences:
 *   **Background Extraction**: Spawns a background thread on completion to extract facts without delay.
 *   **Dynamic Sync**: Manual edits made to `.agent/tpm.md` are synced back into SQLite at bootup.
 *   **Reconciliation**: SQL `INSERT OR REPLACE` overwrites old contradictory facts cleanly.
+
+## 9. Decentralized Workspace Subagents
+*   **Origins**: Inspired by the modular, context-isolated subagent designs of Vercel's [Eve](https://github.com/vercel/eve).
+*   **Asynchronous Context Isolation**: Instead of loading all guidelines into a single, expensive, thread-blocking system prompt, you can parallelize tasks across independent terminal panes:
+    *   *Branching (`-save <tag>`)*: Commit your active session state and conversational history directly to your workspace database.
+    *   *Sandboxing (`-load`)*: Open a new terminal pane, initialize a fresh workspace clone (`ai init`), and execute `-load` to clone your saved session checkpoint over the Global Handoff. The subagent works with a completely clean, isolated context window.
+    *   *Merging (`/sync`)*: Once the subagent finishes making its file modifications, return to your main agent terminal and run `/sync`. The main agent instantly ingests the modifications directly into its relational call-graph and vector space database without losing any of its active conversational history.
 

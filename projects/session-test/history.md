@@ -24,3 +24,11 @@ The command `test` passed successfully. What would you like to do next?
 
 ---
 
+## [2026-07-15 20:12] User:
+hello
+
+### Agent:
+Hello! How can I help you?
+
+---
+

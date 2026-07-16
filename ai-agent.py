@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.9.2.2]
+# Local-Ai Agent [j5onrf] [v0.9.2.5]
 
 import json
 import os
@@ -366,6 +366,41 @@ def run_interactive_chat(args: list):
                     print(
                         f"\033[1;32m[sys] Generation statistics {'enabled' if show_stats else 'disabled'}.\033[0m\n"
                     )
+                    continue
+
+                # --- CODESPACE SYNC (/sync) ---
+                if query == "/sync":
+                    sys.stdout.write("\033[2m[sys] Syncing and recompiling codespace map...\033[0m\r")
+                    sys.stdout.flush()
+                    
+                    # 1. Run the background index-map compiler
+                    map_tool = f"{CFG_DIR}/tools/map/index-map"
+                    subprocess.run([sys.executable, map_tool, workspace_path])
+                    
+                    # 2. Re-read the newly compiled flat text summary
+                    proj_name = os.path.basename(workspace_path)
+                    txt_path = os.path.join(workspace_path, f"index-map-{proj_name}.txt")
+                    if os.path.exists(txt_path):
+                        try:
+                            with open(txt_path, "r", encoding="utf-8") as f:
+                                new_shorthand = f.read().strip()
+                                
+                            # 3. Dynamically update the codespace map inside chat_history in-place
+                            updated_map = False
+                            for msg in chat_history:
+                                if "### CODESPACE MAP:" in msg["content"]:
+                                    parts = msg["content"].split("### CODESPACE MAP:")
+                                    msg["content"] = parts[0] + f"### CODESPACE MAP:\n{new_shorthand}"
+                                    updated_map = True
+                                    
+                            if not updated_map:
+                                chat_history[0]["content"] += f"\n\n### CODESPACE MAP:\n{new_shorthand}"
+                                
+                            print("\r\x1b[K\033[1;32m[sys] Codespace map and relational SQLite graph successfully synchronized.\033[0m\n")
+                        except Exception as e:
+                            print(f"\r\x1b[K\033[1;31m[sys] Failed to reload synchronized map: {e}\033[0m\n")
+                    else:
+                        print(f"\r\x1b[K\033[1;31m[sys] Compiled map file not found: {txt_path}\033[0m\n")
                     continue
 
                 # --- NATIVE FULL SESSION CLEAR ---

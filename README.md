@@ -2,7 +2,7 @@
   <img alt="Local-AI Agent" src="https://github.com/j5onrf/local-ai/blob/main/logo.png" width="800" />
 </p>
 
-<h1 align="center">Local-AI Agent <kbd>v0.9.2.3-beta</kbd></h1>
+<h1 align="center">Local-AI Agent <kbd>v0.9.2.5-beta</kbd></h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
@@ -83,6 +83,7 @@ Agent: Workspace loaded. Awaiting instructions.
 | **Performance** | **Zero-Daemon** | 0% idle CPU/RAM. `Ultra-light` execution. |
 | **Intelligence** | **Scalability** | Optimized from `Qwen3.5-2B` up to frontier models. |
 | **Resiliency** | **Fallbacks** | Top-Down Cascade: `.env` order: `Provider` → `GGUF`. |
+| **Multi-Agent** | **Subagents** | [Vercel's Eve](https://github.com/vercel/eve)-style context-isolated sandboxing via (`-save`/`-load`). |
 | **Safety** | **Zero-Trust Guardrails** | Intercepts out-of-bounds commands and edits for manual approval. |
 | **Safety** | **Type-Safe Validation** | Enforces [Pydantic AI](https://github.com/pydantic/pydantic-ai)'s schema concepts natively. |
 | **Safety** | **Syntactic Guardrails** | [OpenAI Agents](https://github.com/openai/openai-agents-python)-style self-correcting `.py`/`.json` writes. |
@@ -149,6 +150,7 @@ Agent: Workspace loaded. Awaiting instructions.
 | **`/g`** | **Toggle** workspace confirmation gates ON/OFF (autonomous editing mode). |
 | **`/m`** | **Toggle** long-term memory and TPM reconciliation ON/OFF. |
 | **`/r`** / **`/r <tokens>`** | **Toggle** reasoning ON/OFF. Supports custom limits (default: 500). |
+| **`/sync`** | **Sync** Codebase AST and semantic vector index real-time reloading of disk changes. |
 | **`/stats` / `/tok`** | **Diagnostics**: Toggle real-time speed metrics or view live token usage. |
 
 ---
