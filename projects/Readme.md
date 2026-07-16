@@ -14,7 +14,7 @@ Local agent workspaces, dynamic memories, save checkpoints, and codebase mapping
 │  skill:     init codeb                       │
 │  database:  active (3 facts, 26 turns)       │
 ╰──────────────────────────────────────────────╯
-[sys] Startup context: 160 tokens | Ctrl+C to exit.
+[sys] Startup context: 230 tokens | Ctrl+C to exit.
 
 Agent: Workspace loaded. Awaiting instructions.
  [7 tokens | 0.52s | 23.38 t/s]
@@ -96,7 +96,7 @@ Agent: Understood. I have noted your preferences:
 
 ## 7. Workspace Subagents
 *   **Origins**: Inspired by the modular, context-isolated subagent designs of Vercel's [Eve](https://github.com/vercel/eve).
-*   **Asynchronous Context Isolation**: You can parallelize development tasks across independent terminal panes (e.g., using Tmux, Kitty, or WezTerm windows). Each terminal acts as an active workspace partner:
+*   **Asynchronous Context Isolation**: You can parallelize development tasks across independent terminal panes (e.g., using Tmux, Kitty, or Herdr). Each terminal acts as an active workspace partner:
     *   *Visual Tracking Badges*: Standalone agents launch clean without visual clutter. If you open a second terminal for the same codebase, the discovery registry dynamically assigns sequential badges (e.g., `[sub-agent #1]`, `[sub-agent #2]`) to help you keep track of your active panes.
     *   *Self-Cleaning Process Registry*: Ephemeral files in `.active_sessions/` track active PIDs. Stale files from unexpected window closures are automatically garbage-collected on the next initialization.
     *   *Safe SQLite Concurrency*: SQLite WAL (Write-Ahead Logging) mode and busy timeouts are configured across all modules. If multiple agents attempt concurrent database writes (e.g., during turn logging or memory commits), operations are queued cleanly without write locks.

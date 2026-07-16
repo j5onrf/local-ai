@@ -38,7 +38,7 @@ All configurations and custom shortcuts are managed in [`ai-context.md`](ai-cont
 │  skill:     init                             │
 │  database:  active (3 facts, 109 turns)      │
 ╰──────────────────────────────────────────────╯
-[sys] Startup context: 210 tokens | Ctrl+C to exit.
+[sys] Startup context: 160 tokens | Ctrl+C to exit.
 
 Agent: Workspace loaded. Awaiting instructions.
 ❯
