@@ -149,7 +149,7 @@ def stream(messages, prefix, gkey, spinner_class, show_stats: bool = True):
 
             ans_text = "".join(acc)
             in_est = (len(body.get("input", "")) + len(body.get("system_instruction", ""))) // 4
-            ctx_est = (sum(len(m.get("content", "")) for m in messages) + len(ans_text)) // 4
+            ctx_est = (sum(len(m.get("content") or "") for m in messages) + len(ans_text)) // 4
             _log_turn_usage(model, in_est, len(ans_text) // 4, 0.0, show_stats, ctx_est)
 
             if resolved_id:
@@ -242,6 +242,11 @@ def _run_edit_tool(name: str, args: dict, workspace: str, spinner=None) -> str:
         
         if outside or gates_active:
             reason = f"read {full} (OUTSIDE workspace)" if outside else f"read file {args.get('path')}"
+            
+            # Stop background spinner thread before prompt block
+            if spinner:
+                spinner.stop()
+                
             if not sys.stdout.isatty() or not ui.confirm_tool(reason):
                 return f"[denied] the user blocked reading operations for safety: {reason}"
                 
@@ -304,6 +309,11 @@ def _run_edit_tool(name: str, args: dict, workspace: str, spinner=None) -> str:
             verb = "overwrite" if exists else "create"
             where = f"{full} (OUTSIDE workspace)" if outside else args.get("path")
             reason = f"{verb} {where} ({len(content)} chars)"
+            
+            # Stop background spinner thread before prompt block
+            if spinner:
+                spinner.stop()
+                
             if not sys.stdout.isatty() or not ui.confirm_tool(reason):
                 return f"[denied] the user blocked file write operations: {reason}"
 
@@ -321,6 +331,11 @@ def _run_edit_tool(name: str, args: dict, workspace: str, spinner=None) -> str:
         
         if outside or gates_active:
             reason = f"list directory {full} (OUTSIDE workspace)" if outside else f"list files in {args.get('path') or '.'}"
+            
+            # Stop background spinner thread before prompt block
+            if spinner:
+                spinner.stop()
+                
             if not sys.stdout.isatty() or not ui.confirm_tool(reason):
                 return f"[denied] the user blocked directory listing: {reason}"
         try:
@@ -335,6 +350,10 @@ def _run_edit_tool(name: str, args: dict, workspace: str, spinner=None) -> str:
             return "[denied] no terminal available to approve command execution"
             
         if gates_active:
+            # Stop background spinner thread before prompt block
+            if spinner:
+                spinner.stop()
+                
             if not ui.confirm_tool(f"execute: $ {cmd}"):
                 return "[denied] user rejected command execution"
         else:
@@ -359,8 +378,10 @@ def _run_edit_tool(name: str, args: dict, workspace: str, spinner=None) -> str:
 
 
 def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: int, spinner, show_stats: bool = False) -> str or None:
+    """Executes a multi-turn streaming agent round-trip loop supporting parallel tool evaluations."""
     workspace = os.environ.get("AI_WORKSPACE_PATH", os.getcwd())
     
+    # Inject workspace agent configurations to active system instructions in-place
     if messages and messages[0]["role"] == "system":
         if "### EDIT MODE" not in messages[0]["content"]:
             messages[0]["content"] += EDIT_SYSTEM_ADD.format(ws=workspace)
@@ -371,7 +392,7 @@ def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: i
     for _round in range(10):
         body_tools = dict(body)
         body_tools["messages"] = messages
-        body_tools["stream"] = False      
+        body_tools["stream"] = True  # Enable real-time streaming inside agentic turns
         body_tools["tools"] = _EDIT_TOOLS
         
         spinner.start()
@@ -381,77 +402,146 @@ def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: i
                 url,
                 json=body_tools,
                 headers={"Content-Type": "application/json", **headers},
-                timeout=timeout
+                timeout=timeout,
+                stream=True
             )
-            resp = res.json()
+            
+            first_chunk = True
+            acc_content = []
+            tool_calls_map = {}
+            
+            # Read SSE stream lines in real time
+            for line in res.iter_lines():
+                if not line:
+                    continue
+                line_str = line.decode("utf-8", errors="ignore").strip()
+                if not line_str.startswith("data:"):
+                    continue
+                data_str = line_str[5:].strip()
+                if data_str == "[DONE]":
+                    break
+                    
+                try:
+                    data = json.loads(data_str)
+                    resolved_model = data.get("model") or resolved_model
+                    choices = data.get("choices", [{}])
+                    if not choices:
+                        continue
+                    delta = choices[0].get("delta", {})
+                    
+                    # 1. Process conversational text tokens
+                    content = delta.get("content", "")
+                    if content:
+                        if first_chunk:
+                            spinner.stop()  # Stop loader before writing tokens
+                            if sys.stdout.isatty():
+                                sys.stdout.write("\r\x1b[2K\rAgent: ")
+                                sys.stdout.flush()
+                            first_chunk = False
+                            if speed_test and show_stats:
+                                speed_test.start()
+                        print(content, end="", flush=True)
+                        acc_content.append(content)
+                        if speed_test and show_stats:
+                            speed_test.count_token(content)
+                            
+                    # 2. Accumulate tool call blocks cleanly
+                    tool_calls = delta.get("tool_calls", [])
+                    for tc in tool_calls:
+                        idx = tc.get("index", 0)
+                        if idx not in tool_calls_map:
+                            tool_calls_map[idx] = {
+                                "id": tc.get("id", ""),
+                                "type": "function",
+                                "function": {
+                                    "name": tc.get("function", {}).get("name", ""),
+                                    "arguments": ""
+                                }
+                            }
+                        if tc.get("function", {}).get("name"):
+                            tool_calls_map[idx]["function"]["name"] = tc["function"]["name"]
+                        args_chunk = tc.get("function", {}).get("arguments", "")
+                        tool_calls_map[idx]["function"]["arguments"] += args_chunk
+                except Exception:
+                    pass
+                    
+            if not first_chunk:
+                print("")
+                if speed_test and show_stats:
+                    speed_test.end()
+                    
+            elapsed_time = time.time() - start_time
+            ans_text = "".join(acc_content)
+            calls = [val for _, val in sorted(tool_calls_map.items())] if tool_calls_map else None
+            
+            # If no tools were called, round-trip processing is done
+            if not calls:
+                prompt_chars = sum(len(m.get("content") or "") for m in messages)
+                in_tok = prompt_chars // 4
+                out_tok = len(ans_text) // 4
+                
+                _log_turn_usage(resolved_model or body.get("model") or "local-model",
+                                in_tok, out_tok, 0.0, show_stats, in_tok + out_tok)
+                
+                return ans_text
+                
+            # If tools were requested, append assistant context and resolve calls sequentially
+            assistant_msg = {"role": "assistant", "content": ans_text or None, "tool_calls": calls}
+            messages.append(assistant_msg)
+            
+            user_aborted = False
+            for tc in calls:
+                fname = tc.get("function", {}).get("name", "")
+                try:
+                    args = json.loads(tc.get("function", {}).get("arguments") or "{}")
+                except Exception:
+                    args = {}
+                    
+                brief = str(args.get("path") or args.get("command") or "")[:100]
+                verb = TOOL_VERBS.get(fname, "working")
+                
+                if user_aborted:
+                    result = "[denied] execution cancelled by user"
+                else:
+                    print(f"\033[2m∗ {verb} · {fname} {brief}\033[0m")
+                    
+                    if spinner and fname in ("read_file", "list_dir"):
+                        try:
+                            spinner.start(verb)
+                        except TypeError:
+                            spinner.start()
+                            if hasattr(spinner, 'text'):
+                                spinner.text = verb
+                            elif hasattr(spinner, 'message'):
+                                spinner.message = verb
+                    try:
+                        result = _run_edit_tool(fname, args, workspace, spinner)
+                        if "[denied]" in result:
+                            user_aborted = True  # Halt subsequent prompts on rejection
+                    except Exception as e:
+                        result = f"[tool error] {e}"
+                    finally:
+                        if spinner:
+                            spinner.stop()
+                        
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc.get("id", ""),
+                    "name": fname,
+                    "content": result
+                })
+                
+            # Break out of multi-turn conversational loop instantly if action was cancelled
+            if user_aborted:
+                sys.stdout.write("\033[2m[sys] Agent execution halted.\033[0m\n")
+                sys.stdout.flush()
+                return ans_text or "Agent: Action cancelled by user."
+                
         except Exception as e:
             sys.stderr.write(f"\033[90m[sys] API response error: {e}\033[0m\n")
             return None
         finally:
             spinner.stop()
-            
-        elapsed_time = time.time() - start_time
-        resolved_model = resp.get("model") or resolved_model
-        choices = resp.get("choices") or [{}]
-        msg = choices[0].get("message") or {}
-        calls = msg.get("tool_calls")
-        
-        if not calls:
-            ans = msg.get("content") or ""
-            if sys.stdout.isatty():
-                sys.stdout.write("\r\x1b[2K\rAgent: ")
-            print(ans)
-            
-            prompt_chars = sum(len(m.get("content", "")) for m in messages)
-            in_tok = prompt_chars // 4
-            out_tok = len(ans) // 4
-            
-            timings = resp.get("timings") or {}
-            pred_ms = timings.get("predicted_ms")
-            if pred_ms and isinstance(pred_ms, (int, float)):
-                generation_time = pred_ms / 1000.0
-            else:
-                generation_time = elapsed_time
-            
-            if show_stats and sys.stdout.isatty():
-                tps = out_tok / generation_time if generation_time > 0 else 0
-                sys.stdout.write(f"\033[90m [{out_tok} tokens | {generation_time:.2f}s | {tps:.2f} t/s]\033[0m\n")
-                sys.stdout.flush()
-            
-            _log_turn_usage(resolved_model or body.get("model") or "local-model",
-                            in_tok, out_tok, 0.0, show_stats, in_tok + out_tok)
-            
-            return ans
-            
-        messages.append(msg)
-        
-        for tc in calls:
-            fname = tc.get("function", {}).get("name", "")
-            try:
-                args = json.loads(tc.get("function", {}).get("arguments") or "{}")
-            except Exception:
-                args = {}
-                
-            brief = str(args.get("path") or args.get("command") or "")[:100]
-            verb = TOOL_VERBS.get(fname, "working")
-            print(f"\033[2m∗ {verb} · {fname} {brief}\033[0m")
-            
-            if spinner and fname in ("read_file", "list_dir"):
-                spinner.start(verb)
-            try:
-                result = _run_edit_tool(fname, args, workspace, spinner)
-            except Exception as e:
-                result = f"[tool error] {e}"
-            finally:
-                if spinner:
-                    spinner.stop()
-                    
-            messages.append({
-                "role": "tool",
-                "tool_call_id": tc.get("id", ""),
-                "name": fname,
-                "content": result
-            })
             
     return None
 
@@ -476,7 +566,25 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
             **local_extra
         }
         
-        configs.append(("http://localhost:8080/v1/chat/completions", {}, local_body, 180))
+        # Build unique configs and canonicalize any local port endpoints (e.g. :8080) to prevent duplicates
+        seen_urls = set()
+        unique_configs = []
+        for url, headers, body, timeout in configs:
+            norm_url = url.replace("127.0.0.1", "localhost")
+            if ":8080" in norm_url:
+                norm_url = "http://localhost:8080/v1/chat/completions"
+                
+            if norm_url not in seen_urls:
+                seen_urls.add(norm_url)
+                actual_url = "http://localhost:8080/v1/chat/completions" if ":8080" in url else url
+                unique_configs.append((actual_url, headers, body, timeout))
+                
+        local_url = "http://localhost:8080/v1/chat/completions"
+        norm_local = local_url.replace("127.0.0.1", "localhost")
+        if norm_local not in seen_urls:
+            unique_configs.append((local_url, {}, local_body, 180))
+            
+        configs = unique_configs
 
         for url, headers, body, timeout in configs:
             if is_agent:
@@ -545,7 +653,7 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
                             speed_test.end()
                         
                         ans_text = "".join(acc)
-                        prompt_chars = sum(len(m.get("content", "")) for m in messages)
+                        prompt_chars = sum(len(m.get("content") or "") for m in messages)
                         in_tok = prompt_chars // 4
                         out_tok = len(ans_text) // 4
                         
@@ -591,7 +699,7 @@ def get_accurate_token_count(text: str, server_url: str = "http://localhost:8080
 
 
 def show_memory_status(messages: list, max_context: int = 8192, server_url: str = "http://localhost:8080") -> None:
-    total_toks = sum(get_accurate_token_count(m.get("content", ""), server_url) for m in messages)
+    total_toks = sum(get_accurate_token_count(m.get("content") or "", server_url) for m in messages)
     pct = (total_toks / max_context) * 100
     bar_len = 20
     filled = int((total_toks / max_context) * bar_len)

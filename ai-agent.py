@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.9.3.0]
+# Local-Ai Agent [j5onrf] [v0.9.3.2]
 
 import json
 import os
@@ -301,7 +301,6 @@ def run_interactive_chat(args: list):
     if is_agent:
         try:
             sub_id_str = _run_cmd([sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "get-sub-id", safe_name, str(os.getpid())])
-            # Only render badge if sub_id_str is greater than 0
             if sub_id_str.isdigit() and int(sub_id_str) > 0:
                 sub_id = int(sub_id_str)
         except Exception:
@@ -434,6 +433,7 @@ def run_interactive_chat(args: list):
                     print("\033[1;32m[sys] Conversation history, cloud session, and local TPM memory cleared.\033[0m\n")
                     continue
 
+                # --- SHOW live tokens ---
                 if query == "/tok":
                     subprocess.run([sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "show-tok"], input=json.dumps(chat_history), text=True)
                     continue

@@ -1,4 +1,4 @@
-# CODEBASE INDEX MAP | Generated: 2026-07-15 20:50 | Workspace: session-test | Path: ~/.config/local-ai/projects/session-test
+# CODEBASE INDEX MAP | Generated: 2026-07-16 15:54 | Workspace: session-test | Path: ~/.config/local-ai/projects/session-test
 # Active symbols and structural connections mapped in the local SQLite graph DB.
 # Intents: trace symbol <sym> | blast radius <sym> | read function <sym> | find symbol <pat> | architecture overview
 # -----------------------------------------------------------------------------------------
@@ -8,7 +8,7 @@
 #   ├── broken_syntax.py         - def calculate_sum(a, b):
 #   ├── history.md               - Workspace History: projects
 #   ├── index-map-memory-session-test.db
-#   ├── index-map-session-test.txt - CODEBASE INDEX MAP | Generated: 2026-07-15 20:13 | Workspace: session-test | Path: ~/.config/local-a
+#   ├── index-map-session-test.txt - CODEBASE INDEX MAP | Generated: 2026-07-16 15:44 | Workspace: session-test | Path: ~/.config/local-a
 #   ├── physics.py               - def calculate_velocity(dist, time): return dist / time
 #   ├── sandbox_test.txt         - Secure edit loop verification successful.
 #   └── simulation.py            - Description: Runner file for testing velocity metrics
@@ -18,7 +18,7 @@
 [python:broken_syntax.py] fn:calculate_sum
 [markdown:history.md] title:Workspace History: projects
 [binary/db:index-map-memory-session-test.db]
-[txt:index-map-session-test.txt] sum:CODEBASE INDEX MAP | Generated: 2026-07-15 20:13 | Workspace: session-test | Path: ~/.config/local-a
+[txt:index-map-session-test.txt] sum:CODEBASE INDEX MAP | Generated: 2026-07-16 15:44 | Workspace: session-test | Path: ~/.config/local-a
 [python:physics.py] fn:calculate_velocity
 [txt:sandbox_test.txt] sum:Secure edit loop verification successful.
 [python:simulation.py] imp:physics | fn:run_test
