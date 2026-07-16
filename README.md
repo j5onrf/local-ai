@@ -138,7 +138,7 @@ Agent: Workspace loaded. Awaiting instructions.
 | **`/skill <query>`** *(or `/s`)* | Search and load dynamic specialist skills. |
 | **`view file <path>`** *(or `read`)* | Dynamically read local files directly into your model context. |
 | **`-save <tag>` / `-load`** | Save active states or rollback/clone snapshots (with Global Handoff). |
-| **`/sync`** *(or `/re`)* | **Sync** Codebase index real-time reloading of disk changes. |
+| **`/sync`** *(or `/re`)* | Sync Codebase index real-time reloading of disk changes. |
 | **`/f`** / **`/t`** / **`/b`** / **`/a`** | Trigger prompt-generating subroutines: Follow-up, Thinking, Brainstorm, or All. |
 
 ### 3. Modular Toggle & Diagnostic Switches
@@ -206,8 +206,8 @@ nano ~/.config/local-ai/.env
 # =========================================================================
 # Dynamic Fallback Cascade (Top-Down Key Order)
 # Supports any OpenAI-compatible API key, e.g., DeepSeek, Groq
-# Use "ai status" and "model select"
 # =========================================================================
+# Use "ai status" and "model select"
 
 # 1. Primary Model (Active)
 GEMINI_API_KEY="AIzaSyYourFullGeminiApiKeyHere"
