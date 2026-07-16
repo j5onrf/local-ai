@@ -150,7 +150,7 @@ Agent: Workspace loaded. Awaiting instructions.
 | **`/g`** | **Toggle** workspace confirmation gates ON/OFF (autonomous editing mode). |
 | **`/m`** | **Toggle** long-term memory and TPM reconciliation ON/OFF. |
 | **`/r`** / **`/r <tokens>`** | **Toggle** reasoning ON/OFF. Supports custom limits (default: 500). |
-| **`/sync`** | **Sync** Codebase AST and semantic vector index real-time reloading of disk changes. |
+| **`/sync`** | **Sync** Codebase index real-time reloading of disk changes. |
 | **`/stats` / `/tok`** | **Diagnostics**: Toggle real-time speed metrics or view live token usage. |
 
 ---
