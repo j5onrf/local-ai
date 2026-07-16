@@ -27,8 +27,7 @@ Agent: Hello! How can I assist you with your Python project today?
 ❯ /clear
 [sys] Conversation history, cloud session, and local TPM memory cleared.
 
-❯ I am working as a Lead Python Developer. I prefer using Helix for editing 
-files, and my favorite shell is Bash.
+❯ I am a Lead Python Developer. I use Helix, and my favorite shell is Bash.
 Agent: Understood. I have noted your preferences:
 
 *   **Role:** Lead Python Developer
