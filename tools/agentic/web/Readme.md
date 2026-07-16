@@ -1,4 +1,4 @@
-### Firecrawl Scraper API Configurations
+# Firecrawl Scraper API Configurations
 
 add to ~/.config/local-ai/.env
 
