@@ -8,9 +8,8 @@ FIRECRAWL_API_KEY="your-firecrawl-api-key-here"
 
 # Web Scraper & YouTube Subtitle Extractor: web-reader
 
-<p align="center">
-  <em>On-device webpage markdown conversion and timestamp-free YouTube transcript extraction.</em>
-</p>
+
+On-device webpage markdown conversion and timestamp-free YouTube transcript extraction.
 
 *   **Dynamic Web Scraping**: Converts any standard webpage into clean Markdown using Jina Reader's free cloud proxy.
 *   **YouTube Transcripts**: Uses native `yt-dlp` to extract auto-subtitles, stripping timestamps and collapsing scrolling duplicates.

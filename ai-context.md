@@ -142,7 +142,7 @@ omarchy-launch-webapp https://music.youtube.com/ ---> youtube music, yt, music, 
 nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-spotify-bunker" --app=https://open.spotify.com/ >/dev/null 2>&1 & ---> spotify music, spotify, music
 ```
 
-
+```
 # =========================================================================
 # === ARCHIVED & LEGACY PROFILES (SKIPPED DURING ACTIVE CONTEXT RUNS) ===
 # =========================================================================
