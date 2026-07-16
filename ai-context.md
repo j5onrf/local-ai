@@ -64,10 +64,10 @@ ai init ~/.config/local-ai/projects/session-test-3 --init ---> session test 3, p
 [TOOL] ~/.config/local-ai/tools/agentic/system/ai-status --s ---> ai status, aistat, status, aistatus 
 
 # --- System Resources & Diagnosis (System Health) ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/system-health ---> system health, sysh, health, system diagnosis, why is my system slow
+[TOOL] ~/.config/local-ai/tools/agentic/system/system-health ---> system health, sysh
 
 # --- System Logs & Diagnostics (Compressed Stream Triage) ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/log-checker ---> log checker, ailog, log check, check errors, system crashed, events
+[TOOL] ~/.config/local-ai/tools/agentic/system/log-checker ---> log checker, ailog
 
 # --- Pre-Install Zero-Trust AUR Package & PKGBUILD Auditor ---
 [TOOL] ~/.config/local-ai/tools/agentic/system/aur-audit ---> aur audit, audit package
@@ -76,18 +76,17 @@ ai init ~/.config/local-ai/projects/session-test-3 --init ---> session test 3, p
 [TOOL] ~/.config/local-ai/tools/agentic/system/security-audit --leaf ---> security audit, secaud, system audit
 
 # --- System Optimization (Improve System Performance) ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/system-optimizer --leaf ---> system optimizer, sysop, optimize
+[TOOL] ~/.config/local-ai/tools/agentic/system/system-optimizer --leaf ---> system optimizer, sysop
 
 # --- Dynamic Host Profiler & System Analytics ---
-[TOOL] cat ~/.config/local-ai/skills/system/mysys.md --leaf ---> mysys, show mysys, view sys, mysys doc
-[TOOL] ~/.config/local-ai/tools/generate-profile ---> generate profile, update sys profile, sync mysys
+[TOOL] cat ~/.config/local-ai/skills/system/mysys.md --leaf ---> mysys
+[TOOL] ~/.config/local-ai/tools/generate-profile ---> generate profile, sync mysys
 
 # --- Pending System Updates ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/update-inspector --leaf ---> update inspector, inspector, ui
-
+[TOOL] ~/.config/local-ai/tools/agentic/system/update-inspector --leaf ---> update inspector
 # --- Weather & Live Networking ---
-[TOOL] curl -s "wttr.in/?format=3" --cat ---> weather simple, wttr, weather, rain forecast simple
-[TOOL] curl -s wttr.in --cat ---> weather full, wttr, weather, rain forecast full
+[TOOL] curl -s "wttr.in/?format=3" --cat ---> weather simple, wttr, weather
+[TOOL] curl -s wttr.in --cat ---> weather full, wttr, weather
 
 # --- System Time & Date (Real-time Clock Context) ---
 [TOOL] date "+Current Time: %I:%M:%S %p %Z on %A, %B %d, %Y" ---> time, date, current time, what time is it
@@ -100,27 +99,27 @@ ai init ~/.config/local-ai/projects/session-test-3 --init ---> session test 3, p
 ~/.config/local-ai/modules/model-select.py ---> model select, model selector, model selection, mst
 
 # --- Email TUI Monitor & Inbox Browser ---
-[TOOL] ~/.config/local-ai/tools/email/email-agent ---> list emails, email agent, show unread mails
+[TOOL] ~/.config/local-ai/tools/email/email-agent ---> email agent
 
 # --- Custom Basepage & BaseTracker RSS TUI Applications ---
-~/.config/local-ai/tools/subsec/basepage-tui/basepage.py ---> basepage, base, basepage tui, rss
-~/.config/local-ai/tools/subsec/basepage-tui/basetracker.py ---> basetracker, base, basetracker tui
+~/.config/local-ai/tools/subsec/basepage-tui/basepage.py ---> basepage
+~/.config/local-ai/tools/subsec/basepage-tui/basetracker.py ---> basetracker
 
 # --- Media & Volume Controllers (Pure Reactive Winamp-TUI) ---
-~/.config/local-ai/tools/subsec/media/media.py ---> tuiamp, winamp, media
+~/.config/local-ai/tools/subsec/media/media.py ---> tuiamp
 
 # --- Article & YouTube Text-Snippet Summarizers ---
-~/.config/local-ai/tools/subsec/ai-summary/llmsum.py ---> llmsum, ytsum, summary, sum
+~/.config/local-ai/tools/subsec/ai-summary/llmsum.py ---> llmsum
 
 # --- Local Stopwatch TUI Utility ---
-~/.config/local-ai/tools/subsec/stopwatch/stopwatch.py ---> stopwatch py, sw, stopwatch
-~/.config/local-ai/tools/subsec/stopwatch/stopwatch.sh ---> stopwatch sh, sw, stopwatch
+~/.config/local-ai/tools/subsec/stopwatch/stopwatch.py ---> stopwatch py, stopwatch
+~/.config/local-ai/tools/subsec/stopwatch/stopwatch.sh ---> stopwatch sh, stopwatch
 
 # --- Shell Notes Utility ---
-~/.config/local-ai/tools/subsec/notes/notes.sh ---> notes, open notes, add to notes
+~/.config/local-ai/tools/subsec/notes/notes.sh ---> add notes, open notes
 
 # --- Local Window Manager (Hyprland) State Controllers ---
-~/.config/local-ai/tools/subsec/hyprstate/work ---> hyprstate work, work, hs, hyprstate
+~/.config/local-ai/tools/subsec/hyprstate/work ---> hyprstate work, work
 ~/.config/local-ai/tools/subsec/hyprstate/gitcom ---> hyprstate gitcom, gitcom
 ~/.config/local-ai/tools/subsec/hyprstate/gitcom2 ---> hyprstate gitcom 2, gitcom
 ```
@@ -135,10 +134,10 @@ ai init ~/.config/local-ai/projects/session-test-3 --init ---> session test 3, p
 ~/.config/local-ai/tools/agentic/system/ai-commit ---> ai-commit, gc, git commit
 
 # --- System App Launcher (Ultra-Light Rofi-TUI) ---
-~/.config/local-ai/tools/subsec/app-launcher/app-launcher.py ---> app launcher, app
+~/.config/local-ai/tools/subsec/app-launcher/app-launcher.py ---> app launcher, appl
 
 # --- Native Webapp Wrappers & Browsers ---
-omarchy-launch-webapp https://music.youtube.com/ ---> youtube music, yt, music, youtube
+omarchy-launch-webapp https://music.youtube.com/ ---> youtube music, yt, youtube
 nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-spotify-bunker" --app=https://open.spotify.com/ >/dev/null 2>&1 & ---> spotify music, spotify, music
 ```
 

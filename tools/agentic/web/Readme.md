@@ -21,7 +21,9 @@ On-device webpage markdown conversion and timestamp-free YouTube transcript extr
 
 If you launch the tool in your active session with no URL:
 ```console
-❯ web reader
-❯ Enter Web URL to process: https://en.wikipedia.org/wiki/Artificial_intelligence
+~ ❯ web reader
+[02/02] ❯ [web reader yt] ~/.config/local-ai/tools/agentic/web/web-reader youtube $1 | mdcat
+:: ↵ run  Esc: 
+❯ Enter Youtube URL to process: 
 ```
 
