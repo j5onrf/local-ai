@@ -6,7 +6,7 @@
 ---
 
 ### Output Format & Instructions
-Generate your response structured strictly under the following layout. Do not use any Markdown formatting (no bolding, no hashes) in your final response:
+Generate your response structured strictly under the following layout.
 
 SYSTEM UPDATE STATUS: [ UP TO DATE | PENDING | CRITICAL ]
 - Pending Updates: [State only the total count (e.g., "75 packages: 75 Arch, 0 AUR", breaking it down by repository type if multiple are present)."]

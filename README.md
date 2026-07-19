@@ -188,64 +188,44 @@ Add your shortcuts, commands, and workspaces to [`ai-context.md`](https://github
 <h2 align="center">Setup & Prerequisites</h2>
 
 ```bash
-# 1. Install terminal rendering and formatting utilities
-# (python-rich enables beautiful terminal markdown, syntax highlighting, and TUI layouts)
-yay -S python-rich
-# Debian/Ubuntu: sudo apt install python3-rich
-# macOS / Standard Python: pip install rich
+# 1. Install dependencies (requests reduces latency | python-rich formats)
+sudo pacman -S python-rich python-requests
+# Debian/Ubuntu: sudo apt install python3-rich python3-requests
+# macOS/Other:   pip install rich requests
 
-# 2. Install required system dependencies (Reduces latency)
-sudo pacman -S python-requests
-# Debian/Ubuntu: sudo apt install python3-requests
-# macOS / Other: pip install requests
-
-# 2.5 Optional: Install local vector-database extensions
-# (Enables high-performance semantic search over your codebase)
+# 2. (Optional) Install vector-database extension for semantic codebase search
 yay -S python-sqlite-vec
-# Debian/Ubuntu: pip install sqlite-vec --break-system-packages
-# macOS / Other: pip install sqlite-vec
+# Other: pip install sqlite-vec
 
-# 3. Clone the repository locally
-git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai
-
-# 4. Add the environment hook into Bash & reload your profile
-echo '[ -f "$HOME/.config/local-ai/ai-hook.sh" ] && source "$HOME/.config/local-ai/ai-hook.sh"' >> ~/.bashrc
+# 3. Clone repository & register shell environment hook
+git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai && \
+echo '[ -f "$HOME/.config/local-ai/ai-hook.sh" ] && source "$HOME/.config/local-ai/ai-hook.sh"' >> ~/.bashrc && \
 source ~/.bashrc
 
-# 5. Create your private configuration file
-# Fill only what you use; remaining values default safely.
+# 4. Create your private configuration file
 nano ~/.config/local-ai/.env
 ```
 
-#### Configuration Example (`.env`):
+#### Configuration Example (`~/.config/local-ai/.env`):
 
 ```env
-# Dynamic Fallback Cascade (Top-Down Key Order)
-# Supports any OpenAI-compatible API key, e.g., DeepSeek, Groq
-# Use "ai status" and "model select"
-
-# 1. Primary Model (Active)
-GEMINI_API_KEY="AIzaSyYourFullGeminiApiKeyHere"
+# Cascade Fallback Cascade (Evaluated Top-Down)
+GEMINI_API_KEY="AIzaSyYourGeminiKeyHere"
 GEMINI_MODEL="gemini-3.1-flash-lite"
 
-# 2. First Fallback (Active)
-OPENROUTER_API_KEY="sk-or-v1-YourFullOpenRouterKeyHere"
+OPENROUTER_API_KEY="sk-or-v1-YourOpenRouterKey"
 OPENROUTER_MODEL="openrouter/free"
 
-# 3. Second Fallback (Active)
-OPENAI_API_KEY="your-openai-api-key-here"
+OPENAI_API_KEY="your-openai-api-key"
 OPENAI_MODEL="gpt-5.6"
 
-# 4. Third Fallback (Active)
-CLAUDE_API_KEY="your-claude-api-key-here"
+CLAUDE_API_KEY="your-claude-api-key"
 CLAUDE_MODEL="claude-fable-5"
 
-# 5. Fourth Fallback (Active)
-XAI_API_KEY="xai-your-grok-api-key-here"
+XAI_API_KEY="xai-your-grok-key"
 XAI_MODEL="grok-4.5"
 
-# Offline/Local Settings (Static Context Window)
-AI_MAX_TOKENS="8192"
+AI_MAX_TOKENS="8192" # Offline Local Context Limit
 ```
 
 ---
