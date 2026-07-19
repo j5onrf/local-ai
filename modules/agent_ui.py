@@ -7,18 +7,31 @@ import select
 import re
 from typing import Optional, Callable
 
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+from rich.text import Text
+from rich.box import DOUBLE, ROUNDED
+
 try:
     import tty
     import termios
 except ImportError:
     pass
 
+# Direct shared console instance for standardized UI output
+_console = Console()
+_console_err = Console(stderr=True)
+
+
 class InlineSpinner:
-    """A lightweight, thread-safe on-demand ANSI terminal spinner for CLI operations."""
+    """A lightweight, thread-safe on-demand ANSI terminal spinner for CLI operations with elapsed timer"""
     def __init__(self, chars: str = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"):
         self.chars: str = chars
         self.active: bool = False
         self.thread: Optional[threading.Thread] = None
+        self.message: str = "Thinking..."
+        self.start_time: float = 0.0
 
     def _spin(self) -> None:
         idx: int = 0
@@ -26,7 +39,9 @@ class InlineSpinner:
         while self.active:
             try:
                 char = self.chars[idx % char_len]
-                sys.stderr.write(f"\r\033[1;32m{char}\033[0m ")
+                elapsed = time.time() - self.start_time
+                # Renders styled spinner coupled with an active timer
+                sys.stderr.write(f"\r\033[1;32m{char}\033[0m \033[36m{self.message}\033[0m \033[2m{elapsed:.1f}s\033[0m ")
                 sys.stderr.flush()
             except Exception:
                 pass
@@ -35,9 +50,11 @@ class InlineSpinner:
         sys.stderr.write("\r\x1b[2K\r")
         sys.stderr.flush()
 
-    def start(self) -> None:
+    def start(self, message: str = "Thinking...") -> None:
         if not self.active:
             self.active = True
+            self.message = message
+            self.start_time = time.time()
             self.thread = threading.Thread(target=self._spin, daemon=True)
             self.thread.start()
 
@@ -47,6 +64,7 @@ class InlineSpinner:
             if self.thread:
                 self.thread.join()
                 self.thread = None
+
 
 def get_key() -> str:
     """Reads a single key or escape sequence from /dev/tty directly or falls back to stdin.
@@ -86,6 +104,7 @@ def get_key() -> str:
             except Exception:
                 return ""
 
+
 def get_local_model_name() -> str:
     """Queries the running llama-server to extract the actual loaded GGUF filename."""
     import urllib.request as urlreq
@@ -98,6 +117,7 @@ def get_local_model_name() -> str:
     except Exception:
         return "local-model"
 
+
 def draw_session_box(
     workspace_path: str,
     home_dir: str,
@@ -109,7 +129,7 @@ def draw_session_box(
     clean_name: str,
     sub_id: Optional[int] = None
 ) -> None:
-    """Draws a clean system status and information frame in the console."""
+    """Draws a styled system status and metadata information frame using Rich panels."""
     version = ""
     main_script_path = os.path.join(home_dir, ".config", "local-ai", "ai-agent.py")
     if os.path.exists(main_script_path):
@@ -126,8 +146,6 @@ def draw_session_box(
     display_dir = workspace_path
     if display_dir.startswith(home_dir):
         display_dir = display_dir.replace(home_dir, "~", 1)
-    if len(display_dir) > 28:
-        display_dir = "..." + display_dir[-25:]
 
     gkey = os.environ.get("GEMINI_API_KEY")
     okey = os.environ.get("OPENROUTER_API_KEY")
@@ -145,38 +163,46 @@ def draw_session_box(
     else:
         model_name = get_local_model_name()
 
-    box_width = 46
-    
-    # Format elegant header badge
-    if sub_id:
-        title_line = f" >_ Local-AI Agent  [sub-agent #{sub_id}]"
+    # Build the internal key-value layout table
+    table = Table(show_header=False, box=None, padding=(0, 2, 0, 0))
+    table.add_column("Key", style="dim cyan", justify="right")
+    table.add_column("Value", style="green")
+
+    table.add_row("model:", model_name)
+    table.add_row("directory:", display_dir)
+    table.add_row("skill:", clean_name if clean_name else "default")
+
+    if is_agent:
+        mem_status = f"active ({tpm_count} facts, {db_turns} turns)" if memory_active else "disabled"
     else:
-        title_line = f" >_ Local-AI Agent ({version})" if version else " >_ Local-AI Agent"
-        
-    model_line = f" model:     {model_name}"
-    dir_line   = f" directory: {display_dir}"
-    skill_line = f" skill:     {clean_name}" if clean_name else " skill:     default"
-    
-    mem_status = f"active ({tpm_count} facts, {db_turns} turns)" if memory_active else "disabled"
-    mem_line   = f" database:  {mem_status}" if is_agent else " database:  stateless"
-    
-    print("\033[1;36m╭" + "─" * box_width + "╮\033[0m")
-    print(f"\033[1;36m│\033[0m \033[1;37m{title_line:<{box_width-1}}\033[0m\033[1;36m│\033[0m")
-    print(f"\033[1;36m│\033[0m{' ':<{box_width}}\033[1;36m│\033[0m")
-    print(f"\033[1;36m│\033[0m \033[2m{model_line:<{box_width-1}}\033[0m\033[1;36m│\033[0m")
-    print(f"\033[1;36m│\033[0m \033[2m{dir_line:<{box_width-1}}\033[0m\033[1;36m│\033[0m")
-    print(f"\033[1;36m│\033[0m \033[2m{skill_line:<{box_width-1}}\033[0m\033[1;36m│\033[0m")
-    print(f"\033[1;36m│\033[0m \033[2m{mem_line:<{box_width-1}}\033[0m\033[1;36m│\033[0m")
-    print("\033[1;36m╰" + "─" * box_width + "╯\033[0m")
+        mem_status = "stateless"
+    table.add_row("database:", mem_status)
+
+    if sub_id:
+        title_text = f" ❖ Local-AI Agent [sub-agent #{sub_id}] "
+    else:
+        title_text = f" ❖ Local-AI Agent ({version}) " if version else " ❖ Local-AI Agent "
+
+    panel = Panel(
+        table,
+        title=Text(title_text, style="bold bright_blue"),
+        title_align="left",
+        border_style="bright_blue",
+        box=DOUBLE,
+        expand=False,
+        subtitle="[dim]Ctrl+C to exit[/dim]",
+        subtitle_align="right"
+    )
+
+    _console.print(panel)
     
     approx_tokens = len(active_system_prompt) // 4
-    print(f"\033[2m[sys] Startup context: {approx_tokens:,} tokens | Ctrl+C to exit.\033[0m\n")
+    _console.print(f"[dim][sys] Startup context: {approx_tokens:,} tokens[/dim]\n")
 
 
 def confirm_tool(tool: str) -> bool:
     """Prompt user to authorize executing a dynamic tool, defaulting to Yes on Enter."""
-    sys.stderr.write(f"\033[1;33m[sys] Authorize tool: {tool}? [Y/n]: \033[0m")
-    sys.stderr.flush()
+    _console_err.print(f"[bold yellow]▲ [sys] Authorize tool:[/bold yellow] [cyan]{tool}[/cyan] [bold yellow]? [Y/n]: [/bold yellow]", end="")
     try:
         char = get_key()
     except Exception:

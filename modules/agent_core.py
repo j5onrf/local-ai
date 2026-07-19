@@ -11,6 +11,16 @@ import difflib
 import agent_ui as ui
 import agent_cloud
 
+from rich.console import Console
+from rich.live import Live
+from rich.markdown import Markdown
+from rich.panel import Panel
+from rich.text import Text
+from rich.box import ROUNDED
+from rich.console import Group
+
+_console = Console()
+
 try:
     import agent_usage as usage_log
 except ImportError:
@@ -22,6 +32,80 @@ try:
     import speed_test
 except ImportError:
     speed_test = None
+
+
+class RichStreamer:
+    """
+    Renders stream content dynamically using Rich.
+    Detects and isolates <think>...</think> monologue blocks into a distinct panel,
+    rendering final conversational answers with full syntax-highlighted Markdown.
+    """
+    def __init__(self, prefix: str = "", active: bool = True):
+        self.prefix = prefix
+        self.active = active and sys.stdout.isatty()
+        self.accumulated = ""
+        self.live = None
+
+    def start(self):
+        if self.active:
+            self.live = Live("", console=_console, auto_refresh=False, vertical_overflow="visible")
+            self.live.start()
+
+    def update(self, token: str):
+        self.accumulated += token
+        if not self.active:
+            print(token, end="", flush=True)
+            return
+
+        text = self.accumulated
+        if "<think>" in text:
+            parts = text.split("<think>", 1)
+            before_think = parts[0]
+            after_start_think = parts[1]
+            
+            if "</think>" in after_start_think:
+                think_parts = after_start_think.split("</think>", 1)
+                thinking_text = think_parts[0]
+                answer_text = before_think + think_parts[1]
+                
+                thinking_panel = Panel(
+                    Text(thinking_text.strip(), style="italic dim white"),
+                    title="⚙ Thinking Process",
+                    title_align="left",
+                    border_style="bright_black",
+                    box=ROUNDED,
+                    expand=True
+                )
+                
+                render_group = Group(
+                    thinking_panel, 
+                    Markdown(f"{self.prefix}{answer_text}" if answer_text.strip() else "")
+                )
+            else:
+                thinking_text = after_start_think
+                thinking_panel = Panel(
+                    Text(thinking_text.strip(), style="italic dim white"),
+                    title="⚙ Thinking Process...",
+                    title_align="left",
+                    border_style="yellow",
+                    box=ROUNDED,
+                    expand=True
+                )
+                render_group = Group(
+                    thinking_panel,
+                    Markdown(f"{self.prefix}{before_think}" if before_think.strip() else "")
+                )
+            
+            self.live.update(render_group)
+        else:
+            self.live.update(Markdown(f"{self.prefix}{text}"))
+        
+        self.live.refresh()
+
+    def stop(self):
+        if self.live:
+            self.live.stop()
+            print()
 
 
 def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float,
@@ -110,6 +194,7 @@ def stream(messages, prefix, gkey, spinner_class, show_stats: bool = True):
                 pass
             
             first, acc, resolved_id = True, [], None
+            streamer = None
             for line in response:
                 dec = line.decode("utf-8").strip()
                 if not dec:
@@ -131,19 +216,24 @@ def stream(messages, prefix, gkey, spinner_class, show_stats: bool = True):
                     if content:
                         if first:
                             spinner.stop()
-                            if sys.stdout.isatty():
-                                sys.stdout.write("\r\x1b[2K\r" + (f"\033[1;32m{prefix}\033[0m " if prefix else ""))
-                                sys.stdout.flush()
                             first = False
+                            streamer = RichStreamer(prefix=f"{prefix} " if prefix else "")
+                            streamer.start()
                             if speed_test and show_stats:
                                 speed_test.start()
-                        print(content, end="", flush=True)
+                        
+                        streamer.update(content)
                         acc.append(content)
                         if speed_test and show_stats:
                             speed_test.count_token(content)
                 except Exception:
                     pass
-            print("")
+            
+            if streamer:
+                streamer.stop()
+            else:
+                print("")
+
             if speed_test and show_stats:
                 speed_test.end()
 
@@ -243,7 +333,6 @@ def _run_edit_tool(name: str, args: dict, workspace: str, spinner=None) -> str:
         if outside or gates_active:
             reason = f"read {full} (OUTSIDE workspace)" if outside else f"read file {args.get('path')}"
             
-            # Stop background spinner thread before prompt block
             if spinner:
                 spinner.stop()
                 
@@ -310,7 +399,6 @@ def _run_edit_tool(name: str, args: dict, workspace: str, spinner=None) -> str:
             where = f"{full} (OUTSIDE workspace)" if outside else args.get("path")
             reason = f"{verb} {where} ({len(content)} chars)"
             
-            # Stop background spinner thread before prompt block
             if spinner:
                 spinner.stop()
                 
@@ -332,7 +420,6 @@ def _run_edit_tool(name: str, args: dict, workspace: str, spinner=None) -> str:
         if outside or gates_active:
             reason = f"list directory {full} (OUTSIDE workspace)" if outside else f"list files in {args.get('path') or '.'}"
             
-            # Stop background spinner thread before prompt block
             if spinner:
                 spinner.stop()
                 
@@ -350,14 +437,13 @@ def _run_edit_tool(name: str, args: dict, workspace: str, spinner=None) -> str:
             return "[denied] no terminal available to approve command execution"
             
         if gates_active:
-            # Stop background spinner thread before prompt block
             if spinner:
                 spinner.stop()
                 
             if not ui.confirm_tool(f"execute: $ {cmd}"):
                 return "[denied] user rejected command execution"
         else:
-            sys.stderr.write(f"\033[2m  Executing command autonomously: $ {cmd}\033[0m\n")
+            _console.print(f"[dim]  Executing command autonomously: $ {cmd}[/dim]")
 
         shell = os.environ.get("SHELL") or "/bin/sh"
         if spinner:
@@ -381,7 +467,6 @@ def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: i
     """Executes a multi-turn streaming agent round-trip loop supporting parallel tool evaluations."""
     workspace = os.environ.get("AI_WORKSPACE_PATH", os.getcwd())
     
-    # Inject workspace agent configurations to active system instructions in-place
     if messages and messages[0]["role"] == "system":
         if "### EDIT MODE" not in messages[0]["content"]:
             messages[0]["content"] += EDIT_SYSTEM_ADD.format(ws=workspace)
@@ -392,7 +477,7 @@ def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: i
     for _round in range(10):
         body_tools = dict(body)
         body_tools["messages"] = messages
-        body_tools["stream"] = True  # Enable real-time streaming inside agentic turns
+        body_tools["stream"] = True  
         body_tools["tools"] = _EDIT_TOOLS
         
         spinner.start()
@@ -409,8 +494,8 @@ def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: i
             first_chunk = True
             acc_content = []
             tool_calls_map = {}
+            streamer = None
             
-            # Read SSE stream lines in real time
             for line in res.iter_lines():
                 if not line:
                     continue
@@ -429,23 +514,21 @@ def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: i
                         continue
                     delta = choices[0].get("delta", {})
                     
-                    # 1. Process conversational text tokens
                     content = delta.get("content", "")
                     if content:
                         if first_chunk:
-                            spinner.stop()  # Stop loader before writing tokens
-                            if sys.stdout.isatty():
-                                sys.stdout.write("\r\x1b[2K\rAgent: ")
-                                sys.stdout.flush()
+                            spinner.stop()  
                             first_chunk = False
+                            streamer = RichStreamer(prefix="Agent: ")
+                            streamer.start()
                             if speed_test and show_stats:
                                 speed_test.start()
-                        print(content, end="", flush=True)
+                        
+                        streamer.update(content)
                         acc_content.append(content)
                         if speed_test and show_stats:
                             speed_test.count_token(content)
                             
-                    # 2. Accumulate tool call blocks cleanly
                     tool_calls = delta.get("tool_calls", [])
                     for tc in tool_calls:
                         idx = tc.get("index", 0)
@@ -465,16 +548,18 @@ def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: i
                 except Exception:
                     pass
                     
-            if not first_chunk:
+            if streamer:
+                streamer.stop()
+            elif not first_chunk:
                 print("")
-                if speed_test and show_stats:
-                    speed_test.end()
+
+            if speed_test and show_stats and not first_chunk:
+                speed_test.end()
                     
             elapsed_time = time.time() - start_time
             ans_text = "".join(acc_content)
             calls = [val for _, val in sorted(tool_calls_map.items())] if tool_calls_map else None
             
-            # If no tools were called, round-trip processing is done
             if not calls:
                 prompt_chars = sum(len(m.get("content") or "") for m in messages)
                 in_tok = prompt_chars // 4
@@ -485,7 +570,6 @@ def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: i
                 
                 return ans_text
                 
-            # If tools were requested, append assistant context and resolve calls sequentially
             assistant_msg = {"role": "assistant", "content": ans_text or None, "tool_calls": calls}
             messages.append(assistant_msg)
             
@@ -503,7 +587,7 @@ def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: i
                 if user_aborted:
                     result = "[denied] execution cancelled by user"
                 else:
-                    print(f"\033[2m∗ {verb} · {fname} {brief}\033[0m")
+                    _console.print(f"[dim]∗ {verb} • [cyan]{fname}[/cyan] [italic]{brief}[/italic][/dim]")
                     
                     if spinner and fname in ("read_file", "list_dir"):
                         try:
@@ -517,7 +601,7 @@ def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: i
                     try:
                         result = _run_edit_tool(fname, args, workspace, spinner)
                         if "[denied]" in result:
-                            user_aborted = True  # Halt subsequent prompts on rejection
+                            user_aborted = True  
                     except Exception as e:
                         result = f"[tool error] {e}"
                     finally:
@@ -531,10 +615,8 @@ def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: i
                     "content": result
                 })
                 
-            # Break out of multi-turn conversational loop instantly if action was cancelled
             if user_aborted:
-                sys.stdout.write("\033[2m[sys] Agent execution halted.\033[0m\n")
-                sys.stdout.flush()
+                _console.print("[dim][sys] Agent execution halted.[/dim]")
                 return ans_text or "Agent: Action cancelled by user."
                 
         except Exception as e:
@@ -566,7 +648,6 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
             **local_extra
         }
         
-        # Build unique configs and canonicalize any local port endpoints (e.g. :8080) to prevent duplicates
         seen_urls = set()
         unique_configs = []
         for url, headers, body, timeout in configs:
@@ -619,6 +700,7 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
                             pass
                         
                         first, resolved_model = True, None
+                        streamer = None
                         for line in response:
                             if not line.startswith(b"data:"):
                                 continue
@@ -627,13 +709,12 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
                             if content:
                                 if first:
                                     spinner.stop()
-                                    if sys.stdout.isatty():
-                                        sys.stdout.write("\r\x1b[2K\r" + (f"\033[1;32m{prefix}\033[0m " if prefix else ""))
-                                        sys.stdout.flush()
                                     first = False
+                                    streamer = RichStreamer(prefix=f"{prefix} " if prefix else "")
+                                    streamer.start()
                                     if speed_test and show_stats:
                                         speed_test.start()
-                                print(content, end="", flush=True)
+                                streamer.update(content)
                                 acc.append(content)
                                 if speed_test and show_stats:
                                     speed_test.count_token(content)
@@ -648,7 +729,10 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
                                             resolved_model = data["model"]
                                 except Exception:
                                     pass
-                        print("")
+                        if streamer:
+                            streamer.stop()
+                        else:
+                            print("")
                         if speed_test and show_stats:
                             speed_test.end()
                         
@@ -704,11 +788,29 @@ def show_memory_status(messages: list, max_context: int = 8192, server_url: str 
     bar_len = 20
     filled = int((total_toks / max_context) * bar_len)
     bar = "█" * filled + "░" * (bar_len - filled)
-    sys.stderr.write(f"\n\033[2m[sys] Context Window: {total_toks}/{max_context} tokens\033[0m\n")
-    sys.stderr.write(f"\033[2m[sys] Usage: [{bar}] {pct:.1f}%\033[0m\n")
-    sys.stderr.write(f"\033[2m[sys] Remaining: {max_context - total_toks} tokens\033[0m\n\n")
-    sys.stderr.flush()
     
+    color = "green" if pct < 70 else "yellow" if pct < 90 else "red"
+    
+    text_info = Text.assemble(
+        ("Context Window: ", "dim"),
+        (f"{total_toks}", f"bold {color}"),
+        (f"/{max_context} tokens ", "dim"),
+        (f"({pct:.1f}%)", f"bold {color}")
+    )
+    
+    panel = Panel(
+        Group(
+            text_info,
+            Text(f"[{bar}]", style=color)
+        ),
+        title="📊 Memory & Context Status",
+        title_align="left",
+        border_style="bright_black",
+        box=ROUNDED,
+        expand=False
+    )
+    _console.print(panel)
+
 
 def prune_history(history: list, max_tokens: int = None) -> list:
     """Prunes old messages from conversation history to stay within context windows."""

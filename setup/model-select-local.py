@@ -29,7 +29,7 @@ LOCAL_MODELS = [
     }
 ]
 
-# --- CPU POWER AUTOMATION ---
+# --- CPU POWER AUTOMATION for cpu only ---
 def set_cpu_chill():
     """Sets CPU to OLLAMA CHILL (Powersave + 3.5 GHz Cap) and updates state."""
     try:

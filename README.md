@@ -2,7 +2,7 @@
   <img alt="Local-AI Agent" src="https://github.com/j5onrf/local-ai/blob/main/logo.png" width="800" />
 </p>
 
-<h1 align="center">Local-AI Agent <kbd>v0.9.3.1-beta</kbd></h1>
+<h1 align="center">Local-AI Agent <kbd>v0.9.3.11-beta</kbd></h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
@@ -27,21 +27,36 @@ All configurations and custom shortcuts are managed in [`ai-context.md`](ai-cont
 
 ---
 
-<h2 align="center">CLI Launch Interface</h2>
+<h2 align="center">CLI Launch Interfaces</h2>
 
 ```console
-╭──────────────────────────────────────────────╮
-│  >_ Local-AI Agent                           │
-│                                              │
-│  model:     Qwen3.6-35B-A3B-claude-4.7.gguf  │
-│  directory: ...-ai/projects/session-test     │
-│  skill:     init                             │
-│  database:  active (3 facts, 109 turns)      │
-╰──────────────────────────────────────────────╯
-[sys] Startup context: 160 tokens | Ctrl+C to exit.
+~ ❯ ai
+╔═  ❖ Local-AI Agent  ══════════════════════╗
+║     model:  Qwen3.6-35B-A3B.gguf          ║
+║ directory:  ~                             ║
+║     skill:  default                       ║
+║  database:  stateless                     ║
+╚══════════════════════════ Ctrl+C to exit ═╝
+ Startup context: 93 tokens
+❯ 
+```
+```console
+~ ❯ sess
+[01/03] ❯ [session test] ai init ~/session-test --init
+:: ↵ run  Esc: 
+╔═  ❖ Local-AI Agent  ═══════════════════════════════════╗
+║     model:  Qwen3.6-35B-A3B.gguf                       ║
+║ directory:  ~/.config/local-ai/projects/session-test   ║
+║     skill:  init code2                                 ║
+║  database:  active (0 facts, 21 turns)                 ║
+╚═══════════════════════════════════════ Ctrl+C to exit ═╝
+ Startup context: 192 tokens
 
 Agent: Workspace loaded. Awaiting instructions.
-❯
+
+ [10 tokens | 0.55s | 28.09 t/s]
+ [ 930 in | 10 out | cost: $0.00000 | today: $0.0000 | ctx: 11.5% ]
+❯ 
 ```
 
 ---
@@ -173,20 +188,22 @@ Add your shortcuts, commands, and workspaces to [`ai-context.md`](https://github
 <h2 align="center">Setup & Prerequisites</h2>
 
 ```bash
-# 1. Optional: Install terminal rendering utilities
-# (mdcat enables beautiful terminal markdown formatting)
-yay -S mdcat
+# 1. Install terminal rendering and formatting utilities
+# (python-rich enables beautiful terminal markdown, syntax highlighting, and TUI layouts)
+yay -S python-rich
+# Debian/Ubuntu: sudo apt install python3-rich
+# macOS / Standard Python: pip install rich
 
 # 2. Install required system dependencies (Reduces latency)
+sudo pacman -S python-requests
 # Debian/Ubuntu: sudo apt install python3-requests
 # macOS / Other: pip install requests
-sudo pacman -S python-requests
 
 # 2.5 Optional: Install local vector-database extensions
 # (Enables high-performance semantic search over your codebase)
+yay -S python-sqlite-vec
 # Debian/Ubuntu: pip install sqlite-vec --break-system-packages
 # macOS / Other: pip install sqlite-vec
-yay -S python-sqlite-vec
 
 # 3. Clone the repository locally
 git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai
