@@ -18,7 +18,7 @@
 
 <h2 align="center">How the Agent Works</h2>
 
-All configurations and custom shortcuts are managed in [`ai-context.md`](ai-context.md).
+All configurations and custom shortcuts are managed in [`ai-context.md`](ai-context.md). The system is built with minimal context-stuffing, making it highly effective even when using highly quantized, resource-constrained models like `Qwen-3.5-2B` `Gemma4`.
 
 *   **Direct (No Session)**: Sub-millisecond Jaccard matching (`jaccard_search`) instantly routes custom keywords to your local terminal.
 *   **Single-Turn Agent (`ai <query>`):** Returns a single response directly to your shell prompt without loading an active conversation.
