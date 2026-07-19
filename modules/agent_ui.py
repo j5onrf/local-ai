@@ -5,7 +5,9 @@ import threading
 import time
 import select
 import re
-from typing import Optional, Callable
+import urllib.request as urlreq
+import json
+from typing import Optional, Callable, Dict, Any, List
 
 from rich.console import Console
 from rich.panel import Panel
@@ -19,14 +21,14 @@ try:
 except ImportError:
     pass
 
-# Direct shared console instance for standardized UI output
+# Shared standardized console channels
 _console = Console()
 _console_err = Console(stderr=True)
 
 
 class InlineSpinner:
-    """A lightweight, thread-safe on-demand ANSI terminal spinner for CLI operations with elapsed timer"""
-    def __init__(self, chars: str = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"):
+    """A thread-safe, lightweight console spinner tracking elapsed operation runtime."""
+    def __init__(self, chars: str = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏") -> None:
         self.chars: str = chars
         self.active: bool = False
         self.thread: Optional[threading.Thread] = None
@@ -40,10 +42,9 @@ class InlineSpinner:
             try:
                 char = self.chars[idx % char_len]
                 elapsed = time.time() - self.start_time
-                # Renders styled spinner coupled with an active timer
                 sys.stderr.write(f"\r\033[1;32m{char}\033[0m \033[36m{self.message}\033[0m \033[2m{elapsed:.1f}s\033[0m ")
                 sys.stderr.flush()
-            except Exception:
+            except IOError:
                 pass
             idx += 1
             time.sleep(0.08)
@@ -51,6 +52,7 @@ class InlineSpinner:
         sys.stderr.flush()
 
     def start(self, message: str = "Thinking...") -> None:
+        """Launches the background spinner execution thread."""
         if not self.active:
             self.active = True
             self.message = message
@@ -59,6 +61,7 @@ class InlineSpinner:
             self.thread.start()
 
     def stop(self) -> None:
+        """Stops spinner execution and blocks until the background thread terminates."""
         if self.active:
             self.active = False
             if self.thread:
@@ -67,10 +70,7 @@ class InlineSpinner:
 
 
 def get_key() -> str:
-    """Reads a single key or escape sequence from /dev/tty directly or falls back to stdin.
-    
-    Uses read-only access on /dev/tty to ensure compatibility inside piped subprocesses.
-    """
+    """Reads a single key or raw keyboard escape sequence securely from /dev/tty or stdin."""
     try:
         with open("/dev/tty", "r") as tty_file:
             fd = tty_file.fileno()
@@ -85,8 +85,8 @@ def get_key() -> str:
             finally:
                 termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
     except Exception:
-        fd = sys.stdin.fileno()
         try:
+            fd = sys.stdin.fileno()
             old_settings = termios.tcgetattr(fd)
             try:
                 tty.setraw(fd)
@@ -99,20 +99,19 @@ def get_key() -> str:
                 termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         except Exception:
             try:
-                char_bytes = os.read(fd, 1)
+                char_bytes = os.read(sys.stdin.fileno(), 1)
                 return char_bytes.decode("utf-8", errors="ignore")
             except Exception:
                 return ""
 
 
 def get_local_model_name() -> str:
-    """Queries the running llama-server to extract the actual loaded GGUF filename."""
-    import urllib.request as urlreq
-    import json
+    """Queries the running llama-server to extract the loaded model's filename."""
     try:
-        with urlreq.urlopen("http://localhost:8080/v1/models", timeout=0.5) as r:
+        req = urlreq.Request("http://localhost:8080/v1/models", method="GET")
+        with urlreq.urlopen(req, timeout=0.5) as r:
             data = json.loads(r.read().decode("utf-8"))
-            model_path = data["data"][0]["id"]
+            model_path: str = data["data"][0]["id"]
             return os.path.basename(model_path)
     except Exception:
         return "local-model"
@@ -129,8 +128,8 @@ def draw_session_box(
     clean_name: str,
     sub_id: Optional[int] = None
 ) -> None:
-    """Draws a styled system status and metadata information frame using Rich panels."""
-    version = ""
+    """Renders the standard system initialization and environment parameters table."""
+    version: str = ""
     main_script_path = os.path.join(home_dir, ".config", "local-ai", "ai-agent.py")
     if os.path.exists(main_script_path):
         try:
@@ -147,23 +146,18 @@ def draw_session_box(
     if display_dir.startswith(home_dir):
         display_dir = display_dir.replace(home_dir, "~", 1)
 
-    gkey = os.environ.get("GEMINI_API_KEY")
-    okey = os.environ.get("OPENROUTER_API_KEY")
-    clakey = os.environ.get("CLAUDE_API_KEY")
-    opakey = os.environ.get("OPENAI_API_KEY")
-
-    if clakey:
-        model_name = os.environ.get("CLAUDE_MODEL", "claude-fable-5")
-    elif opakey:
-        model_name = os.environ.get("OPENAI_MODEL", "gpt-5.5")
-    elif gkey:
-        model_name = os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite")
-    elif okey:
-        model_name = os.environ.get("OPENROUTER_MODEL", "openrouter/free")
-    else:
+    # Dynamically query the active cloud configuration cascading priority
+    try:
+        import agent_cloud
+        configs = agent_cloud.get_active_configs([])
+        if configs:
+            # Get the model name from the primary (first) active config
+            model_name = configs[0][2].get("model", "local-model")
+        else:
+            model_name = get_local_model_name()
+    except Exception:
         model_name = get_local_model_name()
 
-    # Build the internal key-value layout table
     table = Table(show_header=False, box=None, padding=(0, 2, 0, 0))
     table.add_column("Key", style="dim cyan", justify="right")
     table.add_column("Value", style="green")
@@ -172,16 +166,11 @@ def draw_session_box(
     table.add_row("directory:", display_dir)
     table.add_row("skill:", clean_name if clean_name else "default")
 
-    if is_agent:
-        mem_status = f"active ({tpm_count} facts, {db_turns} turns)" if memory_active else "disabled"
-    else:
-        mem_status = "stateless"
-    table.add_row("database:", mem_status)
+    mem_status = f"active ({tpm_count} facts, {db_turns} turns)" if memory_active else "disabled"
+    table.add_row("database:", mem_status if is_agent else "stateless")
 
-    if sub_id:
-        title_text = f" ❖ Local-AI Agent [sub-agent #{sub_id}] "
-    else:
-        title_text = f" ❖ Local-AI Agent ({version}) " if version else " ❖ Local-AI Agent "
+    title_text = f" ❖ Local-AI Agent [sub-agent #{sub_id}] " if sub_id else \
+                 f" ❖ Local-AI Agent ({version}) " if version else " ❖ Local-AI Agent "
 
     panel = Panel(
         table,
@@ -195,13 +184,12 @@ def draw_session_box(
     )
 
     _console.print(panel)
-    
-    approx_tokens = len(active_system_prompt) // 4
+    approx_tokens: int = len(active_system_prompt) // 4
     _console.print(f"[dim][sys] Startup context: {approx_tokens:,} tokens[/dim]\n")
 
 
 def confirm_tool(tool: str) -> bool:
-    """Prompt user to authorize executing a dynamic tool, defaulting to Yes on Enter."""
+    """Intercepts potentially out-of-bounds commands for visual user verification."""
     _console_err.print(f"[bold yellow]▲ [sys] Authorize tool:[/bold yellow] [cyan]{tool}[/cyan] [bold yellow]? [Y/n]: [/bold yellow]", end="")
     try:
         char = get_key()
@@ -225,7 +213,7 @@ def run_interactive_selection(
     print_stock_error_fn: Callable[[str], None],
     ensure_mysys_exists_fn: Callable[[], None]
 ) -> None:
-    """Displays a menu overlay allowing arrow-selection and execution of mapped tools."""
+    """Renders the CLI command selection menu overlay, navigating via arrow keys."""
     if re.search(r'[\[\]{}()=\'"",;|<>#]', intent):
         print_stock_error_fn(intent)
         sys.exit(127)
@@ -235,9 +223,9 @@ def run_interactive_selection(
         print_stock_error_fn(intent)
         sys.exit(127)
 
-    options = matched_base.split("\n")
-    num_opts = len(options)
-    current_idx = 0
+    options: List[str] = matched_base.split("\n")
+    num_opts: int = len(options)
+    current_idx: int = 0
     
     sys.stderr.write("\033[?25l")
     sys.stderr.flush()

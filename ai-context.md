@@ -9,7 +9,7 @@
 1. `~/path`: Indexes workspace and launches a standard AI Workspace.
 2. `ai init --<skill>`: Indexes codebase workspace pre-primed with a chosen `--<skill>` (e.g., `--init` or `--coder`).
 3. `[TOOL] <command> [--s]`: Runs a background utility to inject dynamic Markdown context (append ` --s` to bypass confirmation).
-4. `<command>`: Launches a native terminal alias, interactive TUI, or document viewer (using `mdcat`, `leaf`, or `glow`).
+4. `<command>`: Launches a native terminal alias, interactive TUI, or document viewer (using `view`, `leaf`, or `glow`).
 
 ---
 
@@ -49,12 +49,12 @@ ai init ~/.config/local-ai/projects/session-test-3 --init ---> session test 3, p
 [TOOL] cat $1 ---> view file, read file, show file, vf
 
 # --- Active Workspace Memory Viewer & Searcher ---
-[TOOL] mdcat .agent/tpm.md | less -R ---> show memories, mem
-[TOOL] read -p "Search Memories: " query && mdcat .agent/tpm.md | grep --color=always -A 5 -B 2 -i "$query" ---> search memories, ms
+[TOOL] view .agent/tpm.md | less -R ---> show memories, mem
+[TOOL] read -p "Search Memories: " query && view .agent/tpm.md | grep --color=always -A 5 -B 2 -i "$query" ---> search memories, ms
 
 # --- Active Workspace History Viewer & Searcher ---
-[TOOL] mdcat history.md | less -R ---> show history, hist, history
-[TOOL] read -p "Search Page: " query && mdcat history.md | grep --color=always -A 15 -B 2 -i "$query" ---> search page, hs
+[TOOL] view history.md | less -R ---> show history, hist, history
+[TOOL] read -p "Search Page: " query && view history.md | grep --color=always -A 15 -B 2 -i "$query" ---> search page, hs
 ```
 
 ## 4. System Diagnostics & Performance Optimization

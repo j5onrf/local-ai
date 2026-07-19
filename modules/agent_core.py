@@ -4,13 +4,14 @@ import sys
 import re
 import json
 import time
+import ast
+import subprocess
+import difflib
 import urllib.request as urlreq
 import urllib.error as urlerr
-import requests
-import difflib
-import agent_ui as ui
-import agent_cloud
+from typing import List, Dict, Any, Optional, Tuple, Union
 
+import requests
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
@@ -18,6 +19,10 @@ from rich.panel import Panel
 from rich.text import Text
 from rich.box import ROUNDED
 from rich.console import Group
+from rich.syntax import Syntax
+
+import agent_ui as ui
+import agent_cloud
 
 _console = Console()
 
@@ -26,12 +31,12 @@ try:
 except ImportError:
     usage_log = None
 
-_session = requests.Session()
-
 try:
     import speed_test
 except ImportError:
     speed_test = None
+
+_session = requests.Session()
 
 
 class RichStreamer:
@@ -40,18 +45,27 @@ class RichStreamer:
     Detects and isolates <think>...</think> monologue blocks into a distinct panel,
     rendering final conversational answers with full syntax-highlighted Markdown.
     """
-    def __init__(self, prefix: str = "", active: bool = True):
-        self.prefix = prefix
-        self.active = active and sys.stdout.isatty()
-        self.accumulated = ""
-        self.live = None
+    def __init__(self, prefix: str = "", active: bool = True) -> None:
+        self.prefix: str = prefix
+        self.active: bool = active and sys.stdout.isatty()
+        self.accumulated: str = ""
+        self.live: Optional[Live] = None
 
-    def start(self):
+    def start(self) -> None:
+        """Starts the live screen update context safely showing the cursor."""
         if self.active:
-            self.live = Live("", console=_console, auto_refresh=False, vertical_overflow="visible")
+            # We explicitly ensure show_cursor is managed to prevent terminal cursor hidden state on exit
+            self.live = Live(
+                "", 
+                console=_console, 
+                auto_refresh=False, 
+                vertical_overflow="visible",
+                screen=False
+            )
             self.live.start()
 
-    def update(self, token: str):
+    def update(self, token: str) -> None:
+        """Appends a new streaming token and updates the live renderable tree."""
         self.accumulated += token
         if not self.active:
             print(token, end="", flush=True)
@@ -96,33 +110,46 @@ class RichStreamer:
                     Markdown(f"{self.prefix}{before_think}" if before_think.strip() else "")
                 )
             
-            self.live.update(render_group)
+            if self.live:
+                self.live.update(render_group)
         else:
-            self.live.update(Markdown(f"{self.prefix}{text}"))
+            if self.live:
+                self.live.update(Markdown(f"{self.prefix}{text}"))
         
-        self.live.refresh()
-
-    def stop(self):
         if self.live:
-            self.live.stop()
+            self.live.refresh()
+
+    def stop(self) -> None:
+        """Stops live updates and restores standard terminal line flow."""
+        if self.live:
+            try:
+                self.live.stop()
+            except Exception:
+                pass
+            self.live = None
             print()
 
 
-def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float,
-                    show_stats: bool, ctx_used: int = None) -> None:
-    """Records a finished turn in the spend ledger and, when stats are on,
-    prints the dim usage line (tokens, turn cost, today's spend, context left)."""
+def _log_turn_usage(
+    model: str, 
+    in_tok: int, 
+    out_tok: int, 
+    cost: float,
+    show_stats: bool, 
+    ctx_used: Optional[int] = None
+) -> None:
+    """Records a finished turn in the spend ledger and prints usage stats when enabled."""
     if not usage_log:
         return
     try:
         usage_log.record(model, in_tok, out_tok, cost)
         usage_log.refresh_balance_async(min_age=10)
         if show_stats and sys.stdout.isatty():
-            ctx_max = None
+            ctx_max: Optional[int] = None
             if ctx_used is not None:
                 try:
                     ctx_max = int(os.environ.get("AI_MAX_TOKENS", 8192))
-                except Exception:
+                except (ValueError, TypeError):
                     ctx_max = 8192
             print(usage_log.turn_line(in_tok, out_tok, cost, ctx_used, ctx_max))
     except Exception:
@@ -130,7 +157,7 @@ def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float,
 
 
 def extract_stream_content(line_bytes: bytes) -> str:
-    """Performs raw byte-level searching to extract streaming tokens."""
+    """Performs raw byte-level searching with safety boundary guard clauses."""
     idx = line_bytes.find(b'"content":"')
     if idx == -1:
         idx = line_bytes.find(b'"text":"')
@@ -142,14 +169,23 @@ def extract_stream_content(line_bytes: bytes) -> str:
 
     end = start
     length = len(line_bytes)
+    
+    # Boundary guard verification
+    if start >= length:
+        return ""
+
     while end < length:
         char = line_bytes[end]
-        if char == 34:  # ASCII for double quote '"'
+        if char == 34:  # ASCII double quote '"'
             break
-        if char == 92:  # ASCII for backslash '\'
+        if char == 92:  # ASCII backslash '\'
             end += 2    # Skip escaped character
         else:
             end += 1
+
+    # Clamp the slice range safely within length
+    if end > length:
+        end = length
 
     try:
         raw_str_bytes = line_bytes[start:end]
@@ -159,11 +195,18 @@ def extract_stream_content(line_bytes: bytes) -> str:
         return line_bytes[start:end].decode("utf-8", errors="ignore")
 
 
-def stream(messages, prefix, gkey, spinner_class, show_stats: bool = True):
+def stream(
+    messages: List[Dict[str, str]], 
+    prefix: str, 
+    gkey: str, 
+    spinner_class: Any, 
+    show_stats: bool = True
+) -> Optional[str]:
+    """Streams interactions directly from Google Generative Language interactions endpoint."""
     workspace = os.environ.get("AI_WORKSPACE_PATH", os.getcwd())
     sf = os.path.join(workspace, ".agent", "session.json")
     
-    saved_id = None
+    saved_id: Optional[str] = None
     if os.path.exists(sf):
         try:
             with open(sf, "r", encoding="utf-8") as f:
@@ -172,7 +215,11 @@ def stream(messages, prefix, gkey, spinner_class, show_stats: bool = True):
             pass
 
     model = os.environ.get("CLOUD_MODEL", "gemini-3.5-flash")
-    body = {"model": model, "input": messages[-1]["content"] if messages else "", "stream": True}
+    body: Dict[str, Any] = {
+        "model": model, 
+        "input": messages[-1]["content"] if messages else "", 
+        "stream": True
+    }
     if messages and messages[0]["role"] == "system":
         body["system_instruction"] = messages[0]["content"]
     if saved_id:
@@ -193,8 +240,11 @@ def stream(messages, prefix, gkey, spinner_class, show_stats: bool = True):
             except Exception:
                 pass
             
-            first, acc, resolved_id = True, [], None
-            streamer = None
+            first = True
+            acc: List[str] = []
+            resolved_id: Optional[str] = None
+            streamer: Optional[RichStreamer] = None
+
             for line in response:
                 dec = line.decode("utf-8").strip()
                 if not dec:
@@ -222,7 +272,8 @@ def stream(messages, prefix, gkey, spinner_class, show_stats: bool = True):
                             if speed_test and show_stats:
                                 speed_test.start()
                         
-                        streamer.update(content)
+                        if streamer:
+                            streamer.update(content)
                         acc.append(content)
                         if speed_test and show_stats:
                             speed_test.count_token(content)
@@ -249,7 +300,7 @@ def stream(messages, prefix, gkey, spinner_class, show_stats: bool = True):
                         json.dump({"last_interaction_id": resolved_id}, f)
                 except Exception:
                     pass
-            return "".join(acc)
+            return ans_text
     except urlerr.HTTPError as e:
         spinner.stop()
         if saved_id and e.code in (400, 404):
@@ -263,7 +314,7 @@ def stream(messages, prefix, gkey, spinner_class, show_stats: bool = True):
         return None
 
 
-_EDIT_TOOLS = [
+_EDIT_TOOLS: List[Dict[str, Any]] = [
     {"type": "function", "function": {
         "name": "read_file",
         "description": "Read a text file from the project. Returns its content.",
@@ -291,20 +342,20 @@ _EDIT_TOOLS = [
             "required": ["command"]}}},
 ]
 
-EDIT_SYSTEM_ADD = (
+EDIT_SYSTEM_ADD: str = (
     "\n\n### EDIT MODE (overrides any read-only rules above):\n"
     "You are an active coding agent with write access to the project at {ws}. "
     "Use your tools to inspect and modify files directly instead of describing changes. "
     "After modifying files or executing scripts, reply briefly: what you changed, where, and why."
 )
 
-TOOLS_SYSTEM_ADD = (
+TOOLS_SYSTEM_ADD: str = (
     "\n\n### WORKING TOOLS:\n"
     "You have operational capabilities to read, write, and execute files: {names}. The project root is {ws} — relative "
     "paths resolve there and run_command executes there."
 )
 
-TOOL_VERBS = {
+TOOL_VERBS: Dict[str, str] = {
     "read_file": "checking",
     "write_file": "updating",
     "list_dir": "checking",
@@ -313,17 +364,24 @@ TOOL_VERBS = {
 
 
 def _safe_path(workspace: str, p: str) -> str:
+    """Resolves relative paths and normalizes them against workspace boundaries."""
     root = os.path.realpath(workspace)
-    return os.path.realpath(os.path.join(root, os.path.expanduser(p or "")))
+    # Ensure nested symbols are normalized
+    target = os.path.realpath(os.path.join(root, os.path.expanduser(p or "")))
+    return target
 
 
 def _is_outside_workspace(workspace: str, full_path: str) -> bool:
+    """Verifies and strictly blocks relative directory traversal bypasses."""
     root = os.path.realpath(workspace)
-    return full_path != root and not full_path.startswith(root + os.sep)
+    # Checks if symlinks or traversal escape directory root
+    if full_path == root:
+        return False
+    return not full_path.startswith(root + os.sep)
 
 
-def _run_edit_tool(name: str, args: dict, workspace: str, spinner=None) -> str:
-    import subprocess
+def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any = None) -> str:
+    """Executes workspace editing capabilities with security gates, AST and JSON verification."""
     gates_active = os.environ.get("AI_CONFIRM_GATES", "1") == "1"
 
     if name == "read_file":
@@ -352,7 +410,6 @@ def _run_edit_tool(name: str, args: dict, workspace: str, spinner=None) -> str:
         exists = os.path.exists(full)
         
         if full.endswith(".py"):
-            import ast
             try:
                 ast.parse(content)
             except SyntaxError as e:
@@ -378,17 +435,10 @@ def _run_edit_tool(name: str, args: dict, workspace: str, spinner=None) -> str:
                     )
                     diff_text = "\n".join(diff)
                     if diff_text:
-                        color_lines = []
-                        for line in diff_text.splitlines():
-                            if line.startswith("+"):
-                                color_lines.append(f"\033[32m{line}\033[0m")
-                            elif line.startswith("-"):
-                                color_lines.append(f"\033[31m{line}\033[0m")
-                            elif line.startswith("@"):
-                                color_lines.append(f"\033[36m{line}\033[0m")
-                            else:
-                                color_lines.append(line)
-                        sys.stderr.write("\n" + "\n".join(color_lines) + "\n\n")
+                        # OPTION 2: Beautiful rendering using Rich's native Syntax highlighter for diffs
+                        _console.print()
+                        _console.print(Syntax(diff_text, "diff", theme="ansi_dark", background_color="default"))
+                        _console.print()
                 except Exception:
                     sys.stderr.write(f"\033[2m  {args.get('path')} — existing file modification\033[0m\n")
             else:
@@ -463,8 +513,16 @@ def _run_edit_tool(name: str, args: dict, workspace: str, spinner=None) -> str:
     return f"[error] unknown tool {name}"
 
 
-def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: int, spinner, show_stats: bool = False) -> str or None:
-    """Executes a multi-turn streaming agent round-trip loop supporting parallel tool evaluations."""
+def agentic_turn(
+    messages: List[Dict[str, Any]], 
+    url: str, 
+    headers: Dict[str, str], 
+    body: Dict[str, Any], 
+    timeout: int, 
+    spinner: Any, 
+    show_stats: bool = False
+) -> Optional[str]:
+    """Executes a multi-turn streaming agent loop supporting tool execution and evaluation."""
     workspace = os.environ.get("AI_WORKSPACE_PATH", os.getcwd())
     
     if messages and messages[0]["role"] == "system":
@@ -473,7 +531,7 @@ def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: i
             messages[0]["content"] += TOOLS_SYSTEM_ADD.format(
                 names="read_file, write_file, list_dir, run_command", ws=workspace)
             
-    resolved_model = None
+    resolved_model: Optional[str] = None
     for _round in range(10):
         body_tools = dict(body)
         body_tools["messages"] = messages
@@ -492,9 +550,9 @@ def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: i
             )
             
             first_chunk = True
-            acc_content = []
-            tool_calls_map = {}
-            streamer = None
+            acc_content: List[str] = []
+            tool_calls_map: Dict[int, Dict[str, Any]] = {}
+            streamer: Optional[RichStreamer] = None
             
             for line in res.iter_lines():
                 if not line:
@@ -524,7 +582,8 @@ def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: i
                             if speed_test and show_stats:
                                 speed_test.start()
                         
-                        streamer.update(content)
+                        if streamer:
+                            streamer.update(content)
                         acc_content.append(content)
                         if speed_test and show_stats:
                             speed_test.count_token(content)
@@ -570,7 +629,7 @@ def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: i
                 
                 return ans_text
                 
-            assistant_msg = {"role": "assistant", "content": ans_text or None, "tool_calls": calls}
+            assistant_msg: Dict[str, Any] = {"role": "assistant", "content": ans_text or None, "tool_calls": calls}
             messages.append(assistant_msg)
             
             user_aborted = False
@@ -628,20 +687,28 @@ def agentic_turn(messages: list, url: str, headers: dict, body: dict, timeout: i
     return None
 
 
-def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", show_stats: bool = False, thinking_budget: int = 0, is_agent: bool = False) -> str or None:
-    acc = []
+def stream_response(
+    messages: List[Dict[str, Any]], 
+    prefix: str = "AI: ", 
+    cfg_dir: str = "", 
+    show_stats: bool = False, 
+    thinking_budget: int = 0, 
+    is_agent: bool = False
+) -> Optional[str]:
+    """Primary streaming endpoint manager supporting multi-provider failover cascades."""
+    acc: List[str] = []
     spinner = ui.InlineSpinner()
     try:
         configs = agent_cloud.get_active_configs(messages)
 
-        local_extra = {}
+        local_extra: Dict[str, Any] = {}
         if thinking_budget and thinking_budget > 0:
             local_extra["thinking_budget_tokens"] = thinking_budget
             local_extra["chat_template_kwargs"] = {"enable_thinking": True}
         else:
             local_extra["chat_template_kwargs"] = {"enable_thinking": False}
 
-        local_body = {
+        local_body: Dict[str, Any] = {
             "messages": messages,
             "stream": True,
             "model": "local-model",
@@ -649,7 +716,7 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
         }
         
         seen_urls = set()
-        unique_configs = []
+        unique_configs: List[Tuple[str, Dict[str, str], Dict[str, Any], int]] = []
         for url, headers, body, timeout in configs:
             norm_url = url.replace("127.0.0.1", "localhost")
             if ":8080" in norm_url:
@@ -699,8 +766,10 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
                         except Exception:
                             pass
                         
-                        first, resolved_model = True, None
-                        streamer = None
+                        first = True
+                        resolved_model: Optional[str] = None
+                        streamer: Optional[RichStreamer] = None
+
                         for line in response:
                             if not line.startswith(b"data:"):
                                 continue
@@ -714,7 +783,8 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
                                     streamer.start()
                                     if speed_test and show_stats:
                                         speed_test.start()
-                                streamer.update(content)
+                                if streamer:
+                                    streamer.update(content)
                                 acc.append(content)
                                 if speed_test and show_stats:
                                     speed_test.count_token(content)
@@ -775,6 +845,7 @@ def stream_response(messages: list, prefix: str = "AI: ", cfg_dir: str = "", sho
 
 
 def get_accurate_token_count(text: str, server_url: str = "http://localhost:8080") -> int:
+    """Queries the local llama server tokenize endpoint or estimates token count."""
     try:
         res = _session.post(f"{server_url}/tokenize", json={"content": text}, timeout=3)
         return len(res.json().get("tokens", []))
@@ -782,7 +853,8 @@ def get_accurate_token_count(text: str, server_url: str = "http://localhost:8080
         return len(text) // 4
 
 
-def show_memory_status(messages: list, max_context: int = 8192, server_url: str = "http://localhost:8080") -> None:
+def show_memory_status(messages: List[Dict[str, Any]], max_context: int = 8192, server_url: str = "http://localhost:8080") -> None:
+    """Displays context window usage as a Rich graphical bar panel."""
     total_toks = sum(get_accurate_token_count(m.get("content") or "", server_url) for m in messages)
     pct = (total_toks / max_context) * 100
     bar_len = 20
@@ -812,21 +884,21 @@ def show_memory_status(messages: list, max_context: int = 8192, server_url: str 
     _console.print(panel)
 
 
-def prune_history(history: list, max_tokens: int = None) -> list:
-    """Prunes old messages from conversation history to stay within context windows."""
+def prune_history(history: List[Dict[str, Any]], max_tokens: Optional[int] = None) -> List[Dict[str, Any]]:
+    """Prunes old conversation messages to stay within maximum context limits."""
     if len(history) <= 1:
         return history
     try:
         target_limit = int(os.environ.get("AI_MAX_TOKENS", 8192)) if max_tokens is None else max_tokens
-    except Exception:
+    except (ValueError, TypeError):
         target_limit = 8192
 
     sys_prompt = history[0]
-    current_tokens = len(sys_prompt["content"]) // 4
-    selected_messages = []
+    current_tokens = len(sys_prompt.get("content", "")) // 4
+    selected_messages: List[Dict[str, Any]] = []
 
     for msg in reversed(history[1:]):
-        approx_tokens = len(msg["content"]) // 4
+        approx_tokens = len(msg.get("content", "") or "") // 4
         if not selected_messages or (current_tokens + approx_tokens <= target_limit):
             selected_messages.append(msg)
             current_tokens += approx_tokens
