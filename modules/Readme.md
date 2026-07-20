@@ -16,3 +16,14 @@
     <img alt="Ai-Commit Thumbnail" src="https://github.com/user-attachments/assets/cf01e342-810c-4a2b-ace5-157aecf04bd7" width="250" />
   </a>
 </div>
+
+---
+
+# Interactive TUI
+
+<div align="center">
+  <p><i>Click to view high-resolution version</i></p>
+  <a href="https://github.com/user-attachments/assets/c380b167-991e-4723-aa2d-911d475e67a5">
+    <img alt="Ai-Commit Thumbnail" src="https://github.com/user-attachments/assets/c380b167-991e-4723-aa2d-911d475e67a5" width="250" />
+  </a>
+</div>
