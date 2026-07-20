@@ -7,10 +7,17 @@ import sys
 import re
 import subprocess
 import json
+from typing import List, Dict, Any, Optional, Set
+
 import agent_ui as ui
 import agent_context as context
 
+# Pre-compiled patterns for high-performance string operations
+PAGER_STRIP_RE: re.Pattern = re.compile(r'\|\s*(leaf|mdcat|cat|glow|view)\b.*$', re.IGNORECASE)
+
+
 def ensure_mysys_exists(skills_dir: str, cfg_dir: str) -> None:
+    """Ensures host hardware profile facts are generated and placed in context."""
     mysys_path = os.path.join(skills_dir, "system", "mysys.md")
     if not os.path.exists(mysys_path):
         try:
@@ -19,7 +26,9 @@ def ensure_mysys_exists(skills_dir: str, cfg_dir: str) -> None:
         except Exception:
             pass
 
-def find_skill_file(base_dir: str, skill_name: str) -> str or None:
+
+def find_skill_file(base_dir: str, skill_name: str) -> Optional[str]:
+    """Scans subdirectories up to a depth of 3 to locate a target Markdown skill file."""
     target_filename = f"{skill_name.lower()}.md"
     for root, _, files in os.walk(base_dir):
         if root[len(base_dir):].count(os.sep) <= 3:
@@ -28,10 +37,12 @@ def find_skill_file(base_dir: str, skill_name: str) -> str or None:
                     return os.path.join(root, f)
     return None
 
+
 def load_skill_content(skills_str: str, skills_dir: str, cfg_dir: str) -> str:
+    """Concatenates the instruction contents of all matched skills."""
     if not skills_str:
         return ""
-    contents = []
+    contents: List[str] = []
     for skill in [s.lstrip("-").lower() for s in skills_str.split()]:
         skill_file = find_skill_file(skills_dir, skill)
         if skill_file:
@@ -44,10 +55,11 @@ def load_skill_content(skills_str: str, skills_dir: str, cfg_dir: str) -> str:
                 sys.stderr.write(f"\033[1;31mError loading skill '{skill}': {e}\033[0m\n")
     return "\n\n".join(contents)
 
+
 def run_local_tool(cmd: str) -> str:
+    """Runs a local background command tool inside your active project directory workspace."""
     try:
-        sanitized = re.sub(r'\|\s*(leaf|mdcat|cat|glow)\b.*$', '', cmd.strip()).strip()
-        # Dynamic working directory synchronization (forces all tools to run inside your active project)
+        sanitized = PAGER_STRIP_RE.sub('', cmd.strip()).strip()
         workspace_path = os.environ.get("AI_WORKSPACE_PATH") or os.getcwd()
         out = subprocess.check_output(
             sanitized, 
@@ -59,8 +71,7 @@ def run_local_tool(cmd: str) -> str:
         ).strip()
         return f"{out}\n" if out else "Action executed successfully.\n"
     except subprocess.CalledProcessError:
-        # Gracefully handle tool execution failures or user cancellations (Ctrl+C)
-        sys.stderr.write(f"\033[1;31m[sys] Tool execution failed or was cancelled.\033[0m\n")
+        sys.stderr.write("\033[1;31m[sys] Tool execution failed or was cancelled.\033[0m\n")
         sys.stderr.flush()
         return "__ABORT_TURN__"
     except Exception as e:
@@ -68,16 +79,12 @@ def run_local_tool(cmd: str) -> str:
         sys.stderr.flush()
         return "__ABORT_TURN__"
 
+
 def run_interactive_tool(cmd: str) -> str:
-    """Runs an interactive terminal tool directly in the user's active foreground shell.
-    
-    By connecting stdout/stdin directly to the terminal, interactive prompts (like read -p)
-    and pagers function natively. Aborts the turn cleanly upon exit.
-    """
+    """Runs an interactive terminal tool directly attached to standard system streams."""
     try:
-        sanitized = re.sub(r'\|\s*(leaf|mdcat|cat|glow)\b.*$', '', cmd.strip()).strip()
+        sanitized = PAGER_STRIP_RE.sub('', cmd.strip()).strip()
         workspace_path = os.environ.get("AI_WORKSPACE_PATH") or os.getcwd()
-        # Executes with standard streams connected directly to your active terminal window
         subprocess.run(
             sanitized, 
             shell=True, 
@@ -90,7 +97,9 @@ def run_interactive_tool(cmd: str) -> str:
         sys.stderr.flush()
         return "__ABORT_TURN__"
 
-def get_system_context(query: str, context_file: str, stop_words: set, skills_dir: str, cfg_dir: str) -> str:
+
+def get_system_context(query: str, context_file: str, stop_words: Set[str], skills_dir: str, cfg_dir: str) -> str:
+    """Matches inputs against contextual templates, executing approved shortcuts dynamically."""
     q_tokens = context.tokenize(query, stop_words)
     if not q_tokens or "\n" in query.strip():
         return ""
@@ -101,9 +110,7 @@ def get_system_context(query: str, context_file: str, stop_words: set, skills_di
             if tool.startswith("[TOOL]"):
                 tool = tool.replace("[TOOL]", "").strip()
                 
-                # --- DYNAMIC FOREGROUND EXECUTION HOOK ---
-                # If the tool requires interactive input (read -p) or a pager (less, fzf),
-                # we run it natively in the foreground and abort the turn cleanly upon exit.
+                # Check for interactive components to run in foreground
                 if "read -p" in tool or "less" in tool or "fzf" in tool:
                     return run_interactive_tool(tool)
                 
@@ -113,11 +120,11 @@ def get_system_context(query: str, context_file: str, stop_words: set, skills_di
                 if "system" in tool.lower():
                     ensure_mysys_exists(skills_dir, cfg_dir)
                 tool = tool.replace(" --s", "").strip()
-                for flag in [" --leaf", " --glow", " --cat", " --mdcat"]:
+                for flag in [" --leaf", " --glow", " --cat", " --mdcat", " --view"]:
                     tool = tool.replace(flag, "")
                 intent_tokens = set(context.tokenize(entry.get("intent", ""), stop_words))
                 
-                # --- PATH-AWARE ARGUMENT PARSER ---
+                # Dynamic path-aware arguments parsing
                 args_list = []
                 for w in query.split():
                     if any(c in w for c in ("/", "~", ".")):
@@ -136,15 +143,15 @@ def get_system_context(query: str, context_file: str, stop_words: set, skills_di
 
 # --- DYNAMIC ON-DEMAND SKILL SELECTOR TUI ---
 
-def load_skill_blueprints(dept_skills_dir: str, stop_words: set) -> list:
-    blueprints = []
+def load_skill_blueprints(dept_skills_dir: str, stop_words: Set[str]) -> List[Dict[str, Any]]:
+    """Loads metadata descriptions and indexing tokens for on-demand specialty skills."""
+    blueprints: List[Dict[str, Any]] = []
     if os.path.exists(dept_skills_dir):
         for r, _, fs in os.walk(dept_skills_dir):
             for f in fs:
                 if f.endswith(".md"):
                     path = os.path.join(r, f)
                     try:
-                        # Read file lines
                         with open(path, "r", encoding="utf-8") as sf:
                             lines = [line.strip() for line in sf.readlines()]
                         
@@ -152,34 +159,26 @@ def load_skill_blueprints(dept_skills_dir: str, stop_words: set) -> list:
                             continue
 
                         first_line = lines[0]
-                        
-                        # Find the first valid description line (skipping headers, lists, and YAML tags)
                         desc_line = ""
                         for line in lines:
-                            # Skip empty lines, headers, lists, blockquotes, and YAML metadata (e.g., "name: pirate")
                             if (line 
                                 and not line.startswith(("#", "---", ">", "*", "-", "import "))
                                 and not re.match(r'^\w+:\s', line)):
                                 desc_line = line
                                 break
 
-                        # 1. Parse legacy/strict format if present: "# [SKILL] Name ---> intents"
                         if first_line.startswith("# [SKILL]") and "--->" in first_line:
                             header, intents = first_line.split("--->", 1)
                             skill_name = header.replace("# [SKILL]", "").strip()
                             intent_list = [i.strip() for i in intents.split(",") if i.strip()]
                         else:
-                            # 2. Fallback: Parse dynamically from the file's header or filename
-                            base_name = os.path.splitext(f)[0]  # e.g., "pirate-talk"
-                            
-                            # Extract skill name from first header, otherwise clean up the filename
+                            base_name = os.path.splitext(f)[0]
                             first_header = next((l.replace("#", "").strip() for l in lines if l.startswith("#")), None)
                             if first_header:
                                 skill_name = first_header
                             else:
                                 skill_name = base_name.replace("-", " ").replace("_", " ").title()
                             
-                            # Extract search intents from the filename and the skill name
                             filename_tokens = re.split(r"[-_]", base_name.lower())
                             skill_name_tokens = context.tokenize(skill_name, stop_words)
                             intent_list = list(set(filename_tokens + skill_name_tokens))
@@ -197,7 +196,9 @@ def load_skill_blueprints(dept_skills_dir: str, stop_words: set) -> list:
                         pass
     return blueprints
 
-def run_skill_selector(workspace: str, raw_cmd: str, dept_skills_dir: str, stop_words: set) -> None:
+
+def run_skill_selector(workspace: str, raw_cmd: str, dept_skills_dir: str, stop_words: Set[str]) -> None:
+    """Runs the dynamic arrow-key skill loading overlay inside the active terminal."""
     try:
         history_data = sys.stdin.read().strip()
         chat_history = json.loads(history_data)
@@ -215,7 +216,6 @@ def run_skill_selector(workspace: str, raw_cmd: str, dept_skills_dir: str, stop_
     
     try:
         while True:
-            # 1. Dynamically calculate candidates matching the active search query
             candidates = []
             for s in skills:
                 if not search_query:
@@ -233,13 +233,10 @@ def run_skill_selector(workspace: str, raw_cmd: str, dept_skills_dir: str, stop_
             candidates.sort(key=lambda x: -x[0])
             num_opts = len(candidates)
 
-            # Ensure selection pointer stays within bounds
             if num_opts > 0 and current_idx >= num_opts:
                 current_idx = 0
 
-            # 2. Render the TUI Frame
             if num_opts == 0:
-                # No matches found for current search buffer
                 sys.stderr.write(f"\r\x1b[K\033[1;30m[00/00]\033[0m ❯ \x1b[1;31m[No matches]\x1b[0m for: \033[1;33m{search_query}\033[0m\n")
                 sys.stderr.write(f"\r\x1b[K\033[3m   \"Backspace to delete\"\033[0m [Esc to exit]: ")
                 sys.stderr.flush()
@@ -252,15 +249,11 @@ def run_skill_selector(workspace: str, raw_cmd: str, dept_skills_dir: str, stop_
                 sys.stderr.write(f"\r\x1b[K\033[3m   \"{selected_skill['desc']}\"\033[0m [↵ load  Type to filter  Esc]: ")
                 sys.stderr.flush()
             
-            # 3. Read Keypress
             key = ui.get_key()
-            
-            # Escape / Ctrl+C / Quit
             if key in ('\x03', '\x1b'):
                 sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[KCancelled.\n")
                 break
                 
-            # Enter / Load Selected Skill
             elif key in ('\r', ''):
                 if num_opts > 0:
                     _, selected_skill = candidates[current_idx]
@@ -276,26 +269,22 @@ def run_skill_selector(workspace: str, raw_cmd: str, dept_skills_dir: str, stop_
                     sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[KNo skill selected.\n")
                 break
                 
-            # Arrow Keys Navigation
             elif key in ('\x1b[A', '\x1b[B'):
                 if num_opts > 0:
                     current_idx = (current_idx + (1 if key == '\x1b[B' else -1) + num_opts) % num_opts
                 sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
                 
-            # Backspace
             elif key in ('\x7f', '\x08'):
                 if len(search_query) > 0:
                     search_query = search_query[:-1]
                     current_idx = 0
                 sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
                 
-            # Printable Characters (Dynamic search filter append)
             elif len(key) == 1 and key.isprintable():
                 search_query += key
                 current_idx = 0
                 sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
             else:
-                # Discard unknown escapes
                 sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
                 
     except KeyboardInterrupt:
@@ -308,11 +297,11 @@ def run_skill_selector(workspace: str, raw_cmd: str, dept_skills_dir: str, stop_
 
 
 if __name__ == "__main__":
-    # Setup config directories for standalone execution when invoked by ai-agent.py
     CFG_DIR = os.path.expanduser("~/.config/local-ai")
     DEPT_SKILLS_DIR = os.path.join(CFG_DIR, "skills", "dept")
     STOP_WORDS = {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"}
     
     if len(sys.argv) < 3:
-        sys.exit(1)
+        sys.argv.append("")
+        sys.argv.append("")
     run_skill_selector(sys.argv[1], sys.argv[2], DEPT_SKILLS_DIR, STOP_WORDS)

@@ -1,50 +1,38 @@
-# CODEBASE INDEX MAP & STRUCTURAL KNOWLEDGE GRAPH
-# Generated on      : 2026-07-08 11:48
-# Project Workspace : modules
-# Target Directory  : ~/.config/local-ai/modules
-# -----------------------------------------------------------------------------------------
-# AI AGENT STRUCTURAL EXPLORATION INSTRUCTIONS:
-# This directory contains an active SQLite-backed semantic relationship map.
-# If you need to trace dependencies or read code blocks, instruct the user to execute
-# the following intent phrases or command paths. This saves up to 99% in token context.
-#
-# ACTIVE INTENT TRIGGERS (MAPPED VIA AI-CONTEXT.MD):
-#   trace symbol <symbol>       - Traces callers and callees of a function/class
-#   blast radius <symbol>       - Recursively maps upstream breaking risks of a symbol
-#   read function <symbol>      - Extracts the exact code snippet of a target symbol
-#   find symbol <pattern>       - Searches the workspace codebase for matching symbols
-#   architecture overview       - Compiles complete codebase statistics and files
-#
-# DIRECT EXECUTABLE PATHS:
-#   ~/.config/local-ai/tools/map/index-map trace <symbol>
-#   ~/.config/local-ai/tools/map/index-map blast-radius <symbol>
-#   ~/.config/local-ai/tools/map/index-map snippet <symbol>
-#   ~/.config/local-ai/tools/map/index-map search <pattern>
-#   ~/.config/local-ai/tools/map/index-map architecture
+# CODEBASE INDEX MAP | Generated: 2026-07-20 11:25 | Workspace: modules | Path: ~/.config/local-ai/modules
+# Active symbols and structural connections mapped in the local SQLite graph DB.
+# Intents: trace symbol <sym> | blast radius <sym> | read function <sym> | find symbol <pat> | architecture overview
 # -----------------------------------------------------------------------------------------
 # Codebase Modules & Active Architecture:
-#   ├── Readme.md                - Spellchecker Privacy Disclosure
-#   ├── agent_context.py
-#   ├── agent_core.py
-#   ├── agent_skills.py          - Description: Unified library & executable for static, dynamic, and on-demand skills
-#   ├── agent_spell.py
-#   ├── agent_ui.py
-#   ├── ai-agent-memories        - Description: SQLite-backed semantic recall and Temporal Personality Memory (TPM) manager
-#   ├── ai-agent-sessions        - Description: SQLite-backed session, checkpoint, and turn logger with Global Handoff
-#   ├── chat                     - chat - Unified Agentic Brainstorm, Thinking & Follow-up Engine v2.5.1
-#   ├── index-map-memory-modules.db
-#   ├── model-select.py          - model-select.py - Fully Dynamic TUI Model Selector driven by OpenRouter Rankings
-#   └── speed_test.py            - ~/.config/local-ai/modules/speed_test.py
+#   ├── modules/Readme.md        - Spellchecker Privacy Disclosure
+#   ├── modules/agent_cloud.py   - Dynamic Cloud Cascade Engine (Top-Down .env Priority)
+#   ├── modules/agent_context.py - import os
+#   ├── modules/agent_core.py    - import os
+#   ├── modules/agent_skills.py  - Description: Unified library & executable for static, dynamic, and on-demand skills
+#   ├── modules/agent_spell.py   - import os
+#   ├── modules/agent_tui.py     - import os
+#   ├── modules/agent_ui.py      - import os
+#   ├── modules/agent_usage.py   - import os
+#   ├── modules/ai-agent-memories - Description: SQLite-backed semantic recall and Temporal Personality Memory (TPM) manager
+#   ├── modules/ai-agent-sessions - Description: SQLite-backed session, checkpoint, and turn logger with Global Handoff and sub-agent re
+#   ├── modules/chat             - chat - Unified Agentic Brainstorm, Thinking & Follow-up Engine v2.5.2
+#   ├── modules/index-map-memory-modules.db
+#   ├── modules/index-map-modules.txt - CODEBASE INDEX MAP & STRUCTURAL KNOWLEDGE GRAPH
+#   ├── modules/model-select.py  - model-select.py - Fully Dynamic TUI Model Selector driven by OpenRouter Rankings
+#   └── modules/speed_test.py    - ~/.config/local-ai/modules/speed_test.py
 # -----------------------------------------------------------------------------------------
-[md:Readme.md] title:Spellchecker Privacy Disclosure
-[py:agent_context.py] imp:fnmatch,os,re,shutil,sys | fn:tokenize,load_context_entries,jaccard_search,clean_tool_prefix
-[py:agent_core.py] imp:agent_ui,json,os,re,requests,speed_test,sys,time | fn:extract_stream_content,stream,stream_response,get_accurate_token_count,show_memory_status,prune_history
-[py:agent_skills.py] imp:agent_context,agent_ui,json,os,re,subprocess,sys | fn:ensure_mysys_exists,find_skill_file,load_skill_content,run_local_tool,run_interactive_tool,get_system_context,load_skill_blueprints,run_skill_selector
-[py:agent_spell.py] imp:difflib,json,os,re,shutil,sys,urllib | fn:load_system_dictionary,edits1,correct_word,edit_priority,apply_static_overrides,highlight_diff,check_query_spelling_offline,check_query_spelling,get_prio
-[py:agent_ui.py] imp:os,re,select,sys,termios,threading,time,tty,typing | cls:InlineSpinner | fn:__init__,_spin,start,stop,get_key,draw_session_box,confirm_tool,run_interactive_selection
-[file:ai-agent-memories] sum:#!/usr/bin/env python3
-[file:ai-agent-sessions] sum:#!/usr/bin/env python3
-[file:chat] sum:#!/usr/bin/env python3
+[markdown:Readme.md] title:Spellchecker Privacy Disclosure
+[python:agent_cloud.py] imp:json,os,re | fn:get_active_configs
+[python:agent_context.py] imp:fnmatch,os,re,shutil,sys,typing | fn:tokenize,load_context_entries,jaccard_search,clean_tool_prefix
+[python:agent_core.py] imp:agent_cloud,agent_ui,agent_usage,ast,difflib,json,os,re,requests,rich,speed_test,subprocess,sys,time,typing,urllib | cls:RichStreamer | fn:__init__,start,update,stop,_log_turn_usage,extract_stream_content,stream,_safe_path,_is_outside_workspace,_run_edit_tool,agentic_turn,stream_response,get_accurate_token_count,show_memory_status,prune_history
+[python:agent_skills.py] imp:agent_context,agent_ui,json,os,re,subprocess,sys | fn:ensure_mysys_exists,find_skill_file,load_skill_content,run_local_tool,run_interactive_tool,get_system_context,load_skill_blueprints,run_skill_selector
+[python:agent_spell.py] imp:difflib,json,os,re,shutil,sys,urllib | fn:load_system_dictionary,edits1,correct_word,edit_priority,apply_static_overrides,highlight_diff,check_query_spelling_offline,check_query_spelling,get_prio
+[python:agent_tui.py] imp:agent_cloud,agent_ui,asyncio,os,rich,sys,textual,typing | cls:LocalAITUI | fn:__init__,compose,on_mount,on_input_submitted,stream_response_tui,action_toggle_reasoning
+[python:agent_ui.py] imp:agent_cloud,json,os,re,rich,select,sys,termios,threading,time,tty,typing,urllib | cls:InlineSpinner | fn:__init__,_spin,start,stop,get_key,get_local_model_name,draw_session_box,confirm_tool,run_interactive_selection
+[python:agent_usage.py] imp:json,os,time | fn:record,refresh_balance_async,turn_line
+[file:ai-agent-memories] sum:Description: SQLite-backed semantic recall and Temporal Personality Memory (TPM) manager
+[file:ai-agent-sessions] sum:Description: SQLite-backed session, checkpoint, and turn logger with Global Handoff and sub-agent re
+[file:chat] sum:chat - Unified Agentic Brainstorm, Thinking & Follow-up Engine v2.5.2
 [binary/db:index-map-memory-modules.db]
-[py:model-select.py] imp:json,os,re,requests,select,shutil,subprocess,sys,termios,tty | fn:classify_openrouter_models,load_env_vars,update_env,is_key_active,set_key_commented_state,toggle_env_api_keys,load_cached_lists,save_cached_lists,fetch_openrouter_models,get_key,draw_main_menu,run_selector,get_filtered_list,get_menu_options,main
-[py:speed_test.py] imp:sys,time | fn:start,count_token,end
+[txt:index-map-modules.txt] sum:CODEBASE INDEX MAP & STRUCTURAL KNOWLEDGE GRAPH
+[python:model-select.py] imp:json,os,re,requests,select,shutil,subprocess,sys,termios,tty | fn:classify_openrouter_models,load_env_vars,update_env,is_key_active,set_key_commented_state,toggle_env_api_keys,load_cached_lists,save_cached_lists,fetch_openrouter_models,get_key,draw_main_menu,run_selector,get_filtered_list,get_menu_options,main
+[python:speed_test.py] imp:sys,time | fn:start,count_token,end

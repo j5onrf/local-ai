@@ -61,7 +61,7 @@ ai init ~/.config/local-ai/projects/session-test-3 --init ---> session test 3, p
 
 ```properties
 # --- AI Status & Provider Diagnostics ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/ai-status --s ---> ai status, aistat, status, aistatus 
+[TOOL] ~/.config/local-ai/tools/agentic/system/ai-status ---> ai status, aistat, status, aistatus 
 
 # --- System Resources & Diagnosis (System Health) ---
 [TOOL] ~/.config/local-ai/tools/agentic/system/system-health ---> system health, sysh

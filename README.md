@@ -2,7 +2,7 @@
   <img alt="Local-AI Agent" src="https://github.com/j5onrf/local-ai/blob/main/logo.png" width="800" />
 </p>
 
-<h1 align="center">Local-AI Agent <kbd>v0.9.3.12-beta</kbd></h1>
+<h1 align="center">Local-AI Agent <kbd>v0.9.3.21-beta</kbd></h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
@@ -161,6 +161,7 @@ Agent: Workspace loaded. Awaiting instructions.
 
 | Command | Description |
 | :--- | :--- |
+| **`/tui`** | **Toggle** full-screen Textual TUI mode ON/OFF (Suspends standard chat). |
 | **`/clear`** / **`/reset`** | **Reset** Session context, local chat history, and the SQLite TPM table. |
 | **`/spell`** / **`/sp`** | **Toggle** the context-aware grammar & spellchecker ON/OFF. |
 | **`/g`** | **Toggle** workspace confirmation gates ON/OFF (autonomous editing mode). |
@@ -188,14 +189,15 @@ Add your shortcuts, commands, and workspaces to [`ai-context.md`](https://github
 <h2 align="center">Setup & Prerequisites</h2>
 
 ```bash
-# 1. Install dependencies (requests reduces latency | python-rich formats)
-sudo pacman -S python-rich python-requests
+# 1. Install core system dependencies (requests reduces latency | rich formats)
+sudo pacman -S python-rich python-requests  # Arch Linux
 # Debian/Ubuntu: sudo apt install python3-rich python3-requests
 # macOS/Other:   pip install rich requests
 
-# 2. (Optional) Install vector-database extension for semantic codebase search
-yay -S python-sqlite-vec
-# Other: pip install sqlite-vec
+# 2. (Optional) Install extensions (sqlite-vec for code search | textual for /tui)
+# Arch Linux:    yay -S python-sqlite-vec && sudo pacman -S python-textual
+# Debian/Ubuntu: pip install sqlite-vec --break-system-packages && sudo apt install python3-textual
+# macOS/Other:   pip install sqlite-vec textual
 
 # 3. Clone repository & register shell environment hook
 git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai && \
@@ -204,12 +206,11 @@ source ~/.bashrc
 
 # 4. Create your private configuration file
 nano ~/.config/local-ai/.env
-```
 
 #### Configuration Example (`~/.config/local-ai/.env`):
 
 ```env
-# Cascade Fallback Cascade (Evaluated Top-Down)
+# Cascade Fallback (Evaluated Top-Down)
 GEMINI_API_KEY="AIzaSyYourGeminiKeyHere"
 GEMINI_MODEL="gemini-3.1-flash-lite"
 

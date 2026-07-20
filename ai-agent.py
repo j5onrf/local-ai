@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.9.3.12]
+# Local-Ai Agent [j5onrf] [v0.9.3.21]
 
 import json
 import os
@@ -327,6 +327,15 @@ def run_interactive_chat(args: List[str]) -> None:
                     clean_exit(safe_name if is_agent else None)
                 
                 # Built-In CLI Commands processing
+                if query == "/tui":
+                    ui._console.print("[dim yellow][sys] Suspending standard chat. Launching Textual full-screen TUI...[/dim yellow]")
+                    time.sleep(0.5)
+                    try:
+                        subprocess.run([sys.executable, f"{CFG_DIR}/modules/agent_tui.py"])
+                    except Exception as e:
+                        ui._console.print(f"[red][sys] Failed to initialize Textual TUI: {e}[/red]\n")
+                    continue
+
                 if query in ("/spell", "/sp"):
                     spell_active = not spell_active
                     _save_state("spell_active", spell_active)
