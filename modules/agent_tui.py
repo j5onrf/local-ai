@@ -183,7 +183,6 @@ class AgentCommandProvider(Provider):
             ("Cycle Theme", "cycle_theme", "Cycle through available color themes"),
             ("Toggle Sidebar", "toggle_sidebar", "Show or hide the metadata panel"),
             ("Toggle Compact Mode", "toggle_compact", "Toggle between dense and spacious spacing layouts"),
-            ("Exit", "quit", "Close the Local-AI Agent session")
         ]
         
         for title, action, desc in commands:
@@ -271,14 +270,16 @@ class LocalAITUI(App):
 
     THEMES: List[str] = ["dark", "grok", "dracula", "nord", "monokai"]
 
-    # Remapped toggle_compact to ctrl+g to prevent text-input shadowing conflicts
     BINDINGS = [
         Binding("ctrl+b", "toggle_sidebar", "Sidebar", show=True),
         Binding("ctrl+g", "toggle_compact", "Compact", show=True),
         Binding("ctrl+r", "toggle_reasoning", "Reasoning", show=True),
         Binding("ctrl+t", "cycle_theme", "Theme", show=True),
         Binding("ctrl+y", "attach_image_url", "Image", show=True),
-        Binding("ctrl+c", "quit", "Exit", show=True),
+        
+        # Mapped exits with show=False to keep the footer clean
+        Binding("escape", "quit", "Exit", show=False),
+        Binding("ctrl+c", "quit", "Exit", show=False),
     ]
 
     def __init__(self, workspace_path: str, model_name: str) -> None:
