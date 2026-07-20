@@ -139,7 +139,7 @@ Agent: Workspace loaded. Awaiting instructions.
   <em>A full-screen, mouse-clickable, multi-theme terminal workspace modeled after grok-build.</em>
 </p>
 
-* Type **`/tui`** inside any active chat session to transition into the full-screen **[Conversational](https://github.com/j5onrf/local-ai/tree/main/modules)** TUI.
+* Type **`/tui`** inside any active chat session to transition into the full-screen **[Textual](https://github.com/j5onrf/local-ai/tree/main/modules)** TUI.
 
 ---
 
