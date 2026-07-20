@@ -206,6 +206,7 @@ source ~/.bashrc
 
 # 4. Create your private configuration file
 nano ~/.config/local-ai/.env
+```
 
 #### Configuration Example (`~/.config/local-ai/.env`):
 
