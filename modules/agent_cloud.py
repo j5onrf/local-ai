@@ -4,7 +4,7 @@
 import os
 import re
 import json
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 
 ENV_PATH: str = os.path.expanduser("~/.config/local-ai/.env")
 
@@ -34,7 +34,11 @@ def get_active_configs(messages: List[Dict[str, str]]) -> List[Tuple[str, Dict[s
                 match = re.match(r"^([A-Z0-9_]+_API_KEY|[A-Z0-9_]+_KEY)\s*=\s*\"?([^\"]*)\"?$", line_strip)
                 if match:
                     key_name, key_val = match.groups()
-                    if not key_val.strip():
+                    key_val_clean = key_val.strip()
+                    
+                    # Safety check: Ignore empty keys or standard placeholder template keys
+                    key_val_lower = key_val_clean.lower()
+                    if not key_val_clean or "your" in key_val_lower or "here" in key_val_lower or "api-key" in key_val_lower:
                         continue
                         
                     provider: str = key_name.split("_")[0].lower()  # e.g., 'gemini', 'openai'
@@ -62,7 +66,7 @@ def get_active_configs(messages: List[Dict[str, str]]) -> List[Tuple[str, Dict[s
                             body["system"] = system_prompt
                             
                         headers: Dict[str, str] = {
-                            "x-api-key": key_val,
+                            "x-api-key": key_val_clean,
                             "anthropic-version": "2023-06-01"
                         }
                         configs.append((
@@ -96,7 +100,7 @@ def get_active_configs(messages: List[Dict[str, str]]) -> List[Tuple[str, Dict[s
                             if provider == "openrouter":
                                 body["usage"] = {"include": True}
                                 
-                            headers = {"Authorization": f"Bearer {key_val}"}
+                            headers = {"Authorization": f"Bearer {key_val_clean}"}
                             if provider == "openrouter":
                                 headers["HTTP-Referer"] = "https://github.com/j5onrf/local-ai"
                                 

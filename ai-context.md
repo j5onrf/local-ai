@@ -73,17 +73,17 @@ ai init ~/.config/local-ai/projects/session-test-3 --init ---> session test 3, p
 [TOOL] ~/.config/local-ai/tools/agentic/system/aur-audit ---> aur audit, audit package
 
 # --- Host Security Surface & Vulnerability Intelligence (SECAUD) ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/security-audit --leaf ---> security audit, secaud, system audit
+[TOOL] ~/.config/local-ai/tools/agentic/system/security-audit ---> security audit, secaud, system audit
 
 # --- System Optimization (Improve System Performance) ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/system-optimizer --leaf ---> system optimizer, sysop
+[TOOL] ~/.config/local-ai/tools/agentic/system/system-optimizer ---> system optimizer, sysop
 
 # --- Dynamic Host Profiler & System Analytics ---
-[TOOL] cat ~/.config/local-ai/skills/system/mysys.md --leaf ---> mysys
+[TOOL] cat ~/.config/local-ai/skills/system/mysys.md ---> mysys
 [TOOL] ~/.config/local-ai/tools/generate-profile ---> generate profile, sync mysys
 
 # --- Pending System Updates ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/update-inspector --leaf ---> update inspector
+[TOOL] ~/.config/local-ai/tools/agentic/system/update-inspector ---> update inspector
 # --- Weather & Live Networking ---
 [TOOL] curl -s "wttr.in/?format=3" --cat ---> weather simple, wttr, weather
 [TOOL] curl -s wttr.in --cat ---> weather full, wttr, weather
@@ -128,7 +128,7 @@ ai init ~/.config/local-ai/projects/session-test-3 --init ---> session test 3, p
 
 ```properties
 # --- Local-Ai Agent Blueprint (System CheatSheet Viewer) ---
-~/.config/local-ai/tools/blueprint --s --leaf ---> cheatsheet, bp, cs, blueprint
+[TOOL] ~/.config/local-ai/tools/blueprint ---> cheatsheet, bp, cs, blueprint
 
 # --- AI-Generated Git Commits ---
 ~/.config/local-ai/tools/agentic/system/ai-commit ---> ai-commit, gc, git commit

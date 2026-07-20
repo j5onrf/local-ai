@@ -22,14 +22,9 @@ from rich.console import Group
 
 # Ensure parent modules path is present on system path
 sys.path.append(os.path.expanduser("~/.config/local-ai/modules"))
-try:
-    import agent_cloud
-    import agent_ui
-    import agent_core as core
-except ImportError as e:
-    # Fallback placeholders for standalone testing
-    agent_cloud = None
-    core = None
+import agent_cloud
+import agent_ui
+import agent_core as core
 
 
 def load_env_file(path: str) -> None:
@@ -55,54 +50,58 @@ CFG_DIR: str = os.path.expanduser("~/.config/local-ai")
 load_env_file(os.path.join(CFG_DIR, ".env"))
 
 
-# --- Themes ---
+# --- Monkey-Patch Screen to completely block standard system commands from Palette ---
+Screen.command_sources = property(lambda self: set())
+
+
+# Minimalist, high-performance pure black and carbon grey Grok theme
 grok_theme = Theme(
     name="grok",
-    primary="#444444",
-    secondary="#888888",
-    accent="#ffffff",
-    background="#000000",
-    surface="#0d0d0d",
+    primary="#444444",     # Muted grey border outlines
+    secondary="#888888",   # Soft silver-grey metadata
+    accent="#ffffff",      # Bright white highlights
+    background="#000000",  # True pitch-black backdrop
+    surface="#0d0d0d",     # Dark grey panels
     panel="#121212"
 )
 
 dracula_theme = Theme(
     name="dracula",
-    primary="#bd93f9",
-    secondary="#f8f8f2",
-    accent="#ff79c6",
-    background="#282a36",
-    surface="#21222c",
+    primary="#bd93f9",     # Purple accents
+    secondary="#f8f8f2",   # Dim white
+    accent="#ff79c6",      # Pink highlight
+    background="#282a36",  # Midnight purple
+    surface="#21222c",     # Subdued purple
     panel="#191a21"
 )
 
 nord_theme = Theme(
     name="nord",
-    primary="#88c0d0",
-    secondary="#d8dee9",
-    accent="#81a1c1",
-    background="#2e3440",
-    surface="#242933",
+    primary="#88c0d0",     # Cold ice blue
+    secondary="#d8dee9",   # Silver frost
+    accent="#81a1c1",      # Subdued steel blue
+    background="#2e3440",  # Dark slate background
+    surface="#242933",     # Surface slate
     panel="#1c202a"
 )
 
 monokai_theme = Theme(
     name="monokai",
-    primary="#f92672",
-    secondary="#f8f8f2",
-    accent="#a6e22e",
-    background="#272822",
-    surface="#1e1f1c",
+    primary="#f92672",     # Hot pink border accent
+    secondary="#f8f8f2",   # Off white
+    accent="#a6e22e",      # Lime green highlights
+    background="#272822",  # Dark olive-charcoal background
+    surface="#1e1f1c",     # Subdued charcoal
     panel="#141411"
 )
 
 dark_theme = Theme(
     name="dark",
-    primary="#555555",
-    secondary="#b0b0b0",
-    accent="#ffffff",
-    background="#121212",
-    surface="#1c1c1c",
+    primary="#555555",     # Charcoal borders
+    secondary="#b0b0b0",   # Soft silver
+    accent="#ffffff",      # White text
+    background="#121212",  # Matte black background
+    surface="#1c1c1c",     # Standard dark surface
     panel="#242424"
 )
 
@@ -123,6 +122,7 @@ class Message(Static):
         self.refresh()
 
     def render(self) -> Group:
+        # Dynamically sense the TUI's active spacing configuration state
         compact = getattr(self.app, "compact_mode", False)
         prefix = "" if compact else "\n"
         
@@ -132,6 +132,7 @@ class Message(Static):
                 display_text = next((item["text"] for item in display_text if item.get("type") == "text"), "[Multimodal Payload]")
             return Group(Text(f"{prefix}❯ USER: {display_text}", style="bold cyan"))
         
+        # Agent Turn Rendering
         header = Text(f"{prefix}❖ AGENT:", style="bold green")
         text = self.content
         
@@ -198,22 +199,22 @@ class AgentCommandProvider(Provider):
 
 class LocalAITUI(App):
     """
-    A Textual TUI for Local-AI Agent.
+    A high-performance Textual TUI for Local-AI Agent.
+    Mirrors x-build double-pane formatting with full dynamic theme support.
     """
     
     ENABLE_COMMAND_PALETTE = True
 
+    # Property override returning a set completely bypasses Textual's metaclass merging
     @property
     def command_sources(self) -> Set[Any]:
+        """Strictly forces ONLY our custom curated Command Provider inside the Palette."""
         return {AgentCommandProvider}
 
+    # Restored standard, comfortable padding by default
     CSS = """
     Screen {
         background: $background;
-    }
-    
-    #layout {
-        height: 1fr;
     }
     
     #sidebar {
@@ -270,16 +271,14 @@ class LocalAITUI(App):
 
     THEMES: List[str] = ["dark", "grok", "dracula", "nord", "monokai"]
 
+    # Unified footer keys with standard spacing configurations (no separate Budget key)
     BINDINGS = [
         Binding("ctrl+b", "toggle_sidebar", "Sidebar", show=True),
         Binding("ctrl+g", "toggle_compact", "Compact", show=True),
         Binding("ctrl+r", "toggle_reasoning", "Reasoning", show=True),
         Binding("ctrl+t", "cycle_theme", "Theme", show=True),
         Binding("ctrl+y", "attach_image_url", "Image", show=True),
-        
-        # Mapped exits with show=False to keep the footer clean
-        Binding("escape", "quit", "Exit", show=False),
-        Binding("ctrl+c", "quit", "Exit", show=False),
+        Binding("ctrl+c", "quit", "Exit", show=True),
     ]
 
     def __init__(self, workspace_path: str, model_name: str) -> None:
@@ -287,13 +286,14 @@ class LocalAITUI(App):
         self.workspace_path: str = workspace_path
         self.model_name: str = model_name
         
-        self.compact_mode: bool = False
+        self.compact_mode: bool = False  # Spacious standard mode is default
         
         # Deep Reasoning states
         self.reasoning_active: bool = False
-        self.reasoning_budget: int = 500
+        self.reasoning_budget: int = 500  # Default budget is 500 tokens
         self.entering_reasoning_budget: bool = False
         
+        # Multi-modal vision attributes
         self.active_image_url: Optional[str] = None
         self.entering_image_url: bool = False
         
@@ -322,6 +322,7 @@ class LocalAITUI(App):
                 
             with Vertical(id="main-container"):
                 with Vertical(id="chat-area"):
+                    # Restored the beautiful original rounded welcome box
                     yield Static(Panel(
                         Markdown("# Workspace Loaded • Awaiting Instructions\nType your query and press `Enter`.\n`Ctrl+B` toggle sidebar • `Ctrl+T` cycle themes • `Ctrl+G` toggle compact • `Ctrl+R` toggle/configure reasoning."),
                         border_style="bright_blue",
@@ -332,12 +333,14 @@ class LocalAITUI(App):
         yield Footer()
 
     def on_mount(self) -> None:
+        # Register all custom themes into the theme manager
         self.register_theme(grok_theme)
         self.register_theme(dracula_theme)
         self.register_theme(nord_theme)
         self.register_theme(monokai_theme)
         self.register_theme(dark_theme)
         
+        # Set dark as the initial default theme on startup
         self.theme = "dark"
         
         self.chat_area = self.query_one("#chat-area", Vertical)
@@ -348,6 +351,7 @@ class LocalAITUI(App):
         query = event.value.strip()
         self.chat_input.value = ""
         
+        # 1. Custom unified reasoning budget input capture
         if self.entering_reasoning_budget:
             self.entering_reasoning_budget = False
             self.chat_input.placeholder = "Ask your agent anything..."
@@ -378,6 +382,7 @@ class LocalAITUI(App):
             self.chat_area.scroll_end(animate=False)
             return
 
+        # 2. Check if the user is inputting a dynamic image URL
         if self.entering_image_url:
             if not query:
                 return
@@ -404,6 +409,7 @@ class LocalAITUI(App):
         
         self.chat_area.scroll_end(animate=False)
         
+        # Format multi-modal payloads natively if an active image is attached
         if self.active_image_url:
             user_payload = {
                 "role": "user",
@@ -413,11 +419,12 @@ class LocalAITUI(App):
                 ]
             }
             self.history.append(user_payload)
-            self.active_image_url = None
+            self.active_image_url = None  # Consumed, reset state
             self.query_one("#lbl-image", Static).update("None")
         else:
             self.history.append({"role": "user", "content": query})
         
+        # Uses Textual's high-performance synchronous worker thread wrapper (thread=True)
         self.run_worker(lambda: self.blocking_stream(assistant_message), thread=True)
 
     def blocking_stream(self, target_widget: Message) -> None:
@@ -439,10 +446,12 @@ class LocalAITUI(App):
                 local_extra["chat_template_kwargs"] = {"enable_thinking": False}
 
             if configs:
+                # Inject reasoning parameters to active cloud body
                 url, headers, body, timeout = configs[0]
                 if thinking_budget > 0:
                     body["thinking_budget_tokens"] = thinking_budget
             else:
+                # Dynamic GGUF/Local Fallback Cascade with identical local-model logic
                 local_url = "http://localhost:8080/v1/chat/completions"
                 local_body = {
                     "messages": self.history,
@@ -456,6 +465,7 @@ class LocalAITUI(App):
             body["stream"] = True
             body["messages"] = self.history
             
+            # Replicating agent_core's highly stable urllib request pipeline
             req = urlreq.Request(
                 url,
                 data=json.dumps(body).encode("utf-8"),
@@ -464,6 +474,7 @@ class LocalAITUI(App):
             )
             
             with urlreq.urlopen(req, timeout=timeout) as response:
+                # Catch API Key validation errors / bad requests immediately
                 if response.status != 200:
                     err_text = response.read().decode("utf-8", errors="ignore")[:200]
                     raise Exception(f"HTTP {response.status}: {err_text}")
@@ -489,6 +500,7 @@ class LocalAITUI(App):
                     
                     if content:
                         accumulated += content
+                        # Safely update the widget state on the main thread
                         self.call_from_thread(target_widget.update_content, accumulated)
                         self.call_from_thread(self.chat_area.scroll_end, animate=False)
             
@@ -500,13 +512,16 @@ class LocalAITUI(App):
             self.call_from_thread(self.enable_input)
 
     def disable_input(self) -> None:
+        """Locks the input widget to prevent turn collisons during execution."""
         self.chat_input.disabled = True
 
     def enable_input(self) -> None:
+        """Helper callback executed from thread to restore input capabilities."""
         self.chat_input.disabled = False
         self.chat_input.focus()
 
     def action_attach_image_url(self) -> None:
+        """Puts the main input widget into 'Image URL input' state, or toggles it off."""
         if self.entering_image_url:
             self.entering_image_url = False
             self.chat_input.placeholder = "Ask your agent anything..."
@@ -521,15 +536,19 @@ class LocalAITUI(App):
             self.chat_input.focus()
 
     def action_toggle_sidebar(self) -> None:
+        """Toggles the visibility of the left sidebar metadata pane."""
         sidebar = self.query_one("#sidebar")
         sidebar.display = not sidebar.display
 
     def action_toggle_maximized(self) -> None:
+        """Completely disables Textual's default F10 maximize layout-breaking action."""
         pass
 
     def action_toggle_compact(self) -> None:
+        """Toggle between compact (dense) and standard (spacious) chat layout on-demand."""
         self.compact_mode = not self.compact_mode
         
+        # Explicitly force every mounted message child to repaint and re-evaluate compact spacing
         for child in self.chat_area.children:
             if isinstance(child, Message):
                 child.refresh()
@@ -540,6 +559,7 @@ class LocalAITUI(App):
         self.chat_area.scroll_end(animate=False)
 
     def action_cycle_theme(self) -> None:
+        """Cycle through registered styling themes dynamically inside the running session."""
         try:
             current_idx = self.THEMES.index(self.theme)
             next_idx = (current_idx + 1) % len(self.THEMES)
@@ -552,6 +572,7 @@ class LocalAITUI(App):
             pass
 
     def action_toggle_reasoning(self) -> None:
+        """Consolidated reasoning action: toggles reasoning OFF if active, prompts for budget if inactive, or cancels prompt."""
         if self.entering_reasoning_budget:
             self.entering_reasoning_budget = False
             self.chat_input.placeholder = "Ask your agent anything..."
@@ -574,7 +595,21 @@ class LocalAITUI(App):
 
 if __name__ == "__main__":
     workspace = os.environ.get("AI_WORKSPACE_PATH", os.getcwd())
-    model = os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite")
     
+    # Resolve active model name on startup matching standard CLI logic
+    try:
+        configs = []
+        if agent_cloud is not None:
+            configs = agent_cloud.get_active_configs([])
+        if configs:
+            model = configs[0][2].get("model", "local-model")
+        else:
+            model = ui.get_local_model_name()
+    except Exception:
+        try:
+            model = ui.get_local_model_name()
+        except Exception:
+            model = "local-model"
+            
     app = LocalAITUI(workspace, model)
     app.run()

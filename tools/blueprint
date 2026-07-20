@@ -1,33 +1,37 @@
 #!/usr/bin/env python3
 # Blueprint - High-Speed Markdown-Native Cheatsheet Generator [j5onrf] v5.2.0
+# Path: ~/.config/local-ai/tools/blueprint
 
 import os
 import re
 import sys
+from typing import List, Optional, Match, Pattern
 
-CONTEXT_FILE = os.path.expanduser("~/.config/local-ai/ai-context.md")
+CONTEXT_FILE: str = os.path.expanduser("~/.config/local-ai/ai-context.md")
 
 if not os.path.exists(CONTEXT_FILE):
     print(f"❌ Error: Configuration file not found at {CONTEXT_FILE}", file=sys.stderr)
     sys.exit(1)
 
+# Pre-compiled regex patterns for maximum compilation throughput
+SECTION_RE: Pattern[str] = re.compile(r"^##\s*([0-9]+)\.\s*(.*)$")
+URL_RE: Pattern[str] = re.compile(r"(https?://\S+)")
+
 print("# BLUEPRINT")
 print("This map represents your custom shortcuts and active targets.\n")
 
 try:
-    with open(CONTEXT_FILE, "r") as f:
-        lines = f.readlines()
+    with open(CONTEXT_FILE, "r", encoding="utf-8") as f:
+        lines: List[str] = f.readlines()
 except Exception as e:
     print(f"❌ Error reading file: {e}", file=sys.stderr)
     sys.exit(1)
 
-in_code_block = False
-table_open = False
-section_re = re.compile(r"^##\s*([0-9]+)\.\s*(.*)$")
-url_re = re.compile(r"(https?://\S+)")
+in_code_block: bool = False
+table_open: bool = False
 
 for line in lines:
-    line_stripped = line.strip()
+    line_stripped: str = line.strip()
 
     # Track code block boundaries to isolate configuration mappings
     if line_stripped.startswith("```"):
@@ -35,10 +39,10 @@ for line in lines:
         continue
 
     # Detect Section Headers (always outside code blocks)
-    match = section_re.match(line_stripped)
+    match: Optional[Match[str]] = SECTION_RE.match(line_stripped)
     if match:
-        sec_num = match.group(1)
-        sec_title = match.group(2)
+        sec_num: str = match.group(1)
+        sec_title: str = match.group(2)
         if table_open:
             print()  # Close previous table block cleanly
             table_open = False
@@ -62,23 +66,23 @@ for line in lines:
             cmd = cmd[6:].strip()
 
         # Parse intents cleanly
-        intent_list = [i.strip() for i in intents.split(",") if i.strip()]
+        intent_list: List[str] = [i.strip() for i in intents.split(",") if i.strip()]
         
-        # OPTIMIZATION: Extract first three intents as clean, slash-separated code capsules
-        shortcut_display = " / ".join(f"`{x}`" for x in intent_list[:3]) if intent_list else ""
+        # Extract first three intents as clean, slash-separated code capsules
+        shortcut_display: str = " / ".join(f"`{x}`" for x in intent_list[:3]) if intent_list else ""
 
         # Clean command: If it contains a URL, extract and show JUST the URL
-        url_match = url_re.search(cmd)
+        url_match: Optional[Match[str]] = URL_RE.search(cmd)
         if url_match:
             cleaned_cmd = url_match.group(1).replace('"', '').replace("'", "")
         else:
             # Streamlined path-cleaning list comprehension
-            words = cmd.split()
-            cleaned_words = [os.path.basename(w) if w.startswith(('/', '~', './', '../')) else w for w in words]
+            words: List[str] = cmd.split()
+            cleaned_words: List[str] = [os.path.basename(w) if w.startswith(('/', '~', './', '../')) else w for w in words]
             cleaned_cmd = " ".join(cleaned_words)
 
         # Escape pipes inside command strings to avoid breaking Markdown tables
-        escaped_cmd = cleaned_cmd.replace("|", "\\|")
+        escaped_cmd: str = cleaned_cmd.replace("|", "\\|")
 
         # Print Markdown table row
         print(f"| {shortcut_display} | {escaped_cmd} |")

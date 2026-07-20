@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Unveiled Production Hook v0.9.3
+# Unveiled Production Hook v1.0.1
 
 [[ $- != *i* || ! -f "$HOME/.config/local-ai/ai-agent.py" ]] && return
 _AI_DIR="$HOME/.config/local-ai"
@@ -51,6 +51,19 @@ ai() {
 
 view() {
     local f="${1:-}"
-    [[ -z "$f" ]] && { cat; return; }
-    [[ -f "$f" && "$f" == *.md ]] && FORCE_COLOR=1 "$_AI_PY" -m rich.markdown "$f" || cat "$@"
+    if [[ -z "$f" ]]; then
+        # If no file is passed, check if stdin is a piped stream
+        if [[ -p /dev/stdin || ! -t 0 ]]; then
+            # Uses high-performance 1-line Python-Rich stream compiler
+            FORCE_COLOR=1 "$_AI_PY" -c "import sys; from rich.console import Console; from rich.markdown import Markdown; Console().print(Markdown(sys.stdin.read()))"
+        else
+            return 0
+        fi
+    elif [[ -f "$f" && "$f" == *.md ]]; then
+        # Standard file path rendering
+        FORCE_COLOR=1 "$_AI_PY" -m rich.markdown "$f"
+    else
+        # Standard non-markdown fallbacks
+        cat "$@"
+    fi
 }
