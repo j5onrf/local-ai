@@ -18,7 +18,7 @@
 
 <h2 align="center">How the Agent Works</h2>
 
-All configurations and custom shortcuts are managed in [`ai-context.md`](ai-context.md). The system is built with minimal context-stuffing, making it highly effective even when using highly quantized, resource-constrained models like `Qwen-3.5-2B` `Gemma4`.
+All configurations and custom shortcuts are managed in [`ai-context.md`](ai-context.md). The system is built with minimal context-stuffing, making it highly effective even when using highly quantized, resource-constrained models like `Qwen-3.5-2B+` `Gemma-4-E2B+`.
 
 *   **Direct (No Session)**: Sub-millisecond Jaccard matching (`jaccard_search`) instantly routes custom keywords to your local terminal.
 *   **Single-Turn Agent (`ai <query>`):** Returns a single response directly to your shell prompt without loading an active conversation.
@@ -105,7 +105,7 @@ Agent: Workspace loaded. Awaiting instructions.
 | **Integration** | **Dynamic Context** | On-demand compilation of system specs and file contents. |
 | **Optimization** | **Token-Slasher** | Custom [`tool`](https://github.com/j5onrf/fetch/tree/main/tools) and [`skill`](https://github.com/j5onrf/fetch/tree/main/skills) integration built for minimal token use. |
 | **Interface** | **Conversational TUI** | Rich, multi-turn chat sessions directly in the terminal. |
-| **Auditability** | **Zero-Dependency** | Under 700 lines of modular, standard-library Python. |
+| **Auditability** | **Zero-Dependency** | Minimal lines of modular, standard-library Python. |
 
 ---
 
