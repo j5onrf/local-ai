@@ -223,7 +223,7 @@ nano ~/.config/local-ai/.env
 ```env
 # Cascade Fallback (Evaluated Top-Down)
 GEMINI_API_KEY="AIzaSyYourGeminiKeyHere"
-GEMINI_MODEL="gemini-3.1-flash-lite"
+GEMINI_MODEL="gemini-3.5-flash-lite"
 
 OPENROUTER_API_KEY="sk-or-v1-YourOpenRouterKey"
 OPENROUTER_MODEL="openrouter/free"

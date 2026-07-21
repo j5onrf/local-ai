@@ -82,7 +82,7 @@ def get_active_configs(messages: List[Dict[str, str]]) -> List[Tuple[str, Dict[s
                         if url:
                             # Map default fallback models dynamically per provider
                             fallback_model = {
-                                "gemini": "gemini-3.1-flash-lite",
+                                "gemini": "gemini-3.5-flash-lite",
                                 "openai": "gpt-5.5",
                                 "xai": "grok-4.5"
                             }.get(provider, "default-model")

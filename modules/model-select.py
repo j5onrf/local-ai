@@ -18,13 +18,8 @@ CACHE_PATH = os.path.expanduser("~/.config/local-ai/.openrouter_cache_v2.json")
 
 # Fallback defaults used on cold-boots before first API refresh
 GEMINI_CURATED = [
-    "gemini-3.1-flash-lite",
-    "gemini-3.5-flash",
-    "gemini-3.5-pro",
-    "gemini-2.5-flash",
-    "gemini-2.5-pro",
-    "gemini-1.5-flash",
-    "gemini-1.5-pro"
+    "gemini-3.5-flash-lite",
+    "gemini-3.6-flash"
 ]
 
 OPENAI_CURATED = [
@@ -165,7 +160,7 @@ def load_env_vars():
         "CLAUDE_API_KEY": "",
         "OPENAI_API_KEY": "",
         "XAI_API_KEY": "",
-        "GEMINI_MODEL": "gemini-3.1-flash-lite",
+        "GEMINI_MODEL": "gemini-3.5-flash-lite",
         "OPENROUTER_MODEL": "openrouter/free",
         "CLAUDE_MODEL": "claude-fable-5",
         "OPENAI_MODEL": "gpt-5.5",
@@ -378,7 +373,6 @@ def draw_main_menu(selected, gemini_curr, claude_curr, openai_curr, grok_curr, o
     keys_active = gemini_active or or_active or claude_active or openai_active or grok_active
     status_text = f"{green}[ ENABLED ]{reset}" if keys_active else f"{red}[ DISABLED ]{reset}"
     
-    # Gray out the model selections if their respective keys are not active in .env
     gemini_display = f"{green}{gemini_curr}{reset}" if gemini_active else f"{red}DISABLED (grayed out){reset}"
     openai_display = f"{green}{openai_curr}{reset}" if openai_active else f"{red}DISABLED (grayed out){reset}"
     claude_display = f"{green}{claude_curr}{reset}" if claude_active else f"{red}DISABLED (grayed out){reset}"
@@ -558,7 +552,6 @@ def run_selector(title, full_models_list, current, key_name):
 
 # --- MAIN ENGINE ---
 def main():
-    # Hide terminal cursor on entry
     sys.stdout.write("\033[?25l")
     sys.stdout.flush()
 
@@ -671,7 +664,6 @@ def main():
                 break
     finally:
         sys.stdout.write("\x1b[H\x1b[2J")
-        # Restore terminal cursor on exit
         sys.stdout.write("\033[?25h")
         sys.stdout.flush()
 

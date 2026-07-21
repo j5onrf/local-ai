@@ -7,13 +7,26 @@ set -euo pipefail
 ENV_PATH="$HOME/.config/local-ai/.env"
 LOG_FILE="$HOME/.config/local-ai/.request_log"
 
+# Safely source active keys from .env into script environment
+if [[ -f "$ENV_PATH" ]]; then
+    set +u
+    set -a
+    source "$ENV_PATH"
+    set +a
+    set -u
+fi
+
 # Helper to dynamically map Gemini rate limits based on current GEMINI_MODEL
 get_gemini_limits() {
-    local model="${1:-gemini-3.1-flash-lite}"
+    local model="${1:-gemini-3.5-flash-lite}"
     local m_low; m_low=$(echo "$model" | tr '[:upper:]' '[:lower:]')
     
-    if [[ "$m_low" == *"3.5-flash"* ]]; then
-        echo "15 RPM / 250 RPD (Restricted)"
+    if [[ "$m_low" == *"3.6-flash"* ]]; then
+        echo "15 RPM / 1,500 RPD"
+    elif [[ "$m_low" == *"3.5-flash-lite"* ]]; then
+        echo "30 RPM / 1,500 RPD"
+    elif [[ "$m_low" == *"3.5-flash"* ]]; then
+        echo "15 RPM / 1,500 RPD"
     elif [[ "$m_low" == *"3.1-flash-lite"* ]]; then
         echo "30 RPM / 1,500 RPD"
     elif [[ "$m_low" == *"3-flash"* ]]; then
@@ -72,7 +85,7 @@ if [[ -f "$ENV_PATH" ]]; then
                 m_val=$(grep -E "^${m_var}=" "$ENV_PATH" | cut -d'=' -f2 | tr -d '"'\'' ' || echo "")
                 if [[ -z "$m_val" ]]; then
                     # Dynamic defaults matching agent_cloud.py
-                    if [[ "$provider" == "gemini" ]]; then m_val="gemini-3.1-flash-lite"
+                    if [[ "$provider" == "gemini" ]]; then m_val="gemini-3.5-flash-lite"
                     elif [[ "$provider" == "openai" ]]; then m_val="gpt-5.5"
                     elif [[ "$provider" == "claude" ]]; then m_val="claude-fable-5"
                     elif [[ "$provider" == "xai" ]]; then m_val="grok-4.5"
@@ -187,11 +200,11 @@ except:
 fi
 
 # Retrieve the dynamic limits based on the active GEMINI_MODEL
-gemini_limits=$(get_gemini_limits "${GEMINI_MODEL:-gemini-3.1-flash-lite}")
+gemini_limits=$(get_gemini_limits "${GEMINI_MODEL:-gemini-3.5-flash-lite}")
 
-echo -e "# ACTIVE AI ROUTING DIAGNOSTICS\n\n> **AI Instructions:**\n> Summarize the active provider, model, and its 24h RPD count in 1-2 direct, unformatted sentences.\n> If fallback is active, briefly state why.\n\n---\n\n## CREDENTIALS & CONFIGURATION"
+echo -e "# ACTIVE AI ROUTING DIAGNOSTICS\n\n> **AI Instructions:**\n> Summarize the active provider, model, 24h RPD count, and the configured standby fallback route in 1-2 direct, unformatted sentences.\n> If primary is offline and fallback is actively being used, briefly state why.\n\n---\n\n## CREDENTIALS & CONFIGURATION"
 echo "* **GEMINI_API_KEY**  : $(mask_key "${GEMINI_API_KEY:-}")"
-echo "* **GEMINI_MODEL**     : \`${GEMINI_MODEL:-gemini-3.1-flash-lite}\` (Free Limits: ${gemini_limits})"
+echo "* **GEMINI_MODEL**     : \`${GEMINI_MODEL:-gemini-3.5-flash-lite}\` (Free Limits: ${gemini_limits})"
 echo "* **GEMINI METRICS**  : \`RPM: ${gemini_rpm} | RPD: ${gemini_rpd}\` (Last 24h rolling)"
 echo ""
 echo "* **OPENAI_API_KEY**  : $(mask_key "${OPENAI_API_KEY:-}")"
@@ -223,9 +236,21 @@ echo -e "\n---\n\n## ENDPOINT STATUS"
 [[ -n "${OPENROUTER_API_KEY:-}" ]] && echo "* **OpenRouter API** : $([[ $or_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")" || echo "* **OpenRouter API** : *Skipped (No Key)*"
 echo -e "* **Local Server**   : $([[ $local_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")\n\n---\n\n## ACTIVE RUNTIME ROUTE"
 
-# Evaluate active runtime route dynamically based on actual .env priority order
+# Evaluate active runtime route and fallback dynamically based on .env priority order
 resolved_provider="*None / All Offline*"
 resolved_model="*None*"
+fallback_provider="*None Configured*"
+fallback_model="*None*"
+
+# Default fallback resolution from .env secondary active provider or local server
+if [[ ${#active_providers[@]} -gt 1 ]]; then
+    f_prov="${active_providers[1]}"
+    fallback_provider=$(echo "$f_prov" | tr '[:lower:]' '[:upper:]' | sed 's/XAI/x.AI/; s/CLAUDE/Anthropic Claude/; s/GEMINI/Google Gemini/; s/OPENAI/OpenAI/; s/OPENROUTER/OpenRouter/')
+    fallback_model="${active_models[1]}"
+elif [[ $local_status -eq 0 ]]; then
+    fallback_provider="Local AI Server"
+    fallback_model="$local_model"
+fi
 
 for i in "${!active_providers[@]}"; do
     provider="${active_providers[$i]}"
@@ -244,6 +269,16 @@ for i in "${!active_providers[@]}"; do
     if [[ $status -eq 0 ]]; then
         resolved_provider=$(echo "$provider" | tr '[:lower:]' '[:upper:]' | sed 's/XAI/x.AI/; s/CLAUDE/Anthropic Claude/; s/GEMINI/Google Gemini/; s/OPENAI/OpenAI/; s/OPENROUTER/OpenRouter/')
         resolved_model="$model_val"
+        
+        # If primary (index 0) is active, fallback is index 1 (or local server)
+        if [[ $i -eq 0 && ${#active_providers[@]} -gt 1 ]]; then
+            f_prov="${active_providers[1]}"
+            fallback_provider=$(echo "$f_prov" | tr '[:lower:]' '[:upper:]' | sed 's/XAI/x.AI/; s/CLAUDE/Anthropic Claude/; s/GEMINI/Google Gemini/; s/OPENAI/OpenAI/; s/OPENROUTER/OpenRouter/')
+            fallback_model="${active_models[1]}"
+        elif [[ $i -gt 0 ]]; then
+            # If primary was down and we defaulted to index > 0, state primary is offline
+            fallback_provider="Primary (${active_providers[0]}) Offline → Active Fallback In Use"
+        fi
         break
     fi
 done
@@ -252,7 +287,10 @@ done
 if [[ "$resolved_provider" == "*None / All Offline*" && $local_status -eq 0 ]]; then
     resolved_provider="Local AI Server"
     resolved_model="$local_model"
+    fallback_provider="*None Available*"
+    fallback_model="*None*"
 fi
 
 echo "* **Selected Provider**: **${resolved_provider}**"
 echo "* **Active Model**     : \`${resolved_model}\`"
+echo "* **Fallback Route**   : **${fallback_provider}** (\`${fallback_model}\`)"
