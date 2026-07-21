@@ -1,4 +1,3 @@
-# File: ~/.config/local-ai/modules/agent_tui.py
 import os
 import sys
 import json
@@ -18,7 +17,8 @@ from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.text import Text
 from rich.box import DOUBLE, ROUNDED
-from rich.console import Group
+from rich.console import Group, Console, ConsoleOptions, RenderResult
+from rich.syntax import Syntax
 
 # Ensure parent modules path is present on system path
 sys.path.append(os.path.expanduser("~/.config/local-ai/modules"))
@@ -26,22 +26,14 @@ import agent_cloud
 import agent_ui
 import agent_core as core
 
-
 def load_env_file(path: str) -> None:
     """Loads environment configurations dynamically to ensure key parity."""
     if os.path.exists(path):
         try:
             with open(path, "r", encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith("#") and "=" in line:
-                        k, _, v = line.partition("=")
-                        k = k.replace("export ", "", 1).strip()
-                        if not v.startswith(('"', "'")):
-                            v = v.split(" #")[0]
-                        v = v.strip().strip('"').strip("'")
-                        if k and k not in os.environ:
-                            os.environ[k] = v
+                for line in (l.strip() for l in f if l.strip() and not l.startswith("#") and "=" in line):
+                    k, _, v = line.partition("=")
+                    os.environ[k.replace("export ", "", 1).strip()] = v.split(" #")[0].strip().strip('"').strip("'")
         except Exception:
             pass
 
@@ -49,67 +41,110 @@ def load_env_file(path: str) -> None:
 CFG_DIR: str = os.path.expanduser("~/.config/local-ai")
 load_env_file(os.path.join(CFG_DIR, ".env"))
 
-
 # --- Monkey-Patch Screen to completely block standard system commands from Palette ---
 Screen.command_sources = property(lambda self: set())
 
+# --- Dynamic Rich Markdown Code Block Monkey-Patch ---
+
+def get_dynamic_code_block_background() -> str:
+    """Retrieves the ideal code block background color depending on the active TUI theme."""
+    try:
+        from textual._context import active_app
+        app = active_app.get()
+        current_theme = getattr(app, "theme", "dark")
+    except Exception:
+        try:
+            # Fallback if context is unavailable (e.g. rendering outside main thread context)
+            current_theme = globals().get("app").theme
+        except Exception:
+            current_theme = "dark"
+
+    backgrounds = {
+        "grok": "#121212",      # Grok panel grey (stands out on pitch black #000000 background)
+        "dark": "#242424",      # Dark panel grey (stands out on dark theme's #121212 background)
+        "dracula": "#21222c",   # Dracula surface purple
+        "nord": "#242933",      # Nord slate background
+        "monokai": "#1e1f1c",   # Monokai dark olive-charcoal
+    }
+    return backgrounds.get(current_theme, "#121212")
+
+def custom_code_block_rich_console(self: Any, console: Console, options: ConsoleOptions) -> RenderResult:
+    """Forces Rich's Pygments engine to use a clean, theme-aware background color."""
+    code = str(self.text).rstrip()
+    bg_color = get_dynamic_code_block_background()
+    yield Syntax(
+        code,
+        self.lexer_name,
+        theme=self.theme,
+        word_wrap=True,
+        padding=(0, 1),
+        background_color=bg_color
+    )
+
+# Retrieve the exact classes used by Rich for parsing and rendering code blocks
+fenced_code_class = Markdown.elements.get("fence")
+code_block_class = Markdown.elements.get("code_block")
+
+# Apply the patches directly to the active element class render loops
+if fenced_code_class:
+    fenced_code_class.__rich_console__ = custom_code_block_rich_console
+if code_block_class:
+    code_block_class.__rich_console__ = custom_code_block_rich_console
 
 # Minimalist, high-performance pure black and carbon grey Grok theme
 grok_theme = Theme(
     name="grok",
-    primary="#444444",     # Muted grey border outlines
-    secondary="#888888",   # Soft silver-grey metadata
-    accent="#ffffff",      # Bright white highlights
-    background="#000000",  # True pitch-black backdrop
-    surface="#0d0d0d",     # Dark grey panels
+    primary="#444444",      # Muted grey border outlines
+    secondary="#888888",    # Soft silver-grey metadata
+    accent="#ffffff",       # Bright white highlights
+    background="#000000",   # True pitch-black backdrop
+    surface="#0d0d0d",      # Dark grey panels
     panel="#121212"
 )
 
 dracula_theme = Theme(
     name="dracula",
-    primary="#bd93f9",     # Purple accents
-    secondary="#f8f8f2",   # Dim white
-    accent="#ff79c6",      # Pink highlight
-    background="#282a36",  # Midnight purple
-    surface="#21222c",     # Subdued purple
+    primary="#555555",      # Charcoal borders
+    secondary="#f8f8f2",    # Dim white accent
+    accent="#ff79c6",       # Pink highlight
+    background="#282a36",   # Midnight purple
+    surface="#21222c",      # Subdued purple
     panel="#191a21"
 )
 
 nord_theme = Theme(
     name="nord",
-    primary="#88c0d0",     # Cold ice blue
-    secondary="#d8dee9",   # Silver frost
-    accent="#81a1c1",      # Subdued steel blue
-    background="#2e3440",  # Dark slate background
-    surface="#242933",     # Surface slate
+    primary="#555555",      # Charcoal borders
+    secondary="#d8dee9",    # Silver frost accent
+    accent="#81a1c1",       # Subdued steel blue
+    background="#2e3440",   # Dark slate background
+    surface="#242933",      # Surface slate
     panel="#1c202a"
 )
 
 monokai_theme = Theme(
     name="monokai",
-    primary="#f92672",     # Hot pink border accent
-    secondary="#f8f8f2",   # Off white
-    accent="#a6e22e",      # Lime green highlights
-    background="#272822",  # Dark olive-charcoal background
-    surface="#1e1f1c",     # Subdued charcoal
+    primary="#555555",      # Charcoal borders
+    secondary="#f8f8f2",    # Off white accent
+    accent="#a6e22e",       # Lime green highlights
+    background="#272822",   # Dark olive-charcoal background
+    surface="#1e1f1c",      # Subdued charcoal
     panel="#141411"
 )
 
 dark_theme = Theme(
     name="dark",
-    primary="#555555",     # Charcoal borders
-    secondary="#b0b0b0",   # Soft silver
-    accent="#ffffff",      # White text
-    background="#121212",  # Matte black background
-    surface="#1c1c1c",     # Standard dark surface
+    primary="#555555",      # Charcoal borders
+    secondary="#b0b0b0",    # Soft silver accent
+    accent="#ffffff",       # White text
+    background="#121212",   # Matte black background
+    surface="#1c1c1c",      # Standard dark surface
     panel="#242424"
 )
 
-
 class Message(Static):
     """
-    A dynamic chat message widget.
-    Isolates <think>...</think> blocks in real-time to render clean thinking process panels.
+    A dynamic chat message widget. Isolates ... think ... blocks in real-time to render clean thinking process panels.
     """
     def __init__(self, sender: str, content: str) -> None:
         super().__init__()
@@ -129,7 +164,7 @@ class Message(Static):
         if self.sender == "User":
             display_text = self.content
             if isinstance(display_text, list):
-                display_text = next((item["text"] for item in display_text if item.get("type") == "text"), "[Multimodal Payload]")
+                display_text = next((item["text"] for item in display_text if item.get("type") == "text"), "[Multimodal]")
             return Group(Text(f"{prefix}❯ USER: {display_text}", style="bold cyan"))
         
         # Agent Turn Rendering
@@ -143,161 +178,90 @@ class Message(Static):
             
             if "</think>" in after_start_think:
                 think_parts = after_start_think.split("</think>", 1)
-                thinking_text = think_parts[0]
-                answer_text = before_think + think_parts[1]
-                
                 thinking_panel = Panel(
-                    Text(thinking_text.strip(), style="italic dim white"),
-                    title="⚙ Thinking Process",
-                    title_align="left",
-                    border_style="bright_black",
-                    box=ROUNDED,
-                    expand=True
+                    Text(think_parts[0].strip(), style="italic dim white"),
+                    title="⚙ Thinking Process", title_align="left", border_style="bright_black", box=ROUNDED, expand=True
                 )
-                
-                body_md = Markdown(answer_text.strip()) if answer_text.strip() else Text("")
+                body_md = Markdown(think_parts[1].strip()) if think_parts[1].strip() else Text("")
                 return Group(header, thinking_panel, body_md)
             else:
-                thinking_text = after_start_think
                 thinking_panel = Panel(
-                    Text(thinking_text.strip(), style="italic dim white"),
-                    title="⚙ Thinking Process...",
-                    title_align="left",
-                    border_style="yellow",
-                    box=ROUNDED,
-                    expand=True
+                    Text(after_start_think.strip(), style="italic dim white"),
+                    title="⚙ Thinking Process...", title_align="left", border_style="yellow", box=ROUNDED, expand=True
                 )
                 return Group(header, thinking_panel)
         else:
             return Group(header, Markdown(text))
 
-
 class AgentCommandProvider(Provider):
     """A clean command provider filtering out redundant system commands."""
-    
     async def search(self, query: str) -> Iterator[Hit]:
         matcher = self.matcher(query)
-        
         commands = [
             ("Attach Image URL", "attach_image_url", "Attach an image URL to analyze on your next query"),
-            ("Toggle Reasoning Mode", "toggle_reasoning", "Enable deep reasoning budget, prompt for tokens, or disable it"),
+            ("Set Reasoning Budget", "set_reasoning_budget", "Set a custom token budget for deep reasoning"),
             ("Cycle Theme", "cycle_theme", "Cycle through available color themes"),
             ("Toggle Sidebar", "toggle_sidebar", "Show or hide the metadata panel"),
             ("Toggle Compact Mode", "toggle_compact", "Toggle between dense and spacious spacing layouts"),
+            ("Toggle Reasoning", "toggle_reasoning", "Enable or disable deep reasoning budget"),
         ]
-        
         for title, action, desc in commands:
             score = matcher.match(title)
             if score > 0:
-                yield Hit(
-                    score,
-                    Text(title),
-                    lambda act=action: self.app.run_action(act),
-                    help=desc
-                )
-
+                yield Hit(score, Text(title), lambda act=action: self.app.run_action(act), help=desc)
 
 class LocalAITUI(App):
     """
     A high-performance Textual TUI for Local-AI Agent.
     Mirrors x-build double-pane formatting with full dynamic theme support.
     """
-    
     ENABLE_COMMAND_PALETTE = True
 
-    # Property override returning a set completely bypasses Textual's metaclass merging
     @property
     def command_sources(self) -> Set[Any]:
-        """Strictly forces ONLY our custom curated Command Provider inside the Palette."""
         return {AgentCommandProvider}
 
     # Restored standard, comfortable padding by default
     CSS = """
-    Screen {
-        background: $background;
-    }
-    
-    #sidebar {
-        width: 32;
-        height: 100%;
-        background: $surface;
-        border-right: double $primary;
-        padding: 1 2;
-    }
-    
-    #main-container {
-        height: 100%;
-        width: 1fr;
-        background: transparent;
-    }
-    
-    #chat-area {
-        height: 1fr;
-        background: transparent;
-        overflow-y: scroll;
-        padding: 1 2;
-    }
-    
-    #input-pane {
-        height: 3;
-        border-top: solid $primary;
-        background: $surface;
-        padding: 0 1;
-    }
-    
-    Input {
-        border: none;
-        background: transparent;
-        height: 3;
-        color: $text;
-    }
-    
-    Message {
-        margin: 0;
-        height: auto;
-    }
-    
-    .sidebar-label {
-        color: $primary;
-        text-style: bold;
-        margin-top: 1;
-    }
-    
-    .sidebar-val {
-        color: $secondary;
-        margin-bottom: 1;
-    }
+    Screen { background: $background; }
+    #sidebar { width: 32; height: 100%; background: $surface; border-right: double $primary; padding: 1 2; }
+    #main-container { height: 100%; width: 1fr; background: transparent; }
+    #chat-area { height: 1fr; background: transparent; overflow-y: scroll; padding: 1 2; }
+    #input-pane { height: 3; border-top: solid $primary; background: $surface; padding: 0 1; }
+    Input { border: none; background: transparent; height: 3; color: $text; }
+    Message { margin: 0; height: auto; }
+    .sidebar-label { color: $primary; text-style: bold; margin-top: 1; }
+    .sidebar-val { color: $secondary; margin-bottom: 1; }
     """
 
     THEMES: List[str] = ["dark", "grok", "dracula", "nord", "monokai"]
 
-    # Unified footer keys with standard spacing configurations (no separate Budget key)
     BINDINGS = [
         Binding("ctrl+b", "toggle_sidebar", "Sidebar", show=True),
         Binding("ctrl+g", "toggle_compact", "Compact", show=True),
         Binding("ctrl+r", "toggle_reasoning", "Reasoning", show=True),
         Binding("ctrl+t", "cycle_theme", "Theme", show=True),
         Binding("ctrl+y", "attach_image_url", "Image", show=True),
-        Binding("ctrl+c", "quit", "Exit", show=True),
+        Binding("ctrl+c", "stop_generation", "Stop Out", show=True),
+        Binding("ctrl+q", "quit", "Exit TUI", show=True),
+        Binding("escape", "quit", "Exit TUI", show=False),
     ]
 
     def __init__(self, workspace_path: str, model_name: str) -> None:
         super().__init__()
         self.workspace_path: str = workspace_path
         self.model_name: str = model_name
-        
-        self.compact_mode: bool = False  # Spacious standard mode is default
-        
-        # Deep Reasoning states
+        self.compact_mode: bool = False
         self.reasoning_active: bool = False
-        self.reasoning_budget: int = 500  # Default budget is 500 tokens
+        self.reasoning_budget: int = 500
         self.entering_reasoning_budget: bool = False
-        
-        # Multi-modal vision attributes
         self.active_image_url: Optional[str] = None
         self.entering_image_url: bool = False
-        
         self.history: List[Dict[str, str]] = []
+        
+        # Generation control states
+        self.generation_cancelled: bool = False
+        self.active_response: Optional[Any] = None
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="layout"):
@@ -307,16 +271,12 @@ class LocalAITUI(App):
                 
                 yield Static("ACTIVE MODEL:", classes="sidebar-label")
                 yield Static(self.model_name, id="lbl-model", classes="sidebar-val")
-                
                 yield Static("WORKSPACE DIR:", classes="sidebar-label")
                 yield Static(self.workspace_path.replace(os.path.expanduser("~"), "~"), classes="sidebar-val")
-                
                 yield Static("REASONING BUDGET:", classes="sidebar-label")
                 yield Static("Disabled", id="lbl-reasoning", classes="sidebar-val")
-                
                 yield Static("IMAGE ATTACHED:", classes="sidebar-label")
                 yield Static("None", id="lbl-image", classes="sidebar-val")
-                
                 yield Static("DATABASE STATE:", classes="sidebar-label")
                 yield Static("stateless", classes="sidebar-val")
                 
@@ -360,8 +320,7 @@ class LocalAITUI(App):
                 self.reasoning_budget = 500
                 self.reasoning_active = True
                 self.query_one("#lbl-reasoning", Static).update("500 tokens")
-                info_banner = Static("[dim yellow][sys] Deep reasoning enabled with default budget: [bold]500 tokens[/bold][/dim yellow]")
-                self.chat_area.mount(info_banner)
+                self.chat_area.mount(Static("[dim yellow][sys] Deep reasoning enabled with default budget: [bold]500 tokens[/bold]"))
             else:
                 try:
                     val = int(query)
@@ -369,15 +328,13 @@ class LocalAITUI(App):
                         self.reasoning_budget = val
                         self.reasoning_active = True
                         self.query_one("#lbl-reasoning", Static).update(f"{val} tokens")
-                        info_banner = Static(f"[dim yellow][sys] Deep reasoning enabled with custom budget: [bold]{val} tokens[/bold][/dim yellow]")
-                        self.chat_area.mount(info_banner)
+                        self.chat_area.mount(Static(f"[dim yellow][sys] Deep reasoning enabled with custom budget: [bold]{val} tokens[/bold]"))
                     else:
                         raise ValueError
                 except ValueError:
                     self.reasoning_active = False
                     self.query_one("#lbl-reasoning", Static).update("Disabled")
-                    info_banner = Static("[bold red][sys] Invalid budget. Deep reasoning remains disabled.[/bold red]")
-                    self.chat_area.mount(info_banner)
+                    self.chat_area.mount(Static("[bold red][sys] Invalid budget. Deep reasoning remains disabled.[/bold red]"))
                 
             self.chat_area.scroll_end(animate=False)
             return
@@ -393,7 +350,7 @@ class LocalAITUI(App):
             filename = query.split("/")[-1].split("?")[0][:25]
             self.query_one("#lbl-image", Static).update(filename or "image_attached")
             
-            info_banner = Static(f"[dim yellow][sys] Attached image URL: [bold]{query}[/bold][/dim yellow]")
+            info_banner = Static(f"[dim yellow][sys] Attached image URL: [bold]{query}[/bold]")
             self.chat_area.mount(info_banner)
             self.chat_area.scroll_end(animate=False)
             return
@@ -430,8 +387,12 @@ class LocalAITUI(App):
     def blocking_stream(self, target_widget: Message) -> None:
         """Executes the network request and streams tokens safely inside a background thread."""
         self.call_from_thread(self.disable_input)
+        self.generation_cancelled = False
+        self.active_response = None
+        accumulated = ""
         
         try:
+            # Match standard CLI reasoning parameters dynamically from custom setting
             thinking_budget = self.reasoning_budget if self.reasoning_active else 0
             configs = []
             
@@ -474,30 +435,19 @@ class LocalAITUI(App):
             )
             
             with urlreq.urlopen(req, timeout=timeout) as response:
+                self.active_response = response
                 # Catch API Key validation errors / bad requests immediately
                 if response.status != 200:
                     err_text = response.read().decode("utf-8", errors="ignore")[:200]
                     raise Exception(f"HTTP {response.status}: {err_text}")
 
-                accumulated = ""
                 for line in response:
+                    if self.generation_cancelled:
+                        break
                     if not line.startswith(b"data:"):
                         continue
                     
-                    content = ""
-                    if core is not None:
-                        content = core.extract_stream_content(line)
-                    else:
-                        line_str = line.decode("utf-8", errors="ignore").strip()
-                        if line_str.startswith("data: "):
-                            data_content = line_str[6:]
-                            if data_content != "[DONE]":
-                                try:
-                                    parsed = json.loads(data_content)
-                                    content = parsed["choices"][0]["delta"].get("content", "")
-                                except Exception:
-                                    pass
-                    
+                    content = core.extract_stream_content(line)
                     if content:
                         accumulated += content
                         # Safely update the widget state on the main thread
@@ -507,8 +457,13 @@ class LocalAITUI(App):
             self.history.append({"role": "assistant", "content": accumulated})
             
         except Exception as e:
-            self.call_from_thread(target_widget.update_content, f"[red][sys] Error: {e}[/red]")
+            if self.generation_cancelled:
+                self.call_from_thread(target_widget.update_content, accumulated + " [dim yellow](stopped)[/dim yellow]")
+                self.history.append({"role": "assistant", "content": accumulated})
+            else:
+                self.call_from_thread(target_widget.update_content, f"[red][sys] Error: {e}[/red]")
         finally:
+            self.active_response = None
             self.call_from_thread(self.enable_input)
 
     def disable_input(self) -> None:
@@ -519,6 +474,35 @@ class LocalAITUI(App):
         """Helper callback executed from thread to restore input capabilities."""
         self.chat_input.disabled = False
         self.chat_input.focus()
+
+    def action_stop_generation(self) -> None:
+        """Interrupts and stops the active streaming model output cleanly, or clears input if idle."""
+        if self.chat_input.disabled:
+            self.generation_cancelled = True
+            if self.active_response:
+                try:
+                    self.active_response.close()
+                except Exception:
+                    pass
+            self.chat_area.mount(Static("[dim yellow][sys] Generation stopped by user.[/dim yellow]"))
+            self.chat_area.scroll_end(animate=False)
+        else:
+            self.chat_input.value = ""
+
+    def action_set_reasoning_budget(self) -> None:
+        """Puts the main input widget into 'Reasoning Budget input' state, or toggles it off."""
+        if self.entering_reasoning_budget:
+            self.entering_reasoning_budget = False
+            self.chat_input.placeholder = "Ask your agent anything..."
+            self.chat_input.value = ""
+            info_banner = Static("[dim yellow][sys] Reasoning budget setting cancelled.[/dim yellow]")
+            self.chat_area.mount(info_banner)
+            self.chat_area.scroll_end(animate=False)
+        else:
+            self.entering_reasoning_budget = True
+            self.entering_image_url = False
+            self.chat_input.placeholder = "Enter Reasoning Budget (positive number, e.g., 2500):"
+            self.chat_input.focus()
 
     def action_attach_image_url(self) -> None:
         """Puts the main input widget into 'Image URL input' state, or toggles it off."""
@@ -565,7 +549,7 @@ class LocalAITUI(App):
             next_idx = (current_idx + 1) % len(self.THEMES)
             self.theme = self.THEMES[next_idx]
             
-            info_banner = Static(f"[dim yellow][sys] Theme changed dynamically to: [bold]{self.theme}[/bold][/dim yellow]")
+            info_banner = Static(f"[dim yellow][sys] Theme changed dynamically to: [bold]{self.theme}[/bold]")
             self.chat_area.mount(info_banner)
             self.chat_area.scroll_end(animate=False)
         except Exception:
@@ -592,10 +576,9 @@ class LocalAITUI(App):
             self.chat_input.placeholder = "Enter Reasoning Budget (Press Enter for default 500):"
             self.chat_input.focus()
 
-
 if __name__ == "__main__":
     workspace = os.environ.get("AI_WORKSPACE_PATH", os.getcwd())
-    
+
     # Resolve active model name on startup matching standard CLI logic
     try:
         configs = []
@@ -611,5 +594,6 @@ if __name__ == "__main__":
         except Exception:
             model = "local-model"
             
+    # Instantiate as 'app' to bind module-level namespace access
     app = LocalAITUI(workspace, model)
     app.run()

@@ -114,3 +114,11 @@ Run: architecture overview
 
 ---
 
+## [2026-07-20 19:13] User:
+herdr
+
+### Agent:
+Run: trace symbol herdr
+
+---
+

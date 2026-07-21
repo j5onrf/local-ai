@@ -98,7 +98,7 @@ Agent: Workspace loaded. Awaiting instructions.
 | **Performance** | **Zero-Daemon** | 0% idle CPU/RAM. `Ultra-light` execution. |
 | **Intelligence** | **Scalability** | Optimized from `Qwen3.5-2B` up to frontier models. |
 | **Resiliency** | **Fallbacks** | Top-Down Cascade: `.env` order: `Provider` → `GGUF`. |
-| **Multi-Agent** | **Subagents** | [Vercel's Eve](https://github.com/vercel/eve)-style with [herdr](https://github.com/j5onrf/herdr) multiplexing via (`-save`/`-load`). |
+| **Multi-Agent** | **Subagents** | [Vercel's Eve](https://github.com/vercel/eve)-style with [herdr](https://github.com/ogulcancelik/herdr) multiplexing via (`-save`/`-load`). |
 | **Safety** | **Zero-Trust Guardrails** | Intercepts out-of-bounds commands and edits for manual approval. |
 | **Safety** | **Type-Safe Validation** | Enforces [Pydantic AI](https://github.com/pydantic/pydantic-ai)'s schema concepts natively. |
 | **Safety** | **Syntactic Guardrails** | [OpenAI Agents](https://github.com/openai/openai-agents-python)-style self-correcting `.py`/`.json` writes. |
@@ -129,7 +129,7 @@ Agent: Workspace loaded. Awaiting instructions.
   <em>Manage your active cloud endpoints, inspect live API rankings, and toggle keys.</em>
 </p>
 
-* Run **`model select`** directly from your terminal to launch the interactive **[Cloud Connection](https://github.com/j5onrf/local-ai/tree/main/modules)** TUI.
+* Run **`model select`** directly from your terminal to launch the interactive **[Cloud Connection](https://github.com/j5onrf/local-ai/blob/main/modules/Readme.md)** TUI.
 
 ---
 
@@ -139,7 +139,7 @@ Agent: Workspace loaded. Awaiting instructions.
   <em>A full-screen, mouse-clickable, multi-theme terminal workspace modeled after grok-build.</em>
 </p>
 
-* Type **`/tui`** inside any active chat session to transition into the full-screen **[Textual](https://github.com/j5onrf/local-ai/tree/main/modules)** TUI.
+* Type **`/tui`** inside any active chat session to transition into the full-screen **[Textual](https://github.com/j5onrf/local-ai/blob/main/modules/Readme.md)** TUI.
 
 ---
 
