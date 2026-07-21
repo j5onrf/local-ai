@@ -300,8 +300,8 @@ class LocalAITUI(App):
         self.register_theme(monokai_theme)
         self.register_theme(dark_theme)
         
-        # Set dark as the initial default theme on startup
-        self.theme = "dark"
+        # Set grok as the initial default theme on startup
+        self.theme = "grok"
         
         self.chat_area = self.query_one("#chat-area", Vertical)
         self.chat_input = self.query_one("#chat-input", Input)
