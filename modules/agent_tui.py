@@ -124,7 +124,7 @@ nord_theme = Theme(
 
 monokai_theme = Theme(
     name="monokai",
-    primary="#555555",      # Charcoal borders
+    primary="#f92672",      # Hot pink border accent
     secondary="#f8f8f2",    # Off white accent
     accent="#a6e22e",       # Lime green highlights
     background="#272822",   # Dark olive-charcoal background
@@ -243,8 +243,8 @@ class LocalAITUI(App):
         Binding("ctrl+t", "cycle_theme", "Theme", show=True),
         Binding("ctrl+y", "attach_image_url", "Image", show=True),
         Binding("ctrl+c", "stop_generation", "Stop Out", show=True),
-        Binding("ctrl+q", "quit", "Exit TUI", show=True),
-        Binding("escape", "quit", "Exit TUI", show=False),
+        Binding("ctrl+q", "quit", "Exit TUI", show=False),      # Hides the exit button from footer
+        Binding("escape", "quit", "Exit TUI", show=False),      # Hides the exit button from footer
     ]
 
     def __init__(self, workspace_path: str, model_name: str) -> None:
@@ -300,8 +300,8 @@ class LocalAITUI(App):
         self.register_theme(monokai_theme)
         self.register_theme(dark_theme)
         
-        # Set grok as the initial default theme on startup
-        self.theme = "grok"
+        # Set dark as the initial default theme on startup
+        self.theme = "dark"
         
         self.chat_area = self.query_one("#chat-area", Vertical)
         self.chat_input = self.query_one("#chat-input", Input)
@@ -594,6 +594,5 @@ if __name__ == "__main__":
         except Exception:
             model = "local-model"
             
-    # Instantiate as 'app' to bind module-level namespace access
     app = LocalAITUI(workspace, model)
     app.run()
