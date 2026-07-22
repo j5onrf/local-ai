@@ -2,7 +2,7 @@
   <img alt="Local-AI Agent" src="logo.png" width="800" />
 </p>
 
-<h1 align="center">Local-AI Agent <kbd>v0.9.4.6-beta</kbd></h1>
+<h1 align="center">Local-AI Agent <kbd>v0.9.4.7-beta</kbd></h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">

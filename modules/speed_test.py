@@ -70,15 +70,9 @@ def end(actual_out_tokens: int = None, is_local: bool = False) -> None:
     tps_total = total_tokens / total_elapsed if total_elapsed > 0 else 0.0
 
     if is_local and think_tokens > 0 and think_duration > 0:
-        tps_think = think_tokens / think_duration
-        tps_ans = ans_tokens / ans_duration if ans_duration > 0 and ans_tokens > 0 else 0.0
-        msg = (
-            f"\033[90m [think: {think_tokens} tok @ {tps_think:.1f} t/s | "
-            f"ans: {ans_tokens} tok @ {tps_ans:.1f} t/s | "
-            f"total: {total_tokens} tok | {total_elapsed:.2f}s | {tps_total:.1f} t/s]\033[0m\n"
-        )
+        msg = f"\033[90m [ think: {think_tokens} | ans: {ans_tokens} | {total_tokens} tokens | {total_elapsed:.1f}s @ {tps_total:.1f} t/s ]\033[0m\n"
     else:
-        msg = f"\033[90m [{total_tokens} tokens | {total_elapsed:.2f}s | {tps_total:.2f} t/s]\033[0m\n"
+        msg = f"\033[90m [ {total_tokens} tokens | {total_elapsed:.2f}s | {tps_total:.2f} t/s ]\033[0m\n"
 
     sys.stdout.write(msg)
     sys.stdout.flush()
