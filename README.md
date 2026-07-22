@@ -81,8 +81,6 @@ Agent: Workspace loaded. Awaiting instructions.
 | :--- | :--- | :--- |
 | **Engine** | **Zero-Daemon** | 0% idle CPU/RAM usage. Native Python standard-library execution. |
 | **Resilience** | **Provider Cascade** | Top-down `.env` fallback: Gemini $\rightarrow$ OpenRouter $\rightarrow$ OpenAI $\rightarrow$ Claude $\rightarrow$ Grok $\rightarrow$ Local GGUF. |
-| **Memory** | **TPM System** | Temporal Personality Memory with background thread extraction & `.agent/tpm.md` sync. |
-| **Codebase Graph** | **Local RAG** | AST parsing, relational SQLite graphs (`nodes`/`edges`), and vector search ([`sqlite-vec`](https://github.com/asg017/sqlite-vec)). |
 | **Multi-Agent** | **Subagents** | [Vercel Eve](https://github.com/vercel/eve)-style sub-agents with [herdr](https://github.com/ogulcancelik/herdr) multiplexing via (`-save`/`-load`). |
 | **Safety** | **Zero-Trust Gates** | Mandatory approval prompts for commands and out-of-bounds file access. |
 | **Validation** | **Type-Safe & AST Guard** | [Pydantic AI](https://github.com/pydantic/pydantic-ai) schemas + [OpenAI Agents](https://github.com/openai/openai-agents-python)-style self-correcting `.py`/`.json` writes. |
