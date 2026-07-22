@@ -276,7 +276,7 @@ def show_help() -> None:
 
     cmds = [
         ("/help, /h, /?", "Show help menu"),
-        ("/r [N|show|hide]", "Set reasoning budget or show/hide thinking"),
+        ("/t, /thinking [N|show|hide]", "Set reasoning budget or show/hide"),
         ("/g", "Toggle confirmation gates"),
         ("/m", "Toggle long-term memory"),
         ("/stats", "Toggle generation speed stats"),
@@ -288,6 +288,7 @@ def show_help() -> None:
         ("/tui", "Open full-screen Textual UI"),
         ("-save <tag>", "Save session checkpoint"),
         ("-load, -timeline", "Load or clone checkpoint"),
+        ("/f, /tk, /b, /a", "Follow-up, Thinking, Brainstorm, or All"),
         ("view file <path>", "Load file into context"),
         ("read function <sym>", "Load AST symbol snippet"),
         ("exit, quit, q", "Exit Local-AI Agent"),

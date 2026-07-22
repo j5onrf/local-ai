@@ -2,7 +2,7 @@
   <img alt="Local-AI Agent" src="logo.png" width="800" />
 </p>
 
-<h1 align="center">Local-AI Agent <kbd>v0.9.4.4-beta</kbd></h1>
+<h1 align="center">Local-AI Agent <kbd>v0.9.4.5-beta</kbd></h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
@@ -57,6 +57,7 @@ Built with zero context-stuffing for extreme efficiency on quantized local model
 [01/03] ❯ [session test] ai init ~/session-test --init
 :: ↵ run  Esc: 
 ✔ Mapping complete! [session-test index-map & SQLite graph database updated]
+[1] 702196
 ╔═  ❖ Local-AI Agent [sub-agent #1] ════════════╗
 ║     model:  Qwen3.6-35B-A3B.gguf              ║
 ║ directory:  ~/.config/local-ai/session-test   ║
@@ -109,22 +110,23 @@ Agent: Workspace loaded. Awaiting instructions.
 │   Shortcuts: Esc: bypass  Ctrl+C: cancel                            │
 │                                                                     │
 │   Available commands:                                               │
-│  /help, /h, /?        - Show help menu                              │
-│  /r [N|show|hide]     - Set reasoning budget or show/hide           │
-│  /g                   - Toggle confirmation gates                   │
-│  /m                   - Toggle long-term memory                     │
-│  /stats               - Toggle generation speed stats               │
-│  /tok                 - Show context token usage                    │
-│  /sync, /re           - Sync codebase AST & graph                   │
-│  /clear, /reset       - Clear chat history & memory                 │
-│  /spell, /sp          - Toggle spellchecker                         │
-│  /skill <q>, /s       - Search and load custom skills               │
-│  /tui                 - Open full-screen Textual UI                 │
-│  -save <tag>          - Save session checkpoint                     │
-│  -load, -timeline     - Load or clone checkpoint                    │
-│  view file <path>     - Load file into context                      │
-│  read function <sym>  - Load AST symbol snippet                     │
-│  exit, quit, q        - Exit Local-AI Agent                         │
+│  /help, /h, /?               - Show help menu                       │
+│  /t, /thinking [N|show|hide] - Set reasoning budget or show/hide    │
+│  /g                          - Toggle confirmation gates            │
+│  /m                          - Toggle long-term memory              │
+│  /stats                      - Toggle generation speed stats        │
+│  /tok                        - Show context token usage             │
+│  /sync, /re                  - Sync codebase AST & graph            │
+│  /clear, /reset              - Clear chat history & memory          │
+│  /spell, /sp                 - Toggle spellchecker                  │
+│  /skill <q>, /s              - Search and load custom skills        │
+│  /tui                        - Open full-screen Textual UI          │
+│  -save <tag>                 - Save session checkpoint              │
+│  -load, -timeline            - Load or clone checkpoint             │
+│  /f, /tk, /b, /a             - Follow-up, Think, Brainstorm, All    │
+│  view file <path>            - Load file into context               │
+│  read function <sym>         - Load AST symbol snippet              │
+│  exit, quit, q               - Exit Local-AI Agent                  │
 ╰─────────────────────────────────────────────────────────────────────╯
 ```
 

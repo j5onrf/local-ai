@@ -7,6 +7,7 @@ High-speed local developer agent, episodic memory system, checkpoint state manag
 [01/03] ❯ [session test] ai init ~/session-test --init
 :: ↵ run  Esc: 
 ✔ Mapping complete! [session-test index-map & SQLite graph database updated]
+[1] 702000
 ╔═  ❖ Local-AI Agent [sub-agent #1] ════════════╗
 ║     model:  Qwen3.6-35B-A3B.gguf              ║
 ║ directory:  ~/.config/local-ai/session-test   ║

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-# chat - Unified Agentic Brainstorm, Thinking & Follow-up Engine v2.5.2
-# Path: ~/.config/local-ai/modules/chat
+# chat - Unified Agentic Brainstorm, Thinking & Follow-up Engine
 
 import sys
 import os
@@ -8,7 +7,6 @@ import json
 import re
 import urllib.request as urlreq
 
-# Safe import of existing agent UI utilities for InlineSpinner support
 try:
     import agent_ui as ui
 except ImportError:
@@ -16,70 +14,44 @@ except ImportError:
 
 CFG_DIR = os.path.expanduser("~/.config/local-ai")
 
-# 1. Parse Serialized Chat History from Stdin
 try:
     history = json.loads(sys.stdin.read())
 except Exception:
     sys.stderr.write("Error: No valid chat history passed to brainstorm tool.\n")
     sys.exit(1)
 
-# 2. Parse Query Mode and Dynamic Option Count via Secure Regex
 query_string = " ".join(sys.argv[1:]).lower().strip()
 cmd_match = re.match(r'^/?([ftba])(?:\s+(\d+))?$', query_string)
 
-# Extract parameters
 cmd_char = cmd_match.group(1) if cmd_match else "f"
-option_count = 3
-if cmd_match and cmd_match.group(2):
-    parsed_val = int(cmd_match.group(2))
-    if 1 <= parsed_val <= 10:
-        option_count = parsed_val
+option_count = int(cmd_match.group(2)) if (cmd_match and cmd_match.group(2) and 1 <= int(cmd_match.group(2)) <= 10) else 3
 
-is_brain_cmd = (cmd_char == "b")
-is_think_cmd = (cmd_char == "t")
-is_all_cmd = (cmd_char == "a")
-is_think_mode = is_brain_cmd or is_think_cmd
+is_brain_cmd, is_think_cmd, is_all_cmd = (cmd_char == "b"), (cmd_char == "t"), (cmd_char == "a")
 
-# Determine active file and UI elements dynamically
 if is_brain_cmd:
-    skill_file = "brainstorm.md"
-    output_header = "Brainstorm"
-    fallback_term = "brainstorm"
+    skill_file, output_header, fallback_term = "brainstorm.md", "Brainstorm", "brainstorm"
 elif is_think_cmd:
-    skill_file = "thinking.md"
-    output_header = "Thinking"
-    fallback_term = "think"
+    skill_file, output_header, fallback_term = "thinking.md", "Thinking", "think"
 elif is_all_cmd:
-    skill_file = "all"
-    output_header = "Follow-up"
-    fallback_term = "all"
+    skill_file, output_header, fallback_term = "all", "Follow-up", "all"
 else:
-    skill_file = "follow-up.md"
-    output_header = "Follow-up"
-    fallback_term = "follow-up"
+    skill_file, output_header, fallback_term = "follow-up.md", "Follow-up", "follow-up"
 
 THINK_FILE = f"{CFG_DIR}/skills/meta/{skill_file}"
 
-# 3. Read Prompt with Dynamic Option/All-Mode Compilation
 prompt = ""
 if is_all_cmd:
-    # Compile a unified super-prompt from all three source files in one API call
     prompts = {}
     for f_name, header in [("follow-up.md", "Follow-up"), ("thinking.md", "Thinking"), ("brainstorm.md", "Brainstorm")]:
         path = f"{CFG_DIR}/skills/meta/{f_name}"
         if os.path.exists(path):
             try:
-                with open(path, "r", encoding="utf-8") as f:
-                    content = f.read().strip()
-                    # Clean out redundant templates from individual files to keep attention clear
-                    if "Template:" in content:
-                        content = content.split("Template:")[0].strip()
-                    prompts[header] = content
+                content = open(path, "r", encoding="utf-8").read().strip()
+                prompts[header] = content.split("Template:")[0].strip() if "Template:" in content else content
             except Exception:
                 pass
-            
+
     if prompts:
-        # Structured with XML-scaffolding and a single, unified Master Template
         prompt = (
             "Analyze the preceding conversation history and output exactly three sections: Follow-up, Thinking, and Brainstorm.\n"
             "You must output ONLY these three sections, with no conversational introductions or explanations.\n\n"
@@ -94,13 +66,11 @@ if is_all_cmd:
         )
 elif os.path.exists(THINK_FILE):
     try:
-        with open(THINK_FILE, "r", encoding="utf-8") as f:
-            prompt = f.read().strip()
+        prompt = open(THINK_FILE, "r", encoding="utf-8").read().strip()
     except Exception:
         pass
 
 if not prompt:
-    # Zero-config standard fallback
     if is_all_cmd:
         prompt = (
             "Analyze history and output exactly three sections: Follow-up, Thinking, and Brainstorm.\n"
@@ -115,16 +85,11 @@ if not prompt:
             f"Analyze history and output exactly 3 next-step {fallback_term} items.\n"
             "Each option must be strictly 6 to 10 words long.\n"
             "No conversational filler. Output exactly this format:\n\n"
-            f"{output_header}\n"
-            "[Option 1]\n"
-            "[Option 2]\n"
-            "[Option 3]"
+            f"{output_header}\n[Option 1]\n[Option 2]\n[Option 3]"
         )
 else:
-    # Inject user's specific requested counts
     prompt = prompt.replace("exactly 3", f"exactly {option_count}")
 
-# 4. Safe Stack Insertion (Fixed for local ChatML template compliance)
 instruction_block = (
     "[COMMAND: Do not continue the conversation. Do not reply to the last message. "
     "Instead, execute this specific analytical directive based on our preceding chat history immediately. "
@@ -133,31 +98,24 @@ instruction_block = (
 )
 history.append({"role": "user", "content": instruction_block})
 
-# 5. Simplified Fallbacks with Dynamic Timeouts (Standardized on openrouter/free)
 configs = []
 gkey, okey = os.environ.get("GEMINI_API_KEY"), os.environ.get("OPENROUTER_API_KEY")
 
 if gkey:
-    # 10 second timeout for quick cloud failover
     configs.append((
         "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
         {"Authorization": f"Bearer {gkey}"},
         os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"),
-        {},
-        10
+        {}, 10
     ))
 if okey:
-    m = os.environ.get("OPENROUTER_MODEL", "openrouter/free")
-    # 10 second timeout for quick cloud failover
     configs.append((
         "https://openrouter.ai/api/v1/chat/completions",
         {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"},
-        m,
-        {},
-        10
+        os.environ.get("OPENROUTER_MODEL", "openrouter/free"),
+        {}, 10
     ))
 
-# 180 second timeout for Local models. Explicitly overrides template reasoning to OFF.
 configs.append(("http://localhost:8080/v1/chat/completions", {}, None, {"chat_template_kwargs": {"enable_thinking": False}}, 180))
 
 for url, headers, model, extra, timeout in configs:
@@ -167,22 +125,18 @@ for url, headers, model, extra, timeout in configs:
     req = urlreq.Request(url, data=json.dumps(body).encode("utf-8"), headers={"Content-Type": "application/json", **headers}, method="POST")
     spinner = None
     try:
-        # Start inline terminal spinner if TTY is available
         if ui and sys.stdout.isatty():
             spinner = ui.InlineSpinner()
             spinner.start()
 
         with urlreq.urlopen(req, timeout=timeout) as response:
-            first_token = True
-            chunks = []
+            first_token, chunks = True, []
             for line in response:
-                dec = line.decode("utf-8").strip()
-                if not dec:
+                dec = line.decode("utf-8", errors="ignore").strip()
+                if not dec or dec == "[DONE]":
                     continue
                 if dec.startswith("data:"):
                     dec = dec[5:].strip()
-                if dec == "[DONE]":
-                    continue
                 try:
                     data = json.loads(dec)
                     content = ""
@@ -191,7 +145,6 @@ for url, headers, model, extra, timeout in configs:
                     elif "candidates" in data and data["candidates"]:
                         content = data["candidates"][0].get("content", {}).get("parts", [{}])[0].get("text", "")
                     if content:
-                        # Teardown spinner instantly when first chunk arrives
                         if first_token:
                             if spinner:
                                 spinner.stop()
@@ -208,23 +161,18 @@ for url, headers, model, extra, timeout in configs:
                 spinner.stop()
                 spinner = None
 
-            # 6. Post-Processing Stream Clean
             full_text = "".join(chunks).strip()
             lines = [l.strip() for l in full_text.splitlines() if l.strip()]
             if lines:
                 headers_map = {
-                    "follow-up": "Follow-up",
-                    "follow-ups": "Follow-up",
-                    "thinking": "Thinking",
-                    "think": "Thinking",
-                    "brainstorm": "Brainstorm",
-                    "brainstorming": "Brainstorm"
+                    "follow-up": "Follow-up", "follow-ups": "Follow-up",
+                    "thinking": "Thinking", "think": "Thinking",
+                    "brainstorm": "Brainstorm", "brainstorming": "Brainstorm"
                 }
                 
                 sys.stdout.write("\n")
-                first_line_clean = lines[0].lower().rstrip('s:') if lines else ""
+                first_line_clean = lines[0].lower().rstrip('s:')
                 
-                # Check if the first line is actually a conversational preamble
                 start_index = 0
                 if first_line_clean not in headers_map:
                     for idx, line in enumerate(lines):
@@ -242,6 +190,11 @@ for url, headers, model, extra, timeout in configs:
                         sys.stdout.write(f"{line}\n")
                 sys.stdout.flush()
             sys.exit(0)
+    except KeyboardInterrupt:
+        if spinner:
+            spinner.stop()
+        sys.stderr.write("\n\033[90m[sys] Interrupted.\033[0m\n")
+        sys.exit(130)
     except Exception:
         if spinner:
             spinner.stop()

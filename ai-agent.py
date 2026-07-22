@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.9.4.4]
+# Local-Ai Agent [j5onrf] [v0.9.4.5]
 
 import json
 import os
@@ -252,8 +252,9 @@ def run_interactive_chat(args: List[str]) -> None:
                     ui._console.print(f"[yellow][sys] Confirmation gates {'disabled (autonomous)' if gates_active else 'enabled'}.[/yellow]\n")
                     continue
 
+                # Main Thinking Toggle & Budget Handler
                 parts = query.split()
-                if parts and parts[0] in ("/r", "/think"):
+                if parts and parts[0] in ("/t", "/thinking"):
                     if len(parts) > 1:
                         sub = parts[1].lower()
                         if sub in ("hide", "off", "mute", "quiet"):
@@ -275,7 +276,7 @@ def run_interactive_chat(args: List[str]) -> None:
                                 reasoning_active, reasoning_budget = val > 0, max(0, val)
                                 ui._console.print(f"[yellow][sys] Deep reasoning {'enabled' if reasoning_active else 'disabled'} (budget: {reasoning_budget} tokens).[/yellow]\n")
                             except ValueError:
-                                ui._console.print("[red][sys] Usage: /r [number|show|hide|toggle][/red]\n")
+                                ui._console.print("[red][sys] Usage: /t [number|show|hide|toggle][/red]\n")
                             continue
                     else:
                         reasoning_active = not reasoning_active
