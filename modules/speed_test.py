@@ -3,41 +3,89 @@ import time
 import sys
 
 _start_time = None
-_token_count = 0
+_think_start_time = None
+_think_end_time = None
+_think_chars = 0
+_ans_chars = 0
+_in_thinking = False
 
 def start() -> None:
-    """Begins the timer and resets the token count."""
-    global _start_time, _token_count
+    """Begins the timer and resets state."""
+    global _start_time, _think_start_time, _think_end_time, _think_chars, _ans_chars, _in_thinking
     _start_time = time.time()
-    _token_count = 0
+    _think_start_time = None
+    _think_end_time = None
+    _think_chars = 0
+    _ans_chars = 0
+    _in_thinking = False
 
-def count_token(content: str) -> None:
-    """Increments the generated token count based on streaming chunk length.
+def count_token(content: str, is_thinking: bool = False) -> None:
+    """Accumulates content character counts for precise token estimation across generation phases."""
+    global _think_chars, _ans_chars, _in_thinking, _think_start_time, _think_end_time
+    if not content:
+        return
     
-    Uses character length scaling (1 token ≈ 4 characters) to maintain accuracy
-    for both local models and high-speed batched cloud APIs.
-    """
-    global _token_count
-    if content:
-        # Standardizes token estimation across both single and multi-token stream packets
-        _token_count += max(1, len(content) // 4)
+    now = time.time()
+    if is_thinking:
+        if not _in_thinking:
+            _in_thinking = True
+            if _think_start_time is None:
+                _think_start_time = now
+        _think_chars += len(content)
+    else:
+        if _in_thinking:
+            _in_thinking = False
+            _think_end_time = now
+        _ans_chars += len(content)
 
-def end() -> None:
-    """Calculates, prints the token statistics, and resets state."""
-    global _start_time, _token_count
+def end(actual_out_tokens: int = None, is_local: bool = False) -> None:
+    """Calculates, prints token statistics (including thinking TPS for local runs), and resets state."""
+    global _start_time, _think_start_time, _think_end_time, _think_chars, _ans_chars, _in_thinking
     if _start_time is None:
         return
     
-    elapsed = time.time() - _start_time
-    if elapsed <= 0:
-        elapsed = 0.001
-        
-    tps = _token_count / elapsed
-    
-    # Print statistics in dim gray below the final answer block
-    sys.stdout.write(f"\033[90m [{_token_count} tokens | {elapsed:.2f}s | {tps:.2f} t/s]\033[0m\n")
+    total_elapsed = time.time() - _start_time
+    if total_elapsed <= 0:
+        total_elapsed = 0.001
+
+    if _in_thinking and _think_end_time is None:
+        _think_end_time = time.time()
+
+    total_chars = _think_chars + _ans_chars
+    if actual_out_tokens is not None and actual_out_tokens > 0:
+        total_tokens = actual_out_tokens
+    else:
+        total_tokens = max(1, round(total_chars / 4.0)) if total_chars > 0 else 0
+
+    think_tokens = round((_think_chars / total_chars) * total_tokens) if total_chars > 0 and _think_chars > 0 else 0
+    ans_tokens = max(0, total_tokens - think_tokens)
+
+    think_duration = 0.0
+    if _think_start_time and _think_end_time:
+        think_duration = max(0.001, _think_end_time - _think_start_time)
+    elif _think_start_time:
+        think_duration = max(0.001, total_elapsed)
+
+    ans_duration = max(0.001, total_elapsed - think_duration) if think_duration > 0 else total_elapsed
+    tps_total = total_tokens / total_elapsed if total_elapsed > 0 else 0.0
+
+    if is_local and think_tokens > 0 and think_duration > 0:
+        tps_think = think_tokens / think_duration
+        tps_ans = ans_tokens / ans_duration if ans_duration > 0 and ans_tokens > 0 else 0.0
+        msg = (
+            f"\033[90m [think: {think_tokens} tok @ {tps_think:.1f} t/s | "
+            f"ans: {ans_tokens} tok @ {tps_ans:.1f} t/s | "
+            f"total: {total_tokens} tok | {total_elapsed:.2f}s | {tps_total:.1f} t/s]\033[0m\n"
+        )
+    else:
+        msg = f"\033[90m [{total_tokens} tokens | {total_elapsed:.2f}s | {tps_total:.2f} t/s]\033[0m\n"
+
+    sys.stdout.write(msg)
     sys.stdout.flush()
-    
-    # Clean up state
+
     _start_time = None
-    _token_count = 0
+    _think_start_time = None
+    _think_end_time = None
+    _think_chars = 0
+    _ans_chars = 0
+    _in_thinking = False

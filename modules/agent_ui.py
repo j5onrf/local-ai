@@ -7,13 +7,13 @@ import select
 import re
 import urllib.request as urlreq
 import json
-from typing import Optional, Callable, Dict, Any, List
+from typing import Optional, Callable
 
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
-from rich.box import DOUBLE, ROUNDED
+from rich.box import DOUBLE
 
 try:
     import tty
@@ -21,7 +21,6 @@ try:
 except ImportError:
     pass
 
-# Shared standardized console channels
 _console = Console()
 _console_err = Console(stderr=True)
 
@@ -36,8 +35,7 @@ class InlineSpinner:
         self.start_time: float = 0.0
 
     def _spin(self) -> None:
-        idx: int = 0
-        char_len: int = len(self.chars)
+        idx, char_len = 0, len(self.chars)
         while self.active:
             try:
                 char = self.chars[idx % char_len]
@@ -52,7 +50,6 @@ class InlineSpinner:
         sys.stderr.flush()
 
     def start(self, message: str = "Thinking...") -> None:
-        """Launches the background spinner execution thread."""
         if not self.active:
             self.active = True
             self.message = message
@@ -61,7 +58,6 @@ class InlineSpinner:
             self.thread.start()
 
     def stop(self) -> None:
-        """Stops spinner execution and blocks until the background thread terminates."""
         if self.active:
             self.active = False
             if self.thread:
@@ -69,40 +65,33 @@ class InlineSpinner:
                 self.thread = None
 
 
+def _read_fd(fd: int) -> str:
+    old = termios.tcgetattr(fd)
+    try:
+        tty.setraw(fd)
+        termios.tcflush(fd, termios.TCIFLUSH)
+        char_bytes = os.read(fd, 1)
+        if char_bytes == b'\x1b' and select.select([fd], [], [], 0.05)[0]:
+            char_bytes += os.read(fd, 2)
+        return char_bytes.decode("utf-8", errors="ignore")
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old)
+
+
 def get_key() -> str:
     """Reads a single key or raw keyboard escape sequence securely from /dev/tty or stdin."""
-    try:
-        with open("/dev/tty", "r") as tty_file:
-            fd = tty_file.fileno()
-            old_settings = termios.tcgetattr(fd)
-            try:
-                tty.setraw(fd)
-                termios.tcflush(fd, termios.TCIFLUSH)
-                char_bytes = os.read(fd, 1)
-                if char_bytes == b'\x1b' and select.select([fd], [], [], 0.05)[0]:
-                    char_bytes += os.read(fd, 2)
-                return char_bytes.decode("utf-8", errors="ignore")
-            finally:
-                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-    except Exception:
+    for target in ("/dev/tty", None):
         try:
-            fd = sys.stdin.fileno()
-            old_settings = termios.tcgetattr(fd)
-            try:
-                tty.setraw(fd)
-                termios.tcflush(fd, termios.TCIFLUSH)
-                char_bytes = os.read(fd, 1)
-                if char_bytes == b'\x1b' and select.select([fd], [], [], 0.05)[0]:
-                    char_bytes += os.read(fd, 2)
-                return char_bytes.decode("utf-8", errors="ignore")
-            finally:
-                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+            if target:
+                with open(target, "r") as f:
+                    return _read_fd(f.fileno())
+            return _read_fd(sys.stdin.fileno())
         except Exception:
-            try:
-                char_bytes = os.read(sys.stdin.fileno(), 1)
-                return char_bytes.decode("utf-8", errors="ignore")
-            except Exception:
-                return ""
+            pass
+    try:
+        return os.read(sys.stdin.fileno(), 1).decode("utf-8", errors="ignore")
+    except Exception:
+        return ""
 
 
 def get_local_model_name() -> str:
@@ -110,9 +99,7 @@ def get_local_model_name() -> str:
     try:
         req = urlreq.Request("http://localhost:8080/v1/models", method="GET")
         with urlreq.urlopen(req, timeout=0.5) as r:
-            data = json.loads(r.read().decode("utf-8"))
-            model_path: str = data["data"][0]["id"]
-            return os.path.basename(model_path)
+            return os.path.basename(json.loads(r.read().decode("utf-8"))["data"][0]["id"])
     except Exception:
         return "local-model"
 
@@ -129,32 +116,24 @@ def draw_session_box(
     sub_id: Optional[int] = None
 ) -> None:
     """Renders the standard system initialization and environment parameters table."""
-    version: str = ""
+    version = ""
     main_script_path = os.path.join(home_dir, ".config", "local-ai", "ai-agent.py")
     if os.path.exists(main_script_path):
         try:
-            with open(main_script_path, "r", encoding="utf-8") as f:
-                for line in f:
-                    match = re.search(r"Local-Ai Agent\s+(v[0-9.]+)", line, re.I)
-                    if match:
-                        version = match.group(1)
-                        break
+            for line in open(main_script_path, "r", encoding="utf-8"):
+                match = re.search(r"Local-Ai Agent\s+(v[0-9.]+)", line, re.I)
+                if match:
+                    version = match.group(1)
+                    break
         except Exception:
             pass
 
-    display_dir = workspace_path
-    if display_dir.startswith(home_dir):
-        display_dir = display_dir.replace(home_dir, "~", 1)
+    display_dir = workspace_path.replace(home_dir, "~", 1) if workspace_path.startswith(home_dir) else workspace_path
 
-    # Dynamically query the active cloud configuration cascading priority
     try:
         import agent_cloud
         configs = agent_cloud.get_active_configs([])
-        if configs:
-            # Get the model name from the primary (first) active config
-            model_name = configs[0][2].get("model", "local-model")
-        else:
-            model_name = get_local_model_name()
+        model_name = configs[0][2].get("model", "local-model") if configs else get_local_model_name()
     except Exception:
         model_name = get_local_model_name()
 
@@ -164,15 +143,13 @@ def draw_session_box(
 
     table.add_row("model:", model_name)
     table.add_row("directory:", display_dir)
-    table.add_row("skill:", clean_name if clean_name else "default")
-
+    table.add_row("skill:", clean_name or "default")
     mem_status = f"active ({tpm_count} facts, {db_turns} turns)" if memory_active else "disabled"
     table.add_row("database:", mem_status if is_agent else "stateless")
 
-    title_text = f" ❖ Local-AI Agent [sub-agent #{sub_id}] " if sub_id else \
-                 f" ❖ Local-AI Agent ({version}) " if version else " ❖ Local-AI Agent "
+    title_text = f" ❖ Local-AI Agent [sub-agent #{sub_id}] " if sub_id else (f" ❖ Local-AI Agent ({version}) " if version else " ❖ Local-AI Agent ")
 
-    panel = Panel(
+    _console.print(Panel(
         table,
         title=Text(title_text, style="bold bright_blue"),
         title_align="left",
@@ -181,11 +158,8 @@ def draw_session_box(
         expand=False,
         subtitle="[dim]Ctrl+C to exit[/dim]",
         subtitle_align="right"
-    )
-
-    _console.print(panel)
-    approx_tokens: int = len(active_system_prompt) // 4
-    _console.print(f"[dim][sys] Startup context: {approx_tokens:,} tokens[/dim]\n")
+    ))
+    _console.print(f"[dim][sys] Startup context: {len(active_system_prompt) // 4:,} tokens[/dim]\n")
 
 
 def confirm_tool(tool: str) -> bool:
@@ -196,12 +170,7 @@ def confirm_tool(tool: str) -> bool:
     except Exception:
         char = ""
     is_yes = char.lower() == 'y' or char in ('\r', '\n', '')
-    if char in ('\r', '\n', ''):
-        sys.stderr.write("y\n")
-    elif char.startswith('\x1b') or char == '\x03':
-        sys.stderr.write("n\n")
-    else:
-        sys.stderr.write(f"{char}\n")
+    sys.stderr.write("y\n" if char in ('\r', '\n', '') else ("n\n" if char.startswith('\x1b') or char == '\x03' else f"{char}\n"))
     sys.stderr.flush()
     return is_yes
 
@@ -223,10 +192,8 @@ def run_interactive_selection(
         print_stock_error_fn(intent)
         sys.exit(127)
 
-    options: List[str] = matched_base.split("\n")
-    num_opts: int = len(options)
-    current_idx: int = 0
-    
+    options = matched_base.split("\n")
+    num_opts, current_idx = len(options), 0
     sys.stderr.write("\033[?25l")
     sys.stderr.flush()
 

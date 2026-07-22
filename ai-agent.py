@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.9.3.21]
+# Local-Ai Agent [j5onrf] [v0.9.4.1]
 
 import json
 import os
@@ -12,34 +12,17 @@ import urllib.request as urlreq
 from typing import List, Optional, Tuple, Dict, Any
 from contextlib import closing
 
-# Unify configuration paths
 CFG_DIR: str = os.path.expanduser("~/.config/local-ai")
 CONTEXT_FILE: str = os.path.join(CFG_DIR, "ai-context.md")
 SKILLS_DIR: str = os.path.join(CFG_DIR, "skills")
 SESSIONS_DIR: str = os.path.join(CFG_DIR, "projects", "database")
 
-# Refined Markdown-native system prompts
-BASE_PROMPT: str = (
-    "Read-only local shell assistant.\n"
-    "If <context> is provided, answer directly using only its facts. Otherwise, answer normally.\n\n"
-)
-
-BASE_PROMPT_CHAT: str = (
-    "Read-only local shell assistant.\n"
-    "If <context> is provided, answer directly using only its facts. Otherwise, answer normally.\n\n"
-    "### Conversational Guidelines:\n"
-    "- Role: Active, natural, and highly articulate conversational assistant.\n"
-    "- Tone: Professional, warm, objective, and intellectually engaging.\n\n"
-)
-
-BASE_PROMPT_AGENT: str = (
-    "Active local project workspace developer agent.\n"
-    "If <context> is provided, answer directly using only its facts. Otherwise, answer normally.\n\n"
-)
+BASE_PROMPT: str = "Read-only local shell assistant.\nIf <context> is provided, answer directly using only its facts. Otherwise, answer normally.\n\n"
+BASE_PROMPT_CHAT: str = BASE_PROMPT + "### Conversational Guidelines:\n- Role: Active, natural, and highly articulate conversational assistant.\n- Tone: Professional, warm, objective, and intellectually engaging.\n\n"
+BASE_PROMPT_AGENT: str = "Active local project workspace developer agent.\nIf <context> is provided, answer directly using only its facts. Otherwise, answer normally.\n\n"
 
 
 def _run_cmd(args: List[str], stdin: Optional[str] = None) -> str:
-    """Executes a subprocess pipeline with standardized capture and timeouts."""
     try:
         res = subprocess.run(args, input=stdin, capture_output=True, text=True, timeout=10)
         return res.stdout.strip() if res.returncode == 0 else ""
@@ -48,25 +31,19 @@ def _run_cmd(args: List[str], stdin: Optional[str] = None) -> str:
 
 
 def load_env_file(path: str) -> None:
-    """Loads key-value variables from a local environment file safely into os.environ."""
     if os.path.exists(path):
         try:
-            with open(path, "r", encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith("#") and "=" in line:
-                        k, _, v = line.partition("=")
-                        k = k.replace("export ", "", 1).strip()
-                        if not v.startswith(('"', "'")):
-                            v = v.split(" #")[0]
-                        v = v.strip().strip('"').strip("'")
-                        if k and k not in os.environ:
-                            os.environ[k] = v
+            for line in open(path, "r", encoding="utf-8"):
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.replace("export ", "", 1).split("=", 1)
+                    k, v = k.strip(), v.split(" #")[0].strip().strip('"').strip("'")
+                    if k and k not in os.environ:
+                        os.environ[k] = v
         except Exception:
             pass
 
 
-# Bootstrap environment config and runtime paths
 load_env_file(os.path.join(CFG_DIR, ".env"))
 sys.path.append(os.path.join(CFG_DIR, "modules"))
 
@@ -77,7 +54,6 @@ try:
 except ImportError:
     pass
 
-# Unify module imports with error boundaries
 try:
     import agent_context as context
     import agent_core as core
@@ -88,32 +64,25 @@ except ImportError as e:
     sys.stderr.write(f"\033[1;31m[CRITICAL]: Failed to load modules: {e}\033[0m\n")
     sys.exit(1)
 
-STOP_WORDS = {
-    "is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", 
-    "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"
-}
+STOP_WORDS = {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"}
 
 
 def workspace_safe_name(workspace_path: str, home_dir: str) -> str:
-    """Derives a safe unique key representing the workspace directory."""
     safe = workspace_path[len(home_dir):].lstrip("/") if workspace_path.startswith(home_dir) else workspace_path
     return safe.replace("/", "-").strip("-") or "home"
 
 
 def workspace_db_counts(safe_name: str) -> Tuple[int, int]:
-    """Retrieves session turns and episodic facts counts from the sqlite backend."""
     turns = _run_cmd([sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "get-count", safe_name])
     facts = _run_cmd([sys.executable, f"{CFG_DIR}/modules/ai-agent-memories", "get-tpm-count", safe_name])
     return int(turns or 0), int(facts or 0)
 
 
 def sync_md_to_sqlite(workspace: str, workspace_path: str) -> None:
-    """Reconciles the markdown flat-file database back into SQLite storage."""
     md_path = os.path.join(workspace_path, ".agent", "tpm.md")
     if os.path.exists(md_path):
         try:
-            with open(md_path, "r", encoding="utf-8") as f:
-                matches = re.findall(r"\*\s+\*\*([^*]+)\*\*:\s*(.*)", f.read())
+            matches = re.findall(r"\*\s+\*\*([^*]+)\*\*:\s*(.*)", open(md_path, "r", encoding="utf-8").read())
             if matches:
                 reconciled = {k.strip().lower(): v.strip() for k, v in matches}
                 _run_cmd([sys.executable, f"{CFG_DIR}/modules/ai-agent-memories", "tpm-reconcile", workspace], json.dumps(reconciled))
@@ -121,36 +90,27 @@ def sync_md_to_sqlite(workspace: str, workspace_path: str) -> None:
             pass
 
 
-def validate_flat_schema(data: Dict[str, Any]) -> bool:
-    """Validates that a dictionary conforms strictly to simple string keys and string values."""
-    try:
-        if not isinstance(data, dict):
-            return False
-        return all(isinstance(k, str) and k.strip() and isinstance(v, str) for k, v in data.items())
-    except Exception:
-        return False
+def _get_state() -> Dict[str, bool]:
+    state_path = os.path.join(CFG_DIR, ".state.json")
+    default = {"spell_active": True, "show_stats": True, "memory_active": True}
+    if os.path.exists(state_path):
+        try:
+            return {**default, **json.load(open(state_path, "r", encoding="utf-8"))}
+        except Exception:
+            pass
+    return default
 
 
 def _save_state(key: str, value: bool) -> None:
-    """Persists interface feature state toggles directly into the state configuration JSON."""
-    state_path = os.path.join(CFG_DIR, ".state.json")
-    data = {"spell_active": True, "show_stats": True, "memory_active": True}
-    if os.path.exists(state_path):
-        try:
-            with open(state_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-        except Exception:
-            pass
-    data[key] = value
+    state = _get_state()
+    state[key] = value
     try:
-        with open(state_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
+        json.dump(state, open(os.path.join(CFG_DIR, ".state.json"), "w", encoding="utf-8"), indent=2)
     except Exception:
         pass
 
 
 def background_tpm_update(user_msg: str, assistant_msg: str, workspace: str, workspace_path: str) -> None:
-    """Asynchronously parses turns to identify and extract updated episodic memory details."""
     cleaned = user_msg.lower().strip()
     if len(cleaned) < 8 or cleaned in ("hello", "hi", "hey", "exit", "quit", "q", "/clear", "/reset", "/stats", "/tok", "/m", "/r"):
         return
@@ -166,65 +126,30 @@ def background_tpm_update(user_msg: str, assistant_msg: str, workspace: str, wor
                 if rows:
                     existing_facts = "\n".join(f"* {k}: {v}" for k, v in rows)
 
-        system_prompt = (
-            "You are an asynchronous memory compiler. Analyze the latest user message and assistant response.\n"
-            "Extract any new facts, occupations, locations, style preferences, or software tool configurations the user explicitly shared.\n"
-            'Output ONLY a flat JSON object of the updated key-value pairs (e.g., {"editor": "Zed", "role": "CEO"}).\n'
-            "If a fact contradicts or updates an existing fact in the memory profile, override it with the new value.\n"
-            "Do not include markdown, explanations, or code blocks. Output '{}' if no new facts or updates are found."
-        )
+        sys_p = "You are an asynchronous memory compiler. Analyze turn. Output ONLY flat JSON object of updated facts key-value pairs."
+        usr_p = f"### Existing Profile:\n{existing_facts or 'None'}\n\n### Turn:\nUser: {user_msg}\nAssistant: {assistant_msg}\n\nOutput JSON:"
 
-        user_prompt = f"### Existing Memory Profile:\n{existing_facts or 'None'}\n\n### Latest Turn:\nUser: {user_msg}\nAssistant: {assistant_msg}\n\nIdentify and reconcile any updates. Output JSON:"
+        payload = {"messages": [{"role": "system", "content": sys_p}, {"role": "user", "content": usr_p}], "temperature": 0.0, "thinking_budget_tokens": 0, "stream": False}
+        req = urlreq.Request("http://localhost:8080/v1/chat/completions", data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"}, method="POST")
 
-        payload = {
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            "temperature": 0.0,
-            "thinking_budget_tokens": 0,
-            "stream": False,
-        }
-
-        req = urlreq.Request(
-            "http://localhost:8080/v1/chat/completions",
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-
-        with urlreq.urlopen(req, timeout=5) as response:
-            res_data = json.loads(response.read().decode("utf-8"))
-            llm_out = res_data["choices"][0]["message"].get("content", "").strip()
+        with urlreq.urlopen(req, timeout=5) as resp:
+            llm_out = json.loads(resp.read().decode("utf-8"))["choices"][0]["message"].get("content", "").strip()
 
         llm_out = re.sub(r"^```json\s*|\s*```$", "", llm_out, flags=re.IGNORECASE).strip()
-        
-        try:
-            parsed_json = json.loads(llm_out)
-        except Exception:
-            parsed_json = None
-
-        if parsed_json and validate_flat_schema(parsed_json):
+        parsed = json.loads(llm_out)
+        if isinstance(parsed, dict) and all(isinstance(k, str) and isinstance(v, str) for k, v in parsed.items()):
             mem_tool = f"{CFG_DIR}/modules/ai-agent-memories"
-            _run_cmd([sys.executable, mem_tool, "tpm-reconcile", workspace], json.dumps(parsed_json))
+            _run_cmd([sys.executable, mem_tool, "tpm-reconcile", workspace], json.dumps(parsed))
             res_get = _run_cmd([sys.executable, mem_tool, "tpm-get", workspace])
             if res_get:
                 md_dir = os.path.join(workspace_path, ".agent")
                 os.makedirs(md_dir, exist_ok=True)
-                with open(os.path.join(md_dir, "tpm.md"), "w", encoding="utf-8") as mdf:
-                    mdf.write(res_get + "\n")
+                open(os.path.join(md_dir, "tpm.md"), "w", encoding="utf-8").write(res_get + "\n")
     except Exception:
         pass
 
 
-def stream_llm_response(
-    messages: List[Dict[str, str]], prefix: str = "AI: ", show_stats: bool = True, thinking_budget: int = 0, is_agent: bool = False
-) -> Optional[str]:
-    return core.stream_response(messages, prefix, CFG_DIR, show_stats, thinking_budget, is_agent)
-
-
 def clean_exit(safe_name: Optional[str] = None) -> None:
-    """Closes connections, runs visual cleanup trackers, and terminates process."""
     if safe_name:
         try:
             _run_cmd([sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "cleanup-sub", safe_name, str(os.getpid())])
@@ -235,7 +160,6 @@ def clean_exit(safe_name: Optional[str] = None) -> None:
 
 
 def run_interactive_chat(args: List[str]) -> None:
-    """Starts the dynamic interactive TUI loops for standard chat and codebase agents."""
     is_agent = args[0] == "--talk-chat"
     skills_list = []
     active_skill = os.environ.get("AI_ACTIVE_SKILL")
@@ -246,22 +170,9 @@ def run_interactive_chat(args: List[str]) -> None:
             skills_list.append(arg.lstrip("-").lower())
     skills_list = list(dict.fromkeys(skills_list))
 
-    skill_content = skills.load_skill_content(
-        " ".join(skills_list), SKILLS_DIR, CFG_DIR
-    )
-    
-    if is_agent:
-        base_p = BASE_PROMPT_AGENT
-    else:
-        base_p = BASE_PROMPT_CHAT if not skills_list else BASE_PROMPT
-    
-    active_system_prompt = (
-        skill_content
-        if (is_agent and skill_content)
-        else (
-            base_p + (f"\n\n### Active Skill/Role Instructions:\n{skill_content}\n" if skill_content else "")
-        )
-    )
+    skill_content = skills.load_skill_content(" ".join(skills_list), SKILLS_DIR, CFG_DIR)
+    base_p = BASE_PROMPT_AGENT if is_agent else (BASE_PROMPT_CHAT if not skills_list else BASE_PROMPT)
+    active_system_prompt = skill_content if (is_agent and skill_content) else (base_p + (f"\n\n### Active Skill/Role Instructions:\n{skill_content}\n" if skill_content else ""))
 
     workspace_path = os.environ.get("AI_WORKSPACE_PATH", os.getcwd())
     home_dir = os.path.expanduser("~")
@@ -271,41 +182,24 @@ def run_interactive_chat(args: List[str]) -> None:
     pending_query = " ".join(args[1:]) if len(args) > 1 else None
     clean_name = " ".join(skills_list)
 
-    spell_active = True
-    show_stats = True
-    memory_active = True
-    state_path = os.path.join(CFG_DIR, ".state.json")
-    if os.path.exists(state_path):
-        try:
-            with open(state_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                spell_active = data.get("spell_active", True)
-                show_stats = data.get("show_stats", True)
-                memory_active = data.get("memory_active", True)
-        except Exception:
-            pass
-            
-    reasoning_active = False
-    reasoning_budget = 500
+    st = _get_state()
+    spell_active, show_stats, memory_active = st["spell_active"], st["show_stats"], st["memory_active"]
+    reasoning_active, reasoning_budget = False, 500
 
     if is_agent:
         sync_md_to_sqlite(safe_name, workspace_path)
 
     db_turns, tpm_count = workspace_db_counts(safe_name) if is_agent else (0, 0)
-    
     sub_id = None
     if is_agent:
         try:
-            sub_id_str = _run_cmd([sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "get-sub-id", safe_name, str(os.getpid())])
-            if sub_id_str.isdigit() and int(sub_id_str) > 0:
-                sub_id = int(sub_id_str)
+            sub_str = _run_cmd([sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "get-sub-id", safe_name, str(os.getpid())])
+            if sub_str.isdigit() and int(sub_str) > 0:
+                sub_id = int(sub_str)
         except Exception:
             pass
 
-    ui.draw_session_box(
-        workspace_path, home_dir, is_agent, db_turns, tpm_count, memory_active, 
-        active_system_prompt, clean_name, sub_id=sub_id
-    )
+    ui.draw_session_box(workspace_path, home_dir, is_agent, db_turns, tpm_count, memory_active, active_system_prompt, clean_name, sub_id=sub_id)
 
     try:
         while True:
@@ -326,14 +220,13 @@ def run_interactive_chat(args: List[str]) -> None:
                 if query.lower() in ("exit", "quit", "q"):
                     clean_exit(safe_name if is_agent else None)
                 
-                # Built-In CLI Commands processing
                 if query == "/tui":
-                    ui._console.print("[dim yellow][sys] Suspending standard chat. Launching Textual full-screen TUI...[/dim yellow]")
+                    ui._console.print("[dim yellow][sys] Suspending chat. Launching TUI...[/dim yellow]")
                     time.sleep(0.5)
                     try:
                         subprocess.run([sys.executable, f"{CFG_DIR}/modules/agent_tui.py"])
                     except Exception as e:
-                        ui._console.print(f"[red][sys] Failed to initialize Textual TUI: {e}[/red]\n")
+                        ui._console.print(f"[red][sys] Failed TUI: {e}[/red]\n")
                     continue
 
                 if query in ("/spell", "/sp"):
@@ -345,89 +238,82 @@ def run_interactive_chat(args: List[str]) -> None:
                 if query == "/m":
                     memory_active = not memory_active
                     _save_state("memory_active", memory_active)
-                    ui._console.print(f"[green][sys] Long-term memory and TPM reconciliation {'enabled' if memory_active else 'disabled'}.[/green]\n")
+                    ui._console.print(f"[green][sys] Memory {'enabled' if memory_active else 'disabled'}.[/green]\n")
                     continue
 
                 if query == "/g":
                     gates_active = os.environ.get("AI_CONFIRM_GATES", "1") == "1"
-                    new_state = "0" if gates_active else "1"
-                    os.environ["AI_CONFIRM_GATES"] = new_state
-                    status = "enabled" if new_state == "1" else "disabled (autonomous mode active)"
-                    ui._console.print(f"[yellow][sys] Agent confirmation gates {status}.[/yellow]\n")
+                    os.environ["AI_CONFIRM_GATES"] = "0" if gates_active else "1"
+                    ui._console.print(f"[yellow][sys] Confirmation gates {'disabled (autonomous)' if gates_active else 'enabled'}.[/yellow]\n")
                     continue
 
                 parts = query.split()
-                if parts and parts[0] == "/r":
+                if parts and parts[0] in ("/r", "/think"):
                     if len(parts) > 1:
-                        try:
-                            val = int(parts[1])
-                            if val > 0:
-                                reasoning_active, reasoning_budget = True, val
-                                ui._console.print(f"[yellow][sys] Deep reasoning (thinking mode) enabled (budget: {reasoning_budget} tokens).[/yellow]\n")
-                            else:
-                                reasoning_active = False
-                                ui._console.print("[yellow][sys] Deep reasoning (thinking mode) disabled.[/yellow]\n")
-                        except ValueError:
-                            ui._console.print("[red][sys] Invalid token count. Use /r <number> (e.g., /r 500) or simply /r to toggle.[/red]\n")
+                        sub = parts[1].lower()
+                        if sub in ("hide", "off", "mute", "quiet"):
+                            os.environ["AI_SHOW_THINKING"] = "0"
+                            ui._console.print("[yellow][sys] Thinking display hidden (thinking mode remains active).[/yellow]\n")
+                            continue
+                        elif sub in ("show", "on", "visible"):
+                            os.environ["AI_SHOW_THINKING"] = "1"
+                            ui._console.print("[yellow][sys] Thinking display enabled.[/yellow]\n")
+                            continue
+                        elif sub in ("toggle", "t"):
+                            curr = os.environ.get("AI_SHOW_THINKING", "1") == "1"
+                            os.environ["AI_SHOW_THINKING"] = "0" if curr else "1"
+                            ui._console.print(f"[yellow][sys] Thinking display {'hidden' if curr else 'enabled'}.[/yellow]\n")
+                            continue
+                        else:
+                            try:
+                                val = int(parts[1])
+                                reasoning_active, reasoning_budget = val > 0, max(0, val)
+                                ui._console.print(f"[yellow][sys] Deep reasoning {'enabled' if reasoning_active else 'disabled'} (budget: {reasoning_budget} tokens).[/yellow]\n")
+                            except ValueError:
+                                ui._console.print("[red][sys] Usage: /r [number|show|hide|toggle][/red]\n")
+                            continue
                     else:
                         reasoning_active = not reasoning_active
-                        status = f"enabled (budget: {reasoning_budget} tokens)" if reasoning_active else "disabled"
-                        ui._console.print(f"[yellow][sys] Deep reasoning (thinking mode) {status}.[/yellow]\n")
+                        ui._console.print(f"[yellow][sys] Deep reasoning {'enabled' if reasoning_active else 'disabled'} (budget: {reasoning_budget} tokens).[/yellow]\n")
                     continue
 
                 if query == "/stats":
                     show_stats = not show_stats
                     _save_state("show_stats", show_stats)  
-                    ui._console.print(f"[green][sys] Generation statistics {'enabled' if show_stats else 'disabled'}.[/green]\n")
+                    ui._console.print(f"[green][sys] Stats {'enabled' if show_stats else 'disabled'}.[/green]\n")
                     continue
 
                 if query in ("/sync", "/re"):
-                    sys.stdout.write("\033[2m[sys] Syncing and recompiling codespace map...\033[0m\r")
+                    sys.stdout.write("\033[2m[sys] Syncing codespace map...\033[0m\r")
                     sys.stdout.flush()
-                    
-                    map_tool = f"{CFG_DIR}/tools/map/index-map"
-                    subprocess.run([sys.executable, map_tool, workspace_path])
-                    
-                    proj_name = os.path.basename(workspace_path)
-                    txt_path = os.path.join(workspace_path, f"index-map-{proj_name}.txt")
+                    subprocess.run([sys.executable, f"{CFG_DIR}/tools/map/index-map", workspace_path])
+                    txt_path = os.path.join(workspace_path, f"index-map-{os.path.basename(workspace_path)}.txt")
                     if os.path.exists(txt_path):
                         try:
-                            with open(txt_path, "r", encoding="utf-8") as f:
-                                new_shorthand = f.read().strip()
-                                
-                            updated_map = False
+                            new_map = open(txt_path, "r", encoding="utf-8").read().strip()
+                            updated = False
                             for msg in chat_history:
                                 if "### CODESPACE MAP:" in msg["content"]:
-                                    msg_parts = msg["content"].split("### CODESPACE MAP:")
-                                    msg["content"] = msg_parts[0] + f"### CODESPACE MAP:\n{new_shorthand}"
-                                    updated_map = True
-                                    
-                            if not updated_map:
-                                chat_history[0]["content"] += f"\n\n### CODESPACE MAP:\n{new_shorthand}"
-                                
-                            ui._console.print("\r\x1b[K[green][sys] Codespace map and relational SQLite graph successfully synchronized.[/green]\n")
+                                    msg["content"] = msg["content"].split("### CODESPACE MAP:")[0] + f"### CODESPACE MAP:\n{new_map}"
+                                    updated = True
+                            if not updated:
+                                chat_history[0]["content"] += f"\n\n### CODESPACE MAP:\n{new_map}"
+                            ui._console.print("\r\x1b[K[green][sys] Map synchronized.[/green]\n")
                         except Exception as e:
-                            ui._console.print(f"\r\x1b[K[red][sys] Failed to reload synchronized map: {e}[/red]\n")
-                    else:
-                        ui._console.print(f"\r\x1b[K[red][sys] Compiled map file not found: {txt_path}[/red]\n")
+                            ui._console.print(f"\r\x1b[K[red][sys] Sync failed: {e}[/red]\n")
                     continue
 
                 if query.lower() in ("/clear", "/reset"):
-                    chat_history = [
-                        {"role": "system", "content": active_system_prompt},
-                        {"role": "assistant", "content": "Agent: Workspace loaded. Awaiting instructions."},
-                    ]
-                    for path in (os.path.join(workspace_path, ".agent", "session.json"),
-                                 os.path.join(workspace_path, ".agent", "tpm.md"),
-                                 os.path.join(workspace_path, "history.md")):
-                        try:
-                            if os.path.exists(path):
-                                os.remove(path)
-                        except Exception:
-                            pass
+                    chat_history = [{"role": "system", "content": active_system_prompt}, {"role": "assistant", "content": "Agent: Workspace loaded. Awaiting instructions."}]
+                    for p in (os.path.join(workspace_path, ".agent", "session.json"), os.path.join(workspace_path, ".agent", "tpm.md"), os.path.join(workspace_path, "history.md")):
+                        if os.path.exists(p):
+                            try:
+                                os.remove(p)
+                            except Exception:
+                                pass
                     _run_cmd([sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "clear", safe_name])
                     _run_cmd([sys.executable, f"{CFG_DIR}/modules/ai-agent-memories", "tpm-clear", safe_name])
-                    ui._console.print("[green][sys] Conversation history, cloud session, and local TPM memory cleared.[/green]\n")
+                    ui._console.print("[green][sys] Session and memory cleared.[/green]\n")
                     continue
 
                 if query == "/tok":
@@ -464,8 +350,6 @@ def run_interactive_chat(args: List[str]) -> None:
                     if res.stdout.strip():
                         chat_history = json.loads(res.stdout.strip())
                         ui._console.print(f"[green][session-mgr] Restored session ({len(chat_history) - 1} turns loaded).[/green]\n")
-                    else:
-                        ui._console.print("[red][session-mgr] Load aborted.[/red]\n")
                 except Exception as e:
                     ui._console.print(f"[red]Error loading session: {e}[/red]")
                 continue
@@ -494,21 +378,14 @@ def run_interactive_chat(args: List[str]) -> None:
                         continue
                     except Exception as e:
                         sys.stderr.write(f"\033[1;31m[Warning] chat failed: {e}\033[0m\n")
-                else:
-                    sys.stderr.write("\033[1;31mError: chat tool not found\033[0m\n")
                 continue
 
             if is_init_map:
                 prompt = f"### SYSTEM INSTRUCTIONS (CRITICAL OVERRIDE):\n{active_system_prompt}\n\n### CODESPACE MAP:\n{query}"
             else:
-                if query.startswith("init") and "--init" in query:
-                    sys_ctx = ""
-                else:
-                    sys_ctx = skills.get_system_context(query, CONTEXT_FILE, STOP_WORDS, SKILLS_DIR, CFG_DIR)
-                
+                sys_ctx = "" if query.startswith("init") and "--init" in query else skills.get_system_context(query, CONTEXT_FILE, STOP_WORDS, SKILLS_DIR, CFG_DIR)
                 if sys_ctx == "__ABORT_TURN__":
-                    sys_ctx = ""
-
+                    continue
                 comb_ctx = "\n\n".join(filter(None, [tpm_context, past_memory, sys_ctx]))
                 prompt = f"<context>\n{comb_ctx}\n</context>\n\nUser Question: {query}" if comb_ctx else f"User Question: {query}"
 
@@ -519,13 +396,7 @@ def run_interactive_chat(args: List[str]) -> None:
                 except Exception:
                     pass
 
-            ans = stream_llm_response(
-                chat_history,
-                prefix="Agent:" if is_agent else "AI:",
-                show_stats=show_stats,
-                thinking_budget=reasoning_budget if reasoning_active else 0,
-                is_agent=is_agent,
-            )
+            ans = core.stream_response(chat_history, prefix="Agent:" if is_agent else "AI:", show_stats=show_stats, thinking_budget=reasoning_budget if reasoning_active else 0, is_agent=is_agent)
             if ans:
                 chat_history.append({"role": "assistant", "content": ans})
                 if is_agent:
@@ -555,48 +426,41 @@ def run_interactive_chat(args: List[str]) -> None:
 
 
 def run_direct_query(args: List[str]) -> None:
-    """Executes a single direct, non-conversational prompt straight to stdout."""
     query_parts = args[1:]
     skill_content = ""
     if query_parts and query_parts[-1].startswith("-"):
         skill_content = skills.load_skill_content(query_parts[-1].lstrip("-").lower(), SKILLS_DIR, CFG_DIR)
         query_parts = query_parts[:-1]
 
-    active_system_prompt = BASE_PROMPT + (f"### Active Skill/Role Instructions:\n{skill_content}\n" if skill_content else "")
+    active_p = BASE_PROMPT + (f"### Active Skill/Role Instructions:\n{skill_content}\n" if skill_content else "")
     query = " ".join(query_parts)
     sys_ctx = skills.get_system_context(query, CONTEXT_FILE, STOP_WORDS, SKILLS_DIR, CFG_DIR)
-
     if sys_ctx == "__ABORT_TURN__":
         sys.exit(130)
 
-    messages = [
-        {"role": "system", "content": active_system_prompt},
-        {"role": "user", "content": (f"<context>\n{sys_ctx}\n</context>\n\n" if sys_ctx else "") + f"User Question: {query}"},
-    ]
-    stream_llm_response(messages, prefix="AI:", show_stats=False)
+    messages = [{"role": "system", "content": active_p}, {"role": "user", "content": (f"<context>\n{sys_ctx}\n</context>\n\n" if sys_ctx else "") + f"User Question: {query}"}]
+    core.stream_response(messages, prefix="AI:", show_stats=False)
     sys.exit(0)
 
 
 def run_matching_search(args: List[str]) -> None:
-    """Resolves CLI command-not-found queries using high-speed Jaccard lexical matching."""
     user_input = re.sub(r"[`$]", "", " ".join(args)).strip()
     if not user_input or args[0].startswith("--"):
         sys.exit(0)
+    shell_name = os.path.basename(os.environ.get("SHELL", "/bin/bash"))
+    err_msg = f"zsh: command not found: {user_input}\n" if "zsh" in shell_name else f"bash: {user_input}: command not found\n"
     if re.search(r"[\[\]{}()='\",;|#<>]", user_input):
-        shell_name = os.path.basename(os.environ.get("SHELL", "/bin/bash"))
-        sys.stderr.write(f"zsh: command not found: {user_input}\n" if "zsh" in shell_name else f"bash: {user_input}: command not found\n")
+        sys.stderr.write(err_msg)
         sys.exit(127)
     matched = context.jaccard_search(user_input, CONTEXT_FILE, STOP_WORDS)
     if matched:
         print("\n".join(f"{line.split('|||', 1)[0]}|||{context.clean_tool_prefix(line.split('|||', 1)[1])}" for line in matched.split("\n")))
         sys.exit(0)
-    shell_name = os.path.basename(os.environ.get("SHELL", "/bin/bash"))
-    sys.stderr.write(f"zsh: command not found: {user_input}\n" if "zsh" in shell_name else f"bash: {user_input}: command not found\n")
+    sys.stderr.write(err_msg)
     sys.exit(127)
 
 
 def main() -> None:
-    """Main program execution router."""
     try:
         args = sys.argv[1:]
         if args:

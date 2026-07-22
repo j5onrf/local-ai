@@ -122,3 +122,27 @@ Run: trace symbol herdr
 
 ---
 
+## [2026-07-21 19:01] User:
+hello
+
+### Agent:
+Hello! How can I help you?
+
+---
+
+## [2026-07-21 19:04] User:
+helo
+
+### Agent:
+Hello! How can I help you today?
+
+---
+
+## [2026-07-21 19:04] User:
+hi
+
+### Agent:
+Hi there! What's on your mind?
+
+---
+

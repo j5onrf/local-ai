@@ -21,7 +21,6 @@ def record(model: str, in_tok: int, out_tok: int, cost: float = 0.0) -> None:
     """Records token metrics and transaction costs to a daily spend database."""
     today = time.strftime("%Y-%m-%d")
     
-    # Estimate transaction cost using active market rates if not natively returned
     if cost == 0.0:
         pricing = None
         for key, val in PRICING_MAP.items():
@@ -31,7 +30,6 @@ def record(model: str, in_tok: int, out_tok: int, cost: float = 0.0) -> None:
         if pricing:
             cost = ((in_tok * pricing["in"]) + (out_tok * pricing["out"])) / 1000000.0
 
-    # Load active daily configurations
     data = {"date": today, "total_cost": 0.0, "models": {}}
     if os.path.exists(LEDGER_PATH):
         try:
@@ -39,13 +37,9 @@ def record(model: str, in_tok: int, out_tok: int, cost: float = 0.0) -> None:
                 temp = json.load(f)
                 if temp.get("date") == today:
                     data = temp
-                else:
-                    # Move old date totals out of active ledger cleanly
-                    pass
         except Exception:
             pass
 
-    # Accumulate metrics
     m_data = data["models"].get(model, {"in": 0, "out": 0, "cost": 0.0})
     m_data["in"] += in_tok
     m_data["out"] += out_tok
@@ -53,7 +47,6 @@ def record(model: str, in_tok: int, out_tok: int, cost: float = 0.0) -> None:
     data["models"][model] = m_data
     data["total_cost"] += cost
 
-    # Commit transactions cleanly to disk
     try:
         os.makedirs(os.path.dirname(LEDGER_PATH), exist_ok=True)
         with open(LEDGER_PATH, "w", encoding="utf-8") as f:
@@ -70,7 +63,7 @@ def refresh_balance_async(min_age: int = 10) -> None:
 def turn_line(in_tok: int, out_tok: int, cost: float, ctx_used: int, ctx_max: int = None) -> str:
     """Generates a structured terminal diagnostic summary line."""
     today_cost = 0.0
-    if os.path.exists(LEDGER_PATH):
+    if cost > 0.0 and os.path.exists(LEDGER_PATH):
         try:
             with open(LEDGER_PATH, "r", encoding="utf-8") as f:
                 today_cost = json.load(f).get("total_cost", 0.0)
@@ -80,14 +73,16 @@ def turn_line(in_tok: int, out_tok: int, cost: float, ctx_used: int, ctx_max: in
     ctx_max = ctx_max or 8192
     ctx_pct = (ctx_used / ctx_max) * 100
     
-    # ANSI coloring elements
     dim = "\033[90m"
     reset = "\033[0m"
     green = "\033[32m"
-    
+
+    # Completely omit cost and today spend metrics for $0 / local model turns
+    cost_part = f"cost: {green}${cost:.5f}{dim} | " if cost > 0.0 else ""
+    today_part = f"today: {green}${today_cost:.4f}{dim} | " if (cost > 0.0 and today_cost > 0.0) else ""
+
     return (
         f"{dim} [ {in_tok} in | {out_tok} out | "
-        f"cost: {green}${cost:.5f}{dim} | "
-        f"today: {green}${today_cost:.4f}{dim} | "
+        f"{cost_part}{today_part}"
         f"ctx: {ctx_pct:.1f}% ]{reset}"
     )
