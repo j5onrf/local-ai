@@ -71,8 +71,8 @@ Agent: Understood. I have noted your preferences:
 │   Shortcuts: Esc: bypass  Ctrl+C: cancel                            │
 │                                                                     │
 │   Available commands:                                               │
-│  /help, /h, /?        - Show help menu                              │
-│  /r [N|show|hide]     - Set reasoning budget or show/hide thinking  │
+│  /help, /h            - Show help menu                              │
+│  /t [N|show|hide]     - Set reasoning budget or show/hide           │
 │  /g                   - Toggle confirmation gates                   │
 │  /m                   - Toggle long-term memory                     │
 │  /stats               - Toggle generation speed stats               │

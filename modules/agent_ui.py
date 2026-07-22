@@ -275,7 +275,7 @@ def show_help() -> None:
     cmd_table.add_column("Description", style="white")
 
     cmds = [
-        ("/help, /h, /?", "Show help menu"),
+        ("/help, /h", "Show help menu"),
         ("/t, /thinking [N|show|hide]", "Set reasoning budget or show/hide"),
         ("/g", "Toggle confirmation gates"),
         ("/m", "Toggle long-term memory"),

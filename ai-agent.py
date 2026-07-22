@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.9.4.5]
+# Local-Ai Agent [j5onrf] [v0.9.4.6]
 
 import json
 import os
@@ -221,7 +221,7 @@ def run_interactive_chat(args: List[str]) -> None:
                     clean_exit(safe_name if is_agent else None)
 
                 # Slash Help Command
-                if query.lower() in ("/help", "/h", "/?"):
+                if query.lower() in ("/help", "/h"):
                     ui.show_help()
                     continue
 
@@ -453,6 +453,12 @@ def run_matching_search(args: List[str]) -> None:
     user_input = re.sub(r"[`$]", "", " ".join(args)).strip()
     if not user_input or args[0].startswith("--"):
         sys.exit(0)
+        
+    # Catch /help or /h typed directly in Bash/Zsh prompt
+    if user_input.lower() in ("/help", "/h"):
+        ui.show_help()
+        sys.exit(0)
+
     shell_name = os.path.basename(os.environ.get("SHELL", "/bin/bash"))
     err_msg = f"zsh: command not found: {user_input}\n" if "zsh" in shell_name else f"bash: {user_input}: command not found\n"
     if re.search(r"[\[\]{}()='\",;|#<>]", user_input):
