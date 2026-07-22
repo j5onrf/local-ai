@@ -53,7 +53,9 @@ Built with zero context-stuffing for extreme efficiency on quantized local model
 ❯ 
 ```
 ```console
-~ ❯ ai init ~/session-test
+~ ❯ sess
+[01/03] ❯ [session test] ai init ~/session-test --init
+:: ↵ run  Esc: 
 ✔ Mapping complete! [session-test index-map & SQLite graph database updated]
 ╔═  ❖ Local-AI Agent [sub-agent #1] ═════════╗
 ║     model:  Qwen3.6-35B-A3B.gguf           ║
