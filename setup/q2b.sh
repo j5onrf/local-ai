@@ -2,7 +2,7 @@
 
 # Configuration
 PORT=8080
-MODEL_PATH="/home/user/models/Qwen3.5-2B-Claude-4.6-OS-Auto-Variable-HERETIC-UNCENSORED-THINKING.Q4_K_M.gguf"
+MODEL_PATH="/home/user/models/Qwen3.5-2B.gguf"
 LOG_DIR="/home/user/models/serv"
 LOG_FILE="$LOG_DIR/server.log"
 

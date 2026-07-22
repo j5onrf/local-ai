@@ -564,10 +564,18 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
                     spinner.stop()
                     break
     except KeyboardInterrupt:
-        spinner.stop()
-        sys.stderr.write("\n\r\x1b[2K\r[sys] Interrupted.\n")
-        return "".join(acc) if 'acc' in locals() else None
-    return None
+        if 'streamer' in locals() and streamer:
+            try:
+                streamer.stop()
+            except Exception:
+                pass
+        if 'spinner' in locals() and spinner:
+            try:
+                spinner.stop()
+            except Exception:
+                pass
+        sys.stderr.write("\r\x1b[2K\033[90m[sys] Interrupted.\033[0m\n")
+        return None
 
 
 def get_accurate_token_count(text: str, server_url: str = "http://localhost:8080") -> int:

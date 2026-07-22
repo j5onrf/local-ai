@@ -19,12 +19,12 @@ STATE_FILE = "/tmp/cpu_mode_state"
 LOCAL_MODELS = [
     {
         "name": "Qwen 3.5 2B (Ultra-light)",
-        "file": "Qwen3.5-2B-Claude.gguf",
+        "file": "Qwen3.5-2B.gguf",
         "script": "q2b.sh"
     },
     {
         "name": "Qwen 3.6 35B (4-bit)",
-        "file": "Qwen3.6-35B-A3B-claude-4.7.gguf",
+        "file": "Qwen3.6-35B-A3B.gguf",
         "script": "q35b.sh"
     }
 ]

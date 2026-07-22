@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.9.4.6]
+# Local-Ai Agent [j5onrf] [v0.9.4.7]
 
 import json
 import os
@@ -207,7 +207,7 @@ def run_interactive_chat(args: List[str]) -> None:
                 query, pending_query = pending_query, None
             else:
                 try:
-                    query = input("\x01\033[1;30m\x02❯\x01\033[0m\x02 ").strip()
+                    query = input("\033[1;30m❯\033[0m ").strip()
                 except EOFError:
                     break
                 finally:
