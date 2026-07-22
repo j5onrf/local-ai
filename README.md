@@ -57,17 +57,17 @@ Built with zero context-stuffing for extreme efficiency on quantized local model
 [01/03] ❯ [session test] ai init ~/session-test --init
 :: ↵ run  Esc: 
 ✔ Mapping complete! [session-test index-map & SQLite graph database updated]
-╔═  ❖ Local-AI Agent [sub-agent #1] ═══════════╗
-║     model:  Qwen3.6-35B-A3B.gguf             ║
-║ directory:  ~/.config/local-ai/session-test  ║
-║     skill:  default                          ║
-║  database:  active (3 facts, 26 turns)       ║
-╚═══════════════════════════ Ctrl+C to exit ═══╝
- Startup context: 191 tokens
+╔═  ❖ Local-AI Agent [sub-agent #1] ════════════╗
+║     model:  Qwen3.6-35B-A3B.gguf              ║
+║ directory:  ~/.config/local-ai/session-test   ║
+║     skill:  init                              ║
+║  database:  active (3 facts, 26 turns)        ║
+╚═══════════════════════════ Ctrl+C to exit ════╝
+ Startup context: 121 tokens
 
 Agent: Workspace loaded. Awaiting instructions.
 
- [7 tokens | 0.33s | 21.24 t/s]
+ [7 tokens | 0.33s | 28.24 t/s]
  [ 765 in | 7 out | ctx: 9.4% ]
 ❯ 
 ```

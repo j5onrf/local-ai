@@ -7,21 +7,21 @@ High-speed local developer agent, episodic memory system, checkpoint state manag
 [01/03] ❯ [session test] ai init ~/session-test --init
 :: ↵ run  Esc: 
 ✔ Mapping complete! [session-test index-map & SQLite graph database updated]
-╔═  ❖ Local-AI Agent [sub-agent #1] ═══════════╗
-║     model:  Qwen3.6-35B-A3B.gguf             ║
-║ directory:  ~/.config/local-ai/session-test  ║
-║     skill:  init code2                       ║
-║  database:  active (3 facts, 26 turns)       ║
-╚═══════════════════════════ Ctrl+C to exit ═══╝
+╔═  ❖ Local-AI Agent [sub-agent #1] ════════════╗
+║     model:  Qwen3.6-35B-A3B.gguf              ║
+║ directory:  ~/.config/local-ai/session-test   ║
+║     skill:  init code2                        ║
+║  database:  active (3 facts, 26 turns)        ║
+╚═══════════════════════════ Ctrl+C to exit ════╝
  Startup context: 191 tokens
 
 Agent: Workspace loaded. Awaiting instructions.
- [7 tokens | 0.52s | 23.38 t/s]
+ [7 tokens | 0.52s | 28.38 t/s]
  [ 918 in | 10 out | cost: $0.00000 | today: $0.0000 | ctx: 11.3% ]
 ❯ hello
 [sys] Memory recall skipped.
 Agent: Hello! How can I assist you with your Python project today?
- [13 tokens | 1.03s | 22.68 t/s]
+ [13 tokens | 1.03s | 26.68 t/s]
  [ 950 in | 13 out | cost: $0.00000 | today: $0.0000 | ctx: 11.8% ]
 ❯ /clear
 [sys] Conversation history, cloud session, and local TPM memory cleared.
