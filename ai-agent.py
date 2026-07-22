@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.9.4.1]
+# Local-Ai Agent [j5onrf] [v0.9.4.4]
 
 import json
 import os
@@ -219,7 +219,12 @@ def run_interactive_chat(args: List[str]) -> None:
                     continue
                 if query.lower() in ("exit", "quit", "q"):
                     clean_exit(safe_name if is_agent else None)
-                
+
+                # Slash Help Command
+                if query.lower() in ("/help", "/h", "/?"):
+                    ui.show_help()
+                    continue
+
                 if query == "/tui":
                     ui._console.print("[dim yellow][sys] Suspending chat. Launching TUI...[/dim yellow]")
                     time.sleep(0.5)

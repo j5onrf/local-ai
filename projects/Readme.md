@@ -7,15 +7,13 @@ High-speed local developer agent, episodic memory system, checkpoint state manag
 [01/03] ❯ [session test] ai init ~/session-test --init
 :: ↵ run  Esc: 
 ✔ Mapping complete! [session-test index-map & SQLite graph database updated]
-╭──────────────────────────────────────────────╮
-│  >_ Local-AI Agent  [sub-agent #1]           │
-│                                              │
-│  model:     Qwen3.6-35B-A3B-claude-4.7.gguf  │
-│  directory: ...-ai/projects/session-test     │
-│  skill:     init codeb                       │
-│  database:  active (3 facts, 26 turns)       │
-╰──────────────────────────────────────────────╯
-[sys] Startup context: 230 tokens | Ctrl+C to exit.
+╔═  ❖ Local-AI Agent [sub-agent #1] ═══════════╗
+║     model:  Qwen3.6-35B-A3B.gguf             ║
+║ directory:  ~/.config/local-ai/session-test  ║
+║     skill:  init code2                       ║
+║  database:  active (3 facts, 26 turns)       ║
+╚═══════════════════════════ Ctrl+C to exit ═══╝
+ Startup context: 191 tokens
 
 Agent: Workspace loaded. Awaiting instructions.
  [7 tokens | 0.52s | 23.38 t/s]
@@ -67,17 +65,29 @@ Agent: Understood. I have noted your preferences:
 
 ## 2. In-Session Commands
 
-| Command | Action |
-| :--- | :--- |
-| **`/clear`** / **`/reset`** | Clears conversation history, cloud session, local TPM memory, and `history.md`. |
-| **`/g`** | **Toggle Confirmation Gates** ON/OFF. Disabling gates enables autonomous editing. |
-| **`/m`** | **Toggle Long-Term Memory** and background TPM fact reconciliation ON/OFF. |
-| **`/r [N\|show\|hide]`** | **Toggle Deep Reasoning** ON/OFF, set token limit, or show/hide thinking box UI. |
-| **`/stats`** | **Toggle Real-Time Generation Stats** (tokens/sec, context window, spend metrics) ON/OFF. |
-| **`/sync`** / **`/re`** | **Recompile Codespace Map**. Re-analyzes AST and syncs relational graph in real-time. |
-| **`/tok`** | Displays a visual progress bar of current context window usage. |
-| **`/skill <name>`** / **`/s`** | Search and dynamically load custom specialist skills with interactive filtering. |
-| **`Esc`** / **`Right Arrow`** | Instantly bypasses/skips memory or authorization prompts. |
+```text
+╭─  ⚙ Help & Commands  ───────────────────────────────────────────────╮
+│   Shortcuts: Esc: bypass  Ctrl+C: cancel                            │
+│                                                                     │
+│   Available commands:                                               │
+│  /help, /h, /?        - Show help menu                              │
+│  /r [N|show|hide]     - Set reasoning budget or show/hide thinking  │
+│  /g                   - Toggle confirmation gates                   │
+│  /m                   - Toggle long-term memory                     │
+│  /stats               - Toggle generation speed stats               │
+│  /tok                 - Show context token usage                    │
+│  /sync, /re           - Sync codebase AST & graph                   │
+│  /clear, /reset       - Clear chat history & memory                 │
+│  /spell, /sp          - Toggle spellchecker                         │
+│  /skill <q>, /s       - Search and load custom skills               │
+│  /tui                 - Open full-screen Textual UI                 │
+│  -save <tag>          - Save session checkpoint                     │
+│  -load, -timeline     - Load or clone checkpoint                    │
+│  view file <path>     - Load file into context                      │
+│  read function <sym>  - Load AST symbol snippet                     │
+│  exit, quit, q        - Exit Local-AI Agent                         │
+╰─────────────────────────────────────────────────────────────────────╯
+```
 
 ---
 
@@ -140,4 +150,3 @@ AI_MAX_TOKENS=16000 ai init ~/my-project
 # Global export:
 export AI_MAX_TOKENS=16000
 ```
-

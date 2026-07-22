@@ -154,3 +154,11 @@ X
 
 ---
 
+## [2026-07-22 13:27] User:
+/help
+
+### Agent:
+Run: architecture overview
+
+---
+

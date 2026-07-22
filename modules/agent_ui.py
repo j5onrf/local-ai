@@ -9,11 +9,11 @@ import urllib.request as urlreq
 import json
 from typing import Optional, Callable
 
-from rich.console import Console
+from rich.console import Console, Group
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
-from rich.box import DOUBLE
+from rich.box import DOUBLE, ROUNDED
 
 try:
     import tty
@@ -260,3 +260,49 @@ def run_interactive_selection(
     finally:
         sys.stderr.write("\033[?25h")
         sys.stderr.flush()
+
+
+def show_help() -> None:
+    """Renders a Pi-styled clean CLI help menu for Local-AI Agent."""
+    header = Text.assemble(
+        ("  Shortcuts: ", "dim"),
+        ("Esc", "bold yellow"), (": bypass  ", "dim"),
+        ("Ctrl+C", "bold yellow"), (": cancel", "dim")
+    )
+
+    cmd_table = Table(show_header=False, box=None, padding=(0, 1))
+    cmd_table.add_column("Command", style="bold cyan", justify="left", no_wrap=True)
+    cmd_table.add_column("Description", style="white")
+
+    cmds = [
+        ("/help, /h, /?", "Show help menu"),
+        ("/r [N|show|hide]", "Set reasoning budget or show/hide thinking"),
+        ("/g", "Toggle confirmation gates"),
+        ("/m", "Toggle long-term memory"),
+        ("/stats", "Toggle generation speed stats"),
+        ("/tok", "Show context token usage"),
+        ("/sync, /re", "Sync codebase AST & graph"),
+        ("/clear, /reset", "Clear chat history & memory"),
+        ("/spell, /sp", "Toggle spellchecker"),
+        ("/skill <q>, /s", "Search and load custom skills"),
+        ("/tui", "Open full-screen Textual UI"),
+        ("-save <tag>", "Save session checkpoint"),
+        ("-load, -timeline", "Load or clone checkpoint"),
+        ("view file <path>", "Load file into context"),
+        ("read function <sym>", "Load AST symbol snippet"),
+        ("exit, quit, q", "Exit Local-AI Agent"),
+    ]
+
+    for cmd, desc in cmds:
+        cmd_table.add_row(cmd, f"[dim]-[/dim] {desc}")
+
+    _console.print()
+    _console.print(Panel(
+        Group(header, Text(""), Text("  Available commands:", style="bold yellow"), cmd_table),
+        title=" ⚙ Help & Commands ",
+        title_align="left",
+        border_style="bright_blue",
+        box=ROUNDED,
+        expand=False
+    ))
+    _console.print()

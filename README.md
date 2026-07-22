@@ -2,7 +2,7 @@
   <img alt="Local-AI Agent" src="logo.png" width="800" />
 </p>
 
-<h1 align="center">Local-AI Agent <kbd>v0.9.4.1-beta</kbd></h1>
+<h1 align="center">Local-AI Agent <kbd>v0.9.4.4-beta</kbd></h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
@@ -57,12 +57,12 @@ Built with zero context-stuffing for extreme efficiency on quantized local model
 [01/03] ❯ [session test] ai init ~/session-test --init
 :: ↵ run  Esc: 
 ✔ Mapping complete! [session-test index-map & SQLite graph database updated]
-╔═  ❖ Local-AI Agent [sub-agent #1] ═════════╗
-║     model:  Qwen3.6-35B-A3B.gguf           ║
-║ directory:  ~/.config/local-ai/session-test║
-║     skill:  default                        ║
-║  database:  active (3 facts, 26 turns)     ║
-╚═══════════════════════════ Ctrl+C to exit ═╝
+╔═  ❖ Local-AI Agent [sub-agent #1] ═══════════╗
+║     model:  Qwen3.6-35B-A3B.gguf             ║
+║ directory:  ~/.config/local-ai/session-test  ║
+║     skill:  default                          ║
+║  database:  active (3 facts, 26 turns)       ║
+╚═══════════════════════════ Ctrl+C to exit ═══╝
  Startup context: 191 tokens
 
 Agent: Workspace loaded. Awaiting instructions.
@@ -104,38 +104,29 @@ Agent: Workspace loaded. Awaiting instructions.
 
 <h2 align="center">Command Reference</h2>
 
-### 1. Global Shell Commands
-
-| Command | Action |
-| :--- | :--- |
-| **`ai`** | Launch interactive multi-turn terminal chat. |
-| **`ai <query>`** | Direct one-shot answer straight back to stdout. |
-| **`ai init <path>`** | Initialize or resume a codebase-aware workspace agent. |
-| **`hs`** / **`hist`** | Interactively search or view active workspace `history.md`. |
-| **`model select`** | Launch interactive cloud provider & model manager TUI. |
-
-### 2. Active Session Commands
-
-| Command | Action |
-| :--- | :--- |
-| **`/skill <query>`** *(or `/s`)* | Search and load specialist skills with character-by-character keypress filtering. |
-| **`view file <path>`** *(or `read`)* | Append complete file source code into active session context. |
-| **`read function <sym>`** | Extract *only* the specific target function/class block via AST line offsets. |
-| **`-save <tag>`** / **`-load`** | Save state snapshots or rollback/clone checkpoints across workspace databases. |
-| **`/sync`** *(or `/re`)* | Re-index codebase AST and sync changes from disk into memory. |
-| **`/f`** / **`/t`** / **`/b`** / **`/a`** | Trigger prompt subroutines: Follow-up, Thinking, Brainstorm, or All. |
-
-### 3. Session Toggle & Diagnostic Switches
-
-| Switch | Function |
-| :--- | :--- |
-| **`/tui`** | Launch full-screen mouse-clickable Textual workspace UI. |
-| **`/clear`** / **`/reset`** | Clear context context, cloud session, local conversation history, and TPM tables. |
-| **`/spell`** / **`/sp`** | Toggle context-aware grammar and spellchecker ON/OFF. |
-| **`/g`** | Toggle confirmation gates ON/OFF (disabling enables autonomous editing). |
-| **`/m`** | Toggle long-term memory and TPM reconciliation ON/OFF. |
-| **`/r [N\|show\|hide]`** | Toggle deep reasoning ON/OFF, set token budget, or show/hide thinking box UI. |
-| **`/stats`** / **`/tok`** | Toggle real-time speed metrics (t/s) or view live token usage progress bar. |
+```text
+╭─  ⚙ Help & Commands  ───────────────────────────────────────────────╮
+│   Shortcuts: Esc: bypass  Ctrl+C: cancel                            │
+│                                                                     │
+│   Available commands:                                               │
+│  /help, /h, /?        - Show help menu                              │
+│  /r [N|show|hide]     - Set reasoning budget or show/hide thinking  │
+│  /g                   - Toggle confirmation gates                   │
+│  /m                   - Toggle long-term memory                     │
+│  /stats               - Toggle generation speed stats               │
+│  /tok                 - Show context token usage                    │
+│  /sync, /re           - Sync codebase AST & graph                   │
+│  /clear, /reset       - Clear chat history & memory                 │
+│  /spell, /sp          - Toggle spellchecker                         │
+│  /skill <q>, /s       - Search and load custom skills               │
+│  /tui                 - Open full-screen Textual UI                 │
+│  -save <tag>          - Save session checkpoint                     │
+│  -load, -timeline     - Load or clone checkpoint                    │
+│  view file <path>     - Load file into context                      │
+│  read function <sym>  - Load AST symbol snippet                     │
+│  exit, quit, q        - Exit Local-AI Agent                         │
+╰─────────────────────────────────────────────────────────────────────╯
+```
 
 ---
 
