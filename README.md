@@ -49,7 +49,7 @@ Built with zero context-stuffing for extreme efficiency on quantized local model
 ║     skill:  default                       ║
 ║  database:  stateless                     ║
 ╚══════════════════════════ Ctrl+C to exit ═╝
- Startup context: 93 tokens
+ Startup context: 74 tokens
 ❯ 
 ```
 ```console
@@ -110,7 +110,7 @@ Agent: Workspace loaded. Awaiting instructions.
 │                                                                     │
 │   Available commands:                                               │
 │  /help, /h, /?        - Show help menu                              │
-│  /r [N|show|hide]     - Set reasoning budget or show/hide thinking  │
+│  /r [N|show|hide]     - Set reasoning budget or show/hide           │
 │  /g                   - Toggle confirmation gates                   │
 │  /m                   - Toggle long-term memory                     │
 │  /stats               - Toggle generation speed stats               │
@@ -200,4 +200,4 @@ AI_MAX_TOKENS="8192"
 ## License & Credits
 
 * **License:** Licensed under the permissive [MIT License](LICENSE).
-* **Contributions:** Special thanks to [suyadnya](https://github.com/wibawasuyadnya) for `.env` fallback architecture, macOS compatibility testing, and alias optimization.
+* **Contributions:** [suyadnya](https://github.com/wibawasuyadnya) for `.env` fallback architecture, macOS compatibility testing, and alias optimization.
