@@ -61,7 +61,7 @@ ai init ~/.config/local-ai/projects/session-test-3 --init ---> session test 3, p
 
 ```properties
 # --- AI Status & Provider Diagnostics ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/ai-status ---> ai status, aistat, status, aistatus 
+[TOOL] ~/.config/local-ai/tools/agentic/system/ai-status ---> ai status, aistat, status, route
 
 # --- System Resources & Diagnosis (System Health) ---
 [TOOL] ~/.config/local-ai/tools/agentic/system/system-health ---> system health, sysh
@@ -84,6 +84,7 @@ ai init ~/.config/local-ai/projects/session-test-3 --init ---> session test 3, p
 
 # --- Pending System Updates ---
 [TOOL] ~/.config/local-ai/tools/agentic/system/update-inspector ---> update inspector
+
 # --- Weather & Live Networking ---
 [TOOL] curl -s "wttr.in/?format=3" --cat ---> weather simple, wttr, weather
 [TOOL] curl -s wttr.in --cat ---> weather full, wttr, weather
@@ -96,7 +97,7 @@ ai init ~/.config/local-ai/projects/session-test-3 --init ---> session test 3, p
 
 ```properties
 # --- Dynamic Local-AI Model Select TUI ---
-~/.config/local-ai/modules/model-select.py ---> model select, model selector, model selection, mst
+~/.config/local-ai/modules/model-select.py ---> model select, models select, mst
 
 # --- Email TUI Monitor & Inbox Browser ---
 [TOOL] ~/.config/local-ai/tools/email/email-agent ---> email agent
@@ -133,52 +134,7 @@ ai init ~/.config/local-ai/projects/session-test-3 --init ---> session test 3, p
 # --- AI-Generated Git Commits ---
 ~/.config/local-ai/tools/agentic/system/ai-commit ---> ai-commit, gc, git commit
 
-# --- System App Launcher (Ultra-Light Rofi-TUI) ---
-~/.config/local-ai/tools/subsec/app-launcher/app-launcher.py ---> app launcher, appl
-
 # --- Native Webapp Wrappers & Browsers ---
 omarchy-launch-webapp https://music.youtube.com/ ---> youtube music, yt, youtube
 nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-spotify-bunker" --app=https://open.spotify.com/ >/dev/null 2>&1 & ---> spotify music, spotify, music
-```
-
-```
-# =========================================================================
-# === ARCHIVED & LEGACY PROFILES (SKIPPED DURING ACTIVE CONTEXT RUNS) ===
-# =========================================================================
-
-# --- Firecrawl Web Scraper (Replaced by ultra-light web-reader) ---
-# [TOOL] ~/.config/local-ai/tools/agentic/web/firecrawl $1 ---> firecrawl, scrape website, scrape url, extract text
-
-# --- Workspace Initializers & Bridges ---
-# [TOOL] ~/.config/local-ai/tools/subsec/opencode-bridge/opencode-bridge ---> opencode bridge, bridge, ocb
-# [TOOL] ~/.config/local-ai/tools/subsec/odysseus-bridge/odysseus-bridge ---> odysseus bridge, bridge, ody, odb
-# [TOOL] ~/.config/local-ai/tools/subsec/hermes-bridge/hermes-bridge ---> hermes bridge, bridge, hmb, herm
-
-# --- System Prompts & Role Injections (Skills) ---
-# [TOOL] cat ~/.config/local-ai/skills/identity/business/mybiz.md --leaf ---> mybiz, show business profile, view mybiz
-# [TOOL] cat ~/.config/local-ai/skills/identity/marketing/strategy.md --leaf ---> marketing strategy, growth strategy, view marketing
-# [TOOL] cat ~/.config/local-ai/skills/identity/workout/routine.md --leaf ---> routine, fitness profile, workout routine
-
-# --- Disk Usage ---
-# [TOOL] df -h / ---> disk usage, drive usage
-
-# --- Server Lifecycle Management ---
-# ~/.config/local-ai/tools/tools/subsec/server/kill-ai-servers ---> killserver, ks
-
-# --- Prompt Engineering TUIs ---
-# [TOOL] ~/.config/local-ai/tools/subsec/prompt/ai-prompt-writer-image --cat ---> prompt writer image, image prompt, ip
-# [TOOL] ~/.config/local-ai/tools/subsec/prompt/ai-prompt-writer --cat ---> prompt writer, prompt
-
-# --- Research Engines ---
-# ~/.config/local-ai/tools/agentic/fusion/f_research -r ---> fusion research, fusion, fr, deep research
-# ~/.config/local-ai/tools/subsec/research-tui/deep-research ---> deep research, research, dr
-
-# --- Local-Ai Tablet Voice Bridge ---
-# ~/.config/local-ai/tools/subsec/voice/voice-query ---> voice, voice query, voice bridge
-
-# --- Pixel-Browse - Headless Visual Web Ingestion (wip) ---
-# [TOOL] ~/.config/local-ai/tools/subsec/headless-chromium/pixel-browse --cat ---> pixel browse, headless, chromium, pixel browser
-
-# --- Coding-Triangle-Loop - Interactive TUI Console (wip) ---
-# [TOOL] ~/.config/local-ai/tools/agentic/coding/coding-triangle-loop --cat ---> coding loop, coding, triangle, loop
 ```
