@@ -44,7 +44,7 @@ Built with zero context-stuffing for extreme efficiency on quantized local model
 <h2 align="center">CLI Launch Interfaces</h2>
 
 <p align="center">
-  Customize box themes using <code>/box [1-5]</code>. For detailed multi-agent workflows, read the <a href="https://github.com/j5onrf/local-ai/blob/main/projects/Readme.md"><b>Workspace & Session Manual</b></a>.
+  Customize box themes <code>/box [1-5]</code>. For detailed multi-agent workflows, read the <a href="https://github.com/j5onrf/local-ai/blob/main/projects/Readme.md"><b>Workspace Manual</b></a>.
 </p>
 
 #### 1. Interactive Multi-Turn Chat (`ai`)
