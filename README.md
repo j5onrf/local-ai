@@ -191,6 +191,7 @@ AI_MAX_TOKENS="8192"
 
 - [x] **Core Engine Optimization:** Production pass on streaming, token counting, and sub-agent concurrency.
 - [x] **Thinking UI Controls:** Real-time thinking TPS metrics and `/r show|hide` panel toggles.
+- [ ] **Modular Agent Personas & Tool Loop:** Interactive profile selector on `ai init` (`pi`, `claude`, `hermes`, `openclaw`) with automated file-editing & bash execution loops.
 - [ ] **Context Stress Testing:** Continuous context-window pressure tests across quantized local engines.
 - [ ] **Automated File Containment Validation:** Zero-trust security verification on traversal boundaries.
 - [ ] **v1.0.0 Production Release Tag!**
