@@ -49,6 +49,52 @@ Agent: Understood. I have noted your preferences:
 
 ---
 
+## Customizable UI Box Themes
+
+Switch between 4 distinct session header styles dynamically using `/box [1-4]` (or type `/box` to cycle). Your choice persists across sessions in `~/.config/local-ai/.state.json`.
+
+#### Style #1: Double Border (Default)
+```console
+╔═  ❖ Local-AI Agent  ══════════╗
+║     model:  Qwen3.5-2B.gguf   ║
+║ directory:  ~                 ║
+║     skill:  default           ║
+║  database:  stateless         ║
+╚══════════════ Ctrl+C to exit ═╝
+```
+
+#### Style #2: Codex Rounded
+```console
+╭─  >_ Local-AI Agent  ─────────╮
+│     model:  Qwen3.5-2B.gguf   │
+│ directory:  ~                 │
+│     skill:  default           │
+│  database:  stateless         │
+╰────────────── Ctrl+C to exit ─╯
+```
+
+#### Style #3: Heavy Square
+```console
+┏━  ❖ Local-AI Agent  ━━━━━━━━━━┓
+┃     model:  Qwen3.5-2B.gguf   ┃
+┃ directory:  ~                 ║
+┃     skill:  default           ┃
+┃  database:  stateless         ┃
+┗━━━━━━━━━━━━━━ Ctrl+C to exit ━┛
+```
+
+#### Style #4: Minimalist Line
+```console
+ ─  Local-AI Agent  ──────────── 
+      model:  Qwen3.5-2B.gguf    
+  directory:  ~                  
+      skill:  default            
+   database:  stateless          
+ ────────────── Ctrl+C to exit ─ 
+```
+
+---
+
 ## 1. Directory Structure
 
 | Path | Purpose |
@@ -72,6 +118,7 @@ Agent: Understood. I have noted your preferences:
 │                                                                     │
 │   Available commands:                                               │
 │  /help, /h            - Show help menu                              │
+│  /box, /box-style     - Change CLI box style (1-4)                  │
 │  /t [N|show|hide]     - Set reasoning budget or show/hide           │
 │  /g                   - Toggle confirmation gates                   │
 │  /m                   - Toggle long-term memory                     │

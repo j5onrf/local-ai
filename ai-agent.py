@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.9.4.7]
+# Local-Ai Agent [j5onrf] [v0.9.5.2]
 
 import json
 import os
@@ -90,9 +90,9 @@ def sync_md_to_sqlite(workspace: str, workspace_path: str) -> None:
             pass
 
 
-def _get_state() -> Dict[str, bool]:
+def _get_state() -> Dict[str, Any]:
     state_path = os.path.join(CFG_DIR, ".state.json")
-    default = {"spell_active": True, "show_stats": True, "memory_active": True}
+    default = {"spell_active": True, "show_stats": True, "memory_active": True, "box_style": 1}
     if os.path.exists(state_path):
         try:
             return {**default, **json.load(open(state_path, "r", encoding="utf-8"))}
@@ -199,8 +199,8 @@ def run_interactive_chat(args: List[str]) -> None:
         except Exception:
             pass
 
-    ui.draw_session_box(workspace_path, home_dir, is_agent, db_turns, tpm_count, memory_active, active_system_prompt, clean_name, sub_id=sub_id)
-
+    box_style = st.get("box_style", 1)
+    ui.draw_session_box(workspace_path, home_dir, is_agent, db_turns, tpm_count, memory_active, active_system_prompt, clean_name, sub_id=sub_id, box_style=box_style)
     try:
         while True:
             if pending_query:
@@ -239,7 +239,27 @@ def run_interactive_chat(args: List[str]) -> None:
                     _save_state("spell_active", spell_active)
                     ui._console.print(f"[green][sys] Spellchecker {'enabled' if spell_active else 'disabled'}.[/green]\n")
                     continue
-                
+
+                # Session Box Style Handler
+                parts = query.split()
+                if parts and parts[0] in ("/box", "/box-style", "/boxstyle"):
+                    curr_style = st.get("box_style", 1)
+                    if len(parts) > 1:
+                        try:
+                            val = int(parts[1])
+                            if 1 <= val <= 4:
+                                _save_state("box_style", val)
+                                ui._console.print(f"[green][sys] Session box style updated to #{val}.[/green]\n")
+                            else:
+                                ui._console.print("[red][sys] Usage: /box [1-4][/red]\n")
+                        except ValueError:
+                            ui._console.print("[red][sys] Usage: /box [1-4][/red]\n")
+                    else:
+                        next_style = (curr_style % 4) + 1
+                        _save_state("box_style", next_style)
+                        ui._console.print(f"[green][sys] Switched box style to #{next_style}.[/green]\n")
+                    continue
+
                 if query == "/m":
                     memory_active = not memory_active
                     _save_state("memory_active", memory_active)

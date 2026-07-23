@@ -13,7 +13,7 @@ from rich.console import Console, Group
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
-from rich.box import DOUBLE, ROUNDED
+from rich.box import DOUBLE, ROUNDED, HEAVY, SQUARE, HORIZONTALS
 
 try:
     import tty
@@ -113,9 +113,10 @@ def draw_session_box(
     memory_active: bool,
     active_system_prompt: str,
     clean_name: str,
-    sub_id: Optional[int] = None
+    sub_id: Optional[int] = None,
+    box_style: int = 1
 ) -> None:
-    """Renders the standard system initialization and environment parameters table."""
+    """Renders the system initialization box with customizable style presets (1-4)."""
     version = ""
     main_script_path = os.path.join(home_dir, ".config", "local-ai", "ai-agent.py")
     if os.path.exists(main_script_path):
@@ -147,14 +148,38 @@ def draw_session_box(
     mem_status = f"active ({tpm_count} facts, {db_turns} turns)" if memory_active else "disabled"
     table.add_row("database:", mem_status if is_agent else "stateless")
 
-    title_text = f" ❖ Local-AI Agent [sub-agent #{sub_id}] " if sub_id else (f" ❖ Local-AI Agent ({version}) " if version else " ❖ Local-AI Agent ")
+    # Style Presets Configuration
+    if box_style == 2:
+        # Style #2: Old Codex Rounded Style
+        title_text = f" >_ Local-AI Agent [sub-agent #{sub_id}] " if sub_id else f" >_ Local-AI Agent "
+        box_type = ROUNDED
+        border_col = "green"
+        title_style = "bold bright_green"
+    elif box_style == 3:
+        # Style #3: Heavy Square Style
+        title_text = f" ❖ Local-AI Agent [sub-agent #{sub_id}] " if sub_id else f" ❖ Local-AI Agent "
+        box_type = HEAVY
+        border_col = "bright_cyan"
+        title_style = "bold bright_white"
+    elif box_style == 4:
+        # Style #4: Minimal Horizontal Lines
+        title_text = f" Local-AI Agent [sub-agent #{sub_id}] " if sub_id else f" Local-AI Agent "
+        box_type = HORIZONTALS
+        border_col = "dim white"
+        title_style = "bold cyan"
+    else:
+        # Style #1 (Default): Double Border
+        title_text = f" ❖ Local-AI Agent [sub-agent #{sub_id}] " if sub_id else (f" ❖ Local-AI Agent ({version}) " if version else " ❖ Local-AI Agent ")
+        box_type = DOUBLE
+        border_col = "bright_blue"
+        title_style = "bold bright_blue"
 
     _console.print(Panel(
         table,
-        title=Text(title_text, style="bold bright_blue"),
+        title=Text(title_text, style=title_style),
         title_align="left",
-        border_style="bright_blue",
-        box=DOUBLE,
+        border_style=border_col,
+        box=box_type,
         expand=False,
         subtitle="[dim]Ctrl+C to exit[/dim]",
         subtitle_align="right"
@@ -276,6 +301,7 @@ def show_help() -> None:
 
     cmds = [
         ("/help, /h", "Show help menu"),
+        ("/box, /box-style [1-4]", "Change CLI box style"),
         ("/t, /thinking [N|show|hide]", "Set reasoning budget or show/hide"),
         ("/g", "Toggle confirmation gates"),
         ("/m", "Toggle long-term memory"),
