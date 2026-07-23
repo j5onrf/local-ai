@@ -60,7 +60,7 @@ Built with zero context-stuffing for extreme efficiency on quantized local model
 ❯ 
 ```
 
-#### 2. Workspace Mapping & Sub-Agent (`ai init <path>`)
+#### 2. Workspace & Sub-Agent (`ai init <path>`)
 ```console
 ~ ❯ sess
 [01/03] ❯ [session test] ai init ~/session-test --init
