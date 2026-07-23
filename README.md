@@ -39,8 +39,15 @@ Built with zero context-stuffing for extreme efficiency on quantized local model
 
 ---
 
+---
+
 <h2 align="center">CLI Launch Interfaces</h2>
 
+<p align="center">
+  Customize box themes using <code>/box [1-5]</code>. For detailed multi-agent workflows, read the <a href="https://github.com/j5onrf/local-ai/blob/main/projects/Readme.md"><b>Workspace & Session Manual</b></a>.
+</p>
+
+#### 1. Interactive Multi-Turn Chat (`ai`)
 ```console
 ~ ❯ ai
 ╔═  ❖ Local-AI Agent  ══════════════════════╗
@@ -52,27 +59,30 @@ Built with zero context-stuffing for extreme efficiency on quantized local model
  Startup context: 74 tokens
 ❯ 
 ```
+
+#### 2. Workspace Mapping & Sub-Agent (`ai init <path>`)
 ```console
 ~ ❯ sess
 [01/03] ❯ [session test] ai init ~/session-test --init
 :: ↵ run  Esc: 
+[1] 90031
 ✔ Mapping complete! [session-test index-map & SQLite graph database updated]
-[1] 702196
-╔═  ❖ Local-AI Agent [sub-agent #1] ════════════╗
-║     model:  Qwen3.6-35B-A3B.gguf              ║
-║ directory:  ~/.config/local-ai/session-test   ║
-║     skill:  init                              ║
-║  database:  active (3 facts, 26 turns)        ║
-╚═══════════════════════════ Ctrl+C to exit ════╝
+╭────────────────────────────────────────────────────────╮
+│   >_ Local-AI Agent [sub-agent #1]                     │
+│                                                        │
+│     model:  Qwen3.5-2B.gguf                            │
+│ directory:  ~/.config/local-ai/projects/session-test   │
+│     skill:  init                                       │
+│  database:  active (0 facts, 2 turns)                  │
+╰─────────────────────────────────────── Ctrl+C to exit ─╯
  Startup context: 121 tokens
 
 Agent: Workspace loaded. Awaiting instructions.
 
- [7 tokens | 0.33s | 28.24 t/s]
- [ 765 in | 7 out | ctx: 9.4% ]
+ [ 7 tokens | 0.28s | 25.23 t/s ]
+ [ 703 in | 7 out | ctx: 8.7% ]
 ❯ 
 ```
-
 ---
 
 <h2 align="center">Core Capabilities</h2>
