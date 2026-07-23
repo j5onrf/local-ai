@@ -70,7 +70,7 @@ Built with zero context-stuffing for extreme efficiency on quantized local model
 ╭────────────────────────────────────────────────────────╮
 │   >_ Local-AI Agent [sub-agent #1]                     │
 │                                                        │
-│     model:  Qwen3.5-2B.gguf                            │
+║     model:  Qwen3.6-35B-A3B.gguf                       │
 │ directory:  ~/.config/local-ai/projects/session-test   │
 │     skill:  init                                       │
 │  database:  active (0 facts, 2 turns)                  │
@@ -79,7 +79,7 @@ Built with zero context-stuffing for extreme efficiency on quantized local model
 
 Agent: Workspace loaded. Awaiting instructions.
 
- [ 7 tokens | 0.28s | 25.23 t/s ]
+ [ 7 tokens | 0.28s | 28.23 t/s ]
  [ 703 in | 7 out | ctx: 8.7% ]
 ❯ 
 ```
