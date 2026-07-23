@@ -109,7 +109,7 @@ Agent: Workspace loaded. Awaiting instructions.
 │                                                                     │
 │   Available commands:                                               │
 │  /help, /h                   - Show help menu                       │
-│  /box, /box-style            - Change CLI box style (1-4)           │
+│  /box, /box-style            - Change CLI box style (1-5)           │
 │  /t, /thinking [N|show|hide] - Set reasoning budget or show/hide    │
 │  /g                          - Toggle confirmation gates            │
 │  /m                          - Toggle long-term memory              │

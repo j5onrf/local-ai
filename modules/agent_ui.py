@@ -116,7 +116,7 @@ def draw_session_box(
     sub_id: Optional[int] = None,
     box_style: int = 1
 ) -> None:
-    """Renders the system initialization box with customizable style presets (1-4)."""
+    """Renders the system initialization box with customizable style presets (1-5)."""
     version = ""
     main_script_path = os.path.join(home_dir, ".config", "local-ai", "ai-agent.py")
     if os.path.exists(main_script_path):
@@ -148,27 +148,43 @@ def draw_session_box(
     mem_status = f"active ({tpm_count} facts, {db_turns} turns)" if memory_active else "disabled"
     table.add_row("database:", mem_status if is_agent else "stateless")
 
-    # Style Presets Configuration
+    # Style Preset #5: Original In-Panel Codex Style (Title printed INSIDE box)
+    if box_style == 5:
+        title_text_inside = f"  >_ Local-AI Agent [sub-agent #{sub_id}]" if sub_id else f"  >_ Local-AI Agent ({version})" if version else "  >_ Local-AI Agent"
+        content_group = Group(
+            Text(title_text_inside, style="bold bright_green"),
+            Text(""),
+            table
+        )
+        _console.print(Panel(
+            content_group,
+            border_style="green",
+            box=ROUNDED,
+            expand=False,
+            subtitle="[dim]Ctrl+C to exit[/dim]",
+            subtitle_align="right"
+        ))
+        _console.print(f"[dim][sys] Startup context: {len(active_system_prompt) // 4:,} tokens[/dim]\n")
+        return
+
+    # Style Presets Configuration (1-4)
     if box_style == 2:
-        # Style #2: Old Codex Rounded Style
         title_text = f" >_ Local-AI Agent [sub-agent #{sub_id}] " if sub_id else f" >_ Local-AI Agent "
         box_type = ROUNDED
         border_col = "green"
         title_style = "bold bright_green"
     elif box_style == 3:
-        # Style #3: Heavy Square Style
         title_text = f" ❖ Local-AI Agent [sub-agent #{sub_id}] " if sub_id else f" ❖ Local-AI Agent "
         box_type = HEAVY
         border_col = "bright_cyan"
         title_style = "bold bright_white"
     elif box_style == 4:
-        # Style #4: Minimal Horizontal Lines
         title_text = f" Local-AI Agent [sub-agent #{sub_id}] " if sub_id else f" Local-AI Agent "
         box_type = HORIZONTALS
         border_col = "dim white"
         title_style = "bold cyan"
     else:
-        # Style #1 (Default): Double Border
+        # Style #1 (Default)
         title_text = f" ❖ Local-AI Agent [sub-agent #{sub_id}] " if sub_id else (f" ❖ Local-AI Agent ({version}) " if version else " ❖ Local-AI Agent ")
         box_type = DOUBLE
         border_col = "bright_blue"

@@ -77,10 +77,10 @@ Switch box styles using `/box [1-4]` (or type `/box` to cycle). Your choice pers
 ```console
 ┏━  ❖ Local-AI Agent  ━━━━━━━━━━┓
 ┃     model:  Qwen3.5-2B.gguf   ┃
-┃ directory:  ~                 ║
+┃ directory:  ~                 ┃
 ┃     skill:  default           ┃
 ┃  database:  stateless         ┃
-┗━━━━━━━━━━━━━━ Ctrl+C to exit ━┛
+┗━━━━━━━━━━━━━━ Ctrl+C to exit ━%
 ```
 
 #### Style #4: Minimalist Line
@@ -91,6 +91,18 @@ Switch box styles using `/box [1-4]` (or type `/box` to cycle). Your choice pers
       skill:  default            
    database:  stateless          
  ────────────── Ctrl+C to exit ─ 
+```
+
+#### Style #5: Classic In-Panel Codex
+```console
+╭───────────────────────────────╮
+│  >_ Local-AI Agent            │
+│                               │
+│     model:  Qwen3.5-2B.gguf   │
+│ directory:  ~                 │
+│     skill:  default           │
+│  database:  stateless         │
+╰────────────── Ctrl+C to exit ─╯
 ```
 
 ---
@@ -118,7 +130,7 @@ Switch box styles using `/box [1-4]` (or type `/box` to cycle). Your choice pers
 │                                                                     │
 │   Available commands:                                               │
 │  /help, /h            - Show help menu                              │
-│  /box, /box-style     - Change CLI box style (1-4)                  │
+│  /box, /box-style     - Change CLI box style (1-5)                  │
 │  /t [N|show|hide]     - Set reasoning budget or show/hide           │
 │  /g                   - Toggle confirmation gates                   │
 │  /m                   - Toggle long-term memory                     │

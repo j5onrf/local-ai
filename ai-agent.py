@@ -247,15 +247,15 @@ def run_interactive_chat(args: List[str]) -> None:
                     if len(parts) > 1:
                         try:
                             val = int(parts[1])
-                            if 1 <= val <= 4:
+                            if 1 <= val <= 5:
                                 _save_state("box_style", val)
                                 ui._console.print(f"[green][sys] Session box style updated to #{val}.[/green]\n")
                             else:
-                                ui._console.print("[red][sys] Usage: /box [1-4][/red]\n")
+                                ui._console.print("[red][sys] Usage: /box [1-5][/red]\n")
                         except ValueError:
-                            ui._console.print("[red][sys] Usage: /box [1-4][/red]\n")
+                            ui._console.print("[red][sys] Usage: /box [1-5][/red]\n")
                     else:
-                        next_style = (curr_style % 4) + 1
+                        next_style = (curr_style % 5) + 1
                         _save_state("box_style", next_style)
                         ui._console.print(f"[green][sys] Switched box style to #{next_style}.[/green]\n")
                     continue
