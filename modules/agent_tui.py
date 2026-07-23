@@ -2,6 +2,8 @@
 import os
 import sys
 import json
+import time
+import sqlite3
 import asyncio
 import urllib.request as urlreq
 from typing import List, Dict, Any, Optional, Tuple, Iterator, Set
@@ -88,6 +90,79 @@ if fenced_code_class:
     fenced_code_class.__rich_console__ = custom_code_block_rich_console
 if code_block_class:
     code_block_class.__rich_console__ = custom_code_block_rich_console
+
+
+def inspect_workspace_db(workspace_path: str) -> Tuple[bool, int, int]:
+    """Scans workspace and project database store for active memory state."""
+    proj_name = os.path.basename(os.path.normpath(workspace_path))
+    sanitized_path = workspace_path.replace(os.path.expanduser("~"), "").strip("/").replace("/", "-")
+    
+    search_dirs = [
+        workspace_path,
+        os.path.join(CFG_DIR, "projects", proj_name),
+        os.path.join(CFG_DIR, "projects", "database"),
+        os.path.join(CFG_DIR, "projects"),
+        CFG_DIR
+    ]
+    
+    db_extensions = (".db", ".sqlite", ".sqlite3")
+    candidate_files = []
+
+    for s_dir in search_dirs:
+        if os.path.exists(s_dir) and os.path.isdir(s_dir):
+            try:
+                for fname in os.listdir(s_dir):
+                    if fname.endswith(db_extensions) or "memory" in fname.lower() or "db" in fname.lower():
+                        # Match project specific database files
+                        if proj_name in fname or sanitized_path in fname or s_dir in (workspace_path, os.path.join(CFG_DIR, "projects", proj_name)):
+                            full_p = os.path.join(s_dir, fname)
+                            if os.path.isfile(full_p) and full_p not in candidate_files:
+                                candidate_files.append(full_p)
+            except Exception:
+                pass
+
+    total_turns = 0
+    total_facts = 0
+    found_db = False
+
+    for db_path in candidate_files:
+        try:
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+            tables = [row[0].lower() for row in cursor.fetchall()]
+            
+            if not tables:
+                conn.close()
+                continue
+
+            found_db = True
+            
+            for t in tables:
+                try:
+                    cursor.execute(f"SELECT COUNT(*) FROM `{t}`")
+                    count = cursor.fetchone()[0]
+                    if any(k in t for k in ["history", "message", "turn", "chat", "session", "conversation"]):
+                        total_turns += count
+                    elif any(k in t for k in ["fact", "memory", "vector", "knowledge", "doc", "item"]):
+                        total_facts += count
+                except Exception:
+                    pass
+            
+            conn.close()
+        except Exception:
+            pass
+            
+    if found_db:
+        return True, total_turns, total_facts
+
+    # Project fallback check
+    if "/projects/" in workspace_path or os.path.exists(os.path.join(workspace_path, ".git")):
+        return True, 0, 0
+
+    return False, 0, 0
+
 
 # Minimalist themes
 grok_theme = Theme(
@@ -241,10 +316,30 @@ class LocalAITUI(App):
         Binding("escape", "quit", "Exit TUI", show=False),      
     ]
 
-    def __init__(self, workspace_path: str, model_name: str) -> None:
+    def __init__(
+        self,
+        workspace_path: str,
+        model_name: str,
+        is_agent: bool = True,
+        memory_active: Optional[bool] = None,
+        db_turns: int = 0,
+        tpm_count: int = 0
+    ) -> None:
         super().__init__()
         self.workspace_path: str = workspace_path
         self.model_name: str = model_name
+        self.is_agent: bool = is_agent
+        
+        if memory_active is None:
+            active, detected_turns, detected_facts = inspect_workspace_db(workspace_path)
+            self.memory_active: bool = active
+            self.db_turns: int = detected_turns
+            self.tpm_count: int = detected_facts
+        else:
+            self.memory_active: bool = memory_active
+            self.db_turns: int = db_turns
+            self.tpm_count: int = tpm_count
+
         self.compact_mode: bool = False
         self.reasoning_active: bool = False
         self.reasoning_budget: int = 500
@@ -255,23 +350,37 @@ class LocalAITUI(App):
         
         self.generation_cancelled: bool = False
         self.active_response: Optional[Any] = None
+        self.stats_turns: int = 0
+
+    def get_db_status_string(self) -> str:
+        """Constructs the formatted database status string for the sidebar."""
+        if self.is_agent and self.memory_active:
+            return f"active ({self.tpm_count} facts, {self.db_turns} turns)"
+        return "stateless"
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="layout"):
             with Vertical(id="sidebar"):
                 yield Static(Text(" ❖ LOCAL-AI AGENT ", style="bold bright_blue"))
-                yield Static(Text("─" * 28, style="dim white"))
+                yield Static(Text("─" * 24, style="dim white"))
                 
                 yield Static("ACTIVE MODEL:", classes="sidebar-label")
                 yield Static(self.model_name, id="lbl-model", classes="sidebar-val")
+                
                 yield Static("WORKSPACE DIR:", classes="sidebar-label")
                 yield Static(self.workspace_path.replace(os.path.expanduser("~"), "~"), classes="sidebar-val")
+                
                 yield Static("REASONING BUDGET:", classes="sidebar-label")
                 yield Static("Disabled", id="lbl-reasoning", classes="sidebar-val")
+                
                 yield Static("IMAGE ATTACHED:", classes="sidebar-label")
                 yield Static("None", id="lbl-image", classes="sidebar-val")
+                
                 yield Static("DATABASE STATE:", classes="sidebar-label")
-                yield Static("stateless", classes="sidebar-val")
+                yield Static(self.get_db_status_string(), id="lbl-database", classes="sidebar-val")
+
+                yield Static("SESSION STATS:", classes="sidebar-label")
+                yield Static("Turns: 0\nSpeed: -- t/s\nElapsed: 0.0s", id="lbl-stats", classes="sidebar-val")
                 
             with Vertical(id="main-container"):
                 with Vertical(id="chat-area"):
@@ -296,6 +405,11 @@ class LocalAITUI(App):
         self.chat_area = self.query_one("#chat-area", Vertical)
         self.chat_input = self.query_one("#chat-input", Input)
         self.chat_input.focus()
+
+    def update_stats_ui(self, turns: int, tps: float, elapsed: float) -> None:
+        """Updates the sidebar session stats display dynamically."""
+        stats_text = f"Turns: {turns}\nSpeed: {tps:.1f} t/s\nElapsed: {elapsed:.1f}s"
+        self.query_one("#lbl-stats", Static).update(stats_text)
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         query = event.value.strip()
@@ -378,6 +492,8 @@ class LocalAITUI(App):
         accumulated = ""
         in_thinking = False
         
+        start_time = time.time()
+        
         try:
             thinking_budget = self.reasoning_budget if self.reasoning_active else 0
             configs = []
@@ -433,7 +549,6 @@ class LocalAITUI(App):
                     if not res:
                         continue
                     
-                    # Unpack tuple responses safely (text_chunk, thinking_chunk)
                     if isinstance(res, tuple):
                         text_chunk = res[0] or ""
                         thinking_chunk = res[1] if len(res) > 1 else ""
@@ -442,7 +557,6 @@ class LocalAITUI(App):
                         text_chunk = str(res)
                         thinking_chunk = ""
 
-                    # Reconstruct markup for real-time thought panel parsing
                     if thinking_chunk:
                         if not in_thinking:
                             accumulated += "<think>"
@@ -464,10 +578,22 @@ class LocalAITUI(App):
                 
             self.history.append({"role": "assistant", "content": accumulated})
             
+            elapsed = max(0.01, time.time() - start_time)
+            est_tokens = max(1, len(accumulated) // 4)
+            tps = est_tokens / elapsed
+            self.stats_turns += 1
+            self.call_from_thread(self.update_stats_ui, self.stats_turns, tps, elapsed)
+            
         except Exception as e:
             if self.generation_cancelled:
                 self.call_from_thread(target_widget.update_content, accumulated + " [dim yellow](stopped)[/dim yellow]")
                 self.history.append({"role": "assistant", "content": accumulated})
+                
+                elapsed = max(0.01, time.time() - start_time)
+                est_tokens = max(1, len(accumulated) // 4)
+                tps = est_tokens / elapsed
+                self.stats_turns += 1
+                self.call_from_thread(self.update_stats_ui, self.stats_turns, tps, elapsed)
             else:
                 self.call_from_thread(target_widget.update_content, f"[red][sys] Error: {e}[/red]")
         finally:
