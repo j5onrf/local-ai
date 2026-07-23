@@ -199,5 +199,5 @@ AI_MAX_TOKENS="8192"
 
 ## License & Credits
 
-* **License:** Licensed under the permissive [MIT License](LICENSE).
+* **License:** Licensed under the **[GNU AGPL-3.0 License](LICENSE)**.
 * **Contributions:** [suyadnya](https://github.com/wibawasuyadnya) for `.env` fallback architecture, macOS compatibility testing, and alias optimization.
