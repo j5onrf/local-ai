@@ -51,7 +51,7 @@ Agent: Understood. I have noted your preferences:
 
 ## Customizable UI Box Themes
 
-Switch between 4 distinct session header styles dynamically using `/box [1-4]` (or type `/box` to cycle). Your choice persists across sessions in `~/.config/local-ai/.state.json`.
+Switch box styles using `/box [1-4]` (or type `/box` to cycle). Your choice persists across sessions in `~/.config/local-ai/.state.json`.
 
 #### Style #1: Double Border (Default)
 ```console
