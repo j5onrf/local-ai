@@ -51,7 +51,7 @@ Agent: Understood. I have noted your preferences:
 
 ## Customizable UI Box Themes
 
-Switch box styles using `/box [1-4]` (or type `/box` to cycle). Your choice persists across sessions in `~/.config/local-ai/.state.json`.
+Switch box styles using `/box [1-5]` (or type `/box` to cycle). Your choice persists across sessions in `~/.config/local-ai/.state.json`.
 
 #### Style #1: Double Border (Default)
 ```console
@@ -169,7 +169,7 @@ Switch box styles using `/box [1-4]` (or type `/box` to cycle). Your choice pers
 ## 5. Codebase Graph Mapper & Relational Index
 
 - **Execution:** Runs via `index-map <dir>` or automatically on boot if flat maps are missing/outdated.
-- **Vector Search (`sqlite-vec`):** Automatically embeds codeblocks into a parallel `nodes_vec` virtual table, auto-calibrating to local embedding model dimensions (e.g., 384, 512, 1024).
+- **Vector Search (`sqlite-vec`):** Automatically embeds codeblocks into a parallel `nodes_vec` virtual table, auto-calibrating to local embedding model dimensions.
 - **Relational Graph (`nodes` & `edges`):** Maps AST nodes (classes, methods, functions) and symbol call-chains across Python, Rust, Go, JS/TS, C/C++, and Lua.
 - **Binary & Asset Extraction:** Extracts dimension metadata from images (PNG/JPG/SVG) directly from binary headers.
 
