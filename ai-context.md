@@ -90,7 +90,7 @@ ai init ~/.config/local-ai/projects/session-test-3 --init ---> session test 3, p
 [TOOL] curl -s wttr.in --cat ---> weather full, wttr, weather
 
 # --- System Time & Date (Real-time Clock Context) ---
-[TOOL] date "+Current Time: %I:%M:%S %p %Z on %A, %B %d, %Y" ---> time, date, current time, what time is it
+[TOOL] date "+TIME: %I:%M:%S %p %Z, %A, %B %d, %Y (STRICT: Output ONLY time/date. No extra conversation.)" ---> time, date, current time, what time is it
 ```
 
 ## 5. Interactive TUI (Terminal User Interface) Programs
