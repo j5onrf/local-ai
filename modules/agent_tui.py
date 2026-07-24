@@ -1,31 +1,31 @@
 #!/usr/bin/env python3
 # File: ~/.config/local-ai/modules/agent_tui.py
-"""Full-Featured Textual TUI for Local-AI Agent Engine."""
+"""Production Textual TUI for Local-AI Agent Engine."""
 
-import os, re, sys, json, time, base64, sqlite3, threading, subprocess
+import base64, json, os, re, sqlite3, subprocess, sys, threading, time
 import urllib.request as urlreq
 from contextlib import closing
-from typing import List, Dict, Any, Optional, Iterator, Set
+from typing import Any, Dict, Iterator, List, Optional, Set
 
-from textual.app import App, ComposeResult
-from textual.containers import Horizontal, Vertical
-from textual.widgets import Footer, Input, Static
-from textual.binding import Binding
-from textual.theme import Theme
-from textual.command import Provider, Hit
-from textual.screen import Screen
-from rich.markdown import Markdown, CodeBlock
-from rich.syntax import Syntax
-from rich.panel import Panel
-from rich.table import Table
-from rich.text import Text
 from rich.box import ROUNDED
 from rich.console import Group
+from rich.markdown import CodeBlock, Markdown
+from rich.panel import Panel
+from rich.syntax import Syntax
+from rich.table import Table
+from rich.text import Text
+from textual.app import App, ComposeResult
+from textual.binding import Binding
+from textual.command import Hit, Provider
+from textual.containers import Horizontal, Vertical
+from textual.screen import Screen
+from textual.theme import Theme
+from textual.widgets import Footer, Input, Static
 
 CFG_DIR: str = os.path.expanduser("~/.config/local-ai")
 sys.path.append(os.path.join(CFG_DIR, "modules"))
 
-import agent_cloud, agent_ui as ui, agent_core as core
+import agent_cloud, agent_core as core, agent_ui as ui
 try: import agent_skills as skills
 except ImportError: skills = None
 
@@ -33,8 +33,14 @@ STATE_FILE = os.path.join(CFG_DIR, ".state.json")
 CONTEXT_FILE = os.path.join(CFG_DIR, "ai-context.md")
 SKILLS_DIR = os.path.join(CFG_DIR, "skills")
 SESSIONS_DIR = os.path.join(CFG_DIR, "projects", "database")
+
 TOKEN_RE = re.compile(r"[^\w\s]")
 STOP_WORDS: Set[str] = {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"}
+CSI_U_REGEX = re.compile(r'(?:\x1b\[<|\x1b\[|\[<)?\d+;\d+;\d+[mM]|\x1b\[[0-9;]*[a-zA-Z~]|\x1b[\[\(\=][0-9;]*[a-zA-Z~]?')
+ANSI_CLEAN_REGEX = re.compile(r'\x1b\[[0-9;]*m')
+QUESTION_SPLIT_REGEX = re.compile(r'(?<=\?)\s+')
+
+Screen.command_sources = property(lambda self: set())
 
 def get_dynamic_code_block_background() -> str:
     try: return "#0d0d0d" if getattr(App.get_running_app(), "theme", "dark") == "grok" else "#1a1a1a"
@@ -48,12 +54,6 @@ CodeBlock.__rich_console__ = custom_code_block_rich_console
 BASE_PROMPT = "Read-only local shell assistant.\nIf <context> is provided, answer directly using only its facts. Otherwise, answer normally.\n\n"
 BASE_PROMPT_CHAT = BASE_PROMPT + "### Conversational Guidelines:\n- Role: Active, natural, and highly articulate conversational assistant.\n- Tone: Professional, warm, objective, and intellectually engaging.\n\n"
 BASE_PROMPT_AGENT = "Active local project workspace developer agent.\nIf <context> is provided, answer directly using only its facts. Otherwise, answer normally.\n\n"
-
-CSI_U_REGEX = re.compile(r'(?:\x1b\[<|\x1b\[|\[<)?\d+;\d+;\d+[mM]|\x1b\[[0-9;]*[a-zA-Z~]|\x1b[\[\(\=][0-9;]*[a-zA-Z~]?')
-ANSI_CLEAN_REGEX = re.compile(r'\x1b\[[0-9;]*m')
-QUESTION_SPLIT_REGEX = re.compile(r'(?<=\?)\s+')
-
-Screen.command_sources = property(lambda self: set())
 
 def workspace_safe_name(workspace_path: str, home_dir: str) -> str:
     safe = workspace_path[len(home_dir):].lstrip("/") if workspace_path.startswith(home_dir) else workspace_path
@@ -91,42 +91,31 @@ def copy_to_clipboard(text: str) -> bool:
         except Exception: continue
     return True
 
-def tokenize(text: str) -> List[str]: 
+def tokenize(text: str) -> List[str]:
     return [w for w in TOKEN_RE.sub(" ", text.lower()).split() if len(w) > 1 and w not in STOP_WORDS] if text else []
 
 def get_recalled_memory(workspace: str, query: str) -> str:
-    """100% Parity Jaccard Similarity Recall matching ai-agent-memories against the turns table."""
+    """100% Parity Jaccard Similarity Recall matching ai-agent-memories against turns table."""
     q_tokens = set(tokenize(query))
-    if not q_tokens: return ""
-    
-    db_path = os.path.join(SESSIONS_DIR, f"{workspace}.db")
-    if not os.path.exists(db_path): return ""
-
+    if not q_tokens or not os.path.exists(os.path.join(SESSIONS_DIR, f"{workspace}.db")): return ""
     try:
-        with closing(sqlite3.connect(db_path, timeout=5)) as conn:
+        with closing(sqlite3.connect(os.path.join(SESSIONS_DIR, f"{workspace}.db"), timeout=5)) as conn:
             cur = conn.cursor()
             cur.execute("SELECT user_msg, assistant_msg, tokens, timestamp FROM turns WHERE workspace = ?", (workspace,))
             rows = cur.fetchall()
 
         candidates = []
-        for user_msg, assistant_msg, tokens, ts in rows:
-            t_tokens = set(tokens.split()) if tokens else set()
+        for u, a, t, ts in rows:
+            t_tokens = set(t.split()) if t else set()
             score = len(q_tokens & t_tokens) / len(q_tokens | t_tokens) if (q_tokens & t_tokens) else 0.0
             if score >= 0.35:
-                date_str = time.strftime('%Y-%m-%d %H:%M', time.localtime(ts))
-                candidates.append((score, user_msg, assistant_msg, date_str))
+                candidates.append((score, u, a, time.strftime('%Y-%m-%d %H:%M', time.localtime(ts))))
 
         if not candidates: return ""
-
         candidates.sort(key=lambda x: -x[0])
-        recalled_blocks = []
-        for _, u, a, dt in candidates[:3]:
-            clean_a = re.sub(r'<think>.*?</think>', '', a, flags=re.DOTALL).strip()
-            recalled_blocks.append(f"* **On {dt} you asked**: \"{u.strip()}\"\n  **Agent responded**: \"{clean_a}\"")
-
-        return "### Relevant Past Discussion (Retrieved from Session Memory):\n" + "\n\n".join(recalled_blocks)
-    except Exception: pass
-    return ""
+        blocks = [f"* **On {dt} you asked**: \"{u.strip()}\"\n  **Agent responded**: \"{re.sub(r'<think>.*?</think>', '', a, flags=re.DOTALL).strip()}\"" for _, u, a, dt in candidates[:3]]
+        return "### Relevant Past Discussion (Retrieved from Session Memory):\n" + "\n\n".join(blocks)
+    except Exception: return ""
 
 grok_theme = Theme(name="grok", primary="#444444", secondary="#888888", accent="#ffffff", background="#000000", surface="#0d0d0d", panel="#121212")
 dark_theme = Theme(name="dark", primary="#555555", secondary="#b0b0b0", accent="#ffffff", background="#121212", surface="#1c1c1c", panel="#242424")
@@ -154,7 +143,7 @@ class Message(Static):
             text = self.content
             if isinstance(text, list): text = next((i["text"] for i in text if i.get("type") == "text"), "[Multimodal]")
             return Group(Text(f"{prefix}❯ USER: {text}", style=u_style))
-        
+
         hdr, text = Text(f"{prefix}❖ AGENT:", style=a_style), str(self.content or "")
         if "<think>" in text:
             before, after = text.split("<think>", 1)
@@ -171,6 +160,7 @@ class AgentCommandProvider(Provider):
         m = self.matcher(query)
         cmds = [
             ("Copy Last Response", "copy_last_response", "Copy the latest agent response to system clipboard"),
+            ("Copy Entire Chat Page", "copy_entire_chat", "Copy complete conversation transcript to system clipboard"),
             ("Attach Image URL", "attach_image_url", "Attach an image URL to analyze on your next query"),
             ("Cycle Theme", "cycle_theme", "Cycle through available color themes"),
             ("Toggle Sidebar", "toggle_sidebar", "Show or hide the metadata panel"),
@@ -188,6 +178,10 @@ class LocalAITUI(App):
 
     @property
     def command_sources(self) -> Set[Any]: return {AgentCommandProvider}
+
+    @property
+    def border_accent(self) -> str:
+        return "#444444" if getattr(self, "theme", "dark") == "grok" else "bright_blue"
 
     CSS = """
     Screen { background: $background; }
@@ -218,6 +212,10 @@ class LocalAITUI(App):
         Binding("ctrl+y", "attach_image_url", "Image", show=True),
         Binding("ctrl+c", "stop_generation", "Stop Out", show=True),
         Binding("ctrl+f", "toggle_footer", "Footer", show=False),
+        Binding("pageup", "scroll_page_up", "Page Up", show=False),
+        Binding("pagedown", "scroll_page_down", "Page Down", show=False),
+        Binding("shift+up", "scroll_up", "Scroll Up", show=False),
+        Binding("shift+down", "scroll_down", "Scroll Down", show=False),
         Binding("ctrl+q", "quit", "Exit TUI", show=False),
         Binding("escape", "quit", "Exit TUI", show=False),
     ]
@@ -268,7 +266,6 @@ class LocalAITUI(App):
                 sys_p += f"\n\n### ACTIVE PROJECT WORKSPACE:\nYour active project root directory is: {self.workspace_path}\n"
                 if hasattr(core, "EDIT_SYSTEM_ADD") and "### EDIT MODE" not in sys_p:
                     sys_p += core.EDIT_SYSTEM_ADD.format(ws=self.workspace_path) + core.TOOLS_SYSTEM_ADD.format(names="read_file, write_file, list_dir, run_command", ws=self.workspace_path)
-                
                 try:
                     map_files = [f for f in os.listdir(self.workspace_path) if f.startswith("index-map-") and f.endswith(".txt")]
                     if map_files:
@@ -288,8 +285,8 @@ class LocalAITUI(App):
     def update_welcome_banner(self) -> None:
         try:
             self.query_one("#welcome-banner", Static).update(Panel(
-                Markdown("# Workspace Loaded • Awaiting Instructions\nType your query and press `Enter`.\n`Ctrl+B` toggle sidebar • `Ctrl+T` cycle themes • `Ctrl+G` toggle compact • `Ctrl+R` toggle reasoning • `Ctrl+O` copy response."),
-                border_style="#333333" if getattr(self, "theme", "dark") == "grok" else "bright_blue", box=ROUNDED
+                Markdown("# Workspace Loaded • Awaiting Instructions\nType your query and press `Enter`.\n`Ctrl+B` toggle sidebar • `Ctrl+T` cycle themes • `/copy` copy page • `Ctrl+O` copy response."),
+                border_style=self.border_accent, box=ROUNDED
             ))
         except Exception: pass
 
@@ -316,7 +313,7 @@ class LocalAITUI(App):
             with Vertical(id="main-container"):
                 with Vertical(id="chat-area"):
                     yield Static(Panel(
-                        Markdown("# Workspace Loaded • Awaiting Instructions\nType your query and press `Enter`.\n`Ctrl+B` toggle sidebar • `Ctrl+T` cycle themes • `Ctrl+G` toggle compact • `Ctrl+R` toggle reasoning • `Ctrl+O` copy response."),
+                        Markdown("# Workspace Loaded • Awaiting Instructions\nType your query and press `Enter`.\n`Ctrl+B` toggle sidebar • `Ctrl+T` cycle themes • `/copy` copy page • `Ctrl+O` copy response."),
                         border_style="bright_blue", box=ROUNDED
                     ), id="welcome-banner")
                 with Horizontal(id="input-pane"):
@@ -359,6 +356,18 @@ class LocalAITUI(App):
     def update_stats_ui(self, turns: int, tps: float, elapsed: float) -> None:
         self.query_one("#lbl-stats", Static).update(f"Turns: {turns}\nSpeed: {tps:.1f} t/s\nElapsed: {elapsed:.1f}s")
 
+    def action_scroll_page_up(self) -> None:
+        self.chat_area.scroll_page_up(animate=False)
+
+    def action_scroll_page_down(self) -> None:
+        self.chat_area.scroll_page_down(animate=False)
+
+    def action_scroll_up(self) -> None:
+        self.chat_area.scroll_up(animate=False)
+
+    def action_scroll_down(self) -> None:
+        self.chat_area.scroll_down(animate=False)
+
     def action_copy_last_response(self) -> None:
         last = next((m.get("content", "") for m in reversed(self.history) if m.get("role") == "assistant"), "")
         if last:
@@ -366,6 +375,27 @@ class LocalAITUI(App):
             self.chat_area.mount(Static("[dim white][sys] Copied latest agent response to clipboard.[/dim white]"))
         else:
             self.chat_area.mount(Static("[dim white][sys] No response available to copy yet.[/dim white]"))
+        self.chat_area.scroll_end(animate=False)
+
+    def action_copy_entire_chat(self) -> None:
+        """Copies complete conversation transcript to system clipboard."""
+        transcript = []
+        for msg in self.history:
+            role, content = msg.get("role"), msg.get("content")
+            if not content or role == "system": continue
+            if role == "user":
+                txt = content if isinstance(content, str) else next((i["text"] for i in content if i.get("type") == "text"), "[Multimodal]")
+                transcript.append(f"❯ USER: {txt}")
+            elif role == "assistant":
+                clean_c = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL).strip()
+                if clean_c: transcript.append(f"❖ AGENT:\n{clean_c}")
+
+        full_text = "\n\n".join(transcript)
+        if full_text:
+            copy_to_clipboard(full_text)
+            self.chat_area.mount(Static("[dim white][sys] Copied entire session transcript to clipboard.[/dim white]"))
+        else:
+            self.chat_area.mount(Static("[dim white][sys] No transcript available to copy yet.[/dim white]"))
         self.chat_area.scroll_end(animate=False)
 
     async def handle_view_file(self, file_path: str) -> None:
@@ -423,19 +453,22 @@ class LocalAITUI(App):
 
         if root in ("/help", "/h"):
             t = Table(show_header=False, box=None, padding=(0, 1))
-            t.add_column("Command", style="bold cyan")
+            cmd_style = "bold #b0b0b0" if self.theme == "grok" else "bold cyan"
+            t.add_column("Command", style=cmd_style)
             t.add_column("Description", style="white")
             for c, d in [
-                ("/help, /h", "Show command list"), ("/g, /yolo", "Toggle autonomous YOLO mode vs per-action gates"),
+                ("/help, /h", "Show command list"), ("/copy, /copy-all", "Copy entire page transcript"),
+                ("/g, /yolo", "Toggle autonomous YOLO mode vs per-action gates"),
                 ("/m", "Toggle long-term memory"), ("/clear, /reset", "Clear chat & history"),
                 ("/tok", "Show token usage"), ("/sync, /re", "Sync codebase AST index"),
                 ("/skill <q>, /s", "Load skill blueprint"), ("/compact, /c", "Toggle compact mode"),
                 ("/t, /thinking", "Toggle reasoning budget"), ("/f, /tk, /b, /a", "Skill mode prompts"),
                 ("view file <path>", "Attach file content to context"), ("exit, quit, q", "Exit TUI")
             ]: t.add_row(c, d)
-            await self.chat_area.mount(Static(Panel(t, title="⚙ Agent TUI Commands", title_align="left", border_style="bright_blue", box=ROUNDED)))
+            await self.chat_area.mount(Static(Panel(t, title="⚙ Agent TUI Commands", title_align="left", border_style=self.border_accent, box=ROUNDED)))
 
         elif root in ("exit", "quit", "q"): self.exit()
+        elif root in ("/copy", "/copy-all", "/copyall"): self.action_copy_entire_chat()
         elif root == "/m":
             self.memory_active = not self.memory_active
             save_tui_state("memory_active", self.memory_active)
@@ -507,9 +540,7 @@ class LocalAITUI(App):
                         tpm_res = subprocess.run([sys.executable, mem_bin, "tpm-get", self.safe_name], stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=2)
                         if tpm_res.returncode == 0 and tpm_res.stdout.strip(): tpm_ctx = tpm_res.stdout.strip()
 
-                    # Exact Jaccard similarity recall matching ai-agent-memories against turns table
                     matched = get_recalled_memory(self.safe_name, query)
-
                     if matched:
                         if not self.gates_enabled or self.prompt_tui_confirm(f"inject recalled memory for '{query}'"):
                             past_mem = matched

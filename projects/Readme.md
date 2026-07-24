@@ -130,6 +130,7 @@ Switch box styles using `/box [1-5]` (or type `/box` to cycle). Your choice pers
 │                                                                     │
 │   Available commands:                                               │
 │  /help, /h            - Show help menu                              │
+│  /copy                - Copy entire page transcript                 │
 │  /box, /box-style     - Change CLI box style (1-5)                  │
 │  /t [N|show|hide]     - Set reasoning budget or show/hide           │
 │  /g, /yolo            - Toggle confirmation gates (YOLO mode)       │
