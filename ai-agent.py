@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.9.5.2]
+# Local-Ai Agent [j5onrf] [v0.9.5.4]
 
 import json
 import os
@@ -207,7 +207,9 @@ def run_interactive_chat(args: List[str]) -> None:
                 query, pending_query = pending_query, None
             else:
                 try:
-                    query = input("\033[1;30m❯\033[0m ").strip()
+                    # \001 and \002 inform Readline of non-printing ANSI codes so long lines wrap cleanly
+                    prompt_str = "\001\033[1;30m\002❯\001\033[0m\002 "
+                    query = input(prompt_str).strip()
                 except EOFError:
                     break
                 finally:
@@ -229,7 +231,11 @@ def run_interactive_chat(args: List[str]) -> None:
                     ui._console.print("[dim yellow][sys] Suspending chat. Launching TUI...[/dim yellow]")
                     time.sleep(0.5)
                     try:
-                        subprocess.run([sys.executable, f"{CFG_DIR}/modules/agent_tui.py"])
+                        tui_env = os.environ.copy()
+                        tui_env["AI_IS_AGENT"] = "1" if is_agent else "0"
+                        tui_env["AI_WORKSPACE_PATH"] = workspace_path
+                        tui_env["AI_ACTIVE_SKILL"] = clean_name or "default"
+                        subprocess.run([sys.executable, f"{CFG_DIR}/modules/agent_tui.py"], env=tui_env)
                     except Exception as e:
                         ui._console.print(f"[red][sys] Failed TUI: {e}[/red]\n")
                     continue
@@ -266,10 +272,11 @@ def run_interactive_chat(args: List[str]) -> None:
                     ui._console.print(f"[green][sys] Memory {'enabled' if memory_active else 'disabled'}.[/green]\n")
                     continue
 
-                if query == "/g":
+                if query in ("/g", "/yolo"):
                     gates_active = os.environ.get("AI_CONFIRM_GATES", "1") == "1"
                     os.environ["AI_CONFIRM_GATES"] = "0" if gates_active else "1"
-                    ui._console.print(f"[yellow][sys] Confirmation gates {'disabled (autonomous)' if gates_active else 'enabled'}.[/yellow]\n")
+                    msg = "disabled (Autonomous / YOLO mode active)" if gates_active else "enabled (y/n confirmation required per action)"
+                    ui._console.print(f"[yellow][sys] Confirmation gates {msg}.[/yellow]\n")
                     continue
 
                 # Main Thinking Toggle & Budget Handler

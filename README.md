@@ -121,7 +121,7 @@ Agent: Workspace loaded. Awaiting instructions.
 │  /help, /h                   - Show help menu                       │
 │  /box, /box-style            - Change CLI box style (1-5)           │
 │  /t, /thinking [N|show|hide] - Set reasoning budget or show/hide    │
-│  /g                          - Toggle confirmation gates            │
+│  /g, /yolo                   - Toggle confirmation gates (YOLO)     │
 │  /m                          - Toggle long-term memory              │
 │  /stats                      - Toggle generation speed stats        │
 │  /tok                        - Show context token usage             │

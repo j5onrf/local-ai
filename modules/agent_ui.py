@@ -319,7 +319,7 @@ def show_help() -> None:
         ("/help, /h", "Show help menu"),
         ("/box, /box-style [1-4]", "Change CLI box style"),
         ("/t, /thinking [N|show|hide]", "Set reasoning budget or show/hide"),
-        ("/g", "Toggle confirmation gates"),
+        ("/g, /yolo", "Toggle confirmation gates (YOLO / autonomous mode)"),
         ("/m", "Toggle long-term memory"),
         ("/stats", "Toggle generation speed stats"),
         ("/tok", "Show context token usage"),

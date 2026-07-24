@@ -132,7 +132,7 @@ Switch box styles using `/box [1-5]` (or type `/box` to cycle). Your choice pers
 │  /help, /h            - Show help menu                              │
 │  /box, /box-style     - Change CLI box style (1-5)                  │
 │  /t [N|show|hide]     - Set reasoning budget or show/hide           │
-│  /g                   - Toggle confirmation gates                   │
+│  /g, /yolo            - Toggle confirmation gates (YOLO mode)       │
 │  /m                   - Toggle long-term memory                     │
 │  /stats               - Toggle generation speed stats               │
 │  /tok                 - Show context token usage                    │
