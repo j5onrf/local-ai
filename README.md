@@ -118,7 +118,6 @@ Agent: Workspace loaded. Awaiting instructions.
 │                                                                     │
 │   Available commands:                                               │
 │  /help, /h                   - Show help menu                       │
-│  /copy                       - Copy entire page transcript          │
 │  /box, /box-style            - Change CLI box style (1-5)           │
 │  /t, /thinking [N|show|hide] - Set reasoning budget or show/hide    │
 │  /g, /yolo                   - Toggle confirmation gates (YOLO mode)│
@@ -165,12 +164,14 @@ sudo pacman -S python-rich python-requests
 # 2. (Optional) Install extensions (sqlite-vec for code search | textual for /tui)
 yay -S python-sqlite-vec && sudo pacman -S python-textual
 
-# 3. Clone repository & register shell environment hook
-git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai && \
-echo '[ -f "$HOME/.config/local-ai/ai-hook.sh" ] && source "$HOME/.config/local-ai/ai-hook.sh"' >> ~/.bashrc && \
+# 3. Clone repository
+git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai
+
+# 4. Register shell environment hook & reload configuration
+echo '[ -f "$HOME/.config/local-ai/ai-hook.sh" ] && source "$HOME/.config/local-ai/ai-hook.sh"' >> ~/.bashrc
 source ~/.bashrc
 
-# 4. Create your configuration file
+# 5. Create your configuration file
 nano ~/.config/local-ai/.env
 ```
 
