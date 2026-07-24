@@ -65,7 +65,6 @@ Built with zero context-stuffing for extreme efficiency on quantized local model
 ~ ❯ sess
 [01/03] ❯ [session test] ai init ~/session-test --init
 :: ↵ run  Esc: 
-[1] 90031
 ✔ Mapping complete! [session-test index-map & SQLite graph database updated]
 ╭────────────────────────────────────────────────────────╮
 │   >_ Local-AI Agent [sub-agent #1]                     │
