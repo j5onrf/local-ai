@@ -317,7 +317,7 @@ def show_help() -> None:
 
     cmds = [
         ("/help, /h", "Show help menu"),
-        ("/box, /box-style [1-4]", "Change CLI box style"),
+        ("/box, /box-style [1-5]", "Change CLI session box style preset"),
         ("/t, /thinking [N|show|hide]", "Set reasoning budget or show/hide"),
         ("/g, /yolo", "Toggle confirmation gates (YOLO / autonomous mode)"),
         ("/m", "Toggle long-term memory"),
@@ -349,3 +349,74 @@ def show_help() -> None:
         expand=False
     ))
     _console.print()
+
+
+def select_workspace_profile(workspace_name: str) -> Tuple[str, bool]:
+    """Renders the interactive workspace profile selector menu with a Tab: YOLO mode toggle."""
+    options = [
+        ("default",     "Basic / Default", "~120 tokens | Standard init.md assistant"),
+        ("pi/lite",     "Pi Lite [2B]",    "~90 tokens  | Hyper-fast file editor for 2B models"),
+        ("pi/pro",      "Pi Pro [35B]",   "~220 tokens | Balanced workspace developer"),
+        ("pi/full",     "Pi Full [1:1]",  "~1,900 tok  | Original 1:1 official Pi prompt"),
+        ("claude/lite", "Claude Lite",    "~95 tokens  | Ultra-light XML tool agent"),
+        ("claude/pro",  "Claude Pro",     "~230 tokens | Architect with <thought> planning"),
+        ("claude/full", "Claude Full",    "~1,800 tok  | Full 1:1 Claude Code CLI prompt"),
+        ("hermes/lite", "Hermes Lite",    "~95 tokens  | Fast function-calling agent"),
+        ("hermes/pro",  "Hermes Pro",     "~230 tokens | Nous Hermes 3 action agent"),
+        ("hermes/full", "Hermes Full",    "~1,800 tok  | Full 1:1 Nous Hermes system prompt")
+    ]
+    
+    sys.stderr.write(f"\n\033[1;36m[ai init]\033[0m Select default Agent Profile for workspace \033[1;33m{workspace_name}\033[0m:\n\n")
+    sys.stderr.write("\033[?25l")  # Hide terminal cursor
+    sys.stderr.flush()
+
+    current_idx = 0
+    is_yolo = False
+    num_opts = len(options)
+    first_render = True
+
+    try:
+        while True:
+            if not first_render:
+                sys.stderr.write(f"\x1b[{num_opts + 2}A\r")
+            first_render = False
+
+            # Render option rows
+            for idx, (k, lbl, d) in enumerate(options):
+                if idx == current_idx:
+                    sys.stderr.write(f"\r\x1b[K\033[1;32m  ❯ {idx + 1:2d}. {lbl:<18}\033[0m \033[1;36m({d})\033[0m\n")
+                else:
+                    sys.stderr.write(f"\r\x1b[K\033[90m    {idx + 1:2d}. {lbl:<18} ({d})\033[0m\n")
+
+            # Render status line with dynamic YOLO mode indicator
+            yolo_badge = "\033[1;33m[ON (Autonomous)]\033[0m" if is_yolo else "\033[90m[OFF]\033[0m"
+            sys.stderr.write("\r\x1b[K\n")
+            sys.stderr.write(f"\r\x1b[K\033[2m  :: ↵ select  ↑/↓ navigate  \033[1;36mTab\033[2m: YOLO {yolo_badge}\033[2m  Esc: default\033[0m\n")
+            sys.stderr.flush()
+
+            char = get_key()
+
+            if char in ('\t', 'y', 'Y'):  # Tab or 'y' toggles YOLO mode
+                is_yolo = not is_yolo
+
+            elif char in ('\x03', '\x1b'):  # Esc or Ctrl+C -> default
+                sys.stderr.write(f"\x1b[{num_opts + 2}A\r\x1b[J")
+                mode_str = " (Autonomous YOLO)" if is_yolo else ""
+                sys.stderr.write(f"\033[1;32m✓ Profile set to: Basic / Default{mode_str}\033[0m\n\n")
+                sys.stderr.flush()
+                return "default", is_yolo
+
+            elif char in ('\r', '\n', ''):  # Enter key
+                _, label, _ = options[current_idx]
+                key, _, _ = options[current_idx]
+                sys.stderr.write(f"\x1b[{num_opts + 2}A\r\x1b[J")
+                mode_str = " (Autonomous YOLO)" if is_yolo else ""
+                sys.stderr.write(f"\033[1;32m✓ Profile set to: {label}{mode_str}\033[0m\n\n")
+                sys.stderr.flush()
+                return key, is_yolo
+
+            elif char in ('\x1b[A', '\x1b[B'):  # Up / Down arrow keys
+                current_idx = (current_idx + (1 if char == '\x1b[B' else -1) + num_opts) % num_opts
+    finally:
+        sys.stderr.write("\033[?25h")  # Restore cursor
+        sys.stderr.flush()

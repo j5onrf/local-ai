@@ -2,7 +2,7 @@
   <img alt="Local-AI Agent" src="logo.png" width="800" />
 </p>
 
-<h1 align="center">Local-AI Agent <kbd>v0.9.5.6-beta</kbd></h1>
+<h1 align="center">Local-AI Agent <kbd>v0.9.6.1-beta</kbd></h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
@@ -39,8 +39,6 @@ Built with zero context-stuffing for extreme efficiency on quantized local model
 
 ---
 
----
-
 <h2 align="center">CLI Launch Interfaces</h2>
 
 <p align="center">
@@ -69,16 +67,16 @@ Built with zero context-stuffing for extreme efficiency on quantized local model
 ╭────────────────────────────────────────────────────────╮
 │   >_ Local-AI Agent [sub-agent #1]                     │
 │                                                        │
-║     model:  Qwen3.6-35B-A3B.gguf                       │
+│     model:  Qwen3.5-2B.gguf                            │
 │ directory:  ~/.config/local-ai/projects/session-test   │
-│     skill:  init                                       │
+│     skill:  hermes/lite                                │
 │  database:  active (0 facts, 2 turns)                  │
 ╰─────────────────────────────────────── Ctrl+C to exit ─╯
- Startup context: 121 tokens
+ Startup context: 57 tokens
 
 Agent: Workspace loaded. Awaiting instructions.
 
- [ 7 tokens | 0.28s | 28.23 t/s ]
+ [ 7 tokens | 0.28s | 25.23 t/s ]
  [ 703 in | 7 out | ctx: 8.7% ]
 ❯ 
 ```
@@ -120,7 +118,7 @@ Agent: Workspace loaded. Awaiting instructions.
 │  /help, /h                   - Show help menu                       │
 │  /box, /box-style            - Change CLI box style (1-5)           │
 │  /t, /thinking [N|show|hide] - Set reasoning budget or show/hide    │
-│  /g, /yolo                   - Toggle confirmation gates (YOLO mode)│
+│  /g, /yolo                   - Toggle confirmation gates (YOLO)     │
 │  /m                          - Toggle long-term memory              │
 │  /stats                      - Toggle generation speed stats        │
 │  /tok                        - Show context token usage             │
@@ -189,7 +187,7 @@ OPENAI_API_KEY="your-openai-key"
 OPENAI_MODEL="gpt-5.6"
 
 CLAUDE_API_KEY="your-claude-key"
-CLAUDE_MODEL="claude-fable-5"
+CLAUDE_MODEL="opus-5"
 
 XAI_API_KEY="xai-your-grok-key"
 XAI_MODEL="grok-4.5"
@@ -203,14 +201,14 @@ AI_MAX_TOKENS="8192"
 
 - [x] **Core Engine Optimization:** Production pass on streaming, token counting, and sub-agent concurrency.
 - [x] **Thinking UI Controls:** Real-time thinking TPS metrics and `/r show|hide` panel toggles.
-- [ ] **Modular Agent Personas & Tool Loop:** Interactive profile selector on `ai init` (`pi`, `claude`, `hermes`, `openclaw`) with automated file-editing & bash execution loops.
+- [x] **Modular Agent Personas & Tool Loop:** Interactive 10-profile selector on `ai init` (`pi`, `claude`, `hermes`) with automated path-healing file editing & YOLO execution loops.
 - [ ] **Context Stress Testing:** Continuous context-window pressure tests across quantized local engines.
 - [ ] **Automated File Containment Validation:** Zero-trust security verification on traversal boundaries.
 - [ ] **v1.0.0 Production Release Tag!**
 
 ---
 
-## License & Credits
+## Credits
 
-* **License:** Licensed under the **[GNU AGPL-3.0 License](LICENSE)**.
 * **Contributions:** [suyadnya](https://github.com/wibawasuyadnya) for `.env` fallback architecture, macOS compatibility testing, and alias optimization.
+* **Community:** Contributions are always welcome!

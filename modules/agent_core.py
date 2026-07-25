@@ -6,6 +6,7 @@ import time
 import ast
 import subprocess
 import difflib
+import urllib.parse
 import urllib.request as urlreq
 import urllib.error as urlerr
 from typing import List, Dict, Any, Optional, Tuple
@@ -245,7 +246,19 @@ TOOL_VERBS = {"read_file": "checking", "write_file": "updating", "list_dir": "ch
 
 
 def _safe_path(workspace: str, p: str) -> str:
-    return os.path.realpath(os.path.join(os.path.realpath(workspace), os.path.expanduser(p or "")))
+    """Auto-heals URL-encoded strings and leading slashes from 2B models."""
+    if not p:
+        return os.path.realpath(workspace)
+        
+    # 1. URL decode path (%20 -> spaces)
+    p = urllib.parse.unquote(str(p).strip())
+    
+    # 2. Strip leading slash if path does not exist at root / (e.g. /Test Script.sh -> workspace/Test Script.sh)
+    if p.startswith("/") and not os.path.exists(p):
+        p = p.lstrip("/")
+
+    ws_real = os.path.realpath(workspace)
+    return os.path.realpath(os.path.join(ws_real, os.path.expanduser(p)))
 
 
 def _is_outside_workspace(workspace: str, full_path: str) -> bool:
@@ -263,17 +276,19 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
     gates_active = os.environ.get("AI_CONFIRM_GATES", "1") == "1"
 
     if name == "read_file":
-        full = _safe_path(workspace, args.get("path", ""))
+        raw_path = args.get("path", "")
+        full = _safe_path(workspace, raw_path)
         outside = _is_outside_workspace(workspace, full)
-        if (outside or gates_active) and not _confirm_gate(f"read {full}" if outside else f"read file {args.get('path')}", spinner):
-            return f"[denied] user blocked reading: {args.get('path')}"
+        if (outside or gates_active) and not _confirm_gate(f"read {full}" if outside else f"read file {raw_path}", spinner):
+            return f"[denied] user blocked reading: {raw_path}"
         try:
             return open(full, "r", encoding="utf-8", errors="replace").read(60000)
         except Exception as e:
             return f"[error] failed to read file: {e}"
 
     if name == "write_file":
-        full = _safe_path(workspace, args.get("path", ""))
+        raw_path = args.get("path", "")
+        full = _safe_path(workspace, raw_path)
         content = args.get("content", "")
         outside = _is_outside_workspace(workspace, full)
         exists = os.path.exists(full)
@@ -292,7 +307,7 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
         if sys.stdout.isatty() and exists:
             try:
                 old = open(full, "r", encoding="utf-8", errors="replace").read()
-                diff_text = "\n".join(difflib.unified_diff(old.splitlines(), content.splitlines(), fromfile=f"a/{args.get('path')}", tofile=f"b/{args.get('path')}", lineterm=""))
+                diff_text = "\n".join(difflib.unified_diff(old.splitlines(), content.splitlines(), fromfile=f"a/{raw_path}", tofile=f"b/{raw_path}", lineterm=""))
                 if diff_text:
                     _console.print()
                     _console.print(Syntax(diff_text, "diff", theme="ansi_dark", background_color="default"))
@@ -300,21 +315,22 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
             except Exception:
                 pass
 
-        if (outside or gates_active) and not _confirm_gate(f"{'overwrite' if exists else 'create'} {args.get('path')}", spinner):
-            return f"[denied] user blocked file write: {args.get('path')}"
+        if (outside or gates_active) and not _confirm_gate(f"{'overwrite' if exists else 'create'} {raw_path}", spinner):
+            return f"[denied] user blocked file write: {raw_path}"
 
         try:
             os.makedirs(os.path.dirname(full) or workspace, exist_ok=True)
             open(full, "w", encoding="utf-8").write(content)
-            return f"wrote {len(content)} chars to {args.get('path')}"
+            return f"wrote {len(content)} chars to {raw_path}"
         except Exception as e:
             return f"[error] failed to write file: {e}"
 
     if name == "list_dir":
-        full = _safe_path(workspace, args.get("path", ""))
+        raw_path = args.get("path", "")
+        full = _safe_path(workspace, raw_path)
         outside = _is_outside_workspace(workspace, full)
-        if (outside or gates_active) and not _confirm_gate(f"list directory {args.get('path') or '.'}", spinner):
-            return f"[denied] user blocked directory listing: {args.get('path')}"
+        if (outside or gates_active) and not _confirm_gate(f"list directory {raw_path or '.'}", spinner):
+            return f"[denied] user blocked directory listing: {raw_path}"
         try:
             entries = sorted(os.listdir(full))
             return "\n".join((e + "/" if os.path.isdir(os.path.join(full, e)) else e) for e in entries) or "(empty)"

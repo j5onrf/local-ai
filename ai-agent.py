@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.9.5.6]
+# Local-Ai Agent [j5onrf] [v0.9.6.1]
 
 import json
 import os
@@ -92,7 +92,7 @@ def sync_md_to_sqlite(workspace: str, workspace_path: str) -> None:
 
 def _get_state() -> Dict[str, Any]:
     state_path = os.path.join(CFG_DIR, ".state.json")
-    default = {"spell_active": True, "show_stats": True, "memory_active": True, "box_style": 1}
+    default = {"spell_active": True, "show_stats": True, "memory_active": True, "box_style": 1, "yolo_mode": False}
     if os.path.exists(state_path):
         try:
             return {**default, **json.load(open(state_path, "r", encoding="utf-8"))}
@@ -101,7 +101,7 @@ def _get_state() -> Dict[str, Any]:
     return default
 
 
-def _save_state(key: str, value: bool) -> None:
+def _save_state(key: str, value: Any) -> None:
     state = _get_state()
     state[key] = value
     try:
@@ -161,30 +161,57 @@ def clean_exit(safe_name: Optional[str] = None) -> None:
 
 def run_interactive_chat(args: List[str]) -> None:
     is_agent = args[0] == "--talk-chat"
-    skills_list = []
-    active_skill = os.environ.get("AI_ACTIVE_SKILL")
-    if active_skill:
-        skills_list.extend([s.lstrip("-").lower() for s in active_skill.split()])
-    for arg in args:
-        if arg.startswith("-") and arg not in ("--talk", "--talk-chat"):
-            skills_list.append(arg.lstrip("-").lower())
-    skills_list = list(dict.fromkeys(skills_list))
-
-    skill_content = skills.load_skill_content(" ".join(skills_list), SKILLS_DIR, CFG_DIR)
-    base_p = BASE_PROMPT_AGENT if is_agent else (BASE_PROMPT_CHAT if not skills_list else BASE_PROMPT)
-    active_system_prompt = skill_content if (is_agent and skill_content) else (base_p + (f"\n\n### Active Skill/Role Instructions:\n{skill_content}\n" if skill_content else ""))
-
     workspace_path = os.environ.get("AI_WORKSPACE_PATH", os.getcwd())
     home_dir = os.path.expanduser("~")
     safe_name = workspace_safe_name(workspace_path, home_dir)
 
+    cfg_file = os.path.join(workspace_path, ".agent", "config.json")
+    selected_profile = "default"
+    is_yolo = False
+
+    # Workspace Profile Selection & Config Persistence
+    if is_agent:
+        if not os.path.exists(cfg_file):
+            selected_profile, is_yolo = ui.select_workspace_profile(os.path.basename(workspace_path))
+            try:
+                os.makedirs(os.path.dirname(cfg_file), exist_ok=True)
+                with open(cfg_file, "w", encoding="utf-8") as cf:
+                    json.dump({"profile": selected_profile, "yolo": is_yolo, "created_at": time.strftime("%Y-%m-%d %H:%M")}, cf, indent=2)
+            except Exception:
+                pass
+        else:
+            try:
+                cfg_data = json.load(open(cfg_file, "r", encoding="utf-8"))
+                selected_profile = cfg_data.get("profile", "default")
+                is_yolo = cfg_data.get("yolo", False)
+            except Exception:
+                pass
+
+    # Command-line skill override (e.g. ai --talk-chat -pi/pro)
+    for arg in args:
+        if arg.startswith("-") and arg not in ("--talk", "--talk-chat"):
+            selected_profile = arg.lstrip("-").lower()
+
+    # Construct System Prompt based on chosen profile
+    if selected_profile in ("default", "init"):
+        skill_content = skills.load_skill_content("init", SKILLS_DIR, CFG_DIR)
+        active_system_prompt = BASE_PROMPT_AGENT + (f"\n\n### Active Skill/Role Instructions:\n{skill_content}\n" if skill_content else "")
+        clean_name = "init"
+    else:
+        profile_content = skills.load_skill_content(selected_profile, SKILLS_DIR, CFG_DIR)
+        active_system_prompt = profile_content if profile_content else BASE_PROMPT_AGENT
+        clean_name = selected_profile
+
     chat_history = [{"role": "system", "content": active_system_prompt}]
     pending_query = " ".join(args[1:]) if len(args) > 1 else None
-    clean_name = " ".join(skills_list)
 
     st = _get_state()
     spell_active, show_stats, memory_active = st["spell_active"], st["show_stats"], st["memory_active"]
     reasoning_active, reasoning_budget = False, 500
+
+    # Apply persistent YOLO state (from workspace config or global .state.json)
+    if is_yolo or st.get("yolo_mode", False):
+        os.environ["AI_CONFIRM_GATES"] = "0"
 
     if is_agent:
         sync_md_to_sqlite(safe_name, workspace_path)
@@ -207,7 +234,6 @@ def run_interactive_chat(args: List[str]) -> None:
                 query, pending_query = pending_query, None
             else:
                 try:
-                    # \001 and \002 inform Readline of non-printing ANSI codes so long lines wrap cleanly
                     prompt_str = "\001\033[1;30m\002❯\001\033[0m\002 "
                     query = input(prompt_str).strip()
                 except EOFError:
@@ -273,9 +299,11 @@ def run_interactive_chat(args: List[str]) -> None:
                     continue
 
                 if query in ("/g", "/yolo"):
-                    gates_active = os.environ.get("AI_CONFIRM_GATES", "1") == "1"
-                    os.environ["AI_CONFIRM_GATES"] = "0" if gates_active else "1"
-                    msg = "disabled (Autonomous / YOLO mode active)" if gates_active else "enabled (y/n confirmation required per action)"
+                    yolo_active = os.environ.get("AI_CONFIRM_GATES", "1") == "0"
+                    new_yolo = not yolo_active
+                    os.environ["AI_CONFIRM_GATES"] = "0" if new_yolo else "1"
+                    _save_state("yolo_mode", new_yolo)
+                    msg = "disabled (Autonomous / YOLO mode active)" if new_yolo else "enabled (y/n confirmation required per action)"
                     ui._console.print(f"[yellow][sys] Confirmation gates {msg}.[/yellow]\n")
                     continue
 

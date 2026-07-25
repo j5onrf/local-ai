@@ -7,7 +7,6 @@ High-speed local developer agent, episodic memory system, checkpoint state manag
 [01/03] ❯ [session test] ai init ~/session-test --init
 :: ↵ run  Esc: 
 ✔ Mapping complete! [session-test index-map & SQLite graph database updated]
-[1] 702000
 ╔═  ❖ Local-AI Agent [sub-agent #1] ════════════╗
 ║     model:  Qwen3.6-35B-A3B.gguf              ║
 ║ directory:  ~/.config/local-ai/session-test   ║
@@ -122,6 +121,35 @@ Switch box styles using `/box [1-5]` (or type `/box` to cycle). Your choice pers
 
 ---
 
+## Workspace Agent Profiles (`.agent/config.json`)
+
+When you run `ai init <path>` in a workspace for the first time, an interactive profile selector menu allows you to set the default Agent Persona for that project:
+
+```text
+[ai init] Select default Agent Profile for workspace session-test:
+
+  ❯  1. Basic / Default    (~120 tokens | Standard init.md assistant)
+     2. Pi Lite [2B]       (~90 tokens  | Hyper-fast file editor for 2B models)
+     3. Pi Pro [35B]       (~220 tokens | Balanced workspace developer)
+     4. Pi Full [1:1]      (~1,900 tok  | Original 1:1 official Pi prompt)
+     5. Claude Lite        (~95 tokens  | Ultra-light XML tool agent)
+     6. Claude Pro         (~230 tokens | Architect with <thought> planning)
+     7. Claude Full        (~1,800 tok  | Full 1:1 Claude Code CLI prompt)
+     8. Hermes Lite        (~95 tokens  | Fast function-calling agent)
+     9. Hermes Pro         (~230 tokens | Nous Hermes 3 action agent)
+    10. Hermes Full        (~1,800 tok  | Full 1:1 Nous Hermes system prompt)
+
+  :: ↵ select  ↑/↓ navigate  Esc: default
+```
+
+> **Reset Profile Menu:** To change or reset a workspace's saved profile, delete `.agent/config.json` inside that project:
+> ```bash
+> rm .agent/config.json
+> ```
+```
+
+---
+
 ## 2. In-Session Commands
 
 ```text
@@ -130,7 +158,6 @@ Switch box styles using `/box [1-5]` (or type `/box` to cycle). Your choice pers
 │                                                                     │
 │   Available commands:                                               │
 │  /help, /h            - Show help menu                              │
-│  /copy                - Copy entire page transcript                 │
 │  /box, /box-style     - Change CLI box style (1-5)                  │
 │  /t [N|show|hide]     - Set reasoning budget or show/hide           │
 │  /g, /yolo            - Toggle confirmation gates (YOLO mode)       │

@@ -28,8 +28,21 @@ def ensure_mysys_exists(skills_dir: str, cfg_dir: str) -> None:
 
 
 def find_skill_file(base_dir: str, skill_name: str) -> Optional[str]:
-    """Scans subdirectories up to a depth of 3 to locate a target Markdown skill file."""
-    target_filename = f"{skill_name.lower()}.md"
+    """Scans subdirectories to locate target Markdown skill file (supports nested paths like pi/pro)."""
+    skill_clean = skill_name.lstrip("-").lower()
+    
+    # Direct candidate checks (e.g., pi/pro -> skills/profiles/pi/pro.md)
+    direct_candidates = [
+        os.path.join(base_dir, "profiles", f"{skill_clean}.md"),
+        os.path.join(base_dir, f"{skill_clean}.md"),
+        os.path.join(base_dir, "system", f"{skill_clean}.md")
+    ]
+    for cand in direct_candidates:
+        if os.path.exists(cand):
+            return cand
+
+    # Fallback recursive search
+    target_filename = f"{os.path.basename(skill_clean)}.md"
     for root, _, files in os.walk(base_dir):
         if root[len(base_dir):].count(os.sep) <= 3:
             for f in files:
@@ -298,10 +311,10 @@ def run_skill_selector(workspace: str, raw_cmd: str, dept_skills_dir: str, stop_
 
 if __name__ == "__main__":
     CFG_DIR = os.path.expanduser("~/.config/local-ai")
-    DEPT_SKILLS_DIR = os.path.join(CFG_DIR, "skills", "dept")
+    ON_DEMAND_SKILLS_DIR = os.path.join(CFG_DIR, "skills", "on-demand")  # Clean on-demand search target
     STOP_WORDS = {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"}
     
     if len(sys.argv) < 3:
         sys.argv.append("")
         sys.argv.append("")
-    run_skill_selector(sys.argv[1], sys.argv[2], DEPT_SKILLS_DIR, STOP_WORDS)
+    run_skill_selector(sys.argv[1], sys.argv[2], ON_DEMAND_SKILLS_DIR, STOP_WORDS)
