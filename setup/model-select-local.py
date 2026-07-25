@@ -15,7 +15,6 @@ SERV_DIR = "/home/user/models/serv"
 STATE_FILE = "/tmp/cpu_mode_state"
 
 # Map local GGUF filenames to their respective launch scripts
-# Claude merge: Eloquent, great tool-calling chatbot/sysadmin; logically unstable. Base model: Superior logical reasoning.
 LOCAL_MODELS = [
     {
         "name": "Qwen 3.5 2B (4-bit base)",
