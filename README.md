@@ -2,7 +2,7 @@
   <img alt="Local-AI Agent" src="logo.png" width="800" />
 </p>
 
-<h1 align="center">Local-AI Agent <kbd>v0.9.6.1-beta</kbd></h1>
+<h1 align="center">Local-AI Agent <kbd>v0.9.6.2-beta</kbd></h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
@@ -51,10 +51,10 @@ Built with zero context-stuffing for extreme efficiency on quantized local model
 ╔═  ❖ Local-AI Agent  ═══════════════╗
 ║     model:  Qwen3.6-35B-A3B.gguf   ║
 ║ directory:  ~                      ║
-║     skill:  default                ║
+║     skill:  chat                   ║
 ║  database:  stateless              ║
 ╚═══════════════════ Ctrl+C to exit ═╝
- Startup context: 74 tokens
+ Startup context: 103 tokens
 ❯ 
 ```
 
@@ -72,11 +72,11 @@ Built with zero context-stuffing for extreme efficiency on quantized local model
 │     skill:  hermes/lite                                │
 │  database:  active (0 facts, 2 turns)                  │
 ╰─────────────────────────────────────── Ctrl+C to exit ─╯
- Startup context: 57 tokens
+ Startup context: 95 tokens
 
 Agent: Workspace loaded. Awaiting instructions.
 
- [ 7 tokens | 0.28s | 25.23 t/s ]
+ [ 7 tokens | 0.28s | 28.23 t/s ]
  [ 703 in | 7 out | ctx: 8.7% ]
 ❯ 
 ```

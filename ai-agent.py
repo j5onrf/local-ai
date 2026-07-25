@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.9.6.1]
+# Local-Ai Agent [j5onrf] [v0.9.6.2]
 
 import json
 import os
@@ -192,15 +192,22 @@ def run_interactive_chat(args: List[str]) -> None:
         if arg.startswith("-") and arg not in ("--talk", "--talk-chat"):
             selected_profile = arg.lstrip("-").lower()
 
-    # Construct System Prompt based on chosen profile
-    if selected_profile in ("default", "init"):
-        skill_content = skills.load_skill_content("init", SKILLS_DIR, CFG_DIR)
-        active_system_prompt = BASE_PROMPT_AGENT + (f"\n\n### Active Skill/Role Instructions:\n{skill_content}\n" if skill_content else "")
-        clean_name = "init"
+    # Construct System Prompt based on mode & selected profile
+    if is_agent:
+        if selected_profile in ("default", "init"):
+            skill_content = skills.load_skill_content("init", SKILLS_DIR, CFG_DIR)
+            active_system_prompt = BASE_PROMPT_AGENT + (f"\n\n### Active Skill/Role Instructions:\n{skill_content}\n" if skill_content else "")
+            clean_name = "init"
+        else:
+            profile_content = skills.load_skill_content(selected_profile, SKILLS_DIR, CFG_DIR)
+            active_system_prompt = profile_content if profile_content else BASE_PROMPT_AGENT
+            clean_name = selected_profile
     else:
-        profile_content = skills.load_skill_content(selected_profile, SKILLS_DIR, CFG_DIR)
-        active_system_prompt = profile_content if profile_content else BASE_PROMPT_AGENT
-        clean_name = selected_profile
+        # Standard Conversational Chat Mode (`ai`)
+        target_skill = selected_profile if (selected_profile and selected_profile != "default") else "chat"
+        skill_content = skills.load_skill_content(target_skill, SKILLS_DIR, CFG_DIR)
+        active_system_prompt = skill_content if skill_content else BASE_PROMPT_CHAT
+        clean_name = target_skill
 
     chat_history = [{"role": "system", "content": active_system_prompt}]
     pending_query = " ".join(args[1:]) if len(args) > 1 else None
