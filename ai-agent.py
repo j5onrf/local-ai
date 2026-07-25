@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.9.6.2]
+# Local-Ai Agent [j5onrf] [v0.9.6.3]
 
 import json
 import os
@@ -92,7 +92,16 @@ def sync_md_to_sqlite(workspace: str, workspace_path: str) -> None:
 
 def _get_state() -> Dict[str, Any]:
     state_path = os.path.join(CFG_DIR, ".state.json")
-    default = {"spell_active": True, "show_stats": True, "memory_active": True, "box_style": 1, "yolo_mode": False}
+    default = {
+        "spell_active": True,
+        "show_stats": True,
+        "memory_active": True,
+        "box_style": 1,
+        "yolo_mode": False,
+        "show_thinking": True,
+        "reasoning_active": False,
+        "reasoning_budget": 500,
+    }
     if os.path.exists(state_path):
         try:
             return {**default, **json.load(open(state_path, "r", encoding="utf-8"))}
@@ -214,7 +223,11 @@ def run_interactive_chat(args: List[str]) -> None:
 
     st = _get_state()
     spell_active, show_stats, memory_active = st["spell_active"], st["show_stats"], st["memory_active"]
-    reasoning_active, reasoning_budget = False, 500
+    reasoning_active = st.get("reasoning_active", False)
+    reasoning_budget = st.get("reasoning_budget", 500)
+
+    # Set persistent thinking display state
+    os.environ["AI_SHOW_THINKING"] = "1" if st.get("show_thinking", True) else "0"
 
     # Apply persistent YOLO state (from workspace config or global .state.json)
     if is_yolo or st.get("yolo_mode", False):
@@ -314,34 +327,41 @@ def run_interactive_chat(args: List[str]) -> None:
                     ui._console.print(f"[yellow][sys] Confirmation gates {msg}.[/yellow]\n")
                     continue
 
-                # Main Thinking Toggle & Budget Handler
+                # Persistent Thinking Toggle & Budget Handler
                 parts = query.split()
                 if parts and parts[0] in ("/t", "/thinking"):
                     if len(parts) > 1:
                         sub = parts[1].lower()
                         if sub in ("hide", "off", "mute", "quiet"):
                             os.environ["AI_SHOW_THINKING"] = "0"
+                            _save_state("show_thinking", False)
                             ui._console.print("[yellow][sys] Thinking display hidden (thinking mode remains active).[/yellow]\n")
                             continue
                         elif sub in ("show", "on", "visible"):
                             os.environ["AI_SHOW_THINKING"] = "1"
+                            _save_state("show_thinking", True)
                             ui._console.print("[yellow][sys] Thinking display enabled.[/yellow]\n")
                             continue
                         elif sub in ("toggle", "t"):
                             curr = os.environ.get("AI_SHOW_THINKING", "1") == "1"
-                            os.environ["AI_SHOW_THINKING"] = "0" if curr else "1"
-                            ui._console.print(f"[yellow][sys] Thinking display {'hidden' if curr else 'enabled'}.[/yellow]\n")
+                            new_val = not curr
+                            os.environ["AI_SHOW_THINKING"] = "1" if new_val else "0"
+                            _save_state("show_thinking", new_val)
+                            ui._console.print(f"[yellow][sys] Thinking display {'enabled' if new_val else 'hidden'}.[/yellow]\n")
                             continue
                         else:
                             try:
                                 val = int(parts[1])
                                 reasoning_active, reasoning_budget = val > 0, max(0, val)
+                                _save_state("reasoning_active", reasoning_active)
+                                _save_state("reasoning_budget", reasoning_budget)
                                 ui._console.print(f"[yellow][sys] Deep reasoning {'enabled' if reasoning_active else 'disabled'} (budget: {reasoning_budget} tokens).[/yellow]\n")
                             except ValueError:
                                 ui._console.print("[red][sys] Usage: /t [number|show|hide|toggle][/red]\n")
                             continue
                     else:
                         reasoning_active = not reasoning_active
+                        _save_state("reasoning_active", reasoning_active)
                         ui._console.print(f"[yellow][sys] Deep reasoning {'enabled' if reasoning_active else 'disabled'} (budget: {reasoning_budget} tokens).[/yellow]\n")
                     continue
 
@@ -515,7 +535,7 @@ def run_matching_search(args: List[str]) -> None:
     user_input = re.sub(r"[`$]", "", " ".join(args)).strip()
     if not user_input or args[0].startswith("--"):
         sys.exit(0)
-        
+
     # Catch /help or /h typed directly in Bash/Zsh prompt
     if user_input.lower() in ("/help", "/h"):
         ui.show_help()

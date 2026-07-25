@@ -38,49 +38,106 @@ except ImportError:
 
 
 class RichStreamer:
-    """Renders stream content dynamically using Rich with <think> panel support."""
+    """Renders stream content dynamically: transient Live for Thinking, direct delta stream for Answer."""
     def __init__(self, prefix: str = "", active: bool = True) -> None:
         self.prefix: str = prefix
         self.active: bool = active and sys.stdout.isatty()
-        self.accumulated: str = ""
+        self.accumulated_thinking: str = ""
         self.live: Optional[Live] = None
+        self.phase: str = "INIT"  # "INIT", "THINKING", "ANSWER"
+        self.answer_started: bool = False
+        self.last_update_time: float = 0.0
 
     def start(self) -> None:
-        if self.active:
-            self.live = Live("", console=_console, auto_refresh=False, vertical_overflow="crop", screen=False)
-            self.live.start()
+        pass
 
     def update(self, token: str) -> None:
-        self.accumulated += token
         if not self.active:
             print(token, end="", flush=True)
             return
 
-        show_think_panel = os.environ.get("AI_SHOW_THINKING", "0") == "1"
-        text = self.accumulated
+        show_think_panel = os.environ.get("AI_SHOW_THINKING", "1") == "1"
 
-        if "<think>" in text:
-            before, after = text.split("<think>", 1)
-            if "</think>" in after:
-                thinking_text, after_think = after.split("</think>", 1)
-                answer_text = before + after_think
-                if show_think_panel:
-                    panel = Panel(Text(thinking_text.strip(), style="italic dim white"), title="⚙ Thinking Process", title_align="left", border_style="bright_black", box=ROUNDED, expand=True)
-                    render_group = Group(panel, Markdown(f"{self.prefix}{answer_text}" if answer_text.strip() else ""))
-                else:
-                    render_group = Markdown(f"{self.prefix}{answer_text}" if answer_text.strip() else "")
-            else:
-                if show_think_panel:
-                    panel = Panel(Text(after.strip(), style="italic dim white"), title="⚙ Thinking Process...", title_align="left", border_style="yellow", box=ROUNDED, expand=True)
-                    render_group = Group(panel, Markdown(f"{self.prefix}{before}" if before.strip() else ""))
-                else:
-                    render_group = Text("⚙ Thinking...", style="italic dim yellow")
+        # Check if token contains transitions
+        if "<think>" in token and self.phase != "THINKING":
+            self.phase = "THINKING"
+            if show_think_panel:
+                self.live = Live("", console=_console, auto_refresh=False, vertical_overflow="crop", transient=True, screen=False)
+                self.live.start()
+            token = token.replace("<think>", "")
+
+        if "</think>" in token:
+            # Transition out of Thinking Phase
+            parts = token.split("</think>", 1)
+            thinking_part = parts[0]
+            answer_part = parts[1] if len(parts) > 1 else ""
+
+            self.accumulated_thinking += thinking_part
+
+            # Close Live thinking panel
+            if self.live:
+                try:
+                    self.live.stop()
+                except Exception:
+                    pass
+                self.live = None
+
+            # Print finalized static thinking panel ONCE
+            if show_think_panel and self.accumulated_thinking.strip():
+                panel = Panel(
+                    Text(self.accumulated_thinking.strip(), style="italic dim white"),
+                    title="⚙ Thinking Process",
+                    title_align="left",
+                    border_style="bright_black",
+                    box=ROUNDED,
+                    expand=True
+                )
+                _console.print(panel)
+
+            # Switch phase permanently to ANSWER
+            self.phase = "ANSWER"
+
+            # Print AI prefix ONCE and output initial answer chunk
+            if not self.answer_started:
+                self.answer_started = True
+                sys.stdout.write(f"{self.prefix} " if self.prefix else "")
+
+            if answer_part:
+                sys.stdout.write(answer_part)
+            sys.stdout.flush()
+            return
+
+        # Handle active phase streaming
+        if self.phase == "THINKING":
+            self.accumulated_thinking += token
+            now = time.time()
+            if now - self.last_update_time < 0.04 and not token.endswith("\n"):
+                return
+            self.last_update_time = now
+
+            if show_think_panel and self.live:
+                panel = Panel(
+                    Text(self.accumulated_thinking.strip(), style="italic dim white"),
+                    title="⚙ Thinking Process...",
+                    title_align="left",
+                    border_style="yellow",
+                    box=ROUNDED,
+                    expand=True
+                )
+                self.live.update(panel)
+                self.live.refresh()
+
         else:
-            render_group = Markdown(f"{self.prefix}{text}")
+            # ANSWER Phase: Stream delta tokens directly to stdout
+            if self.phase != "ANSWER":
+                self.phase = "ANSWER"
 
-        if self.live:
-            self.live.update(render_group)
-            self.live.refresh()
+            if not self.answer_started:
+                self.answer_started = True
+                sys.stdout.write(f"{self.prefix} " if self.prefix else "")
+
+            sys.stdout.write(token)
+            sys.stdout.flush()
 
     def stop(self) -> None:
         if self.live:
@@ -89,7 +146,10 @@ class RichStreamer:
             except Exception:
                 pass
             self.live = None
-            print()
+
+        if self.answer_started:
+            sys.stdout.write("\n")
+            sys.stdout.flush()
 
 
 def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float, show_stats: bool, ctx_used: Optional[int] = None) -> None:
@@ -133,10 +193,10 @@ def _process_stream_chunk(content: str, reasoning: str, in_think_block: bool) ->
             return f"<think>{reasoning}", True, True
         return reasoning, True, True
     if content:
-        if in_think_block and not ("<think>" in content or "</think>" in content):
+        if in_think_block and "</think>" not in content:
             return f"</think>{content}", False, False
         in_think = True if "<think>" in content else (False if "</think>" in content else in_think_block)
-        return content, in_think or ("<think>" in content), in_think
+        return content, in_think, in_think
     return "", False, in_think_block
 
 
@@ -172,7 +232,7 @@ def stream(messages: List[Dict[str, str]], prefix: str, gkey: str, spinner_class
 
     try:
         spinner.start()
-        with urlreq.urlopen(req, timeout=30) as response:
+        with urlreq.urlopen(req, timeout=180) as response:
             first, acc, resolved_id, streamer = True, [], None, None
             for line in response:
                 dec = line.decode("utf-8").strip()
@@ -184,12 +244,12 @@ def stream(messages: List[Dict[str, str]], prefix: str, gkey: str, spinner_class
                     data = json.loads(dec)
                     if data.get("event_type") == "interaction.completed":
                         resolved_id = data.get("interaction", {}).get("id")
-                    
+
                     content = ""
                     if data.get("event_type") == "step.delta":
                         delta = data.get("delta", {})
                         content = delta.get("text", "") if delta.get("type") == "text" else delta.get("content", {}).get("text", "")
-                    
+
                     if content:
                         if first:
                             spinner.stop()
@@ -205,7 +265,7 @@ def stream(messages: List[Dict[str, str]], prefix: str, gkey: str, spinner_class
                             speed_test.count_token(content, is_thinking=False)
                 except Exception:
                     pass
-            
+
             if streamer:
                 streamer.stop()
             else:
@@ -213,7 +273,7 @@ def stream(messages: List[Dict[str, str]], prefix: str, gkey: str, spinner_class
 
             ans_text = "".join(acc)
             in_est, out_est = (len(body.get("input", "")) + len(body.get("system_instruction", ""))) // 4, len(ans_text) // 4
-            
+
             if speed_test and show_stats:
                 speed_test.end(actual_out_tokens=out_est, is_local=False)
 
@@ -249,11 +309,8 @@ def _safe_path(workspace: str, p: str) -> str:
     """Auto-heals URL-encoded strings and leading slashes from 2B models."""
     if not p:
         return os.path.realpath(workspace)
-        
-    # 1. URL decode path (%20 -> spaces)
+
     p = urllib.parse.unquote(str(p).strip())
-    
-    # 2. Strip leading slash if path does not exist at root / (e.g. /Test Script.sh -> workspace/Test Script.sh)
     if p.startswith("/") and not os.path.exists(p):
         p = p.lstrip("/")
 
@@ -292,7 +349,7 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
         content = args.get("content", "")
         outside = _is_outside_workspace(workspace, full)
         exists = os.path.exists(full)
-        
+
         if full.endswith(".py"):
             try:
                 ast.parse(content)
@@ -369,10 +426,10 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
     """Executes a multi-turn streaming agent loop supporting tool execution and evaluation."""
     workspace = os.environ.get("AI_WORKSPACE_PATH", os.getcwd())
     is_local = "localhost" in url or "127.0.0.1" in url or body.get("model") == "local-model"
-    
+
     if messages and messages[0]["role"] == "system" and "### EDIT MODE" not in messages[0]["content"]:
         messages[0]["content"] += EDIT_SYSTEM_ADD.format(ws=workspace) + TOOLS_SYSTEM_ADD.format(names="read_file, write_file, list_dir, run_command", ws=workspace)
-            
+
     resolved_model = None
     for _round in range(10):
         body_tools = {**body, "messages": messages, "stream": True, "tools": _EDIT_TOOLS}
@@ -380,14 +437,14 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
         try:
             res = _session.post(url, json=body_tools, headers={"Content-Type": "application/json", **headers}, timeout=timeout, stream=True)
             first_chunk, acc_content, tool_calls_map, streamer, in_think_block, captured_usage = True, [], {}, None, False, None
-            
+
             for line in res.iter_lines():
                 if not line or not line.decode("utf-8", errors="ignore").strip().startswith("data:"):
                     continue
                 data_str = line.decode("utf-8", errors="ignore").strip()[5:].strip()
                 if data_str == "[DONE]":
                     break
-                    
+
                 try:
                     data = json.loads(data_str)
                     captured_usage = data.get("usage") or captured_usage
@@ -396,7 +453,7 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
                     if not choices:
                         continue
                     delta = choices[0].get("delta", {})
-                    
+
                     content, reasoning = delta.get("content", "") or "", delta.get("reasoning_content", "") or delta.get("thinking", "") or ""
                     chunk_to_stream, is_thinking, in_think_block = _process_stream_chunk(content, reasoning, in_think_block)
 
@@ -408,13 +465,13 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
                             streamer.start()
                             if speed_test and show_stats:
                                 speed_test.start()
-                        
+
                         if streamer:
                             streamer.update(chunk_to_stream)
                         acc_content.append(chunk_to_stream)
                         if speed_test and show_stats:
                             speed_test.count_token(chunk_to_stream, is_thinking=is_thinking)
-                            
+
                     for tc in delta.get("tool_calls", []):
                         idx = tc.get("index", 0)
                         if idx not in tool_calls_map:
@@ -424,7 +481,7 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
                         tool_calls_map[idx]["function"]["arguments"] += tc.get("function", {}).get("arguments", "")
                 except Exception:
                     pass
-                    
+
             if streamer:
                 streamer.stop()
             elif not first_chunk:
@@ -435,21 +492,21 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
 
             if speed_test and show_stats and not first_chunk:
                 speed_test.end(actual_out_tokens=out_tok, is_local=is_local)
-            
+
             calls = [val for _, val in sorted(tool_calls_map.items())] if tool_calls_map else None
             if not calls:
                 _log_turn_usage(resolved_model or body.get("model") or "local-model", in_tok, out_tok, 0.0, show_stats, in_tok + out_tok)
                 return ans_text
-                
+
             messages.append({"role": "assistant", "content": ans_text or None, "tool_calls": calls})
-            
+
             user_aborted = False
             for tc in calls:
                 fname = tc.get("function", {}).get("name", "")
                 args = json.loads(tc.get("function", {}).get("arguments") or "{}") if tc.get("function", {}).get("arguments") else {}
                 brief = str(args.get("path") or args.get("command") or "")[:100]
                 verb = TOOL_VERBS.get(fname, "working")
-                
+
                 if user_aborted:
                     result = "[denied] execution cancelled by user"
                 else:
@@ -465,19 +522,19 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
                     finally:
                         if spinner:
                             spinner.stop()
-                        
+
                 messages.append({"role": "tool", "tool_call_id": tc.get("id", ""), "name": fname, "content": result})
-                
+
             if user_aborted:
                 _console.print("[dim][sys] Agent execution halted.[/dim]")
                 return ans_text or "Agent: Action cancelled by user."
-                
+
         except Exception as e:
             sys.stderr.write(f"\033[90m[sys] API response error: {e}\033[0m\n")
             return None
         finally:
             spinner.stop()
-            
+
     return None
 
 
@@ -493,7 +550,7 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
             "thinking_budget_tokens": thinking_budget if thinking_budget > 0 else 0,
             "chat_template_kwargs": {"enable_thinking": thinking_budget > 0}
         }
-        
+
         seen_urls = set()
         unique_configs = []
         for url, headers, body, timeout in configs:
@@ -501,10 +558,10 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
             if norm_url not in seen_urls:
                 seen_urls.add(norm_url)
                 unique_configs.append(("http://localhost:8080/v1/chat/completions" if ":8080" in url else url, headers, body, timeout))
-                
+
         if "http://localhost:8080/v1/chat/completions" not in seen_urls:
             unique_configs.append(("http://localhost:8080/v1/chat/completions", {}, local_body, 180))
-            
+
         for url, headers, body, timeout in unique_configs:
             if is_agent:
                 ans = agentic_turn(messages, url, headers, body, timeout, spinner, show_stats)
@@ -527,12 +584,12 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
                                     open(os.path.join(cfg_dir, ".request_log"), "a", encoding="utf-8").write(f"{int(time.time())}|{p}\n")
                                 except Exception:
                                     pass
-                        
+
                         first, resolved_model, streamer, in_think_block, captured_usage = True, None, None, False, None
                         for line in response:
                             if not line.startswith(b"data:"):
                                 continue
-                            
+
                             content, reasoning, usage = extract_stream_content(line)
                             captured_usage = usage or captured_usage
 
@@ -559,13 +616,13 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
                             streamer.stop()
                         else:
                             print("")
-                        
+
                         ans_text = "".join(acc)
                         in_tok, out_tok = _calc_turn_tokens(ans_text, messages, captured_usage, is_local)
 
                         if speed_test and show_stats:
                             speed_test.end(actual_out_tokens=out_tok, is_local=is_local)
-                        
+
                         _log_turn_usage(resolved_model or body.get("model") or url.split('/')[2], in_tok, out_tok, 0.0, show_stats, in_tok + out_tok)
                         return ans_text
                 except urlerr.HTTPError as e:
@@ -616,7 +673,7 @@ def show_memory_status(messages: List[Dict[str, Any]], max_context: int = 8192, 
     filled = int((total_toks / max_context) * 20)
     bar = "█" * filled + "░" * (20 - filled)
     color = "green" if pct < 70 else "yellow" if pct < 90 else "red"
-    
+
     _console.print(Panel(
         Group(
             Text.assemble(("Context Window: ", "dim"), (f"{total_toks}", f"bold {color}"), (f"/{max_context} tokens ", "dim"), (f"({pct:.1f}%)", f"bold {color}")),

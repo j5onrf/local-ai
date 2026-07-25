@@ -18,12 +18,12 @@ STATE_FILE = "/tmp/cpu_mode_state"
 # Claude merge: Eloquent, great tool-calling chatbot/sysadmin; logically unstable. Base model: Superior logical reasoning.
 LOCAL_MODELS = [
     {
-        "name": "Qwen 3.5 2B (Ultra-light)",
+        "name": "Qwen 3.5 2B (4-bit base)",
         "file": "Qwen3.5-2B.gguf",
         "script": "q2b.sh"
     },
     {
-        "name": "Qwen 3.6 35B (4-bit)",
+        "name": "Qwen 3.6 35B (4-bit base)",
         "file": "Qwen3.6-35B-A3B.gguf",
         "script": "q35b.sh"
     }

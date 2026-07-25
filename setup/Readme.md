@@ -1,74 +1,95 @@
-# Local Server Configuration (Reasoning Models) (CPU Only / Must Config for GPU)
+# Local Server Configuration (Reasoning & Tool Models)
 
-*   **Verified Backend:** `llama.cpp` (Build `9753` / Commit `7c082bc41`)
-*   **Tested Compiler:** `GNU 16.1.1` for Linux `x86_64`
+* **Verified Backend:** `llama.cpp` (Build `10125` / Commit `720d7fa40`)
+* **Compilation Target:** Native CachyOS `x86-64-v4` (AVX-512, VNNI, F16C) via `GNU 16.1.1`
+* **Supported Models:** Qwen Base GGUF Series (2B, 35B) & MiniCPM Series (1B)
 
-This directory contains scripts to deploy and manage local `llama-server` instances configured for Qwen reasoning models, enabling reasoning toggles (`/r`) without splitting VRAM or restarting processes.
-
-*Note: The included `example-server.sh` defaults to **CPU execution** and runs in a headless state.*
+This directory contains deployment scripts and process management tools for `llama-server`. The configuration supports dynamic, per-request thinking toggles (`/t <tokens>`) without splitting VRAM or restarting server instances.
 
 ---
 
 ## 1. Server Configuration (`example-server.sh`)
 
-To support client-side reasoning overrides while keeping background tools fast, `llama-server` must be launched with specific flag combinations:
+To support client-side reasoning overrides (`/t`) while keeping background tools and standard queries instant, launch `llama-server` with the following flag combination:
 
-* **`--reasoning on` & `--reasoning-budget -1`**: Enables reasoning pipeline while delegating token limits to client requests.
-* **`--chat-template-kwargs '{"enable_thinking":false}'`**: **(Critical)** Sets default thinking to **OFF**. Standard queries, skills, and background tools (`/a`, `/f`) execute instantly.
-* **`--reasoning-format deepseek`**: Separates `<think>` tags from `content` to prevent raw output leaks.
-* **`--reasoning-budget-message`**: Injects a clean transition prompt if a token ceiling is reached mid-thought.
-* **`--no-ui`**: Disables the embedded web assets to optimize startup time and reduce memory overhead.
-
-### GPU Acceleration Setup
-To enable hardware acceleration (CUDA/ROCm/Metal), edit your launcher script and add the **`-ngl`** (number of GPU layers) parameter to the `llama-server` command:
 ```bash
-  -ngl 99 \  # Offloads all layers to the GPU
+  --reasoning on \
+  --reasoning-format auto \
+  --reasoning-budget-message "\n" \
+  --chat-template-kwargs '{"enable_thinking":false}' \
 ```
 
-### Accessing the llama.cpp Web UI
-If you prefer to use the built-in browser-based playground instead of a purely headless backend, edit `example-server.sh` and **remove** the following line:
-```bash
-  --no-ui \
-```
-Once removed, restarting the server allows you to access the interactive web interface directly at `http://localhost:8080`.
+### Flag Explanations
+* **`--reasoning on`**: Enables the internal reasoning pipeline inside `llama-server`.
+* **`--reasoning-format auto`**: Allows `llama-server` to automatically detect `<think>...</think>` tags for Qwen and DeepSeek models without forcing incorrect template parsers.
+* **`--reasoning-budget-message "\n"`**: Injects a clean newline transition when a client's thinking token budget is reached. This prevents text leaks into chat output and stops reasoning loops.
+* **`--chat-template-kwargs '{"enable_thinking":false}'`**: **(Critical)** Sets the default server state to **Thinking OFF**. Standard queries, skills, and background agent tools (`read_file`, `write_file`, `run_command`) execute immediately with zero latency.
+* *Note on `--reasoning-budget`*: Hardcoded server budgets are omitted so that client API payloads dynamically control token limits (e.g., `/t 500` or `/t off`).
 
 ---
 
-## 2. Interactive TUI Selector (`model-select-local.py`)
+## 2. GPU Acceleration & WebUI Setup
 
-A standalone terminal interface to switch active local GGUF models, unload memory, and launch background server containers.
+### GPU Layer Offloading
+To offload computation to an NVIDIA GPU via CUDA, add the `-ngl` (number of GPU layers) parameter:
+```bash
+  -ngl 99 \  # Offloads all model layers to VRAM
+```
+
+### Accessing the Web UI
+To use the embedded `llama.cpp` web interface in your browser, **remove** the following line from your server launcher script:
+```bash
+  --no-ui \
+```
+Once removed, access the web playground at `http://localhost:8080`.
+
+---
+
+## 3. Interactive TUI Selector (`model-select-local.py`)
+
+A terminal interface used to switch active local GGUF models, flush system memory, and launch backend server scripts.
 
 ### Features
-* **Active Status Detection:** Scans system processes via `pgrep` to show which GGUF is currently loaded on Port 8080.
-* **RAM & VRAM Power Clean:** Executes a graceful `SIGTERM` (escalating to `SIGKILL` if hanging) and flushes system page caches (`drop_caches`).
-* **Detached Sessions:** Spawns backend servers in independent process groups (`start_new_session=True`), keeping the model running after closing the selector TUI.
+* **Active Status Detection:** Scans port 8080 processes to report which model is currently loaded.
+* **Process Cleanup:** Gracefully terminates active instances (`SIGTERM` / `SIGKILL`) and flushes system memory.
+* **Detached Execution:** Spawns `llama-server` in independent process groups (`start_new_session=True`), keeping the backend running after exiting the selector.
 
 ### Configuration
-Edit the top variables in `model-select-local.py` to point to your script paths and models:
+Update the paths inside `model-select-local.py` to match your local setup:
 
 ```python
 MODELS_DIR = "/home/user/models"
 SERV_DIR = "/home/user/models/serv"
 
 LOCAL_MODELS = [
-    {"name": "Qwen 3.5 2B (Ultra-light)", "file": "Qwen3.5-2B.gguf", "script": "q2b.sh"},
-    {"name": "Qwen 3.6 35B (4-bit Uncensored)", "file": "Qwen3.6-35B-A3B.gguf", "script": "q35b.sh"},
+    {"name": "Qwen 3.5 2B Base", "file": "Qwen3.5-2B.gguf", "script": "serv-2b.sh"},
+    {"name": "Qwen 3.6 35B Base", "file": "Qwen3.6-35B.gguf", "script": "serv-35b.sh"},
 ]
 ```
 
 ---
 
-## 3. Quickstart
+## 4. Two-Layer Harness & Small Model Optimization (`ai-context.md`)
 
-1. **Make scripts executable:**
-   ```bash
-   chmod +x example-server.sh model-select-local.py
-   ```
+Pairing the Python agent harness and its intent blueprint (`ai-context.md`) with lightweight 1B/2B models (e.g., `minicpm5-1b-agentic-tooluse.gguf` or `Qwen3.5-2B.gguf`) enables **sub-second desktop automation** (`0.14s – 0.5s`) with zero tool hallucination.
 
-2. **Launch the TUI Model Selector:**
+### Architecture Division
+* **Layer 1 (Smart Harness):** The Python client uses `ai-context.md` to deterministically map plain-English intents (`"---> weather"`, `"---> system health"`, `"---> time"`) directly to local bash scripts and system utilities.
+* **Layer 2 (Lightweight LLM Engine):** Small 1B/2B models serve as rapid, low-overhead decision formatters that process harness tool outputs at **40–65+ tokens/sec**.
+
+> **Workflow Rule:** Lightweight 1B/2B models remain always-on in the background for sub-second system automation, while heavy models (35B) are loaded on-demand via `model-select-local.py` for complex architecture and deep reasoning (`/t`).
+
+---
+
+## 5. Quickstart
+
+1. **Launch the TUI Model Selector:**
    ```bash
    ./model-select-local.py
    ```
-   * Use **▲/▼ Arrows** to select a model and press **Enter** to switch.
-   * Select **Unload All Local Models** to completely free up system RAM/VRAM.
+   * Use **▲/▼ Arrows** to select a model and press **Enter** to launch.
+   * Select **Unload All Local Models** to completely free system RAM/VRAM.
 
+2. **Control Thinking in Agent Terminal (`ai`):**
+   * `/t 500` - Enable deep reasoning with a 500-token thinking budget.
+   * `/t off` - Disable reasoning for instant tool execution and fast chat.

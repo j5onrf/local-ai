@@ -17,8 +17,11 @@ if command -v lsof >/dev/null 2>&1; then
     fi
 fi
 
-# Launch wrapped in UWSM context with idle I/O and low CPU priority
-exec ionice -c 3 nice -n 19 "$LLAMA_SERVER_BIN" \
+# Launch wrapped in systemd-run
+exec systemd-run --scope --user \
+  -p MemorySwapMax=0 \
+  -p MemoryMin=22G \
+  ionice -c 3 nice -n 19 "$LLAMA_SERVER_BIN" \
   -m "$MODEL_PATH" \
   -c 8192 \
   -np 1 \
@@ -30,13 +33,14 @@ exec ionice -c 3 nice -n 19 "$LLAMA_SERVER_BIN" \
   --flash-attn on \
   --reasoning on \
   --reasoning-format deepseek \
-  --reasoning-budget -1 \
-  --reasoning-budget-message " ... reasoning budget exceeded, let's answer now.\n" \
+  --reasoning-budget-message "\n" \
   --chat-template-kwargs '{"enable_thinking":false}' \
   --context-shift \
   --jinja \
   --temp 0.45 \
   --dynatemp-range 0.45 \
   --min-p 0.05 \
+  --repeat-penalty 1.1 \
+  --repeat-last-n 128 \
   --no-ui \
   --port "$PORT" >> "$LOG_FILE" 2>&1

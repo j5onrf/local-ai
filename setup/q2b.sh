@@ -1,4 +1,4 @@
-#!/bin/env bash
+#!/usr/bin/env bash
 
 # Configuration
 PORT=8080
@@ -17,8 +17,7 @@ if command -v lsof >/dev/null 2>&1; then
     fi
 fi
 
-# Fixed: Removed the redundant 'uwsm app --' and used the proper absolute path variable
-exec uwsm app -- llama-server \
+exec uwsm app -- "$LLAMA_SERVER_BIN" \
   -m "$MODEL_PATH" \
   -c 8192 \
   -np 1 \
@@ -27,9 +26,8 @@ exec uwsm app -- llama-server \
   -ub 128 \
   --flash-attn on \
   --reasoning on \
-  --reasoning-format deepseek \
-  --reasoning-budget -1 \
-  --reasoning-budget-message " ... reasoning budget exceeded, let's answer now.\n" \
+  --reasoning-format auto \
+  --reasoning-budget-message "\n" \
   --chat-template-kwargs '{"enable_thinking":false}' \
   --context-shift \
   --jinja \
