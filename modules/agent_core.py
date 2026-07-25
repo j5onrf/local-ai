@@ -25,10 +25,8 @@ from rich.text import Text
 from rich.box import ROUNDED
 from rich.syntax import Syntax
 
-import agent_ui as ui
-import agent_cloud
-
 _console = Console()
+_console_err = Console(stderr=True)  # Directed stderr console for status logging
 _session = requests.Session()
 
 try:
@@ -43,7 +41,7 @@ except ImportError:
 
 
 class RichStreamer:
-    """Renders stream content dynamically: transient Live for Thinking, clean direct stream for Answer, safe terminal output."""
+    """Renders stream content dynamically: transient Live for Thinking, fast direct stream for Answer, full Rich Markdown on stop."""
     def __init__(self, prefix: str = "", active: bool = True) -> None:
         self.prefix: str = prefix
         self.active: bool = active and sys.stdout.isatty()
@@ -80,7 +78,7 @@ class RichStreamer:
 
             self.accumulated_thinking += thinking_part
 
-            # Close live thinking box
+            # Safely close live thinking container
             if self.live_think:
                 try:
                     self.live_think.stop()
@@ -88,7 +86,7 @@ class RichStreamer:
                     pass
                 self.live_think = None
 
-            # Print static thinking panel ONCE
+            # Render finalized static thinking panel ONCE
             if show_think_panel and self.accumulated_thinking.strip():
                 panel = Panel(
                     Text(self.accumulated_thinking.strip(), style="italic dim white"),
@@ -112,7 +110,7 @@ class RichStreamer:
             sys.stdout.flush()
             return
 
-        # Thinking Phase Active
+        # Handle active THINKING phase
         if self.phase == "THINKING":
             self.accumulated_thinking += token
             if show_think_panel and self.live_think:
@@ -126,9 +124,8 @@ class RichStreamer:
                 )
                 self.live_think.update(panel)
                 self.live_think.refresh()
-
         else:
-            # Answer Phase Active: Direct fast streaming
+            # Handle active ANSWER phase (Direct fast stdout streaming)
             if self.phase != "ANSWER":
                 self.phase = "ANSWER"
 
@@ -148,8 +145,23 @@ class RichStreamer:
                 pass
             self.live_think = None
 
-        if self.answer_started:
-            sys.stdout.write("\n")
+        if self.answer_started and self.accumulated_answer.strip():
+            if self.active:
+                # Count raw lines printed to clear raw text cleanly from terminal buffer
+                lines_printed = self.accumulated_answer.count("\n") + 1
+                if self.prefix:
+                    lines_printed += self.prefix.count("\n")
+
+                # Move cursor up and erase raw text
+                sys.stdout.write(f"\033[{lines_printed}A\r\033[J")
+                sys.stdout.flush()
+
+                # Render fully formatted theme-adaptive Rich Markdown
+                p_text = self.prefix.strip()
+                p_str = f"**{p_text}** " if p_text else ""
+                _console.print(Markdown(f"{p_str}{self.accumulated_answer.strip()}", code_theme="ansi_dark"))
+            else:
+                sys.stdout.write("\n")
             sys.stdout.flush()
 
 
@@ -353,7 +365,14 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
         if (outside or gates_active) and not _confirm_gate(f"read {full}" if outside else f"read file {raw_path}", spinner):
             return denial_msg
         try:
-            return open(full, "r", encoding="utf-8", errors="replace").read(60000)
+            content = open(full, "r", encoding="utf-8", errors="replace").read(60000)
+            if sys.stdout.isatty() and content.strip():
+                if spinner:
+                    spinner.stop()
+                _console_err.print()
+                _console_err.print(Markdown(content, code_theme="ansi_dark") if ("#" in content or "|" in content) else content)
+                _console_err.print()
+            return content
         except Exception as e:
             return f"[error] failed to read file: {e}"
 
@@ -380,9 +399,9 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
                 old = open(full, "r", encoding="utf-8", errors="replace").read()
                 diff_text = "\n".join(difflib.unified_diff(old.splitlines(), content.splitlines(), fromfile=f"a/{raw_path}", tofile=f"b/{raw_path}", lineterm=""))
                 if diff_text:
-                    _console.print()
-                    _console.print(Syntax(diff_text, "diff", theme="ansi_dark", background_color="default"))
-                    _console.print()
+                    _console_err.print()
+                    _console_err.print(Syntax(diff_text, "diff", theme="ansi_dark", background_color="default"))
+                    _console_err.print()
             except Exception:
                 pass
 
@@ -404,7 +423,12 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
             return denial_msg
         try:
             entries = sorted(os.listdir(full))
-            return "\n".join((e + "/" if os.path.isdir(os.path.join(full, e)) else e) for e in entries) or "(empty)"
+            res_str = "\n".join((e + "/" if os.path.isdir(os.path.join(full, e)) else e) for e in entries) or "(empty)"
+            if sys.stdout.isatty():
+                if spinner:
+                    spinner.stop()
+                _console_err.print(f"[dim]{res_str}[/dim]")
+            return res_str
         except Exception as e:
             return f"[error] failed to list files: {e}"
 
@@ -418,7 +442,7 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
             if not ui.confirm_tool(f"execute: $ {cmd}"):
                 return denial_msg
         else:
-            _console.print(f"[dim]  Executing command autonomously: $ {cmd}[/dim]")
+            _console_err.print(f"[dim]  Executing command autonomously: $ {cmd}[/dim]")
 
         shell = os.environ.get("SHELL") or "/bin/sh"
         if spinner:
@@ -426,6 +450,18 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
         try:
             res = subprocess.run([shell, "-lc", cmd], cwd=workspace, capture_output=True, text=True, timeout=300)
             out = ((res.stdout or "") + (("\n" + res.stderr) if res.stderr else "")).strip()[:10000]
+
+            # Directed to stderr so progress output never pollutes standard output captures
+            if sys.stdout.isatty() and out.strip():
+                if spinner:
+                    spinner.stop()
+                _console_err.print()
+                if "#" in out or "|" in out or "```" in out:
+                    _console_err.print(Markdown(out, code_theme="ansi_dark"))
+                else:
+                    _console_err.print(out)
+                _console_err.print()
+
             return f"(exit {res.returncode})\n{out}" if res.returncode != 0 else (out or "(exit 0, no output)")
         except subprocess.TimeoutExpired:
             return "[error] command timed out after 300 seconds"
@@ -520,7 +556,8 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
                 brief = str(args.get("path") or args.get("command") or "")[:100]
                 verb = TOOL_VERBS.get(fname, "working")
 
-                _console.print(f"[dim]∗ {verb} • [cyan]{fname}[/cyan] [italic]{brief}[/italic][/dim]")
+                # Progress logs directed to stderr to keep stdout clean
+                _console_err.print(f"[dim]∗ {verb} • [cyan]{fname}[/cyan] [italic]{brief}[/italic][/dim]")
                 if spinner and fname in ("read_file", "list_dir"):
                     spinner.start(verb)
                 try:
@@ -531,7 +568,6 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
                     if spinner:
                         spinner.stop()
 
-                # Feed the tool result (or [denied] message) back to the LLM so it answers verbally!
                 messages.append({"role": "tool", "tool_call_id": tc.get("id", ""), "name": fname, "content": result})
 
         except Exception as e:
@@ -611,10 +647,10 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
                                     if speed_test and show_stats:
                                         speed_test.start()
                                 if streamer:
-                                    streamer.update(chunk_to_stream)
-                                acc.append(chunk_to_stream)
+                                    streamer.update(content)
+                                acc.append(content)
                                 if speed_test and show_stats:
-                                    speed_test.count_token(chunk_to_stream, is_thinking=is_thinking)
+                                    speed_test.count_token(content, is_thinking=is_thinking)
 
                         if streamer:
                             streamer.stop()
