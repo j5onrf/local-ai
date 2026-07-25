@@ -187,7 +187,7 @@ OPENAI_API_KEY="your-openai-key"
 OPENAI_MODEL="gpt-5.6"
 
 CLAUDE_API_KEY="your-claude-key"
-CLAUDE_MODEL="opus-5"
+CLAUDE_MODEL="claude-opus-5"
 
 XAI_API_KEY="xai-your-grok-key"
 XAI_MODEL="grok-4.5"
@@ -210,5 +210,5 @@ AI_MAX_TOKENS="8192"
 
 ## Credits
 
-* **Contributions:** [suyadnya](https://github.com/wibawasuyadnya) for `.env` fallback architecture, macOS compatibility testing, and alias optimization.
+* **Contributions:** [suyadnya](https://github.com/wibawasuyadnya) for `.env` architecture, macOS compatibility testing, and alias optimization.
 * **Community:** Contributions are always welcome!
