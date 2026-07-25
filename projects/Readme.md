@@ -146,7 +146,7 @@ When you run `ai init <path>` in a workspace for the first time, an interactive 
 > ```bash
 > rm .agent/config.json
 > ```
-```
+
 
 ---
 
