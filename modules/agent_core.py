@@ -38,51 +38,49 @@ except ImportError:
 
 
 class RichStreamer:
-    """Renders stream content dynamically: transient Live for Thinking, direct delta stream for Answer."""
+    """Renders stream content dynamically: transient Live for Thinking, fast direct stream for Answer, full Rich Markdown on stop."""
     def __init__(self, prefix: str = "", active: bool = True) -> None:
         self.prefix: str = prefix
         self.active: bool = active and sys.stdout.isatty()
         self.accumulated_thinking: str = ""
-        self.live: Optional[Live] = None
+        self.accumulated_answer: str = ""
+        self.live_think: Optional[Live] = None
         self.phase: str = "INIT"  # "INIT", "THINKING", "ANSWER"
         self.answer_started: bool = False
-        self.last_update_time: float = 0.0
 
     def start(self) -> None:
         pass
 
     def update(self, token: str) -> None:
         if not self.active:
-            print(token, end="", flush=True)
+            sys.stdout.write(token)
+            sys.stdout.flush()
             return
 
         show_think_panel = os.environ.get("AI_SHOW_THINKING", "1") == "1"
 
-        # Check if token contains transitions
+        # Handle <think> tag
         if "<think>" in token and self.phase != "THINKING":
             self.phase = "THINKING"
             if show_think_panel:
-                self.live = Live("", console=_console, auto_refresh=False, vertical_overflow="crop", transient=True, screen=False)
-                self.live.start()
+                self.live_think = Live("", console=_console, auto_refresh=False, vertical_overflow="crop", transient=True, screen=False)
+                self.live_think.start()
             token = token.replace("<think>", "")
 
         if "</think>" in token:
-            # Transition out of Thinking Phase
             parts = token.split("</think>", 1)
             thinking_part = parts[0]
             answer_part = parts[1] if len(parts) > 1 else ""
 
             self.accumulated_thinking += thinking_part
 
-            # Close Live thinking panel
-            if self.live:
+            if self.live_think:
                 try:
-                    self.live.stop()
+                    self.live_think.stop()
                 except Exception:
                     pass
-                self.live = None
+                self.live_think = None
 
-            # Print finalized static thinking panel ONCE
             if show_think_panel and self.accumulated_thinking.strip():
                 panel = Panel(
                     Text(self.accumulated_thinking.strip(), style="italic dim white"),
@@ -94,28 +92,21 @@ class RichStreamer:
                 )
                 _console.print(panel)
 
-            # Switch phase permanently to ANSWER
             self.phase = "ANSWER"
 
-            # Print AI prefix ONCE and output initial answer chunk
             if not self.answer_started:
                 self.answer_started = True
                 sys.stdout.write(f"{self.prefix} " if self.prefix else "")
 
             if answer_part:
+                self.accumulated_answer += answer_part
                 sys.stdout.write(answer_part)
             sys.stdout.flush()
             return
 
-        # Handle active phase streaming
         if self.phase == "THINKING":
             self.accumulated_thinking += token
-            now = time.time()
-            if now - self.last_update_time < 0.04 and not token.endswith("\n"):
-                return
-            self.last_update_time = now
-
-            if show_think_panel and self.live:
+            if show_think_panel and self.live_think:
                 panel = Panel(
                     Text(self.accumulated_thinking.strip(), style="italic dim white"),
                     title="⚙ Thinking Process...",
@@ -124,11 +115,9 @@ class RichStreamer:
                     box=ROUNDED,
                     expand=True
                 )
-                self.live.update(panel)
-                self.live.refresh()
-
+                self.live_think.update(panel)
+                self.live_think.refresh()
         else:
-            # ANSWER Phase: Stream delta tokens directly to stdout
             if self.phase != "ANSWER":
                 self.phase = "ANSWER"
 
@@ -136,19 +125,62 @@ class RichStreamer:
                 self.answer_started = True
                 sys.stdout.write(f"{self.prefix} " if self.prefix else "")
 
+            self.accumulated_answer += token
             sys.stdout.write(token)
             sys.stdout.flush()
 
     def stop(self) -> None:
-        if self.live:
+        if self.live_think:
             try:
-                self.live.stop()
+                self.live_think.stop()
             except Exception:
                 pass
-            self.live = None
+            self.live_think = None
 
-        if self.answer_started:
-            sys.stdout.write("\n")
+        if self.answer_started and self.accumulated_answer.strip():
+            if self.active:
+                # Count raw lines printed to erase raw text cleanly
+                lines_printed = self.accumulated_answer.count("\n") + 1
+                if self.prefix:
+                    lines_printed += self.prefix.count("\n")
+
+                # Move cursor up and erase raw text
+                sys.stdout.write(f"\033[{lines_printed}A\r\033[J")
+                sys.stdout.flush()
+
+                # Render styled Rich Markdown matching your native terminal palette
+                p_text = self.prefix.strip()
+                p_str = f"**{p_text}** " if p_text else ""
+                _console.print(Markdown(f"{p_str}{self.accumulated_answer.strip()}", code_theme="ansi_dark"))
+            else:
+                sys.stdout.write("\n")
+            sys.stdout.flush()
+
+    def stop(self) -> None:
+        if self.live_think:
+            try:
+                self.live_think.stop()
+            except Exception:
+                pass
+            self.live_think = None
+
+        if self.answer_started and self.accumulated_answer.strip():
+            if self.active:
+                # Count raw lines printed during streaming to erase them cleanly
+                lines_printed = self.accumulated_answer.count("\n") + 1
+                if self.prefix:
+                    lines_printed += self.prefix.count("\n")
+
+                # Move cursor up and erase raw text from terminal screen
+                sys.stdout.write(f"\033[{lines_printed}A\r\033[J")
+                sys.stdout.flush()
+
+                # Render actual, styled Rich Markdown!
+                p_text = self.prefix.strip()
+                p_str = f"**{p_text}** " if p_text else ""
+                _console.print(Markdown(f"{p_str}{self.accumulated_answer.strip()}", code_theme="ansi_dark"))
+            else:
+                sys.stdout.write("\n")
             sys.stdout.flush()
 
 
