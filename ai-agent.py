@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.9.6.3]
+# Local-Ai Agent [j5onrf] [v0.9.6.4]
 
 import json
 import os
@@ -473,7 +473,7 @@ def run_interactive_chat(args: List[str]) -> None:
             else:
                 sys_ctx = "" if query.startswith("init") and "--init" in query else skills.get_system_context(query, CONTEXT_FILE, STOP_WORDS, SKILLS_DIR, CFG_DIR)
                 if sys_ctx == "__ABORT_TURN__":
-                    continue
+                    sys_ctx = ""  # If user declines running the script shortcut, clear context and send question directly to AI!
                 comb_ctx = "\n\n".join(filter(None, [tpm_context, past_memory, sys_ctx]))
                 prompt = f"<context>\n{comb_ctx}\n</context>\n\nUser Question: {query}" if comb_ctx else f"User Question: {query}"
 
@@ -524,7 +524,7 @@ def run_direct_query(args: List[str]) -> None:
     query = " ".join(query_parts)
     sys_ctx = skills.get_system_context(query, CONTEXT_FILE, STOP_WORDS, SKILLS_DIR, CFG_DIR)
     if sys_ctx == "__ABORT_TURN__":
-        sys.exit(130)
+        sys_ctx = ""  # If user declines tool execution, send question directly to AI!
 
     messages = [{"role": "system", "content": active_p}, {"role": "user", "content": (f"<context>\n{sys_ctx}\n</context>\n\n" if sys_ctx else "") + f"User Question: {query}"}]
     core.stream_response(messages, prefix="AI:", show_stats=False)

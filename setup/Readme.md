@@ -75,7 +75,7 @@ Pairing the Python agent harness and its intent blueprint (`ai-context.md`) with
 
 ### Architecture Division
 * **Layer 1 (Smart Harness):** The Python client uses `ai-context.md` to deterministically map plain-English intents (`"---> weather"`, `"---> system health"`, `"---> time"`) directly to local bash scripts and system utilities.
-* **Layer 2 (Lightweight LLM Engine):** Small 1B/2B models serve as rapid, low-overhead decision formatters that process harness tool outputs at **40–65+ tokens/sec**.
+* **Layer 2 (Lightweight LLM Engine):** Small 1B/2B models serve as rapid, low-overhead decision formatters that process harness tool outputs at **40–165+ tokens/sec**.
 
 > **Workflow Rule:** Lightweight 1B/2B models remain always-on in the background for sub-second system automation, while heavy models (35B) are loaded on-demand via `model-select-local.py` for complex architecture and deep reasoning (`/t`).
 

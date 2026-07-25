@@ -43,7 +43,7 @@ except ImportError:
 
 
 class RichStreamer:
-    """Renders stream content dynamically: transient Live for Thinking, fast direct stream for Answer, full Rich Markdown on stop."""
+    """Renders stream content dynamically: transient Live for Thinking, clean direct stream for Answer, safe terminal output."""
     def __init__(self, prefix: str = "", active: bool = True) -> None:
         self.prefix: str = prefix
         self.active: bool = active and sys.stdout.isatty()
@@ -80,7 +80,7 @@ class RichStreamer:
 
             self.accumulated_thinking += thinking_part
 
-            # Safely close live thinking container
+            # Close live thinking box
             if self.live_think:
                 try:
                     self.live_think.stop()
@@ -88,7 +88,7 @@ class RichStreamer:
                     pass
                 self.live_think = None
 
-            # Render finalized static thinking panel ONCE
+            # Print static thinking panel ONCE
             if show_think_panel and self.accumulated_thinking.strip():
                 panel = Panel(
                     Text(self.accumulated_thinking.strip(), style="italic dim white"),
@@ -112,7 +112,7 @@ class RichStreamer:
             sys.stdout.flush()
             return
 
-        # Active Thinking Phase
+        # Thinking Phase Active
         if self.phase == "THINKING":
             self.accumulated_thinking += token
             if show_think_panel and self.live_think:
@@ -126,8 +126,9 @@ class RichStreamer:
                 )
                 self.live_think.update(panel)
                 self.live_think.refresh()
+
         else:
-            # Active Answer Phase: Direct fast streaming
+            # Answer Phase Active: Direct fast streaming
             if self.phase != "ANSWER":
                 self.phase = "ANSWER"
 
@@ -147,23 +148,8 @@ class RichStreamer:
                 pass
             self.live_think = None
 
-        if self.answer_started and self.accumulated_answer.strip():
-            if self.active:
-                # Count raw lines printed to clear raw text cleanly from terminal buffer
-                lines_printed = self.accumulated_answer.count("\n") + 1
-                if self.prefix:
-                    lines_printed += self.prefix.count("\n")
-
-                # Move cursor up and clear raw lines
-                sys.stdout.write(f"\033[{lines_printed}A\r\033[J")
-                sys.stdout.flush()
-
-                # Render fully formatted theme-adaptive Rich Markdown
-                p_text = self.prefix.strip()
-                p_str = f"**{p_text}** " if p_text else ""
-                _console.print(Markdown(f"{p_str}{self.accumulated_answer.strip()}", code_theme="ansi_dark"))
-            else:
-                sys.stdout.write("\n")
+        if self.answer_started:
+            sys.stdout.write("\n")
             sys.stdout.flush()
 
 
@@ -344,15 +330,28 @@ def _confirm_gate(reason: str, spinner: Any) -> bool:
     return sys.stdout.isatty() and ui.confirm_tool(reason)
 
 
+BINARY_EXTENSIONS = {
+    ".db", ".sqlite", ".sqlite3", ".bin", ".pyc", ".so", ".dll", 
+    ".exe", ".png", ".jpg", ".jpeg", ".gif", ".zip", ".tar", ".gz", 
+    ".7z", ".pdf", ".docx", ".xlsx", ".db-wal", ".db-shm"
+}
+
 def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any = None) -> str:
     gates_active = os.environ.get("AI_CONFIRM_GATES", "1") == "1"
+    denial_msg = "[denied] User declined tool execution. Do NOT attempt to call tools again. Respond directly to the user's prompt using plain text."
 
     if name == "read_file":
         raw_path = args.get("path", "")
         full = _safe_path(workspace, raw_path)
+        
+        # Binary File Shield: Block database and binary files from corrupting context memory
+        ext = os.path.splitext(full)[1].lower()
+        if ext in BINARY_EXTENSIONS or os.path.isdir(full):
+            return f"[error] Refused to read binary/database file or directory '{raw_path}'. Use CLI tools (like sqlite3 or list_dir) to inspect."
+
         outside = _is_outside_workspace(workspace, full)
         if (outside or gates_active) and not _confirm_gate(f"read {full}" if outside else f"read file {raw_path}", spinner):
-            return f"[denied] user blocked reading: {raw_path}"
+            return denial_msg
         try:
             return open(full, "r", encoding="utf-8", errors="replace").read(60000)
         except Exception as e:
@@ -388,7 +387,7 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
                 pass
 
         if (outside or gates_active) and not _confirm_gate(f"{'overwrite' if exists else 'create'} {raw_path}", spinner):
-            return f"[denied] user blocked file write: {raw_path}"
+            return denial_msg
 
         try:
             os.makedirs(os.path.dirname(full) or workspace, exist_ok=True)
@@ -402,7 +401,7 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
         full = _safe_path(workspace, raw_path)
         outside = _is_outside_workspace(workspace, full)
         if (outside or gates_active) and not _confirm_gate(f"list directory {raw_path or '.'}", spinner):
-            return f"[denied] user blocked directory listing: {raw_path}"
+            return denial_msg
         try:
             entries = sorted(os.listdir(full))
             return "\n".join((e + "/" if os.path.isdir(os.path.join(full, e)) else e) for e in entries) or "(empty)"
@@ -417,7 +416,7 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
             if spinner:
                 spinner.stop()
             if not ui.confirm_tool(f"execute: $ {cmd}"):
-                return "[denied] user rejected command execution"
+                return denial_msg
         else:
             _console.print(f"[dim]  Executing command autonomously: $ {cmd}[/dim]")
 
@@ -515,34 +514,25 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
 
             messages.append({"role": "assistant", "content": ans_text or None, "tool_calls": calls})
 
-            user_aborted = False
             for tc in calls:
                 fname = tc.get("function", {}).get("name", "")
                 args = json.loads(tc.get("function", {}).get("arguments") or "{}") if tc.get("function", {}).get("arguments") else {}
                 brief = str(args.get("path") or args.get("command") or "")[:100]
                 verb = TOOL_VERBS.get(fname, "working")
 
-                if user_aborted:
-                    result = "[denied] execution cancelled by user"
-                else:
-                    _console.print(f"[dim]∗ {verb} • [cyan]{fname}[/cyan] [italic]{brief}[/italic][/dim]")
-                    if spinner and fname in ("read_file", "list_dir"):
-                        spinner.start(verb)
-                    try:
-                        result = _run_edit_tool(fname, args, workspace, spinner)
-                        if "[denied]" in result:
-                            user_aborted = True
-                    except Exception as e:
-                        result = f"[tool error] {e}"
-                    finally:
-                        if spinner:
-                            spinner.stop()
+                _console.print(f"[dim]∗ {verb} • [cyan]{fname}[/cyan] [italic]{brief}[/italic][/dim]")
+                if spinner and fname in ("read_file", "list_dir"):
+                    spinner.start(verb)
+                try:
+                    result = _run_edit_tool(fname, args, workspace, spinner)
+                except Exception as e:
+                    result = f"[tool error] {e}"
+                finally:
+                    if spinner:
+                        spinner.stop()
 
+                # Feed the tool result (or [denied] message) back to the LLM so it answers verbally!
                 messages.append({"role": "tool", "tool_call_id": tc.get("id", ""), "name": fname, "content": result})
-
-            if user_aborted:
-                _console.print("[dim][sys] Agent execution halted.[/dim]")
-                return ans_text or "Agent: Action cancelled by user."
 
         except Exception as e:
             sys.stderr.write(f"\033[90m[sys] API response error: {e}\033[0m\n")
@@ -554,7 +544,7 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
 
 
 def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_dir: str = "", show_stats: bool = False, thinking_budget: int = 0, is_agent: bool = False) -> Optional[str]:
-    """Primary streaming endpoint manager supporting multi-provider failover cascades."""
+    """Primary streaming endpoint manager supporting multi-provider failover cascades and tool loops."""
     acc, spinner = [], ui.InlineSpinner()
     try:
         configs = agent_cloud.get_active_configs(messages)
@@ -578,11 +568,10 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
             unique_configs.append(("http://localhost:8080/v1/chat/completions", {}, local_body, 180))
 
         for url, headers, body, timeout in unique_configs:
-            if is_agent:
-                ans = agentic_turn(messages, url, headers, body, timeout, spinner, show_stats)
-                if ans is not None:
-                    return ans
-                continue
+            # ALWAYS run agentic_turn so tool denials automatically loop back to the AI for a verbal response!
+            ans = agentic_turn(messages, url, headers, body, timeout, spinner, show_stats)
+            if ans is not None:
+                return ans
 
             is_local = "localhost" in url or "127.0.0.1" in url or body.get("model") == "local-model"
             req = urlreq.Request(url, data=json.dumps(body).encode("utf-8"), headers={"Content-Type": "application/json", **headers}, method="POST")

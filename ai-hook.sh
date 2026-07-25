@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Production Local-AI Shell Hook v0.9.5.5
+# Production Local-AI Shell Hook v0.9.5.6
 
 [[ $- != *i* || ! -f "$HOME/.config/local-ai/ai-agent.py" ]] && return
 _AI_DIR="$HOME/.config/local-ai"
@@ -29,11 +29,26 @@ fi
 
 ai_handle_missing() {
     [[ -z "$*" ]] && return 127
-    local cmd=$("$_AI_PY" "$_AI_DIR/ai-agent.py" --interactive "$*")
-    [[ -z "$cmd" ]] && return 127
-    local exp="${cmd/#\~/$HOME}"
-    [[ -d "$exp" ]] && ai init "$exp" || eval "$cmd"
+    local cmd
+    cmd=$("$_AI_PY" "$_AI_DIR/ai-agent.py" --interactive "$*")
+    local status=$?
+
+    # 1. If user approved the interactive shortcut (y/Enter), execute it
+    if [[ -n "$cmd" ]]; then
+        local exp="${cmd/#\~/$HOME}"
+        [[ -d "$exp" ]] && ai init "$exp" || eval "$cmd"
+        return 0
+    fi
+
+    # 2. If user declined the shortcut (n/Esc), pass query directly to AI!
+    if [[ $status -eq 127 ]]; then
+        "$_AI_PY" "$_AI_DIR/ai-agent.py" --talk "$@"
+        return 0
+    fi
+
+    return 127
 }
+
 command_not_found_handle() { [[ "$1" != --* ]] && ai_handle_missing "$*"; }
 command_not_found_handler() { command_not_found_handle "$@"; }
 

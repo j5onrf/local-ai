@@ -265,10 +265,10 @@ def run_interactive_selection(
             sys.stderr.flush()
             
             key = get_key()
-            if key in ('\x03', '\x1b') or (not is_danger and key not in ('\r', '', '\x1b[A', '\x1b[B')):
-                sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[KCancelled.\n")
+            if key in ('\x03', '\x1b', 'n', 'N') or (not is_danger and key not in ('\r', '', '\x1b[A', '\x1b[B')):
+                sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
                 sys.stderr.flush()
-                break
+                sys.exit(127)  # Exit code 127 signals shell wrapper to pass query directly to AI!
 
             if is_danger:
                 sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K\x1b[1A\r\x1b[K")
@@ -277,10 +277,10 @@ def run_interactive_selection(
                     if "system" in cmd_to_show:
                         ensure_mysys_exists_fn()
                     sys.stdout.write(cmd_to_show)
+                    sys.stdout.flush()
+                    sys.exit(0)
                 else:
-                    sys.stderr.write("Aborted safely.\n")
-                sys.stdout.flush()
-                break
+                    sys.exit(127)
 
             if key in ('\r', ''):
                 sys.stderr.write("\n")
@@ -289,15 +289,15 @@ def run_interactive_selection(
                     ensure_mysys_exists_fn()
                 sys.stdout.write(cmd_to_show)
                 sys.stdout.flush()
-                break
+                sys.exit(0)
             elif key in ('\x1b[A', '\x1b[B'):
                 current_idx = (current_idx + (1 if key == '\x1b[B' else -1) + num_opts) % num_opts
                 sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
-        sys.exit(0)
+        sys.exit(127)
     except KeyboardInterrupt:
-        sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[KCancelled.\n")
+        sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
         sys.stderr.flush()
-        sys.exit(130)
+        sys.exit(127)
     finally:
         sys.stderr.write("\033[?25h")
         sys.stderr.flush()
