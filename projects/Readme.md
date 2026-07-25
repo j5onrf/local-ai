@@ -10,7 +10,7 @@ High-speed local developer agent, episodic memory system, checkpoint state manag
 ╔═  ❖ Local-AI Agent [sub-agent #1] ════════════╗
 ║     model:  Qwen3.6-35B-A3B.gguf              ║
 ║ directory:  ~/.config/local-ai/session-test   ║
-║     skill:  init code2                        ║
+║     skill:  pi/lite                           ║
 ║  database:  active (3 facts, 26 turns)        ║
 ╚═══════════════════════════ Ctrl+C to exit ════╝
  Startup context: 191 tokens
@@ -139,7 +139,7 @@ When you run `ai init <path>` in a workspace for the first time, an interactive 
      9. Hermes Pro         (~230 tokens | Nous Hermes 3 action agent)
     10. Hermes Full        (~1,800 tok  | Full 1:1 Nous Hermes system prompt)
 
-  :: ↵ select  ↑/↓ navigate  Esc: default
+  :: ↵ select  ↑/↓ navigate  Tab: YOLO [OFF]  Esc: default
 ```
 
 > **Reset Profile Menu:** To change or reset a workspace's saved profile, delete `.agent/config.json` inside that project:

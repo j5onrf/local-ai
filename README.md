@@ -200,7 +200,7 @@ AI_MAX_TOKENS="8192"
 <h2 align="center">Roadmap to v1.0.0</h2>
 
 - [x] **Core Engine Optimization:** Production pass on streaming, token counting, and sub-agent concurrency.
-- [x] **Thinking UI Controls:** Real-time thinking TPS metrics and `/r show|hide` panel toggles.
+- [x] **Thinking UI Controls:** Real-time thinking TPS metrics and `/t show|hide` panel toggles.
 - [x] **Modular Agent Personas & Tool Loop:** Interactive 10-profile selector on `ai init` (`pi`, `claude`, `hermes`) with automated path-healing file editing & YOLO execution loops.
 - [ ] **Context Stress Testing:** Continuous context-window pressure tests across quantized local engines.
 - [ ] **Automated File Containment Validation:** Zero-trust security verification on traversal boundaries.
