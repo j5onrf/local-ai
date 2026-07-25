@@ -1,4 +1,9 @@
 # File: ~/.config/local-ai/modules/agent_core.py
+"""
+Local-AI Agent Core Module
+Handles streaming SSE payloads, function execution, tool gates, and Rich Markdown rendering.
+"""
+
 import os
 import sys
 import json
@@ -59,7 +64,7 @@ class RichStreamer:
 
         show_think_panel = os.environ.get("AI_SHOW_THINKING", "1") == "1"
 
-        # Handle <think> tag
+        # Detect start of thinking phase
         if "<think>" in token and self.phase != "THINKING":
             self.phase = "THINKING"
             if show_think_panel:
@@ -67,6 +72,7 @@ class RichStreamer:
                 self.live_think.start()
             token = token.replace("<think>", "")
 
+        # Detect end of thinking phase
         if "</think>" in token:
             parts = token.split("</think>", 1)
             thinking_part = parts[0]
@@ -74,6 +80,7 @@ class RichStreamer:
 
             self.accumulated_thinking += thinking_part
 
+            # Safely close live thinking container
             if self.live_think:
                 try:
                     self.live_think.stop()
@@ -81,6 +88,7 @@ class RichStreamer:
                     pass
                 self.live_think = None
 
+            # Render finalized static thinking panel ONCE
             if show_think_panel and self.accumulated_thinking.strip():
                 panel = Panel(
                     Text(self.accumulated_thinking.strip(), style="italic dim white"),
@@ -104,6 +112,7 @@ class RichStreamer:
             sys.stdout.flush()
             return
 
+        # Active Thinking Phase
         if self.phase == "THINKING":
             self.accumulated_thinking += token
             if show_think_panel and self.live_think:
@@ -118,6 +127,7 @@ class RichStreamer:
                 self.live_think.update(panel)
                 self.live_think.refresh()
         else:
+            # Active Answer Phase: Direct fast streaming
             if self.phase != "ANSWER":
                 self.phase = "ANSWER"
 
@@ -139,43 +149,16 @@ class RichStreamer:
 
         if self.answer_started and self.accumulated_answer.strip():
             if self.active:
-                # Count raw lines printed to erase raw text cleanly
+                # Count raw lines printed to clear raw text cleanly from terminal buffer
                 lines_printed = self.accumulated_answer.count("\n") + 1
                 if self.prefix:
                     lines_printed += self.prefix.count("\n")
 
-                # Move cursor up and erase raw text
+                # Move cursor up and clear raw lines
                 sys.stdout.write(f"\033[{lines_printed}A\r\033[J")
                 sys.stdout.flush()
 
-                # Render styled Rich Markdown matching your native terminal palette
-                p_text = self.prefix.strip()
-                p_str = f"**{p_text}** " if p_text else ""
-                _console.print(Markdown(f"{p_str}{self.accumulated_answer.strip()}", code_theme="ansi_dark"))
-            else:
-                sys.stdout.write("\n")
-            sys.stdout.flush()
-
-    def stop(self) -> None:
-        if self.live_think:
-            try:
-                self.live_think.stop()
-            except Exception:
-                pass
-            self.live_think = None
-
-        if self.answer_started and self.accumulated_answer.strip():
-            if self.active:
-                # Count raw lines printed during streaming to erase them cleanly
-                lines_printed = self.accumulated_answer.count("\n") + 1
-                if self.prefix:
-                    lines_printed += self.prefix.count("\n")
-
-                # Move cursor up and erase raw text from terminal screen
-                sys.stdout.write(f"\033[{lines_printed}A\r\033[J")
-                sys.stdout.flush()
-
-                # Render actual, styled Rich Markdown!
+                # Render fully formatted theme-adaptive Rich Markdown
                 p_text = self.prefix.strip()
                 p_str = f"**{p_text}** " if p_text else ""
                 _console.print(Markdown(f"{p_str}{self.accumulated_answer.strip()}", code_theme="ansi_dark"))
