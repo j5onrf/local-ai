@@ -31,21 +31,16 @@ ai_handle_missing() {
     [[ -z "$*" ]] && return 127
     local cmd
     cmd=$("$_AI_PY" "$_AI_DIR/ai-agent.py" --interactive "$*")
-    local status=$?
 
-    # 1. If user approved the interactive shortcut (y/Enter), execute it
+    # 1. If a valid shortcut in ai-context.md was matched and approved, run it
     if [[ -n "$cmd" ]]; then
         local exp="${cmd/#\~/$HOME}"
         [[ -d "$exp" ]] && ai init "$exp" || eval "$cmd"
         return 0
     fi
 
-    # 2. If user declined the shortcut (n/Esc), pass query directly to AI!
-    if [[ $status -eq 127 ]]; then
-        "$_AI_PY" "$_AI_DIR/ai-agent.py" --talk "$@"
-        return 0
-    fi
-
+    # 2. Otherwise (typos, uninstalled apps, or declined shortcuts), return 127
+    # so Zsh/Bash handles it natively with "command not found".
     return 127
 }
 
