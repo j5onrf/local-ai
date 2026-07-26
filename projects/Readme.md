@@ -22,7 +22,7 @@ High-speed local developer agent, episodic memory system, checkpoint state manag
 Agent:  I'm ready to assist you in your session-test project! This looks like a 
 Python-based calculation tool with modules for average, sum, velocity, acceleration, 
 and simulation testing. What would you like me to help you with?
- [ think: 139 | ans: 46 | 185 tokens | 8.7s @ 41.2 t/s ]
+ [ think: 139 | ans: 46 | 185 tokens | 4.7s @ 41.2 t/s ]
  [ 1065 in | 185 out | ctx: 15.3% ]
 ```
 

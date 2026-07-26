@@ -688,6 +688,7 @@ class LocalAITUI(App):
         query = CSI_U_REGEX.sub('', event.value.strip()).strip()
         self.chat_input.value = ""
 
+        # Gate authorization prompt
         if getattr(self, "entering_gate_authorization", False):
             self.entering_gate_authorization = False
             self.chat_input.placeholder = "Ask your agent anything..."
@@ -699,15 +700,7 @@ class LocalAITUI(App):
             self.chat_area.scroll_end(animate=False)
             return
 
-        if not query: return
-        if self.pending_skill_prefix:
-            query, self.pending_skill_prefix = f"{self.pending_skill_prefix} {query}", None
-            self.chat_input.placeholder = "Ask your agent anything..."
-
-        if query.lower() in ("exit", "quit", "q"): self.exit(); return
-        if query.lower().startswith("view file "): await self.handle_view_file(query[10:].strip()); return
-        if query.startswith("/"): await self.handle_slash_command(query); return
-
+        # Handle Reasoning Budget Input (Checks empty query for default 500)
         if self.entering_reasoning_budget:
             self.entering_reasoning_budget = False
             self.chat_input.placeholder = "Ask your agent anything..."
@@ -730,14 +723,29 @@ class LocalAITUI(App):
             self.chat_area.scroll_end(animate=False)
             return
 
+        # Handle Image URL Input
         if self.entering_image_url:
-            self.entering_image_url, self.active_image_url = False, query
+            self.entering_image_url = False
             self.chat_input.placeholder = "Ask your agent anything..."
-            fname = query.split("/")[-1].split("?")[0][:25]
-            self.query_one("#lbl-image", Static).update(fname or "image_attached")
-            await self.chat_area.mount(Static(f"[dim white][sys] Attached image URL: [bold]{query}[/bold][/dim white]"))
+            if query:
+                self.active_image_url = query
+                fname = query.split("/")[-1].split("?")[0][:25]
+                self.query_one("#lbl-image", Static).update(fname or "image_attached")
+                await self.chat_area.mount(Static(f"[dim white][sys] Attached image URL: [bold]{query}[/bold][/dim white]"))
+            else:
+                await self.chat_area.mount(Static("[dim white][sys] Image attachment cancelled.[/dim white]"))
             self.chat_area.scroll_end(animate=False)
             return
+
+        if not query: return
+
+        if self.pending_skill_prefix:
+            query, self.pending_skill_prefix = f"{self.pending_skill_prefix} {query}", None
+            self.chat_input.placeholder = "Ask your agent anything..."
+
+        if query.lower() in ("exit", "quit", "q"): self.exit(); return
+        if query.lower().startswith("view file "): await self.handle_view_file(query[10:].strip()); return
+        if query.startswith("/"): await self.handle_slash_command(query); return
 
         self.run_worker(lambda: self.process_query_worker(query), thread=True)
 
