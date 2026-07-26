@@ -51,8 +51,23 @@ $changes
 
 Instruction: Write a 3-5 word git commit message for these changes. Start with an action verb (e.g., Fix, Add, Refactor, Update). Be extremely direct. Do not use 'by', 'and', or descriptive fluff. Output ONLY the message."
 
-# 5. Query Python AI Gateway
-raw_message=$("$_AI_PYTHON_BIN" "$_AI_SCRIPT_PATH" --talk "$PROMPT" 2>/dev/null || echo "")
+# 5. Query Python AI Gateway with active terminal spinner
+tmp_out=$(mktemp)
+"$_AI_PYTHON_BIN" "$_AI_SCRIPT_PATH" --talk "$PROMPT" > "$tmp_out" 2>/dev/null &
+pid=$!
+
+spin='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+i=0
+while kill -0 "$pid" 2>/dev/null; do
+    i=$(( (i + 1) % 10 ))
+    printf "\r\033[1;32m%s\033[0m \033[36mGenerating commit message...\033[0m " "${spin:$i:1}" >&2
+    sleep 0.08
+done
+wait "$pid" 2>/dev/null || true
+printf "\r\033[2K" >&2
+
+raw_message=$(cat "$tmp_out" 2>/dev/null || echo "")
+rm -f "$tmp_out"
 
 # 6. Safe string cleaning (Replaces xargs to handle single quotes/apostrophes cleanly)
 message=$(echo "$raw_message" | sed -E \
