@@ -10,7 +10,7 @@ High-speed local developer agent, episodic memory system, checkpoint state manag
 ╔═  ❖ Local-AI Agent [sub-agent #1] ════════════╗
 ║     model:  Qwen3.6-35B-A3B.gguf              ║
 ║ directory:  ~/.config/local-ai/session-test   ║
-║     skill:  pi/lite                           ║
+║     skill:  pi/full                           ║
 ║  database:  active (3 facts, 26 turns)        ║
 ╚═══════════════════════════ Ctrl+C to exit ════╝
  Startup context: 191 tokens
@@ -129,15 +129,9 @@ When you run `ai init <path>` in a workspace for the first time, an interactive 
 [ai init] Select default Agent Profile for workspace session-test:
 
   ❯  1. Basic / Default    (~120 tokens | Standard init.md assistant)
-     2. Pi Lite [2B]       (~90 tokens  | Hyper-fast file editor for 2B models)
-     3. Pi Pro [35B]       (~220 tokens | Balanced workspace developer)
-     4. Pi Full [1:1]      (~1,900 tok  | Original 1:1 official Pi prompt)
-     5. Claude Lite        (~95 tokens  | Ultra-light XML tool agent)
-     6. Claude Pro         (~230 tokens | Architect with <thought> planning)
-     7. Claude Full        (~1,800 tok  | Full 1:1 Claude Code CLI prompt)
-     8. Hermes Lite        (~95 tokens  | Fast function-calling agent)
-     9. Hermes Pro         (~230 tokens | Nous Hermes 3 action agent)
-    10. Hermes Full        (~1,800 tok  | Full 1:1 Nous Hermes system prompt)
+     2. Pi Agent [1:1]     (~400 tokens | Streamlined native Pi prompt)
+     3. Claude Code        (~440 tokens | Full 1:1 Claude Code CLI prompt)
+     4. Hermes Agent       (~380 tokens | Full 1:1 Nous Hermes system prompt)
 
   :: ↵ select  ↑/↓ navigate  Tab: YOLO [OFF]  Esc: default
 ```
@@ -147,6 +141,13 @@ When you run `ai init <path>` in a workspace for the first time, an interactive 
 > rm .agent/config.json
 > ```
 
+### Master Agent Profiles & Personalities
+
+Although all three master profiles leverage the same local system tools (`read_file`, `write_file`, `list_dir`, `run_command`), they instruct the model to execute tasks using entirely different logical architectures and conversational styles:
+
+* **Claude Code (`claude/full`):** *The Methodical Planner.* Instructs the model to write out structured plans within `<thought>` blocks before executing any tool. It is highly analytical, cautious, and designed to trace entire codebase dependency trees before applying edits. Best for complex refactoring and multi-file changes.
+* **Pi Agent (`pi/full`):** *The Surgical Developer.* An ultra-direct, action-first assistant that strips out conversational padding, disclaimers, and unsolicited explanations. It uses a strict verification loop, requiring the model to immediately test code updates via shell commands before completing a turn. Best for rapid, targeted file editing and fast bug fixes.
+* **Hermes Agent (`hermes/full`):** *The Automation Engine.* Treats software development as a pure, sequence-driven tool-calling pipeline. It focuses heavily on executing shell commands, managing database updates, and running tests. Best for structural scripts, migrations, and running background diagnostics.
 
 ---
 
@@ -237,4 +238,4 @@ AI_MAX_TOKENS=16000 ai init ~/my-project
 
 # Global export:
 export AI_MAX_TOKENS=16000
-```
+

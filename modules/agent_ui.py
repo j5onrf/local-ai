@@ -352,18 +352,12 @@ def show_help() -> None:
 
 
 def select_workspace_profile(workspace_name: str) -> Tuple[str, bool]:
-    """Renders the interactive workspace profile selector menu with a Tab: YOLO mode toggle."""
+    """Renders the simplified, high-performance workspace profile selector menu."""
     options = [
         ("default",     "Basic / Default", "~120 tokens | Standard init.md assistant"),
-        ("pi/lite",     "Pi Lite [2B]",    "~90 tokens  | Hyper-fast file editor for 2B models"),
-        ("pi/pro",      "Pi Pro [35B]",   "~220 tokens | Balanced workspace developer"),
-        ("pi/full",     "Pi Full [1:1]",  "~1,900 tok  | Original 1:1 official Pi prompt"),
-        ("claude/lite", "Claude Lite",    "~95 tokens  | Ultra-light XML tool agent"),
-        ("claude/pro",  "Claude Pro",     "~230 tokens | Architect with <thought> planning"),
-        ("claude/full", "Claude Full",    "~1,800 tok  | Full 1:1 Claude Code CLI prompt"),
-        ("hermes/lite", "Hermes Lite",    "~95 tokens  | Fast function-calling agent"),
-        ("hermes/pro",  "Hermes Pro",     "~230 tokens | Nous Hermes 3 action agent"),
-        ("hermes/full", "Hermes Full",    "~1,800 tok  | Full 1:1 Nous Hermes system prompt")
+        ("pi/full",     "Pi Agent [1:1]",  "~400 tokens | Streamlined native Pi prompt"),
+        ("claude/full", "Claude Code",     "~440 tokens | Full 1:1 Claude Code CLI prompt"),
+        ("hermes/full", "Hermes Agent",    "~380 tokens | Full 1:1 Nous Hermes system prompt")
     ]
     
     sys.stderr.write(f"\n\033[1;36m[ai init]\033[0m Select default Agent Profile for workspace \033[1;33m{workspace_name}\033[0m:\n\n")

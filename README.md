@@ -2,7 +2,7 @@
   <img alt="Local-AI Agent" src="logo.png" width="800" />
 </p>
 
-<h1 align="center">Local-AI Agent <kbd>v0.9.6.4-beta</kbd></h1>
+<h1 align="center">Local-AI Agent <kbd>v0.9.6.5-beta</kbd></h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
@@ -201,7 +201,7 @@ AI_MAX_TOKENS="8192"
 
 - [x] **Core Engine Optimization:** Production pass on streaming, token counting, and sub-agent concurrency.
 - [x] **Thinking UI Controls:** Real-time thinking TPS metrics and `/t show|hide` panel toggles.
-- [x] **Modular Agent Personas & Tool Loop:** Interactive 10-profile selector on `ai init` (`pi`, `claude`, `hermes`) with automated path-healing file editing & YOLO execution loops.
+- [x] **Modular Agent Personas & Tool Loop:** Interactive profile selector on `ai init` (`pi`, `claude`, `hermes`) with automated path-healing file editing & YOLO execution loops.
 - [ ] **Context Stress Testing:** Continuous context-window pressure tests across quantized local engines.
 - [ ] **Automated File Containment Validation:** Zero-trust security verification on traversal boundaries.
 - [ ] **v1.0.0 Production Release Tag!**
