@@ -6,24 +6,31 @@ High-speed local developer agent, episodic memory system, checkpoint state manag
 ~ ❯ session
 [01/03] ❯ [session test] ai init ~/session-test --init
 :: ↵ run  Esc: 
-
-[ai init] Select default Agent Profile for workspace session-test:
-
-✓ Profile set to: Pi Lite (Autonomous YOLO)
-
 ╔═  ❖ Local-AI Agent  ═══════════════════════════════════╗
 ║     model:  Qwen3.5-2B.gguf                            ║
 ║ directory:  ~/.config/local-ai/projects/session-test   ║
 ║     skill:  pi/lite                                    ║
-║  database:  disabled                                   ║
+║  database:  active (0 facts, 23 turns)                 ║
 ╚═══════════════════════════════════════ Ctrl+C to exit ═╝
  Startup context: 327 tokens
 
-Agent:  I'm ready to assist you in your session-test project! This looks like a 
-Python-based calculation tool with modules for average, sum, velocity, acceleration, 
-and simulation testing. What would you like me to help you with?
- [ think: 139 | ans: 46 | 185 tokens | 4.7s @ 41.2 t/s ]
- [ 1065 in | 185 out | ctx: 15.3% ]
+╭─ ⚙ Thinking Process ───────────────────────────────────────────────────────────────────────────╮
+│ The user has provided me with a system prompt that defines my role as Pi Lite, an efficient    │
+│ local software developer assistant. I need to follow specific instructions:                    │
+│                                                                                                │
+│ 1. DO NOT call tools at startup (read_file, list_dir, run_command)                             │
+│ 2. Learn from CODESPACE MAP first                                                              │
+│ 3. Reply with ONE brief sentence acknowledging the project and wait for user's instructions    │
+│                                                                                                │
+│ I should acknowledge the project structure without making any tool calls yet. The codebase     │
+│ appears to be in /home/j5/.config/local-ai/projects/session-test based on the path             │
+│ mentioned in the map.                                                                          │
+╰────────────────────────────────────────────────────────────────────────────────────────────────╯
+Agent:  Acknowledging the session-test workspace under `/home/user/.config/local-ai/projects/`
+ready for your task assignment.
+ [ think: 120 | ans: 26 | 146 tokens | 3.8s @ 41.6 t/s ]
+ [ 1199 in | 146 out | ctx: 16.4% ]
+❯ 
 ```
 
 ---
