@@ -106,7 +106,7 @@ class RichStreamer:
 
             if not self.answer_started:
                 self.answer_started = True
-                sys.stdout.write(f"{self.prefix} " if self.prefix else "")
+                sys.stdout.write(f"\n{self.prefix} " if self.prefix else "\n")
 
             if answer_part:
                 self.accumulated_answer += answer_part
@@ -135,7 +135,7 @@ class RichStreamer:
 
             if not self.answer_started:
                 self.answer_started = True
-                sys.stdout.write(f"{self.prefix} " if self.prefix else "")
+                sys.stdout.write(f"\n{self.prefix} " if self.prefix else "\n")
 
             self.accumulated_answer += token
             sys.stdout.write(token)
@@ -151,8 +151,6 @@ class RichStreamer:
                 pass
             self.live_think = None
 
-        # Tool-Call Cutoff Fix: If the stream ended during the thinking phase 
-        # (due to an active tool call), print the static thinking panel before erasing it!
         if self.phase == "THINKING" or (self.accumulated_thinking.strip() and not self.answer_started):
             if show_think_panel and self.accumulated_thinking.strip():
                 panel = Panel(
@@ -166,9 +164,22 @@ class RichStreamer:
                 _console.print(panel)
             self.phase = "ANSWER"
 
-        if self.answer_started:
-            sys.stdout.write("\n")
-            sys.stdout.flush()
+        if self.answer_started and self.accumulated_answer.strip():
+            has_md = any(k in self.accumulated_answer for k in ("**", "```", "# ", "* ", "- ", "###"))
+            if has_md and sys.stdout.isatty():
+                full_raw = "\n" + (self.prefix + " " if self.prefix else "") + self.accumulated_answer
+                lines = full_raw.splitlines()
+                num_lines = len(lines)
+                if num_lines > 0:
+                    sys.stdout.write(f"\r\033[{num_lines}A\033[J")
+                    sys.stdout.flush()
+                    if self.prefix:
+                        prefix_style = "bold green" if "Agent" in self.prefix else "bold cyan"
+                        _console.print(Text(self.prefix.strip(), style=prefix_style))
+                    _console.print(Markdown(self.accumulated_answer, code_theme="ansi_dark"))
+            else:
+                sys.stdout.write("\n")
+                sys.stdout.flush()
 
 
 def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float, show_stats: bool, ctx_used: Optional[int] = None) -> None:

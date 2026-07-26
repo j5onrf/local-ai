@@ -165,29 +165,34 @@ for url, headers, model, extra, timeout in configs:
             lines = [l.strip() for l in full_text.splitlines() if l.strip()]
             if lines:
                 headers_map = {
-                    "follow-up": "Follow-up", "follow-ups": "Follow-up",
-                    "thinking": "Thinking", "think": "Thinking",
-                    "brainstorm": "Brainstorm", "brainstorming": "Brainstorm"
+                    "follow-up": "Follow-up", "follow-ups": "Follow-up", "followup": "Follow-up", "followups": "Follow-up",
+                    "thinking": "Thinking", "think": "Thinking", "thought": "Thinking", "thoughts": "Thinking",
+                    "brainstorm": "Brainstorm", "brainstorming": "Brainstorm", "brainstorms": "Brainstorm"
                 }
                 
                 sys.stdout.write("\n")
-                first_line_clean = lines[0].lower().rstrip('s:')
                 
                 start_index = 0
-                if first_line_clean not in headers_map:
+                first_clean = lines[0].strip("*#: \t").lower().rstrip('s:')
+                
+                if first_clean not in headers_map:
                     for idx, line in enumerate(lines):
-                        if line.lower().rstrip('s:') in headers_map:
+                        clean_check = line.strip("*#: \t").lower().rstrip('s:')
+                        if clean_check in headers_map:
                             start_index = idx
                             break
                     else:
                         sys.stdout.write(f"\033[1;32mAI:\033[0m {output_header}\n")
                 
                 for line in lines[start_index:]:
-                    clean_line = line.lower().rstrip('s:')
+                    clean_line = line.strip("*#: \t").lower().rstrip('s:')
                     if clean_line in headers_map:
                         sys.stdout.write(f"\033[1;32mAI:\033[0m {headers_map[clean_line]}\n")
                     else:
-                        sys.stdout.write(f"{line}\n")
+                        # Split inline questions onto separate lines
+                        sub_questions = [q.strip() for q in re.split(r'(?<=\?)\s+', line) if q.strip()]
+                        for q in sub_questions:
+                            sys.stdout.write(f"{q}\n")
                 sys.stdout.flush()
             sys.exit(0)
     except KeyboardInterrupt:
