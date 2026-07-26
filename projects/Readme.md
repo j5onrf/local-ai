@@ -6,12 +6,12 @@ High-speed local developer agent, episodic memory system, checkpoint state manag
 ~ ❯ session
 [01/03] ❯ [session test] ai init ~/session-test --init
 :: ↵ run  Esc: 
-╔═  ❖ Local-AI Agent  ═══════════════════════════════════╗
-║     model:  Qwen3.5-2B.gguf                            ║
-║ directory:  ~/.config/local-ai/projects/session-test   ║
-║     skill:  pi/lite                                    ║
-║  database:  active (0 facts, 23 turns)                 ║
-╚═══════════════════════════════════════ Ctrl+C to exit ═╝
+╭─  >_ Local-AI Agent  ──────────────────────────────────╮
+│     model:  Qwen3.5-2B.gguf                            │
+│ directory:  ~/.config/local-ai/projects/session-test   │
+│     skill:  pi/lite                                    │
+│  database:  active (0 facts, 24 turns)                 │
+╰─────────────────────────────────────── Ctrl+C to exit ─╯
  Startup context: 327 tokens
 
 ╭─ ⚙ Thinking Process ───────────────────────────────────────────────────────────────────────────╮
