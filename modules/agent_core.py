@@ -9,6 +9,7 @@ import sys
 import json
 import time
 import ast
+import re
 import subprocess
 import difflib
 import urllib.parse
@@ -82,7 +83,6 @@ class RichStreamer:
 
             self.accumulated_thinking += thinking_part
 
-            # Safely close live thinking container
             if self.live_think:
                 try:
                     self.live_think.stop()
@@ -90,7 +90,6 @@ class RichStreamer:
                     pass
                 self.live_think = None
 
-            # Render finalized static thinking panel ONCE
             if show_think_panel and self.accumulated_thinking.strip():
                 panel = Panel(
                     Text(self.accumulated_thinking.strip(), style="italic dim white"),
@@ -106,12 +105,12 @@ class RichStreamer:
 
             if not self.answer_started:
                 self.answer_started = True
-                sys.stdout.write(f"\n{self.prefix} " if self.prefix else "\n")
+                _console.print(Text(f"\n{self.prefix} ", style="bold green" if "Agent" in self.prefix else "bold cyan"), end="")
 
             if answer_part:
                 self.accumulated_answer += answer_part
                 sys.stdout.write(answer_part)
-            sys.stdout.flush()
+                sys.stdout.flush()
             return
 
         # Handle active THINKING phase
@@ -135,7 +134,7 @@ class RichStreamer:
 
             if not self.answer_started:
                 self.answer_started = True
-                sys.stdout.write(f"\n{self.prefix} " if self.prefix else "\n")
+                _console.print(Text(f"\n{self.prefix} ", style="bold green" if "Agent" in self.prefix else "bold cyan"), end="")
 
             self.accumulated_answer += token
             sys.stdout.write(token)
@@ -164,22 +163,14 @@ class RichStreamer:
                 _console.print(panel)
             self.phase = "ANSWER"
 
+        # Final pass: Render formatted Rich Markdown upon completion
         if self.answer_started and self.accumulated_answer.strip():
-            has_md = any(k in self.accumulated_answer for k in ("**", "```", "# ", "* ", "- ", "###"))
-            if has_md and sys.stdout.isatty():
-                full_raw = "\n" + (self.prefix + " " if self.prefix else "") + self.accumulated_answer
-                lines = full_raw.splitlines()
-                num_lines = len(lines)
-                if num_lines > 0:
-                    sys.stdout.write(f"\r\033[{num_lines}A\033[J")
-                    sys.stdout.flush()
-                    if self.prefix:
-                        prefix_style = "bold green" if "Agent" in self.prefix else "bold cyan"
-                        _console.print(Text(self.prefix.strip(), style=prefix_style))
-                    _console.print(Markdown(self.accumulated_answer, code_theme="ansi_dark"))
-            else:
-                sys.stdout.write("\n")
-                sys.stdout.flush()
+            sys.stdout.write("\n\n")
+            sys.stdout.flush()
+            _console.print(Markdown(self.accumulated_answer.strip(), code_theme="ansi_dark"))
+        elif self.answer_started:
+            sys.stdout.write("\n")
+            sys.stdout.flush()
 
 
 def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float, show_stats: bool, ctx_used: Optional[int] = None) -> None:
@@ -496,17 +487,20 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
     return f"[error] unknown tool {name}"
 
 
-def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, str], body: Dict[str, Any], timeout: int, spinner: Any, show_stats: bool = False) -> Optional[str]:
+def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, str], body: Dict[str, Any], timeout: int, spinner: Any, show_stats: bool = False, is_agent: bool = False) -> Optional[str]:
     """Executes a multi-turn streaming agent loop supporting tool execution and evaluation."""
     workspace = os.environ.get("AI_WORKSPACE_PATH", os.getcwd())
     is_local = "localhost" in url or "127.0.0.1" in url or body.get("model") == "local-model"
 
-    if messages and messages[0]["role"] == "system" and "### EDIT MODE" not in messages[0]["content"]:
+    if is_agent and messages and messages[0]["role"] == "system" and "### EDIT MODE" not in messages[0]["content"]:
         messages[0]["content"] += EDIT_SYSTEM_ADD.format(ws=workspace) + TOOLS_SYSTEM_ADD.format(names="read_file, write_file, list_dir, run_command", ws=workspace)
 
     resolved_model = None
     for _round in range(10):
-        body_tools = {**body, "messages": messages, "stream": True, "tools": _EDIT_TOOLS}
+        body_tools = {**body, "messages": messages, "stream": True}
+        if is_agent:
+            body_tools["tools"] = _EDIT_TOOLS
+
         spinner.start()
         try:
             res = _session.post(url, json=body_tools, headers={"Content-Type": "application/json", **headers}, timeout=timeout, stream=True)
@@ -535,7 +529,7 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
                         if first_chunk:
                             spinner.stop()
                             first_chunk = False
-                            streamer = RichStreamer(prefix="Agent: ")
+                            streamer = RichStreamer(prefix="Agent:" if is_agent else "AI:")
                             streamer.start()
                             if speed_test and show_stats:
                                 speed_test.start()
@@ -568,7 +562,7 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
                 speed_test.end(actual_out_tokens=out_tok, is_local=is_local)
 
             calls = [val for _, val in sorted(tool_calls_map.items())] if tool_calls_map else None
-            if not calls:
+            if not calls or not is_agent:
                 _log_turn_usage(resolved_model or body.get("model") or "local-model", in_tok, out_tok, 0.0, show_stats, in_tok + out_tok)
                 return ans_text
 
@@ -628,8 +622,8 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
             unique_configs.append(("http://localhost:8080/v1/chat/completions", {}, local_body, 180))
 
         for url, headers, body, timeout in unique_configs:
-            # ALWAYS run agentic_turn so tool denials automatically loop back to the AI for a verbal response!
-            ans = agentic_turn(messages, url, headers, body, timeout, spinner, show_stats)
+            # Pass is_agent so tools are only enabled in developer mode (ai init)
+            ans = agentic_turn(messages, url, headers, body, timeout, spinner, show_stats, is_agent=is_agent)
             if ans is not None:
                 return ans
 
