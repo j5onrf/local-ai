@@ -25,6 +25,10 @@ from rich.text import Text
 from rich.box import ROUNDED
 from rich.syntax import Syntax
 
+# Core Module Integrations
+import agent_ui as ui
+import agent_cloud
+
 _console = Console()
 _console_err = Console(stderr=True)  # Directed stderr console for status logging
 _session = requests.Session()
@@ -517,7 +521,7 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
                                 speed_test.start()
 
                         if streamer:
-                            streamer.update(chunk_to_stream)
+                            streamer.update(content)
                         acc_content.append(chunk_to_stream)
                         if speed_test and show_stats:
                             speed_test.count_token(chunk_to_stream, is_thinking=is_thinking)
@@ -674,7 +678,7 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
                     else:
                         break
                 except Exception:
-                    spinner.stop()
+                    spinner.stop;
                     break
     except KeyboardInterrupt:
         if 'streamer' in locals() and streamer:
