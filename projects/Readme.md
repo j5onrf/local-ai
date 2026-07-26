@@ -6,44 +6,22 @@ High-speed local developer agent, episodic memory system, checkpoint state manag
 ~ ❯ session
 [01/03] ❯ [session test] ai init ~/session-test --init
 :: ↵ run  Esc: 
-✔ Mapping complete! [session-test index-map & SQLite graph database updated]
-╔═  ❖ Local-AI Agent [sub-agent #1] ════════════╗
-║     model:  Qwen3.6-35B-A3B.gguf              ║
-║ directory:  ~/.config/local-ai/session-test   ║
-║     skill:  pi/full                           ║
-║  database:  active (3 facts, 26 turns)        ║
-╚═══════════════════════════ Ctrl+C to exit ════╝
- Startup context: 191 tokens
 
-Agent: Workspace loaded. Awaiting instructions.
- [7 tokens | 0.52s | 28.38 t/s]
- [ 918 in | 10 out | cost: $0.00000 | today: $0.0000 | ctx: 11.3% ]
-❯ hello
-[sys] Memory recall skipped.
-Agent: Hello! How can I assist you with your Python project today?
- [13 tokens | 1.03s | 26.68 t/s]
- [ 950 in | 13 out | cost: $0.00000 | today: $0.0000 | ctx: 11.8% ]
-❯ /clear
-[sys] Conversation history, cloud session, and local TPM memory cleared.
+[ai init] Select default Agent Profile for workspace session-test:
 
-❯ I am a Lead Python Developer. I use Helix editor, and my favorite shell is Bash.
-Agent: Understood. I have noted your preferences:
+✓ Profile set to: Pi Lite (Autonomous YOLO)
 
-*   **Role:** Lead Python Developer
-*   **Editor:** Helix
-*   **Shell:** Bash
+╔═  ❖ Local-AI Agent  ═══════════════════════════════════╗
+║     model:  Qwen3.5-2B.gguf                            ║
+║ directory:  ~/.config/local-ai/projects/session-test   ║
+║     skill:  pi/lite                                    ║
+║  database:  disabled                                   ║
+╚═══════════════════════════════════════ Ctrl+C to exit ═╝
+ Startup context: 327 tokens
 
-❯ /sync
-✔ Mapping complete! [session-test index-map & SQLite graph database updated]
-[sys] Codespace map and relational SQLite graph successfully synchronized.
-
-❯ /tok
-
-[sys] Context Window: 838/8192 tokens
-[sys] Usage: [██░░░░░░░░░░░░░░░░░░] 10.2%
-[sys] Remaining: 7354 tokens
-
-❯ 
+Agent:  I'm ready to assist you in your session-test project! This looks like a Python-based calculation tool with modules for average, sum, velocity, acceleration, and simulation testing. What would you like me to help you with?
+ [ think: 139 | ans: 46 | 185 tokens | 8.7s @ 41.2 t/s ]
+ [ 1065 in | 185 out | ctx: 15.3% ]
 ```
 
 ---
