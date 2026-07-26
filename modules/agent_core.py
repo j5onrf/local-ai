@@ -46,13 +46,14 @@ except ImportError:
 
 
 class RichStreamer:
-    """Renders stream content dynamically: transient Live for Thinking, fast direct stream for Answer, full Rich Markdown on stop."""
+    """Streams fast direct text via a transient buffer, then replaces it with full Rich Markdown on completion."""
     def __init__(self, prefix: str = "", active: bool = True) -> None:
         self.prefix: str = prefix
         self.active: bool = active and sys.stdout.isatty()
         self.accumulated_thinking: str = ""
         self.accumulated_answer: str = ""
         self.live_think: Optional[Live] = None
+        self.live_answer: Optional[Live] = None
         self.phase: str = "INIT"  # "INIT", "THINKING", "ANSWER"
         self.answer_started: bool = False
 
@@ -103,14 +104,8 @@ class RichStreamer:
 
             self.phase = "ANSWER"
 
-            if not self.answer_started:
-                self.answer_started = True
-                _console.print(Text(f"\n{self.prefix} ", style="bold green" if "Agent" in self.prefix else "bold cyan"), end="")
-
             if answer_part:
-                self.accumulated_answer += answer_part
-                sys.stdout.write(answer_part)
-                sys.stdout.flush()
+                self.update(answer_part)
             return
 
         # Handle active THINKING phase
@@ -128,17 +123,22 @@ class RichStreamer:
                 self.live_think.update(panel)
                 self.live_think.refresh()
         else:
-            # Handle active ANSWER phase (Direct fast stdout streaming)
+            # Handle active ANSWER phase (Transient fast text stream)
             if self.phase != "ANSWER":
                 self.phase = "ANSWER"
 
             if not self.answer_started:
                 self.answer_started = True
-                _console.print(Text(f"\n{self.prefix} ", style="bold green" if "Agent" in self.prefix else "bold cyan"), end="")
+                self.live_answer = Live("", console=_console, auto_refresh=False, vertical_overflow="crop", transient=True, screen=False)
+                self.live_answer.start()
 
             self.accumulated_answer += token
-            sys.stdout.write(token)
-            sys.stdout.flush()
+
+            if self.live_answer:
+                p_style = "bold green" if "Agent" in self.prefix else "bold cyan"
+                clean_ans = self.accumulated_answer.replace("\\n", "\n")
+                self.live_answer.update(Text(f"{self.prefix.strip()} {clean_ans}"))
+                self.live_answer.refresh()
 
     def stop(self) -> None:
         show_think_panel = os.environ.get("AI_SHOW_THINKING", "1") == "1"
@@ -163,14 +163,20 @@ class RichStreamer:
                 _console.print(panel)
             self.phase = "ANSWER"
 
-        # Final pass: Render formatted Rich Markdown upon completion
+        # 1. Erase transient raw stream completely from screen
+        if self.live_answer:
+            try:
+                self.live_answer.stop()
+            except Exception:
+                pass
+            self.live_answer = None
+
+        # 2. Render final formatted Rich Markdown pass
         if self.answer_started and self.accumulated_answer.strip():
-            sys.stdout.write("\n\n")
-            sys.stdout.flush()
-            _console.print(Markdown(self.accumulated_answer.strip(), code_theme="ansi_dark"))
-        elif self.answer_started:
-            sys.stdout.write("\n")
-            sys.stdout.flush()
+            p_style = "bold green" if "Agent" in self.prefix else "bold cyan"
+            _console.print(Text(f"{self.prefix.strip()}", style=p_style))
+            _console.print(Markdown(self.accumulated_answer.strip().replace("\\n", "\n"), code_theme="ansi_dark"))
+            _console.print()
 
 
 def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float, show_stats: bool, ctx_used: Optional[int] = None) -> None:
