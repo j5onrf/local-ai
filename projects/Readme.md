@@ -128,14 +128,19 @@ When you run `ai init <path>` in a workspace for the first time, an interactive 
 ```text
 [ai init] Select default Agent Profile for workspace session-test:
 
-  ❯  1. Basic / Default    (~120 tokens | Standard init.md assistant)
-     2. Pi Agent [1:1]     (~400 tokens | Streamlined native Pi prompt)
-     3. Claude Code        (~440 tokens | Full 1:1 Claude Code CLI prompt)
-     4. Hermes Agent       (~380 tokens | Full 1:1 Nous Hermes system prompt)
+    1. Default            (~120t | Standard assistant)
+  ❯ 2. Pi Agent [1:1]     (~400t | Full Pi prompt (Large models))
+    3. Claude Code        (~440t | Full Claude prompt (Large models))
+    4. Hermes Agent       (~380t | Full Hermes prompt (Large models))
+    5. Pi Lite            (~220t | Index-first prompt (Small models))
+    6. Claude Lite        (~230t | Index-first prompt (Small models))
+    7. Hermes Lite        (~220t | Index-first prompt (Small models))
 
   :: ↵ select  ↑/↓ navigate  Tab: YOLO [OFF]  Esc: default
 ```
 
+> **YOLO Mode Guard:** If you hit <kbd>Enter</kbd> without toggling <kbd>Tab</kbd> first, a clean 1-line prompt asks: `Enable Autonomous YOLO mode? [y/N]:` to prevent accidentally launching with manual tool confirmation gates on.
+>
 > **Reset Profile Menu:** To change or reset a workspace's saved profile, delete `.agent/config.json` inside that project:
 > ```bash
 > rm .agent/config.json
@@ -143,11 +148,18 @@ When you run `ai init <path>` in a workspace for the first time, an interactive 
 
 ### Master Agent Profiles & Personalities
 
-Although all three master profiles leverage the same local system tools (`read_file`, `write_file`, `list_dir`, `run_command`), they instruct the model to execute tasks using entirely different logical architectures, structural constraints, and conversational styles:
+Although all profiles leverage the same local system tools (`read_file`, `write_file`, `list_dir`, `run_command`), they instruct models using two primary architectural tiers:
 
-* **Claude Code (`claude/full`):** *The Methodical Planner.* Instructs the model to write out structured plans within `<thought>` blocks before executing any tool. It is highly analytical, cautious, and designed to trace entire codebase dependency trees before applying edits. It uses **Targeted Reading** to inspect only relevant files mapped by the index, rather than reading the entire directory. Best for complex refactoring and multi-file changes.
-* **Pi Agent (`pi/full`):** *The Surgical Developer.* An ultra-direct, action-first assistant that strips out conversational padding, disclaimers, and unsolicited explanations. It uses a strict verification loop, requiring the model to immediately test code updates via shell commands before completing a turn. It relies on **Targeted Reading** to surgically inspect only the specific files or functions necessary for the task. Best for rapid, targeted file editing and fast bug fixes.
-* **Hermes Agent (`hermes/full`):** *The Automation Engine.* Treats software development as a pure, sequence-driven tool-calling pipeline. It focuses heavily on executing shell commands, managing database updates, and running tests. It uses **Targeted Reading** to execute background tool commands on isolated components. Best for structural scripts, migrations, and running background diagnostics.
+#### 1. Full 1:1 Profiles (Designed for Large Models 14B–70B+)
+* **Claude Code (`claude/full`):** *The Methodical Planner.* Writes structured plans within `<thought>` blocks before executing tools. Highly analytical, cautious, and designed to trace entire codebase dependency trees before applying edits. Best for complex refactoring.
+* **Pi Agent (`pi/full`):** *The Surgical Developer.* An ultra-direct, action-first assistant that strips out conversational padding and disclaimers. Requires immediate verification of updates via shell commands. Best for rapid file editing and fast bug fixes.
+* **Hermes Agent (`hermes/full`):** *The Automation Engine.* Treats software development as a pure, sequence-driven tool-calling pipeline. Focuses on executing shell scripts, database updates, and diagnostics. Best for structural scripts and background workflows.
+
+#### 2. Lite Profiles (Optimized for Small/2B Models)
+* **Pi Lite (`pi/lite`), Claude Lite (`claude/lite`), Hermes Lite (`hermes/lite`):** *Index-First & Standby Architecture.* Smaller local models (1B–3B) often exhibit tool eagerness, blindly calling `list_dir` or `read_file` across every workspace file at startup. Lite profiles enforce a **Strict Startup Rule**:
+  1. **No Startup Tool Calls:** Disables tool calls during initialization.
+  2. **Index-Map Ingestion:** Ingests the project structure directly from the `CODESPACE MAP` context.
+  3. **Standby Hand-off:** Replies with 1 brief sentence acknowledging the project, then waits for the user's explicit request before making targeted tool calls.
 
 ---
 

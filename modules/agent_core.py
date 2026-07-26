@@ -142,6 +142,8 @@ class RichStreamer:
             sys.stdout.flush()
 
     def stop(self) -> None:
+        show_think_panel = os.environ.get("AI_SHOW_THINKING", "1") == "1"
+
         if self.live_think:
             try:
                 self.live_think.stop()
@@ -149,23 +151,23 @@ class RichStreamer:
                 pass
             self.live_think = None
 
-        if self.answer_started and self.accumulated_answer.strip():
-            if self.active:
-                # Count raw lines printed to clear raw text cleanly from terminal buffer
-                lines_printed = self.accumulated_answer.count("\n") + 1
-                if self.prefix:
-                    lines_printed += self.prefix.count("\n")
+        # Tool-Call Cutoff Fix: If the stream ended during the thinking phase 
+        # (due to an active tool call), print the static thinking panel before erasing it!
+        if self.phase == "THINKING" or (self.accumulated_thinking.strip() and not self.answer_started):
+            if show_think_panel and self.accumulated_thinking.strip():
+                panel = Panel(
+                    Text(self.accumulated_thinking.strip(), style="italic dim white"),
+                    title="⚙ Thinking Process",
+                    title_align="left",
+                    border_style="bright_black",
+                    box=ROUNDED,
+                    expand=True
+                )
+                _console.print(panel)
+            self.phase = "ANSWER"
 
-                # Move cursor up and erase raw text
-                sys.stdout.write(f"\033[{lines_printed}A\r\033[J")
-                sys.stdout.flush()
-
-                # Render fully formatted theme-adaptive Rich Markdown
-                p_text = self.prefix.strip()
-                p_str = f"**{p_text}** " if p_text else ""
-                _console.print(Markdown(f"{p_str}{self.accumulated_answer.strip()}", code_theme="ansi_dark"))
-            else:
-                sys.stdout.write("\n")
+        if self.answer_started:
+            sys.stdout.write("\n")
             sys.stdout.flush()
 
 
@@ -323,16 +325,23 @@ TOOL_VERBS = {"read_file": "checking", "write_file": "updating", "list_dir": "ch
 
 
 def _safe_path(workspace: str, p: str) -> str:
-    """Auto-heals URL-encoded strings and leading slashes from 2B models."""
+    """Resolves absolute and relative paths securely and cleanly."""
     if not p:
         return os.path.realpath(workspace)
 
+    # Decode any URL encoding (e.g. %20 -> spaces)
     p = urllib.parse.unquote(str(p).strip())
-    if p.startswith("/") and not os.path.exists(p):
-        p = p.lstrip("/")
+    
+    # Expand user directories (~ -> /home/user)
+    p = os.path.expanduser(p)
 
+    # If it is already an absolute path, resolve it directly
+    if os.path.isabs(p):
+        return os.path.realpath(p)
+
+    # Otherwise, resolve it relative to the workspace directory
     ws_real = os.path.realpath(workspace)
-    return os.path.realpath(os.path.join(ws_real, os.path.expanduser(p)))
+    return os.path.realpath(os.path.join(ws_real, p))
 
 
 def _is_outside_workspace(workspace: str, full_path: str) -> bool:
@@ -492,7 +501,7 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
             res = _session.post(url, json=body_tools, headers={"Content-Type": "application/json", **headers}, timeout=timeout, stream=True)
             first_chunk, acc_content, tool_calls_map, streamer, in_think_block, captured_usage = True, [], {}, None, False, None
 
-            for line in res.iter_lines():
+            for line in res.iter_lines(chunk_size=1):
                 if not line or not line.decode("utf-8", errors="ignore").strip().startswith("data:"):
                     continue
                 data_str = line.decode("utf-8", errors="ignore").strip()[5:].strip()
@@ -521,7 +530,7 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
                                 speed_test.start()
 
                         if streamer:
-                            streamer.update(content)
+                            streamer.update(chunk_to_stream)
                         acc_content.append(chunk_to_stream)
                         if speed_test and show_stats:
                             speed_test.count_token(chunk_to_stream, is_thinking=is_thinking)
@@ -651,10 +660,10 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
                                     if speed_test and show_stats:
                                         speed_test.start()
                                 if streamer:
-                                    streamer.update(content)
-                                acc.append(content)
+                                    streamer.update(chunk_to_stream)
+                                acc.append(chunk_to_stream)
                                 if speed_test and show_stats:
-                                    speed_test.count_token(content, is_thinking=is_thinking)
+                                    speed_test.count_token(chunk_to_stream, is_thinking=is_thinking)
 
                         if streamer:
                             streamer.stop()
@@ -678,7 +687,7 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
                     else:
                         break
                 except Exception:
-                    spinner.stop;
+                    spinner.stop()
                     break
     except KeyboardInterrupt:
         if 'streamer' in locals() and streamer:

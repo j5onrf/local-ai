@@ -7,7 +7,7 @@ import select
 import re
 import urllib.request as urlreq
 import json
-from typing import Optional, Callable
+from typing import Optional, Callable, Tuple
 
 from rich.console import Console, Group
 from rich.panel import Panel
@@ -352,12 +352,15 @@ def show_help() -> None:
 
 
 def select_workspace_profile(workspace_name: str) -> Tuple[str, bool]:
-    """Renders the simplified, high-performance workspace profile selector menu."""
+    """Renders the workspace profile selector menu with minimal confirmation for YOLO mode."""
     options = [
-        ("default",     "Basic / Default", "~120 tokens | Standard init.md assistant"),
-        ("pi/full",     "Pi Agent [1:1]",  "~400 tokens | Streamlined native Pi prompt"),
-        ("claude/full", "Claude Code",     "~440 tokens | Full 1:1 Claude Code CLI prompt"),
-        ("hermes/full", "Hermes Agent",    "~380 tokens | Full 1:1 Nous Hermes system prompt")
+        ("default",     "Default",            "~120t | Standard assistant"),
+        ("pi/full",     "Pi Agent [1:1]",     "~400t | Full Pi prompt (Large models)"),
+        ("claude/full", "Claude Code",        "~440t | Full Claude prompt (Large models)"),
+        ("hermes/full", "Hermes Agent",       "~380t | Full Hermes prompt (Large models)"),
+        ("pi/lite",     "Pi Lite",            "~220t | Index-first prompt (Small models)"),
+        ("claude/lite", "Claude Lite",        "~230t | Index-first prompt (Small models)"),
+        ("hermes/lite", "Hermes Lite",        "~220t | Index-first prompt (Small models)"),
     ]
     
     sys.stderr.write(f"\n\033[1;36m[ai init]\033[0m Select default Agent Profile for workspace \033[1;33m{workspace_name}\033[0m:\n\n")
@@ -382,21 +385,21 @@ def select_workspace_profile(workspace_name: str) -> Tuple[str, bool]:
                 else:
                     sys.stderr.write(f"\r\x1b[K\033[90m    {idx + 1:2d}. {lbl:<18} ({d})\033[0m\n")
 
-            # Render status line with dynamic YOLO mode indicator
-            yolo_badge = "\033[1;33m[ON (Autonomous)]\033[0m" if is_yolo else "\033[90m[OFF]\033[0m"
+            # Render minimal status bar
+            yolo_badge = "\033[1;33m[ON]\033[0m" if is_yolo else "\033[90m[OFF]\033[0m"
             sys.stderr.write("\r\x1b[K\n")
             sys.stderr.write(f"\r\x1b[K\033[2m  :: ↵ select  ↑/↓ navigate  \033[1;36mTab\033[2m: YOLO {yolo_badge}\033[2m  Esc: default\033[0m\n")
             sys.stderr.flush()
 
             char = get_key()
 
-            if char in ('\t', 'y', 'Y'):  # Tab or 'y' toggles YOLO mode
+            if char in ('\t', 'y', 'Y'):  # Tab toggles YOLO mode
                 is_yolo = not is_yolo
 
             elif char in ('\x03', '\x1b'):  # Esc or Ctrl+C -> default
                 sys.stderr.write(f"\x1b[{num_opts + 2}A\r\x1b[J")
                 mode_str = " (Autonomous YOLO)" if is_yolo else ""
-                sys.stderr.write(f"\033[1;32m✓ Profile set to: Basic / Default{mode_str}\033[0m\n\n")
+                sys.stderr.write(f"\033[1;32m✓ Profile set to: Default{mode_str}\033[0m\n\n")
                 sys.stderr.flush()
                 return "default", is_yolo
 
@@ -404,6 +407,17 @@ def select_workspace_profile(workspace_name: str) -> Tuple[str, bool]:
                 _, label, _ = options[current_idx]
                 key, _, _ = options[current_idx]
                 sys.stderr.write(f"\x1b[{num_opts + 2}A\r\x1b[J")
+
+                # If YOLO wasn't toggled ON via Tab, ask clean confirmation
+                if not is_yolo:
+                    sys.stderr.write("\033[1;36mEnable Autonomous YOLO mode? [y/N]: \033[0m")
+                    sys.stderr.flush()
+                    c = get_key().lower()
+                    sys.stderr.write("y\n" if c == 'y' else "n\n")
+                    sys.stderr.flush()
+                    if c == 'y':
+                        is_yolo = True
+
                 mode_str = " (Autonomous YOLO)" if is_yolo else ""
                 sys.stderr.write(f"\033[1;32m✓ Profile set to: {label}{mode_str}\033[0m\n\n")
                 sys.stderr.flush()
