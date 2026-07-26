@@ -23,7 +23,7 @@ High-speed local developer agent, episodic memory system, checkpoint state manag
 │ 3. Reply with ONE brief sentence acknowledging the project and wait for user's instructions    │
 │                                                                                                │
 │ I should acknowledge the project structure without making any tool calls yet. The codebase     │
-│ appears to be in /home/j5/.config/local-ai/projects/session-test based on the path             │
+│ appears to be in /home/user/.config/local-ai/projects/session-test based on the path             │
 │ mentioned in the map.                                                                          │
 ╰────────────────────────────────────────────────────────────────────────────────────────────────╯
 Agent:  Acknowledging the session-test workspace under `/home/user/.config/local-ai/projects/`
