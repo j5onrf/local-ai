@@ -143,11 +143,21 @@ When you run `ai init <path>` in a workspace for the first time, an interactive 
 
 ### Master Agent Profiles & Personalities
 
-Although all three master profiles leverage the same local system tools (`read_file`, `write_file`, `list_dir`, `run_command`), they instruct the model to execute tasks using entirely different logical architectures and conversational styles:
+Although all three master profiles leverage the same local system tools (`read_file`, `write_file`, `list_dir`, `run_command`), they instruct the model to execute tasks using entirely different logical architectures, structural constraints, and conversational styles:
 
-* **Claude Code (`claude/full`):** *The Methodical Planner.* Instructs the model to write out structured plans within `<thought>` blocks before executing any tool. It is highly analytical, cautious, and designed to trace entire codebase dependency trees before applying edits. Best for complex refactoring and multi-file changes.
-* **Pi Agent (`pi/full`):** *The Surgical Developer.* An ultra-direct, action-first assistant that strips out conversational padding, disclaimers, and unsolicited explanations. It uses a strict verification loop, requiring the model to immediately test code updates via shell commands before completing a turn. Best for rapid, targeted file editing and fast bug fixes.
-* **Hermes Agent (`hermes/full`):** *The Automation Engine.* Treats software development as a pure, sequence-driven tool-calling pipeline. It focuses heavily on executing shell commands, managing database updates, and running tests. Best for structural scripts, migrations, and running background diagnostics.
+* **Claude Code (`claude/full`):** *The Methodical Planner.* Instructs the model to write out structured plans within `<thought>` blocks before executing any tool. It is highly analytical, cautious, and designed to trace entire codebase dependency trees before applying edits. It uses **Targeted Reading** to inspect only relevant files mapped by the index, rather than reading the entire directory. Best for complex refactoring and multi-file changes.
+* **Pi Agent (`pi/full`):** *The Surgical Developer.* An ultra-direct, action-first assistant that strips out conversational padding, disclaimers, and unsolicited explanations. It uses a strict verification loop, requiring the model to immediately test code updates via shell commands before completing a turn. It relies on **Targeted Reading** to surgically inspect only the specific files or functions necessary for the task. Best for rapid, targeted file editing and fast bug fixes.
+* **Hermes Agent (`hermes/full`):** *The Automation Engine.* Treats software development as a pure, sequence-driven tool-calling pipeline. It focuses heavily on executing shell commands, managing database updates, and running tests. It uses **Targeted Reading** to execute background tool commands on isolated components. Best for structural scripts, migrations, and running background diagnostics.
+
+---
+
+### Graph Index Mapping & Targeted Reading
+
+To prevent context-window bloat on large-scale repositories, all three master profiles utilize a **Targeted Reading** architecture enabled by your project's `index-map` files (`index-map-<project>.txt` and `index-map-memory-<project>.db`):
+
+* **How it works:** On startup (`ai init`), the harness compiles a lightweight, structural outline of your codebase's classes, functions, and import trees. 
+* **Context Preservation:** Instead of executing broad, unguided file reads that would instantly saturate your local context window on a large codebase, the model uses this compiled index map to surgically identify which specific functions, files, or symbols are relevant to your query.
+* **On-Demand Inspection:** The model then uses `read_file` or your RAG symbol shortcuts (`Run: read function <symbol>`) to pull **only** the necessary codeblocks into active memory.
 
 ---
 
