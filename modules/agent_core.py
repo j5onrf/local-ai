@@ -47,9 +47,10 @@ except ImportError:
 
 class RichStreamer:
     """Streams fast direct text via a transient buffer, then replaces it with full Rich Markdown on completion."""
-    def __init__(self, prefix: str = "", active: bool = True) -> None:
+    def __init__(self, prefix: str = "", active: bool = True, spinner: Any = None) -> None:
         self.prefix: str = prefix
         self.active: bool = active and sys.stdout.isatty()
+        self.spinner: Any = spinner
         self.accumulated_thinking: str = ""
         self.accumulated_answer: str = ""
         self.live_think: Optional[Live] = None
@@ -72,12 +73,23 @@ class RichStreamer:
         if "<think>" in token and self.phase != "THINKING":
             self.phase = "THINKING"
             if show_think_panel:
+                if self.spinner:
+                    try:
+                        self.spinner.stop()
+                    except Exception:
+                        pass
                 self.live_think = Live("", console=_console, auto_refresh=False, vertical_overflow="crop", transient=True, screen=False)
                 self.live_think.start()
             token = token.replace("<think>", "")
 
         # Detect end of thinking phase
         if "</think>" in token:
+            if not show_think_panel and self.spinner:
+                try:
+                    self.spinner.stop()
+                except Exception:
+                    pass
+
             parts = token.split("</think>", 1)
             thinking_part = parts[0]
             answer_part = parts[1] if len(parts) > 1 else ""
@@ -128,6 +140,11 @@ class RichStreamer:
                 self.phase = "ANSWER"
 
             if not self.answer_started:
+                if self.spinner:
+                    try:
+                        self.spinner.stop()
+                    except Exception:
+                        pass
                 self.answer_started = True
                 self.live_answer = Live("", console=_console, auto_refresh=False, vertical_overflow="crop", transient=True, screen=False)
                 self.live_answer.start()
@@ -135,12 +152,11 @@ class RichStreamer:
             self.accumulated_answer += token
 
             if self.live_answer:
-                p_style = "bold green" if "Agent" in self.prefix else "bold cyan"
                 clean_ans = self.accumulated_answer.replace("\\n", "\n")
                 self.live_answer.update(Text(f"{self.prefix.strip()} {clean_ans}"))
                 self.live_answer.refresh()
 
-    def stop(self) -> None:
+    def stop(self, interrupted: bool = False) -> None:
         show_think_panel = os.environ.get("AI_SHOW_THINKING", "1") == "1"
 
         if self.live_think:
@@ -149,6 +165,22 @@ class RichStreamer:
             except Exception:
                 pass
             self.live_think = None
+
+        if self.live_answer:
+            try:
+                self.live_answer.stop()
+            except Exception:
+                pass
+            self.live_answer = None
+
+        if self.spinner:
+            try:
+                self.spinner.stop()
+            except Exception:
+                pass
+
+        if interrupted:
+            return
 
         if self.phase == "THINKING" or (self.accumulated_thinking.strip() and not self.answer_started):
             if show_think_panel and self.accumulated_thinking.strip():
@@ -163,15 +195,7 @@ class RichStreamer:
                 _console.print(panel)
             self.phase = "ANSWER"
 
-        # 1. Erase transient raw stream completely from screen
-        if self.live_answer:
-            try:
-                self.live_answer.stop()
-            except Exception:
-                pass
-            self.live_answer = None
-
-        # 2. Render final formatted Rich Markdown pass
+        # Render final formatted Rich Markdown pass
         if self.answer_started and self.accumulated_answer.strip():
             p_style = "bold green" if "Agent" in self.prefix else "bold cyan"
             _console.print(Text(f"{self.prefix.strip()}", style=p_style))
@@ -279,9 +303,10 @@ def stream(messages: List[Dict[str, str]], prefix: str, gkey: str, spinner_class
 
                     if content:
                         if first:
-                            spinner.stop()
+                            if os.environ.get("AI_SHOW_THINKING", "1") == "1":
+                                spinner.stop()
                             first = False
-                            streamer = RichStreamer(prefix=f"{prefix} " if prefix else "")
+                            streamer = RichStreamer(prefix=f"{prefix} " if prefix else "", spinner=spinner)
                             streamer.start()
                             if speed_test and show_stats:
                                 speed_test.start()
@@ -310,6 +335,19 @@ def stream(messages: List[Dict[str, str]], prefix: str, gkey: str, spinner_class
                 os.makedirs(os.path.dirname(sf), exist_ok=True)
                 json.dump({"last_interaction_id": resolved_id}, open(sf, "w", encoding="utf-8"))
             return ans_text
+    except KeyboardInterrupt:
+        if 'streamer' in locals() and streamer:
+            try:
+                streamer.stop(interrupted=True)
+            except Exception:
+                pass
+        if 'spinner' in locals() and spinner:
+            try:
+                spinner.stop()
+            except Exception:
+                pass
+        sys.stderr.write("\r\x1b[2K\033[90m[sys] Interrupted.\033[0m\033[0m\n")
+        return None
     except Exception as e:
         spinner.stop()
         if saved_id and getattr(e, "code", None) in (400, 404):
@@ -337,17 +375,12 @@ def _safe_path(workspace: str, p: str) -> str:
     if not p:
         return os.path.realpath(workspace)
 
-    # Decode any URL encoding (e.g. %20 -> spaces)
     p = urllib.parse.unquote(str(p).strip())
-    
-    # Expand user directories (~ -> /home/user)
     p = os.path.expanduser(p)
 
-    # If it is already an absolute path, resolve it directly
     if os.path.isabs(p):
         return os.path.realpath(p)
 
-    # Otherwise, resolve it relative to the workspace directory
     ws_real = os.path.realpath(workspace)
     return os.path.realpath(os.path.join(ws_real, p))
 
@@ -369,6 +402,7 @@ BINARY_EXTENSIONS = {
     ".7z", ".pdf", ".docx", ".xlsx", ".db-wal", ".db-shm"
 }
 
+
 def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any = None) -> str:
     gates_active = os.environ.get("AI_CONFIRM_GATES", "1") == "1"
     denial_msg = "[denied] User declined tool execution. Do NOT attempt to call tools again. Respond directly to the user's prompt using plain text."
@@ -377,7 +411,6 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
         raw_path = args.get("path", "")
         full = _safe_path(workspace, raw_path)
         
-        # Binary File Shield: Block database and binary files from corrupting context memory
         ext = os.path.splitext(full)[1].lower()
         if ext in BINARY_EXTENSIONS or os.path.isdir(full):
             return f"[error] Refused to read binary/database file or directory '{raw_path}'. Use CLI tools (like sqlite3 or list_dir) to inspect."
@@ -472,7 +505,6 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
             res = subprocess.run([shell, "-lc", cmd], cwd=workspace, capture_output=True, text=True, timeout=300)
             out = ((res.stdout or "") + (("\n" + res.stderr) if res.stderr else "")).strip()[:10000]
 
-            # Directed to stderr so progress output never pollutes standard output captures
             if sys.stdout.isatty() and out.strip():
                 if spinner:
                     spinner.stop()
@@ -502,6 +534,8 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
         messages[0]["content"] += EDIT_SYSTEM_ADD.format(ws=workspace) + TOOLS_SYSTEM_ADD.format(names="read_file, write_file, list_dir, run_command", ws=workspace)
 
     resolved_model = None
+    streamer = None
+
     for _round in range(10):
         body_tools = {**body, "messages": messages, "stream": True}
         if is_agent:
@@ -510,7 +544,7 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
         spinner.start()
         try:
             res = _session.post(url, json=body_tools, headers={"Content-Type": "application/json", **headers}, timeout=timeout, stream=True)
-            first_chunk, acc_content, tool_calls_map, streamer, in_think_block, captured_usage = True, [], {}, None, False, None
+            first_chunk, acc_content, tool_calls_map, in_think_block, captured_usage = True, [], {}, False, None
 
             for line in res.iter_lines(chunk_size=1):
                 if not line or not line.decode("utf-8", errors="ignore").strip().startswith("data:"):
@@ -533,9 +567,10 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
 
                     if chunk_to_stream:
                         if first_chunk:
-                            spinner.stop()
                             first_chunk = False
-                            streamer = RichStreamer(prefix="Agent:" if is_agent else "AI:")
+                            if os.environ.get("AI_SHOW_THINKING", "1") == "1":
+                                spinner.stop()
+                            streamer = RichStreamer(prefix="Agent:" if is_agent else "AI:", spinner=spinner)
                             streamer.start()
                             if speed_test and show_stats:
                                 speed_test.start()
@@ -580,7 +615,6 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
                 brief = str(args.get("path") or args.get("command") or "")[:100]
                 verb = TOOL_VERBS.get(fname, "working")
 
-                # Progress logs directed to stderr to keep stdout clean
                 _console_err.print(f"[dim]∗ {verb} • [cyan]{fname}[/cyan] [italic]{brief}[/italic][/dim]")
                 if spinner and fname in ("read_file", "list_dir"):
                     spinner.start(verb)
@@ -594,11 +628,24 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
 
                 messages.append({"role": "tool", "tool_call_id": tc.get("id", ""), "name": fname, "content": result})
 
+        except KeyboardInterrupt:
+            if streamer:
+                try:
+                    streamer.stop(interrupted=True)
+                except Exception:
+                    pass
+            if spinner:
+                try:
+                    spinner.stop()
+                except Exception:
+                    pass
+            raise
         except Exception as e:
             sys.stderr.write(f"\033[90m[sys] API response error: {e}\033[0m\n")
             return None
         finally:
-            spinner.stop()
+            if spinner:
+                spinner.stop()
 
     return None
 
@@ -608,18 +655,27 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
     acc, spinner = [], ui.InlineSpinner()
     try:
         configs = agent_cloud.get_active_configs(messages)
+        enable_think = thinking_budget > 0
+        budget_val = thinking_budget if enable_think else 0
+
         local_body = {
             "messages": messages,
             "stream": True,
             "model": "local-model",
-            "thinking_budget_tokens": thinking_budget if thinking_budget > 0 else 0,
-            "chat_template_kwargs": {"enable_thinking": thinking_budget > 0}
+            "reasoning_budget": budget_val,
+            "thinking_budget_tokens": budget_val,
+            "chat_template_kwargs": {"enable_thinking": enable_think}
         }
 
         seen_urls = set()
         unique_configs = []
         for url, headers, body, timeout in configs:
             norm_url = "http://localhost:8080/v1/chat/completions" if ":8080" in url else url.replace("127.0.0.1", "localhost")
+            if "localhost" in norm_url or "127.0.0.1" in norm_url:
+                body["reasoning_budget"] = budget_val
+                body["thinking_budget_tokens"] = budget_val
+                body["chat_template_kwargs"] = {"enable_thinking": enable_think}
+
             if norm_url not in seen_urls:
                 seen_urls.add(norm_url)
                 unique_configs.append(("http://localhost:8080/v1/chat/completions" if ":8080" in url else url, headers, body, timeout))
@@ -628,7 +684,6 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
             unique_configs.append(("http://localhost:8080/v1/chat/completions", {}, local_body, 180))
 
         for url, headers, body, timeout in unique_configs:
-            # Pass is_agent so tools are only enabled in developer mode (ai init)
             ans = agentic_turn(messages, url, headers, body, timeout, spinner, show_stats, is_agent=is_agent)
             if ans is not None:
                 return ans
@@ -664,9 +719,10 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
 
                             if chunk_to_stream:
                                 if first:
-                                    spinner.stop()
                                     first = False
-                                    streamer = RichStreamer(prefix=f"{prefix} " if prefix else "")
+                                    if os.environ.get("AI_SHOW_THINKING", "1") == "1":
+                                        spinner.stop()
+                                    streamer = RichStreamer(prefix=f"{prefix} " if prefix else "", spinner=spinner)
                                     streamer.start()
                                     if speed_test and show_stats:
                                         speed_test.start()
@@ -697,13 +753,26 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
                         backoff *= 2
                     else:
                         break
+                except KeyboardInterrupt:
+                    if 'streamer' in locals() and streamer:
+                        try:
+                            streamer.stop(interrupted=True)
+                        except Exception:
+                            pass
+                    if 'spinner' in locals() and spinner:
+                        try:
+                            spinner.stop()
+                        except Exception:
+                            pass
+                    sys.stderr.write("\r\x1b[2K\033[90m[sys] Interrupted.\033[0m\033[0m\n")
+                    return None
                 except Exception:
                     spinner.stop()
                     break
     except KeyboardInterrupt:
         if 'streamer' in locals() and streamer:
             try:
-                streamer.stop()
+                streamer.stop(interrupted=True)
             except Exception:
                 pass
         if 'spinner' in locals() and spinner:
@@ -711,7 +780,7 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
                 spinner.stop()
             except Exception:
                 pass
-        sys.stderr.write("\r\x1b[2K\033[90m[sys] Interrupted.\033[0m\n")
+        sys.stderr.write("\r\x1b[2K\033[90m[sys] Interrupted.\033[0m\033[0m\n")
         return None
 
 
