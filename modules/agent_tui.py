@@ -22,7 +22,8 @@ from textual.screen import Screen
 from textual.theme import Theme
 from textual.widgets import Footer, Input, Static
 
-LEFT_BAR = Box("▌   \n▌   \n▌   \n▌   \n▌   \n▌   \n▌   \n▌   \n")
+# Correct 4-character per line Box definition (1 block + 3 spaces)
+LEFT_BAR = Box("▌   \n▌   \n▌   \n▌   \n▌   \n▌   \n▌   \n▌   ")
 CFG_DIR: str = os.path.expanduser("~/.config/local-ai")
 sys.path.append(os.path.join(CFG_DIR, "modules"))
 
@@ -43,13 +44,29 @@ QUESTION_SPLIT_REGEX = re.compile(r'(?<=\?)\s+')
 
 ACTIVE_THEME = "code"
 
+def is_current_theme_dark() -> bool:
+    global ACTIVE_THEME
+    t = str(ACTIVE_THEME).lower()
+    return not any(kw in t for kw in ["light", "latte", "day", "solarized-light", "dawn", "paper"])
+
 def get_dynamic_code_block_background() -> str:
     global ACTIVE_THEME
     t = str(ACTIVE_THEME).lower()
-    return "#0d0d0d" if "grok" in t else ("#1a1a1a" if "dark" in t else "#1b1c2b")
+    if "grok" in t: return "#0d0d0d"
+    if "dark" in t: return "#1a1a1a"
+    if "code" in t: return "#1b1c2b"
+    return "#1e1e1e" if is_current_theme_dark() else "#f4f4f6"
 
 def custom_code_block_rich_console(self, console, options):
-    yield Syntax(str(self.text).rstrip(), self.lexer_name, theme="github-dark", word_wrap=True, padding=(1, 2), background_color=get_dynamic_code_block_background())
+    syntax_theme = "github-dark" if is_current_theme_dark() else "github-light"
+    yield Syntax(
+        str(self.text).rstrip(),
+        self.lexer_name,
+        theme=syntax_theme,
+        word_wrap=True,
+        padding=(1, 2),
+        background_color=get_dynamic_code_block_background()
+    )
 
 CodeBlock.__rich_console__ = custom_code_block_rich_console
 
@@ -154,14 +171,25 @@ class Message(Static):
         self.styles.color = "#c8d3f5" if theme == "code" else None
         u_style, a_style = (("bold bright_white", "bold #b0b0b0") if theme == "grok" else ("bold #89b4fa", "bold #a6e3a1") if theme == "code" else ("bold cyan", "bold green"))
 
+        code_fmt = "ansi_dark" if is_current_theme_dark() else "ansi_light"
+
         if self.sender == "User":
             text = self.content
             if isinstance(text, list): text = next((i["text"] for i in text if i.get("type") == "text"), "[Multimodal]")
             if not compact:
-                bar_col = "#555555" if theme == "grok" else ("cyan" if theme == "dark" else "#cba6f7")
-                bg_col = get_dynamic_code_block_background()
-                user_txt_col = "#c8d3f5" if theme == "code" else "white"
-                return Panel(Text(text, style=user_txt_col), box=LEFT_BAR, border_style=bar_col, style=f"on {bg_col}", padding=(0, 1))
+                is_dark = is_current_theme_dark()
+                if theme == "grok":
+                    bar_col, bg_col, user_txt_col = "#555555", "#0d0d0d", "white"
+                elif theme == "dark":
+                    bar_col, bg_col, user_txt_col = "cyan", "#1a1a1a", "white"
+                elif theme == "code":
+                    bar_col, bg_col, user_txt_col = "#cba6f7", "#1b1c2b", "#c8d3f5"
+                elif not is_dark:
+                    bar_col, bg_col, user_txt_col = "#555555", "#e8e8ec", "#111111"
+                else:
+                    bar_col, bg_col, user_txt_col = "#888888", "#1e1e1e", "#ffffff"
+
+                return Panel(Text(text, style=user_txt_col), box=LEFT_BAR, border_style=bar_col, style=f"on {bg_col}", padding=(0, 2))
             return Text(f"❯ {text}", style=u_style)
 
         text = str(self.content or "")
@@ -171,10 +199,10 @@ class Message(Static):
             if "</think>" in after:
                 think, rest = after.split("</think>", 1)
                 panel = Panel(Text(think.strip(), style="italic dim white"), title="⚙ Thinking Process", title_align="left", border_style=border_col, box=ROUNDED, expand=True)
-                body = Markdown(before + rest.strip(), code_theme="ansi_dark") if (before + rest).strip() else Text("")
+                body = Markdown(before + rest.strip(), code_theme=code_fmt) if (before + rest).strip() else Text("")
                 return Group(panel, body)
             return Panel(Text(after.strip(), style="italic dim white"), title="⚙ Thinking Process...", title_align="left", border_style=border_col, box=ROUNDED, expand=True)
-        return Markdown(text, code_theme="ansi_dark")
+        return Markdown(text, code_theme=code_fmt)
 
 class AgentCommandProvider(Provider):
     async def search(self, query: str) -> Iterator[Hit]:
@@ -209,7 +237,7 @@ class LocalAITUI(App):
     Screen { background: $background; }
     #layout { height: 1fr; }
     #main-container { height: 100%; width: 1fr; background: transparent; }
-    #chat-area { height: 1fr; background: transparent; overflow-y: scroll; padding: 1 0 1 2; }
+    #chat-area { height: 1fr; background: transparent; overflow-y: scroll; padding: 0 0 1 2; }
     #welcome-banner { margin-right: 2; }
     #input-pane { height: 3; border: none; background: $surface; padding: 0; margin: 0; align: left middle; }
     #input-bar { width: auto; height: 100%; color: $primary; padding: 0; margin: 0; }
@@ -219,7 +247,6 @@ class LocalAITUI(App):
     #input-toggle:hover { background: $primary; color: $text; text-style: bold; }
     #sidebar { width: 30; height: 100%; background: $surface; border-left: solid #1a1b2a; padding: 1 1; align: left top; }
     Message { margin-top: 1; margin-right: 2; height: auto; }
-    #chat-area > Message:first-child { margin-top: 0; }
     .sidebar-section { height: auto; border-bottom: none; padding-bottom: 1; margin-bottom: 1; }
     .sidebar-label { color: $primary; text-style: bold; margin-bottom: 0; }
     .sidebar-val { color: $text; margin-bottom: 0; }
@@ -249,6 +276,18 @@ class LocalAITUI(App):
         Binding("ctrl+q", "quit", "Exit TUI", show=False),
         Binding("escape", "quit", "Exit TUI", show=False),
     ]
+
+    def watch_theme(self, theme: str) -> None:
+        """Reactive watcher for Textual theme changes."""
+        global ACTIVE_THEME
+        ACTIVE_THEME = theme
+        save_tui_state("tui_theme", theme)
+        self.update_welcome_banner()
+        self.set_skill(self.active_skill)
+        if hasattr(self, "chat_area"):
+            for child in self.chat_area.children:
+                if isinstance(child, Message): child.refresh(layout=True)
+            self.chat_area.refresh(layout=True)
 
     def __init__(self, workspace_path: str, model_name: str, is_agent: Optional[bool] = None) -> None:
         super().__init__()
@@ -295,7 +334,11 @@ class LocalAITUI(App):
     def set_skill(self, skill_name: str) -> None:
         self.active_skill = skill_name
         t = getattr(self, "theme", "code")
-        bg, fg = ("#26273b", "#cba6f7") if t == "code" else ("#222222", "#ffffff") if t == "grok" else ("#333333", "#e0e0e0")
+        if t == "code": bg, fg = "#26273b", "#cba6f7"
+        elif t == "grok": bg, fg = "#222222", "#ffffff"
+        elif t == "dark": bg, fg = "#333333", "#e0e0e0"
+        elif not is_current_theme_dark(): bg, fg = "#dcdce2", "#111111"
+        else: bg, fg = "#333333", "#e0e0e0"
         try: self.query_one("#lbl-skill", Static).update(f"[dim]Skill[/dim]   [bold {fg} on {bg}] {skill_name} [/]")
         except Exception: pass
 
@@ -360,15 +403,16 @@ class LocalAITUI(App):
 
     def update_welcome_banner(self) -> None:
         try:
-            banner_md = Markdown(
-                "Type your query below and press **`Enter`**.\n\n"
-                "• **`Tab`** : Switch Plan / Build Mode\n"
-                "• **`Ctrl+B`** : Toggle Sidebar\n"
-                "• **`Ctrl+T`** : Cycle Color Themes\n"
-                "• **`Ctrl+O`** : Copy Agent Response\n"
-                "• **`▲ Show`** : Toggle Bottom Shortcut Bar\n"
-                "• **`/help`** : View All Commands"
+            banner_text = (
+                "Type your query below and press **Enter**.\n\n"
+                "• **Tab** : Switch Plan / Build Mode\n"
+                "• **Ctrl+B** : Toggle Sidebar\n"
+                "• **Ctrl+T** : Cycle Color Themes\n"
+                "• **Ctrl+O** : Copy Agent Response\n"
+                "• **▲ Show** : Toggle Bottom Shortcut Bar\n"
+                "• **/help** : View All Commands"
             )
+            banner_md = Markdown(banner_text)
             self.query_one("#welcome-banner", Static).update(Panel(banner_md, border_style=self.border_accent, box=ROUNDED, padding=(1, 2)))
         except Exception: pass
 
@@ -422,9 +466,8 @@ class LocalAITUI(App):
                 except Exception: pass
         
         saved_theme = load_tui_state("tui_theme", "code")
-        if saved_theme in self.THEMES:
-            try: self.theme = saved_theme
-            except Exception: pass
+        try: self.theme = saved_theme
+        except Exception: pass
         global ACTIVE_THEME
         ACTIVE_THEME = self.theme
 
@@ -910,14 +953,6 @@ class LocalAITUI(App):
         try:
             current_idx = self.THEMES.index(self.theme) if self.theme in self.THEMES else 0
             self.theme = self.THEMES[(current_idx + 1) % len(self.THEMES)]
-            global ACTIVE_THEME
-            ACTIVE_THEME = self.theme
-            save_tui_state("tui_theme", self.theme)
-            self.update_welcome_banner()
-            self.set_skill(self.active_skill)
-            for child in self.chat_area.children:
-                if isinstance(child, Message): child.refresh(layout=True)
-            self.chat_area.refresh(layout=True)
             self.notify(f"Theme: {self.theme}", sys_prefix=False, css_class="theme-notice")
         except Exception: pass
 
