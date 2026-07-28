@@ -61,6 +61,10 @@ def workspace_safe_name(workspace_path: str, home_dir: str) -> str:
     safe = workspace_path[len(home_dir):].lstrip("/") if workspace_path.startswith(home_dir) else workspace_path
     return safe.replace("/", "-").strip("-") or "home"
 
+def format_dir_path(path: str) -> str:
+    p = path.replace(os.path.expanduser("~"), "~")
+    return p if len(p) <= 20 else f".../{os.path.basename(path.rstrip('/'))}"
+
 def load_tui_state(key: str, default: Any) -> Any:
     if os.path.exists(STATE_FILE):
         try:
@@ -378,7 +382,7 @@ class LocalAITUI(App):
                 with Vertical(classes="sidebar-section"):
                     yield Static("MODEL & SESSION", classes="sidebar-label")
                     yield Static(f"• Model: {self.model_name}", id="lbl-model", classes="sidebar-val")
-                    yield Static(f"• Dir: {self.workspace_path.replace(os.path.expanduser('~'), '~')}", classes="sidebar-val")
+                    yield Static(f"• Dir: {format_dir_path(self.workspace_path)}", id="lbl-dir", classes="sidebar-val")
                     yield Static(f"• Skill: {self.active_skill}", id="lbl-skill", classes="sidebar-val")
                     yield Static(f"• Mode: {self.agent_mode}", id="lbl-mode", classes="sidebar-val")
                 
