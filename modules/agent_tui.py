@@ -212,7 +212,7 @@ class LocalAITUI(App):
     #chat-area { height: 1fr; background: transparent; overflow-y: scroll; padding: 1 0 1 2; }
     #welcome-banner { margin-right: 2; }
     #input-pane { height: 3; border: none; background: $surface; padding: 0; margin: 0; align: left middle; }
-    #input-bar { width: auto; height: 100%; color: $primary; padding-left: 1; margin: 0; }
+    #input-bar { width: auto; height: 100%; color: $primary; padding: 0; margin: 0; }
     Input { width: 1fr; border: none; outline: none; background: transparent; height: 1; color: $text; padding: 0 1; margin-top: 1; }
     Input:focus { border: none; outline: none; }
     #input-toggle { width: auto; height: 100%; content-align: center middle; color: $secondary; padding: 0 1; }
@@ -379,7 +379,7 @@ class LocalAITUI(App):
                     yield Static(id="welcome-banner")
                 with Horizontal(id="input-pane"):
                     yield Static("▌\n▌\n▌", id="input-bar")
-                    yield Input(placeholder="   Ask your agent anything...", id="chat-input")
+                    yield Input(placeholder="  Ask your agent anything...", id="chat-input")
                     yield FooterToggle("▲ Show", id="input-toggle")
             
             with Vertical(id="sidebar"):
@@ -619,7 +619,7 @@ class LocalAITUI(App):
         def _show():
             self.entering_gate_authorization, self.current_gate_prompt = True, prompt_text
             self.chat_input.disabled, self.chat_input.value = False, ""
-            self.chat_input.placeholder = f"   ▲ Authorize: {prompt_text}? [Y/n]: "
+            self.chat_input.placeholder = f"  ▲ Authorize: {prompt_text}? [Y/n]: "
             self.chat_input.focus()
         self.call_from_thread(_show)
         self.gate_auth_event.wait()
@@ -797,7 +797,7 @@ class LocalAITUI(App):
 
         if getattr(self, "entering_gate_authorization", False):
             self.entering_gate_authorization = False
-            self.chat_input.placeholder = "   Ask your agent anything..."
+            self.chat_input.placeholder = "  Ask your agent anything..."
             is_yes = query.lower() in ("y", "yes", "")
             self.gate_auth_result = is_yes
             self.gate_auth_event.set()
@@ -874,7 +874,7 @@ class LocalAITUI(App):
             self.chat_input.placeholder = "   Ask your agent anything..."
         else:
             self.entering_image_url, self.entering_reasoning_budget = True, False
-            self.chat_input.placeholder = "   Enter Web Image URL (http://... or https://...):"
+            self.chat_input.placeholder = "  Enter Web Image URL (http://... or https://...):"
             self.chat_input.focus()
 
     def update_sidebar_visibility(self) -> None:
@@ -931,7 +931,7 @@ class LocalAITUI(App):
             self.notify("Deep reasoning disabled.")
         else:
             self.entering_reasoning_budget, self.entering_image_url = True, False
-            self.chat_input.placeholder = "   Enter Reasoning Budget (Press Enter for default 500):"
+            self.chat_input.placeholder = "  Enter Reasoning Budget (Press Enter for default 500):"
             self.chat_input.focus()
 
 if __name__ == "__main__":
