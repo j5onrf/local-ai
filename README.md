@@ -159,8 +159,8 @@ Add your shortcuts, commands, and workspaces to [`ai-context.md`](https://github
 # 1. Install system dependencies
 sudo pacman -S python-rich python-requests
 
-# 2. (Optional) Install extensions (sqlite-vec for code search | textual for /tui)
-yay -S python-sqlite-vec && sudo pacman -S python-textual
+# 2. (Optional) Extensions (sqlite-vec for code search | textual & uvloop for ultra-fast /tui)
+yay -S python-sqlite-vec && sudo pacman -S python-textual python-uvloop
 
 # 3. Clone repository
 git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai
