@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # File: ~/.config/local-ai/modules/agent_tui.py
-"""Production Textual TUI for Local-AI Agent Engine."""
+"""Production Minimal Textual TUI for Local-AI Agent Engine."""
 
 import base64, json, os, re, sqlite3, subprocess, sys, threading, time
 import urllib.request as urlreq
@@ -41,19 +41,15 @@ CSI_U_REGEX = re.compile(r'(?:\x1b\[<|\x1b\[|\[<)?\d+;\d+;\d+[mM]|\x1b\[[0-9;]*[
 ANSI_CLEAN_REGEX = re.compile(r'\x1b\[[0-9;]*m')
 QUESTION_SPLIT_REGEX = re.compile(r'(?<=\?)\s+')
 
-Screen.command_sources = property(lambda self: set())
-
 ACTIVE_THEME = "code"
 
 def get_dynamic_code_block_background() -> str:
     global ACTIVE_THEME
     t = str(ACTIVE_THEME).lower()
-    if "grok" in t: return "#0d0d0d"
-    if "dark" in t: return "#1a1a1a"
-    return "#1b1c2b"
+    return "#0d0d0d" if "grok" in t else ("#1a1a1a" if "dark" in t else "#1b1c2b")
 
 def custom_code_block_rich_console(self, console, options):
-    yield Syntax(str(self.text).rstrip(), self.lexer_name, theme=getattr(self, "code_theme", "github-dark"), word_wrap=True, padding=(1, 2), background_color=get_dynamic_code_block_background())
+    yield Syntax(str(self.text).rstrip(), self.lexer_name, theme="github-dark", word_wrap=True, padding=(1, 2), background_color=get_dynamic_code_block_background())
 
 CodeBlock.__rich_console__ = custom_code_block_rich_console
 
@@ -74,6 +70,7 @@ def load_tui_state(key: str, default: Any) -> Any:
 
 def save_tui_state(key: str, value: Any) -> None:
     data = {}
+    os.makedirs(CFG_DIR, exist_ok=True)
     if os.path.exists(STATE_FILE):
         try:
             with open(STATE_FILE, "r", encoding="utf-8") as f: data = json.load(f)
@@ -102,9 +99,10 @@ def tokenize(text: str) -> List[str]:
 
 def get_recalled_memory(workspace: str, query: str) -> str:
     q_tokens = set(tokenize(query))
-    if not q_tokens or not os.path.exists(os.path.join(SESSIONS_DIR, f"{workspace}.db")): return ""
+    db_path = os.path.join(SESSIONS_DIR, f"{workspace}.db")
+    if not q_tokens or not os.path.exists(db_path): return ""
     try:
-        with closing(sqlite3.connect(os.path.join(SESSIONS_DIR, f"{workspace}.db"), timeout=5)) as conn:
+        with closing(sqlite3.connect(db_path, timeout=5)) as conn:
             cur = conn.cursor()
             cur.execute("SELECT user_msg, assistant_msg, tokens, timestamp FROM turns WHERE workspace = ?", (workspace,))
             rows = cur.fetchall()
@@ -121,13 +119,17 @@ def get_recalled_memory(workspace: str, query: str) -> str:
         return "### Relevant Past Discussion (Retrieved from Session Memory):\n" + "\n\n".join(blocks)
     except Exception: return ""
 
-code_theme = Theme(name="code", primary="#cba6f7", secondary="#a6adc8", accent="#89b4fa", background="#11121d", surface="#161726", panel="#1b1c2b")
+code_theme = Theme(name="code", primary="#cba6f7", secondary="#a6adc8", accent="#cba6f7", background="#11121d", surface="#161726", panel="#1b1c2b")
 grok_theme = Theme(name="grok", primary="#444444", secondary="#888888", accent="#ffffff", background="#000000", surface="#0d0d0d", panel="#121212")
 dark_theme = Theme(name="dark", primary="#555555", secondary="#b0b0b0", accent="#ffffff", background="#121212", surface="#1c1c1c", panel="#242424")
 
 class FooterToggle(Static):
     def on_click(self) -> None:
         if hasattr(self.app, "action_toggle_footer"): self.app.action_toggle_footer()
+
+class CloseCardButton(Static):
+    def on_click(self) -> None:
+        if hasattr(self.app, "action_close_tips_card"): self.app.action_close_tips_card()
 
 class Message(Static):
     def __init__(self, sender: str, content: Any) -> None:
@@ -140,22 +142,20 @@ class Message(Static):
 
     def render(self) -> Group:
         compact, theme = getattr(self.app, "compact_mode", False), getattr(self.app, "theme", "code")
+        self.styles.color = "#c8d3f5" if theme == "code" else None
         u_style, a_style = (("bold bright_white", "bold #b0b0b0") if theme == "grok" else ("bold #89b4fa", "bold #a6e3a1") if theme == "code" else ("bold cyan", "bold green"))
 
         if self.sender == "User":
             text = self.content
             if isinstance(text, list): text = next((i["text"] for i in text if i.get("type") == "text"), "[Multimodal]")
             if not compact:
-                if theme == "grok":
-                    bar_col, bg_col = "bright_white", "#0d0d0d"
-                elif theme == "dark":
-                    bar_col, bg_col = "cyan", "#1a1a1a"
-                else:  # code theme
-                    bar_col, bg_col = "#cba6f7", "#1b1c2b"
-                return Panel(Text(text, style="white"), box=LEFT_BAR, border_style=bar_col, style=f"on {bg_col}", padding=(0, 1))
+                bar_col = "#555555" if theme == "grok" else ("cyan" if theme == "dark" else "#cba6f7")
+                bg_col = get_dynamic_code_block_background()
+                user_txt_col = "#c8d3f5" if theme == "code" else "white"
+                return Panel(Text(text, style=user_txt_col), box=LEFT_BAR, border_style=bar_col, style=f"on {bg_col}", padding=(0, 1))
             return Text(f"❯ USER: {text}", style=u_style)
 
-        hdr, text = Text("AGENT:", style=a_style), str(self.content or "")
+        text = str(self.content or "")
         if "<think>" in text:
             before, after = text.split("<think>", 1)
             border_col = getattr(self.app, "border_accent", "bright_black")
@@ -163,19 +163,19 @@ class Message(Static):
                 think, rest = after.split("</think>", 1)
                 panel = Panel(Text(think.strip(), style="italic dim white"), title="⚙ Thinking Process", title_align="left", border_style=border_col, box=ROUNDED, expand=True)
                 body = Markdown(before + rest.strip(), code_theme="ansi_dark") if (before + rest).strip() else Text("")
-                return Group(hdr, panel, body)
-            return Group(hdr, Panel(Text(after.strip(), style="italic dim white"), title="⚙ Thinking Process...", title_align="left", border_style=border_col, box=ROUNDED, expand=True))
-        return Group(hdr, Markdown(text, code_theme="ansi_dark"))
+                return Group(panel, body)
+            return Panel(Text(after.strip(), style="italic dim white"), title="⚙ Thinking Process...", title_align="left", border_style=border_col, box=ROUNDED, expand=True)
+        return Markdown(text, code_theme="ansi_dark")
 
 class AgentCommandProvider(Provider):
     async def search(self, query: str) -> Iterator[Hit]:
         m = self.matcher(query)
         cmds = [
-            ("Copy Last Response", "copy_last_response", "Copy the latest agent response"),
+            ("Copy Last Response", "copy_last_response", "Copy latest agent response"),
             ("Copy Entire Chat Page", "copy_entire_chat", "Copy complete conversation transcript"),
             ("Attach Image URL", "attach_image_url", "Attach an image URL to analyze"),
-            ("Cycle Theme", "cycle_theme", "Cycle through available color themes"),
-            ("Toggle Sidebar", "toggle_sidebar", "Show or hide the metadata panel"),
+            ("Cycle Theme", "cycle_theme", "Cycle through color themes"),
+            ("Toggle Sidebar", "toggle_sidebar", "Show or hide metadata panel"),
             ("Toggle Compact Mode", "toggle_compact", "Toggle spacing layouts"),
             ("Toggle Reasoning", "toggle_reasoning", "Enable or disable reasoning budget"),
             ("Toggle Mode (Plan/Build)", "toggle_plan_build", "Switch between Plan and Build modes"),
@@ -200,12 +200,7 @@ class LocalAITUI(App):
     Screen { background: $background; }
     #layout { height: 1fr; }
     #main-container { height: 100%; width: 1fr; background: transparent; }
-    #chat-area { 
-        height: 1fr; 
-        background: transparent; 
-        overflow-y: scroll; 
-        padding: 1 0 1 2; 
-    }
+    #chat-area { height: 1fr; background: transparent; overflow-y: scroll; padding: 1 0 1 2; }
     #welcome-banner { margin-right: 2; }
     #input-pane { height: 3; border: none; background: $surface; padding: 0; margin: 0; align: left middle; }
     #input-bar { width: auto; height: 100%; color: $primary; padding-left: 1; margin: 0; }
@@ -219,6 +214,12 @@ class LocalAITUI(App):
     .sidebar-section { height: auto; border-bottom: none; padding-bottom: 1; margin-bottom: 1; }
     .sidebar-label { color: $primary; text-style: bold; margin-bottom: 0; }
     .sidebar-val { color: $text; margin-bottom: 0; }
+    #card-tips { background: $panel; padding: 1; margin-top: 1; }
+    #card-tips-header { height: 1; width: 100%; }
+    #lbl-tips-title { width: 1fr; color: $primary; text-style: bold; }
+    #btn-close-tips { width: auto; color: $secondary; text-style: bold; }
+    #btn-close-tips:hover { color: red; }
+    #lbl-tips-body { color: $secondary; margin-top: 1; }
     #footer-bar { dock: bottom; height: 1; width: 100%; background: $surface; }
     #footer-keys { dock: none; width: 1fr; height: 1; }
     """
@@ -266,8 +267,42 @@ class LocalAITUI(App):
         except Exception: self.history = []
         
         self.generation_cancelled, self.active_response, self.stats_turns = False, None, 0
-        self.footer_hidden = load_tui_state("footer_hidden", False)
+        self.footer_hidden = load_tui_state("footer_hidden", True)
         self.sidebar_hidden = load_tui_state("sidebar_hidden", False)
+        self.tips_card_hidden = load_tui_state("tips_card_hidden", False)
+
+    def on_unmount(self) -> None:
+        self.gate_auth_result = False
+        self.gate_auth_event.set()
+        if self.active_response:
+            try: self.active_response.close()
+            except Exception: pass
+
+    def notify(self, text: str, sys_prefix: bool = True, css_class: str = "sys-notice") -> None:
+        """Centralized helper for mounting system status notifications."""
+        fmt = f"[dim white][sys] {text}[/dim white]" if sys_prefix else text
+        self.chat_area.mount(Static(fmt, classes=css_class))
+        self.chat_area.scroll_end(animate=False)
+
+    def set_skill(self, skill_name: str) -> None:
+        self.active_skill = skill_name
+        t = getattr(self, "theme", "code")
+        bg, fg = ("#26273b", "#cba6f7") if t == "code" else ("#222222", "#ffffff") if t == "grok" else ("#333333", "#e0e0e0")
+        try: self.query_one("#lbl-skill", Static).update(f"• Skill: [bold {fg} on {bg}] {skill_name} [/]")
+        except Exception: pass
+
+    def set_mode(self, mode_name: str) -> None:
+        self.agent_mode = mode_name
+        try: self.query_one("#lbl-mode", Static).update(f"• Mode: {mode_name}")
+        except Exception: pass
+
+    def set_reasoning(self, text: str) -> None:
+        try: self.query_one("#lbl-reasoning", Static).update(f"• Reasoning: {text}")
+        except Exception: pass
+
+    def set_image(self, text: str) -> None:
+        try: self.query_one("#lbl-image", Static).update(f"• Image: {text}")
+        except Exception: pass
 
     def on_key(self, event) -> None:
         if event.key == "tab":
@@ -276,10 +311,15 @@ class LocalAITUI(App):
             event.stop()
 
     def refresh_db_counts(self) -> None:
+        sessions_bin = os.path.join(CFG_DIR, "modules", "ai-agent-sessions")
+        memories_bin = os.path.join(CFG_DIR, "modules", "ai-agent-memories")
         try:
-            t_res = subprocess.run([sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "get-count", self.safe_name], capture_output=True, text=True, timeout=2)
-            f_res = subprocess.run([sys.executable, f"{CFG_DIR}/modules/ai-agent-memories", "get-tpm-count", self.safe_name], capture_output=True, text=True, timeout=2)
-            self.db_turns, self.tpm_count = int(t_res.stdout.strip() or 0), int(f_res.stdout.strip() or 0)
+            if os.path.exists(sessions_bin):
+                t_res = subprocess.run([sys.executable, sessions_bin, "get-count", self.safe_name], capture_output=True, text=True, timeout=2)
+                self.db_turns = int(t_res.stdout.strip() or 0)
+            if os.path.exists(memories_bin):
+                f_res = subprocess.run([sys.executable, memories_bin, "get-tpm-count", self.safe_name], capture_output=True, text=True, timeout=2)
+                self.tpm_count = int(f_res.stdout.strip() or 0)
         except Exception: pass
 
     def ensure_system_context(self) -> None:
@@ -294,11 +334,12 @@ class LocalAITUI(App):
                 if hasattr(core, "EDIT_SYSTEM_ADD") and "### EDIT MODE" not in sys_p:
                     sys_p += core.EDIT_SYSTEM_ADD.format(ws=self.workspace_path) + core.TOOLS_SYSTEM_ADD.format(names="read_file, write_file, list_dir, run_command", ws=self.workspace_path)
                 try:
-                    map_files = [f for f in os.listdir(self.workspace_path) if f.startswith("index-map-") and f.endswith(".txt")]
-                    if map_files:
-                        with open(os.path.join(self.workspace_path, map_files[0]), "r", encoding="utf-8", errors="ignore") as mf:
-                            cmap = mf.read().strip()
-                            if cmap: sys_p += f"\n\n### CODESPACE MAP:\n{cmap}\n"
+                    if os.path.exists(self.workspace_path):
+                        map_files = [f for f in os.listdir(self.workspace_path) if f.startswith("index-map-") and f.endswith(".txt")]
+                        if map_files:
+                            with open(os.path.join(self.workspace_path, map_files[0]), "r", encoding="utf-8", errors="ignore") as mf:
+                                cmap = mf.read().strip()
+                                if cmap: sys_p += f"\n\n### CODESPACE MAP:\n{cmap}\n"
                 except Exception: pass
 
             self.history.insert(0, {"role": "system", "content": sys_p})
@@ -312,7 +353,6 @@ class LocalAITUI(App):
     def update_welcome_banner(self) -> None:
         try:
             banner_md = Markdown(
-                "**Local AI Agent Session**\n\n"
                 "Type your query below and press **`Enter`**.\n\n"
                 "• **`Tab`** : Switch Plan / Build Mode\n"
                 "• **`Ctrl+B`** : Toggle Sidebar\n"
@@ -332,7 +372,7 @@ class LocalAITUI(App):
                 with Horizontal(id="input-pane"):
                     yield Static("▌\n▌\n▌", id="input-bar")
                     yield Input(placeholder="   Ask your agent anything...", id="chat-input")
-                    yield FooterToggle("▼ Hide", id="input-toggle")
+                    yield FooterToggle("▲ Show", id="input-toggle")
             
             with Vertical(id="sidebar"):
                 with Vertical(classes="sidebar-section"):
@@ -352,8 +392,20 @@ class LocalAITUI(App):
                     yield Static(f"• DB State: {self.get_db_status_string()}", id="lbl-database", classes="sidebar-val")
                     yield Static("Turns: 0 | Speed: -- t/s", id="lbl-stats", classes="sidebar-val")
 
+                with Vertical(id="card-tips"):
+                    with Horizontal(id="card-tips-header"):
+                        yield Static("◆ Quick Tips", id="lbl-tips-title")
+                        yield CloseCardButton("×", id="btn-close-tips")
+                    yield Static("• Tab: Switch Mode\n• Ctrl+B: Toggle Sidebar\n• /help: Commands List", id="lbl-tips-body")
+
         with Horizontal(id="footer-bar"):
             yield Footer(id="footer-keys")
+
+    def action_close_tips_card(self) -> None:
+        self.tips_card_hidden = True
+        save_tui_state("tips_card_hidden", True)
+        try: self.query_one("#card-tips", Vertical).display = False
+        except Exception: pass
 
     def on_mount(self) -> None:
         if hasattr(self, "register_theme"):
@@ -367,13 +419,18 @@ class LocalAITUI(App):
             except Exception: pass
         global ACTIVE_THEME
         ACTIVE_THEME = self.theme
-        
+
+        self.set_skill(self.active_skill)
         self.update_welcome_banner()
         self.chat_area = self.query_one("#chat-area", Vertical)
         self.chat_input = self.query_one("#chat-input", Input)
         self.chat_input.cursor_blink = True
         self.update_footer_visibility()
         self.update_sidebar_visibility()
+
+        if self.tips_card_hidden:
+            try: self.query_one("#card-tips", Vertical).display = False
+            except Exception: pass
 
         if len(self.history) > 1:
             try: self.query_one("#welcome-banner").remove()
@@ -386,14 +443,9 @@ class LocalAITUI(App):
         self.chat_input.focus()
 
     def action_toggle_plan_build(self) -> None:
-        if getattr(self, "agent_mode", "Plan") == "Plan":
-            self.agent_mode, self.gates_enabled = "Build", False
-        else:
-            self.agent_mode, self.gates_enabled = "Plan", True
-        
+        self.agent_mode, self.gates_enabled = ("Build", False) if self.agent_mode == "Plan" else ("Plan", True)
         os.environ["AI_CONFIRM_GATES"] = "1" if self.gates_enabled else "0"
-        try: self.query_one("#lbl-mode", Static).update(f"• Mode: {self.agent_mode}")
-        except Exception: pass
+        self.set_mode(self.agent_mode)
 
     def on_input_changed(self, event: Input.Changed) -> None:
         clean = CSI_U_REGEX.sub('', event.value)
@@ -401,7 +453,8 @@ class LocalAITUI(App):
         if event.value.strip(): self.chat_input.cursor_blink = False
 
     def update_stats_ui(self, turns: int, tps: float, elapsed: float) -> None:
-        self.query_one("#lbl-stats", Static).update(f"Turns: {turns} | Speed: {tps:.1f} t/s")
+        try: self.query_one("#lbl-stats", Static).update(f"Turns: {turns} | Speed: {tps:.1f} t/s")
+        except Exception: pass
 
     def action_scroll_page_up(self) -> None: self.chat_area.scroll_page_up(animate=False)
     def action_scroll_page_down(self) -> None: self.chat_area.scroll_page_down(animate=False)
@@ -412,9 +465,8 @@ class LocalAITUI(App):
         last = next((m.get("content", "") for m in reversed(self.history) if m.get("role") == "assistant"), "")
         if last:
             copy_to_clipboard(last.split("</think>", 1)[-1].strip() if "</think>" in last else last)
-            self.chat_area.mount(Static("[dim white][sys] Copied latest agent response to clipboard.[/dim white]", classes="sys-notice"))
-        else: self.chat_area.mount(Static("[dim white][sys] No response available to copy yet.[/dim white]", classes="sys-notice"))
-        self.chat_area.scroll_end(animate=False)
+            self.notify("Copied latest agent response to clipboard.")
+        else: self.notify("No response available to copy yet.")
 
     def action_copy_entire_chat(self) -> None:
         transcript = []
@@ -431,9 +483,8 @@ class LocalAITUI(App):
         full_text = "\n\n".join(transcript)
         if full_text:
             copy_to_clipboard(full_text)
-            self.chat_area.mount(Static("[dim white][sys] Copied entire session transcript to clipboard.[/dim white]", classes="sys-notice"))
-        else: self.chat_area.mount(Static("[dim white][sys] No transcript available to copy yet.[/dim white]", classes="sys-notice"))
-        self.chat_area.scroll_end(animate=False)
+            self.notify("Copied entire session transcript to clipboard.")
+        else: self.notify("No transcript available to copy yet.")
 
     async def handle_view_file(self, file_path: str) -> None:
         full_p = os.path.expanduser(file_path)
@@ -442,10 +493,9 @@ class LocalAITUI(App):
             try:
                 with open(full_p, "r", encoding="utf-8", errors="ignore") as f: content = f.read(12000)
                 self.history.append({"role": "user", "content": f"[FILE LOADED: {file_path}]\n```\n{content}\n```"})
-                await self.chat_area.mount(Static(f"[dim white][sys] Loaded file content into active context: [bold]{file_path}[/bold][/dim white]", classes="sys-notice"))
-            except Exception as e: await self.chat_area.mount(Static(f"[bold red][sys] Error reading file: {e}[/bold red]", classes="sys-notice"))
-        else: await self.chat_area.mount(Static(f"[bold red][sys] File not found: {file_path}[/bold red]", classes="sys-notice"))
-        self.chat_area.scroll_end(animate=False)
+                self.notify(f"Loaded file content into active context: [bold]{file_path}[/bold]")
+            except Exception as e: self.notify(f"[bold red]Error reading file: {e}[/bold red]", sys_prefix=False)
+        else: self.notify(f"[bold red]File not found: {file_path}[/bold red]", sys_prefix=False)
 
     async def handle_meta_chat_command(self, cmd_root: str) -> None:
         think_bin = os.path.join(CFG_DIR, "modules", "chat")
@@ -463,8 +513,7 @@ class LocalAITUI(App):
         await self.chat_area.mount(assistant_msg)
         self.chat_area.scroll_end(animate=False)
 
-        self.active_skill = output_hdr.lower()
-        self.query_one("#lbl-skill", Static).update(self.active_skill)
+        self.set_skill(output_hdr.lower())
 
         def _run_chat_sub():
             if os.path.exists(think_bin):
@@ -519,21 +568,21 @@ class LocalAITUI(App):
             self.memory_active = not self.memory_active
             save_tui_state("memory_active", self.memory_active)
             self.query_one("#lbl-database", Static).update(self.get_db_status_string())
-            await self.chat_area.mount(Static(f"[dim white][sys] Memory {'enabled' if self.memory_active else 'disabled'}.[/dim white]", classes="sys-notice"))
+            self.notify(f"Memory {'enabled' if self.memory_active else 'disabled'}.")
         elif root in ("/plan", "/build"):
             if root == "/plan" and self.agent_mode != "Plan": self.action_toggle_plan_build()
             elif root == "/build" and self.agent_mode != "Build": self.action_toggle_plan_build()
-            await self.chat_area.mount(Static(f"[dim white][sys] Mode set to [bold]{self.agent_mode}[/bold].[/dim white]", classes="sys-notice"))
+            self.notify(f"Mode set to [bold]{self.agent_mode}[/bold].")
         elif root in ("/clear", "/reset"):
             self.history.clear(); self.stats_turns = 0
             self.update_stats_ui(0, 0.0, 0.0)
             for child in list(self.chat_area.children): child.remove()
-            await self.chat_area.mount(Static("[dim white][sys] Session history and chat window cleared.[/dim white]", classes="sys-notice"))
+            self.notify("Session history and chat window cleared.")
         elif root == "/tok":
             est = sum(len(m.get("content", "")) // 4 for m in self.history)
-            await self.chat_area.mount(Static(f"[dim white][sys] History: ~{est:,} tokens ({len(self.history)} messages)[/dim white]", classes="sys-notice"))
+            self.notify(f"History: ~{est:,} tokens ({len(self.history)} messages)")
         elif root in ("/sync", "/re"):
-            await self.chat_area.mount(Static("[dim white][sys] Triggered background AST codebase sync.[/dim white]", classes="sys-notice"))
+            self.notify("Triggered background AST codebase sync.")
             try: subprocess.Popen(["index-map", self.workspace_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             except Exception: pass
         elif root in ("/skill", "/s"):
@@ -541,18 +590,15 @@ class LocalAITUI(App):
                 content = skills.load_skill_content(args, SKILLS_DIR, CFG_DIR)
                 if content:
                     s_name, s_text = content if isinstance(content, tuple) else (args, content)
-                    self.active_skill = s_name
-                    self.query_one("#lbl-skill", Static).update(s_name)
+                    self.set_skill(s_name)
                     self.history.append({"role": "system", "content": f"[SKILL BLUEPRINT: {s_name}]\n{s_text}"})
-                    await self.chat_area.mount(Static(f"[dim white][sys] Loaded skill blueprint: [bold]{s_name}[/bold][/dim white]", classes="sys-notice"))
-                else: await self.chat_area.mount(Static(f"[dim white][sys] No skill blueprint file found for '[bold]{args}[/bold]'.[/dim white]", classes="sys-notice"))
-            else: await self.chat_area.mount(Static("[dim white][sys] Usage: /skill <query> or /s <query>[/dim white]", classes="sys-notice"))
+                    self.notify(f"Loaded skill blueprint: [bold]{s_name}[/bold]")
+                else: self.notify(f"No skill blueprint file found for '[bold]{args}[/bold]'.")
+            else: self.notify("Usage: /skill <query> or /s <query>")
         elif root in ("/compact", "/c"): self.action_toggle_compact()
         elif root in ("/t", "/thinking"): self.action_toggle_reasoning()
         elif root in ("/f", "/tk", "/b", "/a"): await self.handle_meta_chat_command(root)
-        else: await self.chat_area.mount(Static(f"[dim white][sys] Unknown command '{root}'. Type [bold]/help[/bold] for commands.[/dim white]", classes="sys-notice"))
-
-        self.chat_area.scroll_end(animate=False)
+        else: self.notify(f"Unknown command '{root}'. Type [bold]/help[/bold] for commands.")
 
     def prompt_tui_confirm(self, prompt_text: str) -> bool:
         self.gate_auth_event.clear()
@@ -592,8 +638,8 @@ class LocalAITUI(App):
                     if matched:
                         if not self.gates_enabled or self.prompt_tui_confirm(f"inject recalled memory for '{query}'"):
                             past_mem = matched
-                            self.call_from_thread(self.chat_area.mount, Static("[dim white][sys] Memory injected.[/dim white]", classes="sys-notice"))
-                        else: self.call_from_thread(self.chat_area.mount, Static("[dim white][sys] Memory recall skipped.[/dim white]", classes="sys-notice"))
+                            self.call_from_thread(self.notify, "Memory injected.")
+                        else: self.call_from_thread(self.notify, "Memory recall skipped.")
                 except Exception: pass
 
             assistant_msg = Message("Agent", "Thinking...")
@@ -610,7 +656,7 @@ class LocalAITUI(App):
             if self.active_image_url:
                 self.history.append({"role": "user", "content": [{"type": "text", "text": fmt_p}, {"type": "image_url", "image_url": {"url": self.active_image_url}}]})
                 self.active_image_url = None
-                self.call_from_thread(self.query_one("#lbl-image", Static).update, "• Image: None")
+                self.set_image("None")
             else: self.history.append({"role": "user", "content": fmt_p})
 
             self.call_from_thread(self.disable_input)
@@ -689,8 +735,7 @@ class LocalAITUI(App):
                             self.history.append({"role": "tool", "tool_call_id": tc.get("id", ""), "name": fname, "content": result})
                             continue
 
-                        self.call_from_thread(self.chat_area.mount, Static(f"[dim white][sys] ∗ {verb} • [bold cyan]{fname}[/bold cyan] [italic]{brief}[/italic][/dim white]", classes="sys-notice"))
-                        self.call_from_thread(self.chat_area.scroll_end, animate=False)
+                        self.call_from_thread(self.notify, f"∗ {verb} • [bold cyan]{fname}[/bold cyan] [italic]{brief}[/italic]")
                         try:
                             old_g = os.environ.get("AI_CONFIRM_GATES")
                             os.environ["AI_CONFIRM_GATES"] = "0"
@@ -702,7 +747,7 @@ class LocalAITUI(App):
                     self.history.append({"role": "tool", "tool_call_id": tc.get("id", ""), "name": fname, "content": result})
 
                 if user_aborted:
-                    self.call_from_thread(self.chat_area.mount, Static("[dim white][sys] Execution halted by user gate.[/dim white]", classes="sys-notice"))
+                    self.call_from_thread(self.notify, "Execution halted by user gate.")
                     break
 
                 assistant_msg = Message("Agent", "Processing tool results...")
@@ -718,14 +763,16 @@ class LocalAITUI(App):
 
             if query:
                 try:
-                    subprocess.Popen([sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "log-turn", self.safe_name, query, accumulated], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    self.refresh_db_counts()
-                    self.call_from_thread(self.query_one("#lbl-database", Static).update, f"• DB State: {self.get_db_status_string()}")
+                    sess_bin = os.path.join(CFG_DIR, "modules", "ai-agent-sessions")
+                    if os.path.exists(sess_bin):
+                        subprocess.Popen([sys.executable, sess_bin, "log-turn", self.safe_name, query, accumulated], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        self.refresh_db_counts()
+                        self.call_from_thread(self.query_one("#lbl-database", Static).update, f"• DB State: {self.get_db_status_string()}")
                 except Exception: pass
 
         except Exception as e:
-            if self.generation_cancelled: self.call_from_thread(assistant_msg.update_content, accumulated + " [dim white](stopped)[/dim white]")
-            else: self.call_from_thread(assistant_msg.update_content, f"[red][sys] Error: {e}[/red]")
+            if self.generation_cancelled: self.call_from_thread(assistant_msg.update_content, (accumulated or "") + " (stopped)")
+            else: self.call_from_thread(assistant_msg.update_content, f"Error: {e}")
         finally:
             self.active_response = None
             if old_confirm: ui.confirm_tool = old_confirm
@@ -736,10 +783,7 @@ class LocalAITUI(App):
         self.chat_input.value = ""
 
         if not query: return
-
-        if query.startswith("/"):
-            await self.handle_slash_command(query)
-            return
+        if query.startswith("/"): await self.handle_slash_command(query); return
 
         if getattr(self, "entering_gate_authorization", False):
             self.entering_gate_authorization = False
@@ -748,8 +792,7 @@ class LocalAITUI(App):
             self.gate_auth_result = is_yes
             self.gate_auth_event.set()
             color, status = ("green", "Authorized") if is_yes else ("red", "Denied")
-            await self.chat_area.mount(Static(f"[dim white][sys] Gate: [bold {color}]{status}[/bold {color}][/dim white]", classes="sys-notice"))
-            self.chat_area.scroll_end(animate=False)
+            self.notify(f"Gate: [bold {color}]{status}[/bold {color}]")
             return
 
         if self.entering_reasoning_budget:
@@ -757,21 +800,20 @@ class LocalAITUI(App):
             self.chat_input.placeholder = "   Ask your agent anything..."
             if not query:
                 self.reasoning_budget, self.reasoning_active = 500, True
-                self.query_one("#lbl-reasoning", Static).update("• Reasoning: 500 tokens")
-                await self.chat_area.mount(Static("[dim white][sys] Deep reasoning enabled (default 500 tokens).[/dim white]", classes="sys-notice"))
+                self.set_reasoning("500 tokens")
+                self.notify("Deep reasoning enabled (default 500 tokens).")
             else:
                 try:
                     val = int(query)
                     if val > 0:
                         self.reasoning_budget, self.reasoning_active = val, True
-                        self.query_one("#lbl-reasoning", Static).update(f"• Reasoning: {val} tokens")
-                        await self.chat_area.mount(Static(f"[dim white][sys] Deep reasoning enabled ({val} tokens).[/dim white]", classes="sys-notice"))
+                        self.set_reasoning(f"{val} tokens")
+                        self.notify(f"Deep reasoning enabled ({val} tokens).")
                     else: raise ValueError
                 except ValueError:
                     self.reasoning_active = False
-                    self.query_one("#lbl-reasoning", Static).update("• Reasoning: Disabled")
-                    await self.chat_area.mount(Static("[bold red][sys] Invalid budget. Deep reasoning disabled.[/bold red]", classes="sys-notice"))
-            self.chat_area.scroll_end(animate=False)
+                    self.set_reasoning("Disabled")
+                    self.notify("[bold red]Invalid budget. Deep reasoning disabled.[/bold red]", sys_prefix=False)
             return
 
         if self.entering_image_url:
@@ -780,10 +822,9 @@ class LocalAITUI(App):
             if query:
                 self.active_image_url = query
                 fname = query.split("/")[-1].split("?")[0][:25]
-                self.query_one("#lbl-image", Static).update(f"• Image: {fname or 'attached'}")
-                await self.chat_area.mount(Static(f"[dim white][sys] Attached image URL: [bold]{query}[/bold][/dim white]", classes="sys-notice"))
-            else: await self.chat_area.mount(Static("[dim white][sys] Image attachment cancelled.[/dim white]", classes="sys-notice"))
-            self.chat_area.scroll_end(animate=False)
+                self.set_image(fname or 'attached')
+                self.notify(f"Attached image URL: [bold]{query}[/bold]")
+            else: self.notify("Image attachment cancelled.")
             return
 
         if self.pending_skill_prefix:
@@ -811,8 +852,7 @@ class LocalAITUI(App):
             if self.active_response:
                 try: self.active_response.close()
                 except Exception: pass
-            self.chat_area.mount(Static("[dim white][sys] Generation stopped by user.[/dim white]", classes="sys-notice"))
-            self.chat_area.scroll_end(animate=False)
+            self.notify("(Generation stopped by user.)", sys_prefix=False)
 
     def action_attach_image_url(self) -> None:
         if self.entering_image_url:
@@ -850,8 +890,7 @@ class LocalAITUI(App):
         for child in self.chat_area.children:
             if isinstance(child, Message): child.refresh(layout=True)
         self.chat_area.refresh(layout=True)
-        self.chat_area.mount(Static(f"[dim white][sys] Compact mode {'enabled' if self.compact_mode else 'disabled'}.[/dim white]", classes="sys-notice"))
-        self.chat_area.scroll_end(animate=False)
+        self.notify(f"Compact mode {'enabled' if self.compact_mode else 'disabled'}.")
 
     def action_cycle_theme(self) -> None:
         try:
@@ -861,11 +900,11 @@ class LocalAITUI(App):
             ACTIVE_THEME = self.theme
             save_tui_state("tui_theme", self.theme)
             self.update_welcome_banner()
+            self.set_skill(self.active_skill)
             for child in self.chat_area.children:
                 if isinstance(child, Message): child.refresh(layout=True)
             self.chat_area.refresh(layout=True)
-            self.chat_area.mount(Static(f"Theme: {self.theme}", classes="theme-notice"))
-            self.chat_area.scroll_end(animate=False)
+            self.notify(f"Theme: {self.theme}", sys_prefix=False, css_class="theme-notice")
         except Exception: pass
 
     def action_toggle_reasoning(self) -> None:
@@ -874,9 +913,8 @@ class LocalAITUI(App):
             self.chat_input.placeholder = "   Ask your agent anything..."
         elif self.reasoning_active:
             self.reasoning_active = False
-            self.query_one("#lbl-reasoning", Static).update("• Reasoning: Disabled")
-            self.chat_area.mount(Static("[dim white][sys] Deep reasoning disabled.[/dim white]", classes="sys-notice"))
-            self.chat_area.scroll_end(animate=False)
+            self.set_reasoning("Disabled")
+            self.notify("Deep reasoning disabled.")
         else:
             self.entering_reasoning_budget, self.entering_image_url = True, False
             self.chat_input.placeholder = "   Enter Reasoning Budget (Press Enter for default 500):"
