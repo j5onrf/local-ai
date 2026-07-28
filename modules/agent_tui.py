@@ -58,8 +58,13 @@ BASE_PROMPT_CHAT = BASE_PROMPT + "### Conversational Guidelines:\n- Role: Active
 BASE_PROMPT_AGENT = "Active local project workspace developer agent.\nIf <context> is provided, answer directly using only its facts. Otherwise, answer normally.\n\n"
 
 def workspace_safe_name(workspace_path: str, home_dir: str) -> str:
-    safe = workspace_path[len(home_dir):].lstrip("/") if workspace_path.startswith(home_dir) else workspace_path
-    return safe.replace("/", "-").strip("-") or "home"
+    if os.path.abspath(workspace_path) == os.path.abspath(home_dir):
+        return "home-tui"
+    rel = os.path.relpath(workspace_path, home_dir)
+    if rel.startswith(".."):
+        rel = workspace_path
+    clean = rel.lstrip(".").replace("/", "-").strip("-")
+    return clean or "home-tui"
 
 def format_dir_path(path: str) -> str:
     p = path.replace(os.path.expanduser("~"), "~")
@@ -157,7 +162,7 @@ class Message(Static):
                 bg_col = get_dynamic_code_block_background()
                 user_txt_col = "#c8d3f5" if theme == "code" else "white"
                 return Panel(Text(text, style=user_txt_col), box=LEFT_BAR, border_style=bar_col, style=f"on {bg_col}", padding=(0, 1))
-            return Text(f"❯ USER: {text}", style=u_style)
+            return Text(f"❯ {text}", style=u_style)
 
         text = str(self.content or "")
         if "<think>" in text:
@@ -250,9 +255,8 @@ class LocalAITUI(App):
         self.workspace_path, self.model_name = workspace_path, model_name
         self.safe_name = workspace_safe_name(workspace_path, os.path.expanduser("~"))
         self.agent_mode = "Plan"
-        self.gates_enabled = os.environ.get("AI_CONFIRM_GATES", "1") == "1"
-        if not self.gates_enabled: self.agent_mode = "Build"
-        os.environ["AI_CONFIRM_GATES"] = "1" if self.gates_enabled else "0"
+        self.gates_enabled = True
+        os.environ["AI_CONFIRM_GATES"] = "1"
         
         self.gate_auth_event = threading.Event()
         self.gate_auth_result, self.entering_gate_authorization, self.current_gate_prompt = False, False, ""
