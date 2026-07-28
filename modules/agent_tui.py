@@ -292,20 +292,20 @@ class LocalAITUI(App):
         self.active_skill = skill_name
         t = getattr(self, "theme", "code")
         bg, fg = ("#26273b", "#cba6f7") if t == "code" else ("#222222", "#ffffff") if t == "grok" else ("#333333", "#e0e0e0")
-        try: self.query_one("#lbl-skill", Static).update(f"• Skill: [bold {fg} on {bg}] {skill_name} [/]")
+        try: self.query_one("#lbl-skill", Static).update(f"[dim]Skill[/dim]   [bold {fg} on {bg}] {skill_name} [/]")
         except Exception: pass
 
     def set_mode(self, mode_name: str) -> None:
         self.agent_mode = mode_name
-        try: self.query_one("#lbl-mode", Static).update(f"• Mode: {mode_name}")
+        try: self.query_one("#lbl-mode", Static).update(f"[dim]Mode[/dim]    {mode_name}")
         except Exception: pass
 
     def set_reasoning(self, text: str) -> None:
-        try: self.query_one("#lbl-reasoning", Static).update(f"• Reasoning: {text}")
+        try: self.query_one("#lbl-reasoning", Static).update(f"[dim]Reasoning[/dim] {text}")
         except Exception: pass
 
     def set_image(self, text: str) -> None:
-        try: self.query_one("#lbl-image", Static).update(f"• Image: {text}")
+        try: self.query_one("#lbl-image", Static).update(f"[dim]Image[/dim]     {text}")
         except Exception: pass
 
     def on_key(self, event) -> None:
@@ -381,26 +381,26 @@ class LocalAITUI(App):
             with Vertical(id="sidebar"):
                 with Vertical(classes="sidebar-section"):
                     yield Static("MODEL & SESSION", classes="sidebar-label")
-                    yield Static(f"• Model: {self.model_name}", id="lbl-model", classes="sidebar-val")
-                    yield Static(f"• Dir: {format_dir_path(self.workspace_path)}", id="lbl-dir", classes="sidebar-val")
-                    yield Static(f"• Skill: {self.active_skill}", id="lbl-skill", classes="sidebar-val")
-                    yield Static(f"• Mode: {self.agent_mode}", id="lbl-mode", classes="sidebar-val")
+                    yield Static(f"[dim]Model[/dim]   {self.model_name}", id="lbl-model", classes="sidebar-val")
+                    yield Static(f"[dim]Dir[/dim]     {format_dir_path(self.workspace_path)}", id="lbl-dir", classes="sidebar-val")
+                    yield Static(f"[dim]Skill[/dim]   {self.active_skill}", id="lbl-skill", classes="sidebar-val")
+                    yield Static(f"[dim]Mode[/dim]    {self.agent_mode}", id="lbl-mode", classes="sidebar-val")
                 
                 with Vertical(classes="sidebar-section"):
                     yield Static("SETTINGS", classes="sidebar-label")
-                    yield Static("• Reasoning: Disabled", id="lbl-reasoning", classes="sidebar-val")
-                    yield Static("• Image: None", id="lbl-image", classes="sidebar-val")
+                    yield Static("[dim]Reasoning[/dim] Disabled", id="lbl-reasoning", classes="sidebar-val")
+                    yield Static("[dim]Image[/dim]     None", id="lbl-image", classes="sidebar-val")
                 
                 with Vertical(classes="sidebar-section"):
                     yield Static("CONTEXT & MEMORY", classes="sidebar-label")
-                    yield Static(f"• DB State: {self.get_db_status_string()}", id="lbl-database", classes="sidebar-val")
+                    yield Static(f"[dim]DB State[/dim]  {self.get_db_status_string()}", id="lbl-database", classes="sidebar-val")
                     yield Static("Turns: 0 | Speed: -- t/s", id="lbl-stats", classes="sidebar-val")
 
                 with Vertical(id="card-tips"):
                     with Horizontal(id="card-tips-header"):
-                        yield Static("◆ Quick Tips", id="lbl-tips-title")
+                        yield Static("Quick Tips", id="lbl-tips-title")
                         yield CloseCardButton("×", id="btn-close-tips")
-                    yield Static("• Tab: Switch Mode\n• Ctrl+B: Toggle Sidebar\n• /help: Commands List", id="lbl-tips-body")
+                    yield Static("Tab: Switch Mode\nCtrl+B: Toggle Sidebar\n/help: Commands List", id="lbl-tips-body")
 
         with Horizontal(id="footer-bar"):
             yield Footer(id="footer-keys")
@@ -771,7 +771,7 @@ class LocalAITUI(App):
                     if os.path.exists(sess_bin):
                         subprocess.Popen([sys.executable, sess_bin, "log-turn", self.safe_name, query, accumulated], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                         self.refresh_db_counts()
-                        self.call_from_thread(self.query_one("#lbl-database", Static).update, f"• DB State: {self.get_db_status_string()}")
+                        self.call_from_thread(self.query_one("#lbl-database", Static).update, f"[dim]DB State[/dim]  {self.get_db_status_string()}")
                 except Exception: pass
 
         except Exception as e:
