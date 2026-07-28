@@ -243,8 +243,8 @@ class LocalAITUI(App):
     #input-bar { width: auto; height: 100%; color: $primary; padding: 0; margin: 0; }
     Input { width: 1fr; border: none; outline: none; background: transparent; height: 1; color: $text; padding: 0 1; margin-top: 1; }
     Input:focus { border: none; outline: none; }
-    #input-toggle { width: auto; height: 100%; content-align: center middle; color: $secondary; padding: 0 1; }
-    #input-toggle:hover { background: $primary; color: $text; text-style: bold; }
+    #input-toggle { width: auto; height: 1; margin-top: 2; color: $secondary; padding: 0 1; }
+    #input-toggle:hover { color: $primary; text-style: bold; }
     #sidebar { width: 30; height: 100%; background: $surface; border-left: solid #1a1b2a; padding: 1 1; align: left top; }
     Message { margin-top: 1; margin-right: 2; height: auto; }
     .sidebar-section { height: auto; border-bottom: none; padding-bottom: 1; margin-bottom: 1; }
