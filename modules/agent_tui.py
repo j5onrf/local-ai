@@ -127,7 +127,7 @@ def get_recalled_memory(workspace: str, query: str) -> str:
     except Exception: return ""
 
 code_theme = Theme(name="code", primary="#cba6f7", secondary="#a6adc8", accent="#cba6f7", background="#11121d", surface="#161726", panel="#1b1c2b")
-grok_theme = Theme(name="grok", primary="#444444", secondary="#888888", accent="#ffffff", background="#000000", surface="#0d0d0d", panel="#121212")
+mono_theme = Theme(name="mono", primary="#444444", secondary="#888888", accent="#ffffff", background="#000000", surface="#0d0d0d", panel="#121212")
 dark_theme = Theme(name="dark", primary="#555555", secondary="#b0b0b0", accent="#ffffff", background="#121212", surface="#1c1c1c", panel="#242424")
 
 class FooterToggle(Static):
@@ -153,10 +153,10 @@ class Message(Static):
         is_dark = getattr(self.app, "is_dark_theme", True)
         self.styles.color = "#c8d3f5" if theme == "code" else None
 
-        if theme == "grok": u_style = "bold #888888"        # Grey contrast on black
+        if theme in ("mono", "grok"): u_style = "bold #888888"  # Grey contrast on monochrome
         elif theme == "code": u_style = "bold #89b4fa"
         elif theme == "dark": u_style = "bold cyan"
-        elif not is_dark: u_style = "bold #0265dc"          # Deep blue for light mode
+        elif not is_dark: u_style = "bold #0265dc"              # Deep blue for light mode
         else: u_style = "bold cyan"
 
         code_fmt = "ansi_dark" if is_dark else "ansi_light"
@@ -165,7 +165,7 @@ class Message(Static):
             text = self.content
             if isinstance(text, list): text = next((i["text"] for i in text if i.get("type") == "text"), "[Multimodal]")
             if compact_state == 0:
-                if theme == "grok": bar_col, bg_col, user_txt_col = "#555555", "#0d0d0d", "white"
+                if theme in ("mono", "grok"): bar_col, bg_col, user_txt_col = "#555555", "#0d0d0d", "white"
                 elif theme == "dark": bar_col, bg_col, user_txt_col = "cyan", "#1a1a1a", "white"
                 elif theme == "code": bar_col, bg_col, user_txt_col = "#cba6f7", "#1b1c2b", "#c8d3f5"
                 elif not is_dark: bar_col, bg_col, user_txt_col = "#555555", "#e8e8ec", "#111111"
@@ -204,7 +204,7 @@ class AgentCommandProvider(Provider):
 
 class LocalAITUI(App):
     ENABLE_COMMAND_PALETTE = True
-    THEMES: List[str] = ["code", "dark", "grok"]
+    THEMES: List[str] = ["code", "dark", "mono"]
 
     @property
     def command_sources(self) -> Set[Any]: return {AgentCommandProvider}
@@ -212,7 +212,7 @@ class LocalAITUI(App):
     @property
     def border_accent(self) -> str:
         t = str(getattr(self, "theme", "code")).lower()
-        if "grok" in t: return "bright_white"
+        if "mono" in t or "grok" in t: return "bright_white"
         if "dark" in t: return "bright_blue"
         if "code" in t: return "#cba6f7"
         return "blue" if not self.is_dark_theme else "cyan"
@@ -322,7 +322,7 @@ class LocalAITUI(App):
         self.active_skill = skill_name
         t = getattr(self, "theme", "code")
         if t == "code": bg, fg = "#26273b", "#cba6f7"
-        elif t == "grok": bg, fg = "#222222", "#ffffff"
+        elif t in ("mono", "grok"): bg, fg = "#222222", "#ffffff"
         elif t == "dark": bg, fg = "#333333", "#e0e0e0"
         elif not self.is_dark_theme: bg, fg = "#dcdce2", "#111111"
         else: bg, fg = "#333333", "#e0e0e0"
@@ -446,11 +446,12 @@ class LocalAITUI(App):
 
     def on_mount(self) -> None:
         if hasattr(self, "register_theme"):
-            for t in (code_theme, grok_theme, dark_theme):
+            for t in (code_theme, mono_theme, dark_theme):
                 try: self.register_theme(t)
                 except Exception: pass
         
         saved_theme = load_tui_state("tui_theme", "code")
+        if saved_theme == "grok": saved_theme = "mono"
         try: self.theme = saved_theme
         except Exception: pass
 
@@ -494,7 +495,6 @@ class LocalAITUI(App):
     def on_input_changed(self, event: Input.Changed) -> None:
         clean = CSI_U_REGEX.sub('', event.value)
         if clean != event.value: event.input.value = clean
-        if event.value.strip(): self.chat_input.cursor_blink = False
 
     def update_stats_ui(self, turns: int, tps: float, elapsed: float) -> None:
         if hasattr(self, "lbl_stats"): self.lbl_stats.update(f"Turns: {turns} | Speed: {tps:.1f} t/s")
@@ -829,7 +829,7 @@ class LocalAITUI(App):
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         query = CSI_U_REGEX.sub('', event.value.strip()).strip()
         self.chat_input.value = ""
-        self.chat_input.cursor_blink = False  # Turn off blinking cursor after initial welcome screen
+        self.chat_input.cursor_blink = False
 
         if getattr(self, "entering_gate_authorization", False):
             self.entering_gate_authorization = False
@@ -864,7 +864,7 @@ class LocalAITUI(App):
 
         if self.entering_image_url:
             self.entering_image_url = False
-            self.chat_input.placeholder = "   Ask your agent anything..."
+            self.chat_input.placeholder = "Ask your agent anything..."
             if query:
                 self.active_image_url = query
                 fname = query.split("/")[-1].split("?")[0][:25]
@@ -879,7 +879,7 @@ class LocalAITUI(App):
 
         if self.pending_skill_prefix:
             query, self.pending_skill_prefix = f"{self.pending_skill_prefix} {query}", None
-            self.chat_input.placeholder = "   Ask your agent anything..."
+            self.chat_input.placeholder = "Ask your agent anything..."
 
         if query.lower() in ("exit", "quit", "q"): self.exit(); return
         if query.lower().startswith("file "):
@@ -907,10 +907,10 @@ class LocalAITUI(App):
     def action_attach_image_url(self) -> None:
         if self.entering_image_url:
             self.entering_image_url = False
-            self.chat_input.placeholder = "   Ask your agent anything..."
+            self.chat_input.placeholder = "Ask your agent anything..."
         else:
             self.entering_image_url, self.entering_reasoning_budget = True, False
-            self.chat_input.placeholder = "  Enter Web Image URL (http://... or https://...):"
+            self.chat_input.placeholder = "Enter Web Image URL (http://... or https://...):"
             self.chat_input.focus()
 
     def update_sidebar_visibility(self) -> None:
@@ -955,14 +955,14 @@ class LocalAITUI(App):
     def action_toggle_reasoning(self) -> None:
         if self.entering_reasoning_budget:
             self.entering_reasoning_budget = False
-            self.chat_input.placeholder = "   Ask your agent anything..."
+            self.chat_input.placeholder = "Ask your agent anything..."
         elif self.reasoning_active:
             self.reasoning_active = False
             self.set_reasoning("Disabled")
             self.notify("Deep reasoning disabled.")
         else:
             self.entering_reasoning_budget, self.entering_image_url = True, False
-            self.chat_input.placeholder = "  Enter Reasoning Budget (Press Enter for default 500):"
+            self.chat_input.placeholder = "Enter Reasoning Budget (Press Enter for default 500):"
             self.chat_input.focus()
 
 if __name__ == "__main__":
