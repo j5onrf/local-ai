@@ -43,11 +43,14 @@ QUESTION_SPLIT_REGEX = re.compile(r'(?<=\?)\s+')
 
 Screen.command_sources = property(lambda self: set())
 
+ACTIVE_THEME = "code"
+
 def get_dynamic_code_block_background() -> str:
-    try:
-        t = getattr(App.get_running_app(), "theme", "code")
-        return {"grok": "#0d0d0d", "dark": "#1a1a1a"}.get(t, "#1b1c2b")
-    except Exception: return "#1b1c2b"
+    global ACTIVE_THEME
+    t = str(ACTIVE_THEME).lower()
+    if "grok" in t: return "#0d0d0d"
+    if "dark" in t: return "#1a1a1a"
+    return "#1b1c2b"
 
 def custom_code_block_rich_console(self, console, options):
     yield Syntax(str(self.text).rstrip(), self.lexer_name, theme=getattr(self, "code_theme", "github-dark"), word_wrap=True, padding=(1, 2), background_color=get_dynamic_code_block_background())
@@ -143,8 +146,13 @@ class Message(Static):
             text = self.content
             if isinstance(text, list): text = next((i["text"] for i in text if i.get("type") == "text"), "[Multimodal]")
             if not compact:
-                bar_col = "bright_white" if theme == "grok" else ("cyan" if theme == "dark" else "#cba6f7")
-                return Panel(Text(text, style="white"), box=LEFT_BAR, border_style=bar_col, style=f"on {get_dynamic_code_block_background()}", padding=(0, 1))
+                if theme == "grok":
+                    bar_col, bg_col = "bright_white", "#0d0d0d"
+                elif theme == "dark":
+                    bar_col, bg_col = "cyan", "#1a1a1a"
+                else:  # code theme
+                    bar_col, bg_col = "#cba6f7", "#1b1c2b"
+                return Panel(Text(text, style="white"), box=LEFT_BAR, border_style=bar_col, style=f"on {bg_col}", padding=(0, 1))
             return Text(f"❯ USER: {text}", style=u_style)
 
         hdr, text = Text("AGENT:", style=a_style), str(self.content or "")
@@ -192,7 +200,12 @@ class LocalAITUI(App):
     Screen { background: $background; }
     #layout { height: 1fr; }
     #main-container { height: 100%; width: 1fr; background: transparent; }
-    #chat-area { height: 1fr; background: transparent; overflow-y: scroll; padding: 1 0 0 2; }
+    #chat-area { 
+        height: 1fr; 
+        background: transparent; 
+        overflow-y: scroll; 
+        padding: 1 0 1 2; 
+    }
     #welcome-banner { margin-right: 2; }
     #input-pane { height: 3; border: none; background: $surface; padding: 0; margin: 0; align: left middle; }
     #input-bar { width: auto; height: 100%; color: $primary; padding-left: 1; margin: 0; }
@@ -352,6 +365,8 @@ class LocalAITUI(App):
         if saved_theme in self.THEMES:
             try: self.theme = saved_theme
             except Exception: pass
+        global ACTIVE_THEME
+        ACTIVE_THEME = self.theme
         
         self.update_welcome_banner()
         self.chat_area = self.query_one("#chat-area", Vertical)
@@ -842,10 +857,13 @@ class LocalAITUI(App):
         try:
             current_idx = self.THEMES.index(self.theme) if self.theme in self.THEMES else 0
             self.theme = self.THEMES[(current_idx + 1) % len(self.THEMES)]
+            global ACTIVE_THEME
+            ACTIVE_THEME = self.theme
             save_tui_state("tui_theme", self.theme)
             self.update_welcome_banner()
             for child in self.chat_area.children:
-                if isinstance(child, Message): child.refresh()
+                if isinstance(child, Message): child.refresh(layout=True)
+            self.chat_area.refresh(layout=True)
             self.chat_area.mount(Static(f"Theme: {self.theme}", classes="theme-notice"))
             self.chat_area.scroll_end(animate=False)
         except Exception: pass

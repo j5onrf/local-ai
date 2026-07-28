@@ -812,7 +812,7 @@ def show_memory_status(messages: List[Dict[str, Any]], max_context: int = 8192, 
             Text.assemble(("Context Window: ", "dim"), (f"{total_toks}", f"bold {color}"), (f"/{max_context} tokens ", "dim"), (f"({pct:.1f}%)", f"bold {color}")),
             Text(f"[{bar}]", style=color)
         ),
-        title="📊 Memory & Context Status", title_align="left", border_style="bright_black", box=ROUNDED, expand=False
+        title="Memory & Context Status", title_align="left", border_style="bright_black", box=ROUNDED, expand=False
     ))
 
 
