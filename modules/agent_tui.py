@@ -59,12 +59,12 @@ BASE_PROMPT_AGENT = "Active local project workspace developer agent.\nIf <contex
 
 def workspace_safe_name(workspace_path: str, home_dir: str) -> str:
     if os.path.abspath(workspace_path) == os.path.abspath(home_dir):
-        return "home-tui"
+        return "home"
     rel = os.path.relpath(workspace_path, home_dir)
     if rel.startswith(".."):
         rel = workspace_path
     clean = rel.lstrip(".").replace("/", "-").strip("-")
-    return clean or "home-tui"
+    return clean or "home"
 
 def format_dir_path(path: str) -> str:
     p = path.replace(os.path.expanduser("~"), "~")
@@ -218,7 +218,7 @@ class LocalAITUI(App):
     #input-toggle { width: auto; height: 100%; content-align: center middle; color: $secondary; padding: 0 1; }
     #input-toggle:hover { background: $primary; color: $text; text-style: bold; }
     #sidebar { width: 30; height: 100%; background: $surface; border-left: solid #1a1b2a; padding: 1 1; align: left top; }
-    Message { margin-top: 1; height: auto; }
+    Message { margin-top: 1; margin-right: 2; height: auto; }
     #chat-area > Message:first-child { margin-top: 0; }
     .sidebar-section { height: auto; border-bottom: none; padding-bottom: 1; margin-bottom: 1; }
     .sidebar-label { color: $primary; text-style: bold; margin-bottom: 0; }
@@ -505,7 +505,7 @@ class LocalAITUI(App):
             except Exception as e: self.notify(f"[bold red]Error reading file: {e}[/bold red]", sys_prefix=False)
         else: self.notify(f"[bold red]File not found: {file_path}[/bold red]", sys_prefix=False)
 
-    async def handle_meta_chat_command(self, cmd_root: str) -> None:
+    async def handle_meta_chat_command(self, cmd_root: str, args: str = "") -> None:
         think_bin = os.path.join(CFG_DIR, "modules", "chat")
         try: self.query_one("#welcome-banner").remove()
         except Exception: pass
@@ -516,7 +516,11 @@ class LocalAITUI(App):
         hdr_map = {"f": "Follow-up", "b": "Brainstorm", "t": "Thinking", "tk": "Thinking", "a": "All"}
         output_hdr = hdr_map.get(c_raw, "Follow-up")
         
-        await self.chat_area.mount(Message("User", f"/{c_raw}"))
+        user_disp = f"/{c_raw} {args}".strip()
+        await self.chat_area.mount(Message("User", user_disp))
+        if args:
+            self.history.append({"role": "user", "content": args})
+
         assistant_msg = Message("Agent", f"Generating {output_hdr}...")
         await self.chat_area.mount(assistant_msg)
         self.chat_area.scroll_end(animate=False)
@@ -527,7 +531,7 @@ class LocalAITUI(App):
             if os.path.exists(think_bin):
                 try:
                     res = subprocess.run([sys.executable, think_bin, sub_arg], input=json.dumps(self.history), capture_output=True, text=True, timeout=30)
-                    out = res.stdout.strip()
+                    out = (res.stdout or res.stderr or "").strip()
                     if out:
                         clean_out = ANSI_CLEAN_REGEX.sub('', out)
                         if clean_out.startswith("AI:"): clean_out = clean_out[3:].strip()
@@ -535,7 +539,8 @@ class LocalAITUI(App):
                         formatted = f"**{lines[0]}**\n\n" + "\n\n".join(q.strip() for item in lines[1:] for q in QUESTION_SPLIT_REGEX.split(item) if q.strip()) if len(lines) > 1 else clean_out
                         self.call_from_thread(assistant_msg.update_content, formatted)
                         self.history.append({"role": "assistant", "content": formatted})
-                        return
+                    else:
+                        self.call_from_thread(assistant_msg.update_content, "[red][sys] Chat returned no output.[/red]")
                 except Exception as e: self.call_from_thread(assistant_msg.update_content, f"[red][sys] Chat error: {e}[/red]")
             else: self.call_from_thread(assistant_msg.update_content, "[red][sys] modules/chat script not found.[/red]")
 
@@ -605,7 +610,7 @@ class LocalAITUI(App):
             else: self.notify("Usage: /skill <query> or /s <query>")
         elif root in ("/compact", "/c"): self.action_toggle_compact()
         elif root in ("/t", "/thinking"): self.action_toggle_reasoning()
-        elif root in ("/f", "/tk", "/b", "/a"): await self.handle_meta_chat_command(root)
+        elif root in ("/f", "/tk", "/b", "/a"): await self.handle_meta_chat_command(root, args)
         else: self.notify(f"Unknown command '{root}'. Type [bold]/help[/bold] for commands.")
 
     def prompt_tui_confirm(self, prompt_text: str) -> bool:
@@ -790,9 +795,6 @@ class LocalAITUI(App):
         query = CSI_U_REGEX.sub('', event.value.strip()).strip()
         self.chat_input.value = ""
 
-        if not query: return
-        if query.startswith("/"): await self.handle_slash_command(query); return
-
         if getattr(self, "entering_gate_authorization", False):
             self.entering_gate_authorization = False
             self.chat_input.placeholder = "   Ask your agent anything..."
@@ -834,6 +836,10 @@ class LocalAITUI(App):
                 self.notify(f"Attached image URL: [bold]{query}[/bold]")
             else: self.notify("Image attachment cancelled.")
             return
+
+        if not query: return
+
+        if query.startswith("/"): await self.handle_slash_command(query); return
 
         if self.pending_skill_prefix:
             query, self.pending_skill_prefix = f"{self.pending_skill_prefix} {query}", None
