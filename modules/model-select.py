@@ -183,27 +183,30 @@ async def async_fetch_openrouter_models(api_key):
     return await asyncio.to_thread(_fetch)
 
 async def async_get_key():
-    loop = asyncio.get_running_loop()
     fd = sys.stdin.fileno()
     def _read():
-        old = termios.tcgetattr(fd)
+        old_settings = termios.tcgetattr(fd)
         try:
             tty.setraw(fd)
-            ch = sys.stdin.read(1)
+            ch_bytes = os.read(fd, 1)
+            if not ch_bytes: return None
+            ch = ch_bytes.decode('utf-8', errors='ignore')
             if ch == '\x1b':
-                rlist, _, _ = select.select([sys.stdin], [], [], 0.05)
+                rlist, _, _ = select.select([fd], [], [], 0.05)
                 if rlist:
-                    seq = sys.stdin.read(2)
-                    if seq == '[A': return 'up'
-                    elif seq == '[B': return 'down'
-                    elif seq == '[C': return 'right'
-                    elif seq == '[D': return 'left'
+                    seq_bytes = os.read(fd, 2)
+                    seq = seq_bytes.decode('utf-8', errors='ignore')
+                    if seq in ('[A', 'OA'): return 'up'
+                    elif seq in ('[B', 'OB'): return 'down'
+                    elif seq in ('[C', 'OC'): return 'right'
+                    elif seq in ('[D', 'OD'): return 'left'
                 return 'esc'
             elif ch in ('\r', '\n'): return 'enter'
             elif ch in ('\x7f', '\x08'): return 'backspace'
+            elif ch.lower() == 'q': return 'q'
             return ch
-        finally: termios.tcsetattr(fd, termios.TCSADRAIN, old)
-    return await loop.run_in_executor(None, _read)
+        finally: termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    return await asyncio.to_thread(_read)
 
 def draw_main_menu(selected, gemini_curr, claude_curr, openai_curr, grok_curr, or_curr, message=""):
     sys.stdout.write("\x1b[H\x1b[2J")
