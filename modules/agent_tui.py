@@ -592,19 +592,18 @@ class LocalAITUI(App):
             t.add_column("Command", style=cmd_style)
             t.add_column("Description", style="default")
             for c, d in [
-                ("/help, /h", "Show commands"),
-                ("Tab", "Plan & Build"),
+                ("/help, /h", "Help"),
+                ("Tab", "Plan/Build"),
                 ("/copy", "Copy page"),
-                ("/m", "Toggle memory"),
+                ("/m", "Memory"),
                 ("/clear", "Chat & history"),
-                ("/tok", "Token usage"),
+                ("/tok", "Tokens"),
                 ("/sync", "Sync index"),
-                ("/s <q>", "Load skill"),
-                ("/c", "Compact mode"),
-                ("/t <toks>", "Thinking, budget"),
-                ("/f, /tk, /b, /a", "Mode prompts"),
-                ("file <path>", "Attach file"),
-                ("exit, quit, q", "Exit TUI")
+                ("/s <q>", "Skill"),
+                ("/t <toks>", "Reasoning"),
+                ("/f, /tk, /b, /a", "Presets"),
+                ("file <path>", "Load File"),
+                ("exit, quit, q", "Exit"),
             ]: t.add_row(c, d)
             panel = Panel(t, title="⚙ Agent TUI Commands", title_align="left", border_style=self.border_accent, box=ROUNDED, expand=False)
             await self.chat_area.mount(Static(Group(Text(""), panel)))

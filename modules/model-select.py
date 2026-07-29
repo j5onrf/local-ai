@@ -2,14 +2,30 @@
 # model-select.py - Fully Dynamic TUI Model Selector driven by OpenRouter Rankings
 # Path: ~/.config/local-ai/modules/model-select.py
 
-try: import uvloop; uvloop.install()
-except ImportError: pass
-
-import asyncio, json, os, re, select, shutil, subprocess, sys, termios, tty
+import asyncio, json, os, re, select, shutil, subprocess, sys, termios, tty, atexit
 import urllib.request as urlreq
 
 ENV_PATH = os.path.expanduser("~/.config/local-ai/.env")
 CACHE_PATH = os.path.expanduser("~/.config/local-ai/.openrouter_cache_v2.json")
+
+# Ensure terminal state is ALWAYS restored on exit/crash
+ORIGINAL_TERMIOS = None
+if sys.stdin.isatty():
+    try:
+        ORIGINAL_TERMIOS = termios.tcgetattr(sys.stdin.fileno())
+    except Exception:
+        pass
+
+def cleanup_terminal():
+    if ORIGINAL_TERMIOS:
+        try:
+            termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, ORIGINAL_TERMIOS)
+        except Exception:
+            pass
+    sys.stdout.write("\033[?25h\033[0m") # Show cursor, reset colors
+    sys.stdout.flush()
+
+atexit.register(cleanup_terminal)
 
 GEMINI_CURATED = ["gemini-3.5-flash-lite", "gemini-3.6-flash"]
 OPENAI_CURATED = ["gpt-5.5", "gpt-5", "o3", "o3-mini", "gpt-4o", "gpt-4o-mini"]
@@ -205,7 +221,8 @@ async def async_get_key():
             elif ch in ('\x7f', '\x08'): return 'backspace'
             elif ch.lower() == 'q': return 'q'
             return ch
-        finally: termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        finally: 
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
     return await asyncio.to_thread(_read)
 
 def draw_main_menu(selected, gemini_curr, claude_curr, openai_curr, grok_curr, or_curr, message=""):
@@ -356,8 +373,7 @@ async def async_main():
                 elif selected_idx == 8: break
             elif key == 'q': break
     finally:
-        sys.stdout.write("\x1b[H\x1b[2J\033[?25h")
-        sys.stdout.flush()
+        cleanup_terminal()
 
 if __name__ == "__main__":
     asyncio.run(async_main())
