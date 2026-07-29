@@ -115,24 +115,23 @@ Agent: Workspace loaded. Awaiting instructions.
 │   Shortcuts: Esc: bypass  Ctrl+C: cancel                            │
 │                                                                     │
 │   Available commands:                                               │
-│  /help, /h                   - Show help menu                       │
-│  /box, /box-style            - Change CLI box style (1-5)           │
-│  /t, /thinking [N|show|hide] - Set reasoning budget or show/hide    │
+│  /h                          - Help menu                            │
+│  /box [1-5]                  - Box style preset                     │
+│  /t [N|show|hide]            - Set reasoning budget or show/hide    │
 │  /g, /yolo                   - Toggle confirmation gates (YOLO)     │
-│  /m                          - Toggle long-term memory              │
-│  /stats                      - Toggle generation speed stats        │
-│  /tok                        - Show context token usage             │
-│  /sync, /re                  - Sync codebase AST & graph            │
-│  /clear, /reset              - Clear chat history & memory          │
-│  /spell, /sp                 - Toggle spellchecker                  │
-│  /skill <q>, /s              - Search and load custom skills        │
-│  /tui                        - Open full-screen Textual UI          │
+│  /m                          - Toggle database memory               │
+│  /stats                      - Generation speed stats               │
+│  /tok                        - Context token usage                  │
+│  /sync                       - Sync index                           │
+│  /clear                      - Chat & memory                        │
+│  /sp                         - Toggle spellchecker                  │
+│  /s <q>                      - Skills                               │
+│  /tui                        - Textual UI                           │
 │  -save <tag>                 - Save session checkpoint              │
-│  -load, -timeline            - Load or clone checkpoint             │
+│  -load                       - Load or clone checkpoint             │
 │  /f, /tk, /b, /a             - Follow-up, Think, Brainstorm, All    │
 │  view file <path>            - Load file into context               │
-│  read function <sym>         - Load AST symbol snippet              │
-│  exit, quit, q               - Exit Local-AI Agent                  │
+│  exit, quit, q               - Exit                                 │
 ╰─────────────────────────────────────────────────────────────────────╯
 ```
 
