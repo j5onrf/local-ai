@@ -1,4 +1,9 @@
 # File: ~/.config/local-ai/modules/agent_ui.py
+"""
+Local-AI Agent UI Module
+Provides thread-safe spinners, session box rendering, interactive menus, and help displays.
+"""
+
 import os
 import sys
 import threading
@@ -27,12 +32,14 @@ _console_err = Console(stderr=True)
 
 class InlineSpinner:
     """A thread-safe, lightweight console spinner tracking elapsed operation runtime."""
+
     def __init__(self, chars: str = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏") -> None:
         self.chars: str = chars
         self.active: bool = False
         self.thread: Optional[threading.Thread] = None
         self.message: str = "Thinking..."
         self.start_time: float = 0.0
+        self._lock = threading.Lock()
 
     def _spin(self) -> None:
         idx, char_len = 0, len(self.chars)
@@ -40,23 +47,30 @@ class InlineSpinner:
             try:
                 char = self.chars[idx % char_len]
                 elapsed = time.time() - self.start_time
-                sys.stderr.write(f"\r\033[1;32m{char}\033[0m \033[36m{self.message}\033[0m \033[2m{elapsed:.1f}s\033[0m ")
+                with self._lock:
+                    msg = self.message
+                sys.stderr.write(f"\r\033[1;32m{char}\033[0m \033[36m{msg}\033[0m \033[2m{elapsed:.1f}s\033[0m ")
                 sys.stderr.flush()
-            except IOError:
+            except (IOError, OSError):
                 pass
             idx += 1
             time.sleep(0.08)
-        sys.stderr.write("\r\x1b[2K\r")
-        sys.stderr.flush()
+        try:
+            sys.stderr.write("\r\x1b[2K\r")
+            sys.stderr.flush()
+        except (IOError, OSError):
+            pass
 
     def update(self, message: str) -> None:
         """Dynamically updates the spinner label without resetting the runtime counter."""
-        self.message = message
+        with self._lock:
+            self.message = message
 
     def start(self, message: str = "Thinking...") -> None:
         if not self.active:
             self.active = True
-            self.message = message
+            with self._lock:
+                self.message = message
             self.start_time = time.time()
             self.thread = threading.Thread(target=self._spin, daemon=True)
             self.thread.start()
@@ -64,9 +78,14 @@ class InlineSpinner:
     def stop(self) -> None:
         if self.active:
             self.active = False
-            if self.thread:
-                self.thread.join()
+            if self.thread and self.thread.is_alive():
+                self.thread.join(timeout=0.2)
                 self.thread = None
+            try:
+                sys.stderr.write("\033[?25h")
+                sys.stderr.flush()
+            except (IOError, OSError):
+                pass
 
 
 def _read_fd(fd: int) -> str:
@@ -103,7 +122,8 @@ def get_local_model_name() -> str:
     try:
         req = urlreq.Request("http://localhost:8080/v1/models", method="GET")
         with urlreq.urlopen(req, timeout=0.5) as r:
-            return os.path.basename(json.loads(r.read().decode("utf-8"))["data"][0]["id"])
+            data = json.loads(r.read().decode("utf-8"))
+            return os.path.basename(data["data"][0]["id"])
     except Exception:
         return "local-model"
 
@@ -125,11 +145,12 @@ def draw_session_box(
     main_script_path = os.path.join(home_dir, ".config", "local-ai", "ai-agent.py")
     if os.path.exists(main_script_path):
         try:
-            for line in open(main_script_path, "r", encoding="utf-8"):
-                match = re.search(r"Local-Ai Agent\s+(v[0-9.]+)", line, re.I)
-                if match:
-                    version = match.group(1)
-                    break
+            with open(main_script_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    match = re.search(r"Local-Ai Agent\s+(v[0-9.]+)", line, re.I)
+                    if match:
+                        version = match.group(1)
+                        break
         except Exception:
             pass
 
@@ -152,7 +173,7 @@ def draw_session_box(
     mem_status = f"active ({tpm_count} facts, {db_turns} turns)" if memory_active else "disabled"
     table.add_row("database:", mem_status if is_agent else "stateless")
 
-    # Style Preset #5: Original In-Panel Codex Style (Title printed INSIDE box)
+    # Style Preset #5: Original In-Panel Codex Style
     if box_style == 5:
         title_text_inside = f"  >_ Local-AI Agent [sub-agent #{sub_id}]" if sub_id else f"  >_ Local-AI Agent ({version})" if version else "  >_ Local-AI Agent"
         content_group = Group(
@@ -169,21 +190,26 @@ def draw_session_box(
             subtitle_align="right"
         ))
         _console.print(f"[dim][sys] Startup context: {len(active_system_prompt) // 4:,} tokens[/dim]\n")
+        try:
+            sys.stderr.write("\033[?25h")
+            sys.stderr.flush()
+        except (IOError, OSError):
+            pass
         return
 
     # Style Presets Configuration (1-4)
     if box_style == 2:
-        title_text = f" >_ Local-AI Agent [sub-agent #{sub_id}] " if sub_id else f" >_ Local-AI Agent "
+        title_text = f" >_ Local-AI Agent [sub-agent #{sub_id}] " if sub_id else " >_ Local-AI Agent "
         box_type = ROUNDED
         border_col = "green"
         title_style = "bold bright_green"
     elif box_style == 3:
-        title_text = f" ❖ Local-AI Agent [sub-agent #{sub_id}] " if sub_id else f" ❖ Local-AI Agent "
+        title_text = f" ❖ Local-AI Agent [sub-agent #{sub_id}] " if sub_id else " ❖ Local-AI Agent "
         box_type = HEAVY
         border_col = "bright_cyan"
         title_style = "bold bright_white"
     elif box_style == 4:
-        title_text = f" Local-AI Agent [sub-agent #{sub_id}] " if sub_id else f" Local-AI Agent "
+        title_text = f" Local-AI Agent [sub-agent #{sub_id}] " if sub_id else " Local-AI Agent "
         box_type = HORIZONTALS
         border_col = "dim white"
         title_style = "bold cyan"
@@ -205,6 +231,11 @@ def draw_session_box(
         subtitle_align="right"
     ))
     _console.print(f"[dim][sys] Startup context: {len(active_system_prompt) // 4:,} tokens[/dim]\n")
+    try:
+        sys.stderr.write("\033[?25h")
+        sys.stderr.flush()
+    except (IOError, OSError):
+        pass
 
 
 def confirm_tool(tool: str) -> bool:
@@ -249,12 +280,12 @@ def run_interactive_selection(
             is_danger = current_cmd.startswith("DANGER_FLAGGED:")
             cmd_to_show = current_cmd.replace("DANGER_FLAGGED:", "")
             display_cmd = cmd_to_show.replace(" >/dev/null 2>&1", "").replace(os.path.expanduser("~"), "~")
-            
+
             if "/.config/local-ai/projects/" in display_cmd:
                 display_cmd = display_cmd.replace("/.config/local-ai/projects/", "/")
 
             idx_str = f"{current_idx + 1:02d}/{num_opts:02d}"
-            
+
             if is_danger:
                 sys.stderr.write(
                     f"\r\x1b[K\033[1;31m▲ WARNING: Destructive payload detected\033[0m\n"
@@ -267,12 +298,12 @@ def run_interactive_selection(
                     f"\r\x1b[K\033[2m::\033[0m ↵ run  Esc: "
                 )
             sys.stderr.flush()
-            
+
             key = get_key()
             if key in ('\x03', '\x1b', 'n', 'N') or (not is_danger and key not in ('\r', '', '\x1b[A', '\x1b[B')):
                 sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
                 sys.stderr.flush()
-                sys.exit(127)  # Exit code 127 signals shell wrapper to pass query directly to AI!
+                sys.exit(127)
 
             if is_danger:
                 sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K\x1b[1A\r\x1b[K")
@@ -344,7 +375,7 @@ def show_help() -> None:
 
     _console.print()
     _console.print(Panel(
-        Group(header, Text(""), Text("  Available commands:", style="bold yellow"), cmd_table),
+        Group(header, Text(""), Text("  Commands:", style="bold yellow"), cmd_table),
         title=" ⚙ Help & Commands ",
         title_align="left",
         border_style="bright_blue",
@@ -358,7 +389,7 @@ def select_workspace_profile(workspace_name: str) -> Tuple[str, bool]:
     """Renders the workspace profile selector menu with minimal confirmation for YOLO mode."""
     options = [
         ("default",     "Default Assistant", "~120t | Standard assistant",              "Standard"),
-        
+
         ("pi/full",     "Pi Agent [1:1]",    "~400t | Direct tool prompt",              "Full 1:1 Tier (Direct Action)"),
         ("claude/full", "Claude Code",       "~440t | Direct tool prompt",              None),
         ("hermes/full", "Hermes Agent",      "~380t | Direct tool prompt",              None),
@@ -371,16 +402,16 @@ def select_workspace_profile(workspace_name: str) -> Tuple[str, bool]:
         ("claude/lite", "Claude Lite",       "~230t | Index-first standby prompt",      None),
         ("hermes/lite", "Hermes Lite",       "~220t | Index-first standby prompt",      None),
     ]
-    
+
     sys.stderr.write(f"\n\033[1;36m[ai init]\033[0m Select default Agent Profile for workspace \033[1;33m{workspace_name}\033[0m:\n\n")
-    sys.stderr.write("\033[?25l")  # Hide terminal cursor
+    sys.stderr.write("\033[?25l")
     sys.stderr.flush()
 
     current_idx = 0
     is_yolo = False
     num_opts = len(options)
     num_headers = sum(1 for item in options if item[3] is not None)
-    lines_to_clear = num_opts + num_headers + 2  # Total rendered rows (16 lines)
+    lines_to_clear = num_opts + num_headers + 2
     first_render = True
 
     try:
@@ -389,17 +420,15 @@ def select_workspace_profile(workspace_name: str) -> Tuple[str, bool]:
                 sys.stderr.write(f"\x1b[{lines_to_clear}A\r")
             first_render = False
 
-            # Render option rows with section headers
             for idx, (k, lbl, d, cat) in enumerate(options):
                 if cat:
                     sys.stderr.write(f"\r\x1b[K\033[1;30m  ─── {cat} ───────────────────────────────────────────\033[0m\n")
-                
+
                 if idx == current_idx:
                     sys.stderr.write(f"\r\x1b[K\033[1;32m  ❯ {idx + 1:2d}. {lbl:<20}\033[0m \033[1;36m({d})\033[0m\n")
                 else:
                     sys.stderr.write(f"\r\x1b[K\033[90m    {idx + 1:2d}. {lbl:<20} ({d})\033[0m\n")
 
-            # Render minimal status bar
             yolo_badge = "\033[1;33m[ON]\033[0m" if is_yolo else "\033[90m[OFF]\033[0m"
             sys.stderr.write("\r\x1b[K\n")
             sys.stderr.write(f"\r\x1b[K\033[2m  :: ↵ select  ↑/↓ navigate  \033[1;36mTab\033[2m: YOLO {yolo_badge}\033[2m  Esc: default\033[0m\n")
@@ -407,22 +436,21 @@ def select_workspace_profile(workspace_name: str) -> Tuple[str, bool]:
 
             char = get_key()
 
-            if char in ('\t', 'y', 'Y'):  # Tab toggles YOLO mode
+            if char in ('\t', 'y', 'Y'):
                 is_yolo = not is_yolo
 
-            elif char in ('\x03', '\x1b'):  # Esc or Ctrl+C -> default
+            elif char in ('\x03', '\x1b'):
                 sys.stderr.write(f"\x1b[{lines_to_clear}A\r\x1b[J")
                 mode_str = " (Autonomous YOLO)" if is_yolo else ""
                 sys.stderr.write(f"\033[1;32m✓ Profile set to: Default{mode_str}\033[0m\n\n")
                 sys.stderr.flush()
                 return "default", is_yolo
 
-            elif char in ('\r', '\n', ''):  # Enter key
+            elif char in ('\r', '\n', ''):
                 _, label, _, _ = options[current_idx]
                 key, _, _, _ = options[current_idx]
                 sys.stderr.write(f"\x1b[{lines_to_clear}A\r\x1b[J")
 
-                # If YOLO wasn't toggled ON via Tab, ask clean confirmation
                 if not is_yolo:
                     sys.stderr.write("\033[1;36mEnable Autonomous YOLO mode? [y/N]: \033[0m")
                     sys.stderr.flush()
@@ -437,8 +465,8 @@ def select_workspace_profile(workspace_name: str) -> Tuple[str, bool]:
                 sys.stderr.flush()
                 return key, is_yolo
 
-            elif char in ('\x1b[A', '\x1b[B'):  # Up / Down arrow keys
+            elif char in ('\x1b[A', '\x1b[B'):
                 current_idx = (current_idx + (1 if char == '\x1b[B' else -1) + num_opts) % num_opts
     finally:
-        sys.stderr.write("\033[?25h")  # Restore cursor
+        sys.stderr.write("\033[?25h")
         sys.stderr.flush()

@@ -31,7 +31,7 @@ import agent_ui as ui
 import agent_cloud
 
 _console = Console()
-_console_err = Console(stderr=True)  # Directed stderr console for status logging
+_console_err = Console(stderr=True)
 _session = requests.Session()
 
 try:
@@ -47,6 +47,7 @@ except ImportError:
 
 class RichStreamer:
     """Streams fast direct text during generation, then renders full Rich Markdown on completion."""
+
     def __init__(self, prefix: str = "", active: bool = True, spinner: Any = None) -> None:
         self.prefix: str = prefix
         self.active: bool = active and sys.stdout.isatty()
@@ -54,11 +55,30 @@ class RichStreamer:
         self.accumulated_thinking: str = ""
         self.accumulated_answer: str = ""
         self.live_answer: Optional[Live] = None
-        self.phase: str = "INIT"  # "INIT", "THINKING", "ANSWER"
+        self.phase: str = "INIT"
         self.answer_started: bool = False
 
+    def _stop_spinner(self) -> None:
+        if self.spinner:
+            try:
+                self.spinner.stop()
+            except Exception:
+                pass
+
+    def _update_spinner(self, msg: str) -> None:
+        if self.spinner:
+            try:
+                self.spinner.update(msg)
+            except Exception:
+                pass
+
     def start(self) -> None:
-        pass
+        if self.active:
+            try:
+                sys.stdout.write("\033[?25h")
+                sys.stdout.flush()
+            except (IOError, OSError):
+                pass
 
     def update(self, token: str) -> None:
         if not self.active:
@@ -74,18 +94,15 @@ class RichStreamer:
         # Detect start of thinking phase
         if "<think>" in token and self.phase != "THINKING":
             self.phase = "THINKING"
-            if self.spinner:
-                try:
-                    self.spinner.update("Thinking...")
-                except Exception:
-                    pass
+            self._update_spinner("Thinking...")
             if show_think:
-                if self.spinner:
-                    try:
-                        self.spinner.stop()
-                    except Exception:
-                        pass
+                self._stop_spinner()
                 _console_err.print("[dim]╭─ ⚙ Thinking Process ──────────────────────────────────────────[/dim]")
+                try:
+                    sys.stderr.write("\033[?25h")
+                    sys.stderr.flush()
+                except (IOError, OSError):
+                    pass
             token = token.replace("<think>", "")
 
         # Detect end of thinking phase
@@ -100,17 +117,13 @@ class RichStreamer:
                 _console_err.print("[dim]╰───────────────────────────────────────────────────────────────[/dim]\n")
 
             self.phase = "ANSWER"
-            if self.spinner:
-                try:
-                    self.spinner.update("Working...")
-                except Exception:
-                    pass
+            self._update_spinner("Working...")
 
             if answer_part:
                 self.update(answer_part)
             return
 
-        # Handle active THINKING phase (Direct stream in dim italic — ultra fast, 0 box bugs)
+        # Handle active THINKING phase
         if self.phase == "THINKING":
             self.accumulated_thinking += token
             if show_think:
@@ -120,17 +133,12 @@ class RichStreamer:
                 except (IOError, OSError):
                     pass
         else:
-            # Handle active ANSWER phase (Transient fast text stream)
+            # Handle active ANSWER phase
             if self.phase != "ANSWER":
                 self.phase = "ANSWER"
 
             if not self.answer_started:
-                if self.spinner:
-                    try:
-                        self.spinner.update("Working...")
-                        self.spinner.stop()
-                    except Exception:
-                        pass
+                self._stop_spinner()
                 self.answer_started = True
                 self.live_answer = Live("", console=_console, auto_refresh=False, vertical_overflow="crop", transient=True, screen=False)
                 self.live_answer.start()
@@ -152,11 +160,7 @@ class RichStreamer:
                 pass
             self.live_answer = None
 
-        if self.spinner:
-            try:
-                self.spinner.stop()
-            except Exception:
-                pass
+        self._stop_spinner()
 
         if interrupted:
             return
@@ -165,7 +169,6 @@ class RichStreamer:
             _console_err.print("[dim]╰───────────────────────────────────────────────────────────────[/dim]\n")
             self.phase = "ANSWER"
 
-        # Render final formatted Rich Markdown pass
         if self.answer_started and self.accumulated_answer.strip():
             p_style = "bold green" if "Agent" in self.prefix else "bold cyan"
             _console.print(Text(f"{self.prefix.strip()}", style=p_style))
@@ -234,7 +237,13 @@ def stream(messages: List[Dict[str, str]], prefix: str, gkey: str, spinner_class
     """Streams interactions directly from Google Generative Language interactions endpoint."""
     workspace = os.environ.get("AI_WORKSPACE_PATH", os.getcwd())
     sf = os.path.join(workspace, ".agent", "session.json")
-    saved_id = json.load(open(sf)).get("last_interaction_id") if os.path.exists(sf) else None
+    saved_id = None
+    if os.path.exists(sf):
+        try:
+            with open(sf, "r", encoding="utf-8") as f:
+                saved_id = json.load(f).get("last_interaction_id")
+        except Exception:
+            pass
 
     model = os.environ.get("CLOUD_MODEL", "gemini-3.5-flash")
     body: Dict[str, Any] = {"model": model, "input": messages[-1]["content"] if messages else "", "stream": True}
@@ -303,7 +312,8 @@ def stream(messages: List[Dict[str, str]], prefix: str, gkey: str, spinner_class
 
             if resolved_id:
                 os.makedirs(os.path.dirname(sf), exist_ok=True)
-                json.dump({"last_interaction_id": resolved_id}, open(sf, "w", encoding="utf-8"))
+                with open(sf, "w", encoding="utf-8") as f:
+                    json.dump({"last_interaction_id": resolved_id}, f)
             return ans_text
     except KeyboardInterrupt:
         if 'streamer' in locals() and streamer:
@@ -389,7 +399,8 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
         if (outside or gates_active) and not _confirm_gate(f"read {full}" if outside else f"read file {raw_path}", spinner):
             return denial_msg
         try:
-            content = open(full, "r", encoding="utf-8", errors="replace").read(60000)
+            with open(full, "r", encoding="utf-8", errors="replace") as f:
+                content = f.read(60000)
             if sys.stdout.isatty() and content.strip():
                 if spinner:
                     spinner.stop()
@@ -420,7 +431,8 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
 
         if sys.stdout.isatty() and exists:
             try:
-                old = open(full, "r", encoding="utf-8", errors="replace").read()
+                with open(full, "r", encoding="utf-8", errors="replace") as f:
+                    old = f.read()
                 diff_text = "\n".join(difflib.unified_diff(old.splitlines(), content.splitlines(), fromfile=f"a/{raw_path}", tofile=f"b/{raw_path}", lineterm=""))
                 if diff_text:
                     _console_err.print()
@@ -434,7 +446,8 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
 
         try:
             os.makedirs(os.path.dirname(full) or workspace, exist_ok=True)
-            open(full, "w", encoding="utf-8").write(content)
+            with open(full, "w", encoding="utf-8") as f:
+                f.write(content)
             return f"wrote {len(content)} chars to {raw_path}"
         except Exception as e:
             return f"[error] failed to write file: {e}"
@@ -542,7 +555,7 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
                     delta = choices[0].get("delta", {})
 
                     content, reasoning = delta.get("content", "") or "", delta.get("reasoning_content", "") or delta.get("thinking", "") or ""
-                    
+
                     if reasoning and spinner:
                         try:
                             spinner.update("Thinking...")
@@ -685,94 +698,9 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
             if ans is not None:
                 return ans
 
-            is_local = "localhost" in url or "127.0.0.1" in url or body.get("model") == "local-model"
-            req = urlreq.Request(url, data=json.dumps(body).encode("utf-8"), headers={"Content-Type": "application/json", **headers}, method="POST")
-            retries, backoff = 2, 1.5
-
-            while retries >= 0:
-                try:
-                    spinner.start("Working...")
-                    with urlreq.urlopen(req, timeout=timeout) as response:
-                        if cfg_dir:
-                            p = "gemini" if "generativelanguage" in url else ("openrouter" if "openrouter" in url else ("openai" if "api.openai" in url else ("claude" if "api.anthropic" in url else None)))
-                            if p:
-                                try:
-                                    open(os.path.join(cfg_dir, ".request_log"), "a", encoding="utf-8").write(f"{int(time.time())}|{p}\n")
-                                except Exception:
-                                    pass
-
-                        first, resolved_model, streamer, in_think_block, captured_usage = True, None, None, False, None
-                        for line in response:
-                            if not line.startswith(b"data:"):
-                                continue
-
-                            content, reasoning, usage = extract_stream_content(line)
-                            captured_usage = usage or captured_usage
-
-                            if not content and not reasoning:
-                                continue
-
-                            chunk_to_stream, is_thinking, in_think_block = _process_stream_chunk(content, reasoning, in_think_block)
-
-                            if chunk_to_stream:
-                                if first:
-                                    first = False
-                                    if os.environ.get("AI_SHOW_THINKING", "1") == "1":
-                                        spinner.stop()
-                                    streamer = RichStreamer(prefix=f"{prefix} " if prefix else "", spinner=spinner)
-                                    streamer.start()
-                                    if speed_test and show_stats:
-                                        speed_test.start()
-                                if streamer:
-                                    streamer.update(chunk_to_stream)
-                                acc.append(chunk_to_stream)
-                                if speed_test and show_stats:
-                                    speed_test.count_token(chunk_to_stream, is_thinking=is_thinking)
-
-                        if streamer:
-                            streamer.stop()
-                        else:
-                            print("")
-
-                        ans_text = "".join(acc)
-                        in_tok, out_tok = _calc_turn_tokens(ans_text, messages, captured_usage, is_local)
-
-                        if speed_test and show_stats:
-                            speed_test.end(actual_out_tokens=out_tok, is_local=is_local)
-
-                        _log_turn_usage(resolved_model or body.get("model") or url.split('/')[2], in_tok, out_tok, 0.0, show_stats, in_tok + out_tok)
-                        return ans_text
-                except urlerr.HTTPError as e:
-                    spinner.stop()
-                    if e.code == 429 and retries > 0:
-                        time.sleep(backoff)
-                        retries -= 1
-                        backoff *= 2
-                    else:
-                        break
-                except KeyboardInterrupt:
-                    if 'streamer' in locals() and streamer:
-                        try:
-                            streamer.stop(interrupted=True)
-                        except Exception:
-                            pass
-                    if 'spinner' in locals() and spinner:
-                        try:
-                            spinner.stop()
-                        except Exception:
-                            pass
-                    sys.stderr.write("\r\x1b[2K\033[90m[sys] Interrupted.\033[0m\033[0m\n")
-                    return None
-                except Exception:
-                    spinner.stop()
-                    break
+        return None
     except KeyboardInterrupt:
-        if 'streamer' in locals() and streamer:
-            try:
-                streamer.stop(interrupted=True)
-            except Exception:
-                pass
-        if 'spinner' in locals() and spinner:
+        if spinner:
             try:
                 spinner.stop()
             except Exception:
@@ -785,7 +713,6 @@ def get_accurate_token_count(text: str, server_url: str = "http://localhost:8080
     """Fast local token estimator that eliminates HTTP post-turn latency completely."""
     if not text:
         return 0
-    # Instant local estimation (~3.6 chars/token ratio for code and prose)
     return max(1, int(len(text) / 3.6))
 
 
