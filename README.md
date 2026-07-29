@@ -110,7 +110,7 @@ Agent: Workspace loaded. Awaiting instructions.
 
 <h2 align="center">Command Reference</h2>
 
-```text
+```console
 ╭─  ⚙ Help & Commands  ───────────────────────────────────────────────╮
 │   Shortcuts: Esc: bypass  Ctrl+C: cancel                            │
 │                                                                     │
