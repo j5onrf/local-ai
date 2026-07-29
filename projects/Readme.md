@@ -141,6 +141,8 @@ When initializing a workspace (`ai init <path>`), an interactive menu configures
 > rm .agent/config.json
 > ```
 
+---
+
 #### Agent Profiles & Personalities
 
 | Tier | Profiles | Target Model Scale | Context Overhead | Operational Behavior |
@@ -151,6 +153,8 @@ When initializing a workspace (`ai init <path>`), an interactive menu configures
 | **Lite Tier** | `pi/lite`, `claude/lite`, `hermes/lite` | 1B–7B Local | `~220t–230t` | **Index-First Standby:** Prevents tool eagerness and loop traps on small local models. |
 
 Although all profiles leverage the same local system tools (`read_file`, `write_file`, `list_dir`, `run_command`), they instruct models using two primary architectural tiers:
+
+---
 
 #### 1. Full Profiles (Designed for Large Models 14B–70B+)
 * **Claude Code (`claude/full`):** *The Methodical Planner.* Writes structured plans within `<thought>` blocks before executing tools. Highly analytical, cautious, and designed to trace entire codebase dependency trees before applying edits. Best for complex refactoring.
