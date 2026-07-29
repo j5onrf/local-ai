@@ -230,7 +230,7 @@ class LocalAITUI(App):
     #welcome-banner { margin-right: 2; }
     #input-pane { height: 3; border: none; background: $surface; padding: 0; margin: 0; align: left middle; }
     #input-bar { width: auto; height: 100%; color: $primary; padding: 0; margin: 0; }
-    Input { width: 1fr; border: none; outline: none; background: transparent; height: 1; color: $text; padding: 0 1; margin-top: 1; }
+    Input { width: 1fr; border: none; outline: none; background: transparent; height: 1; color: $text; padding: 0 2; margin-top: 1; }
     Input:focus { border: none; outline: none; }
     #input-toggle { width: auto; height: 1; margin-top: 2; color: $secondary; padding: 0 1; }
     #input-toggle:hover { color: $primary; text-style: bold; }

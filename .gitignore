@@ -13,6 +13,7 @@ index-map-local-ai.txt
 .state.json
 tools/email/.email
 .active_sessions
+projects/database/home.db
 
 # Ignore Python cache directories and bytecode
 __pycache__/
