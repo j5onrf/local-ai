@@ -2,7 +2,7 @@
 
 # Configuration
 PORT=8080
-MODEL_PATH="/home/user/models/Qwen3.6-35B-A3B.gguf"
+MODEL_PATH="/home/user/models/Hermes3.6-35B-A3B.gguf"
 LOG_DIR="/home/user/models/serv"
 LOG_FILE="$LOG_DIR/server.log"
 
@@ -17,11 +17,8 @@ if command -v lsof >/dev/null 2>&1; then
     fi
 fi
 
-# Launch wrapped in systemd-run
-exec systemd-run --scope --user \
-  -p MemorySwapMax=0 \
-  -p MemoryMin=22G \
-  ionice -c 3 nice -n 19 "$LLAMA_SERVER_BIN" \
+# Launch wrapped in UWSM
+exec uwsm app -- "$LLAMA_SERVER_BIN" \
   -m "$MODEL_PATH" \
   -c 8192 \
   -np 1 \
@@ -32,15 +29,16 @@ exec systemd-run --scope --user \
   --cache-type-v q8_0 \
   --flash-attn on \
   --reasoning on \
-  --reasoning-format deepseek \
+  --reasoning-format auto \
   --reasoning-budget-message "\n" \
   --chat-template-kwargs '{"enable_thinking":false}' \
   --context-shift \
   --jinja \
-  --temp 0.45 \
-  --dynatemp-range 0.45 \
+  --temp 0.6 \
+  --top-k 20 \
+  --top-p 0.95 \
   --min-p 0.05 \
-  --repeat-penalty 1.1 \
+  --repeat-penalty 1.05 \
   --repeat-last-n 128 \
   --no-ui \
   --port "$PORT" >> "$LOG_FILE" 2>&1
