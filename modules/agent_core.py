@@ -62,8 +62,11 @@ class RichStreamer:
 
     def update(self, token: str) -> None:
         if not self.active:
-            sys.stdout.write(token)
-            sys.stdout.flush()
+            try:
+                sys.stdout.write(token)
+                sys.stdout.flush()
+            except (IOError, OSError):
+                pass
             return
 
         show_think = os.environ.get("AI_SHOW_THINKING", "1") == "1"
@@ -107,20 +110,24 @@ class RichStreamer:
                 self.update(answer_part)
             return
 
-        # Handle active THINKING phase
+        # Handle active THINKING phase (Direct stream in dim italic — ultra fast, 0 box bugs)
         if self.phase == "THINKING":
             self.accumulated_thinking += token
             if show_think:
-                sys.stderr.write(f"\033[2;3m{token}\033[0m")
-                sys.stderr.flush()
+                try:
+                    sys.stderr.write(f"\033[2;3m{token}\033[0m")
+                    sys.stderr.flush()
+                except (IOError, OSError):
+                    pass
         else:
-            # Handle active ANSWER phase (Transient streaming, rendered with Rich Markdown on stop)
+            # Handle active ANSWER phase (Transient fast text stream)
             if self.phase != "ANSWER":
                 self.phase = "ANSWER"
 
             if not self.answer_started:
                 if self.spinner:
                     try:
+                        self.spinner.update("Working...")
                         self.spinner.stop()
                     except Exception:
                         pass
@@ -130,9 +137,12 @@ class RichStreamer:
 
             self.accumulated_answer += token
             if self.live_answer:
-                clean_ans = self.accumulated_answer.replace("\\n", "\n")
-                self.live_answer.update(Text(f"{self.prefix.strip()} {clean_ans}"))
-                self.live_answer.refresh()
+                try:
+                    clean_ans = self.accumulated_answer.replace("\\n", "\n")
+                    self.live_answer.update(Text(f"{self.prefix.strip()} {clean_ans}"))
+                    self.live_answer.refresh()
+                except (IOError, OSError):
+                    pass
 
     def stop(self, interrupted: bool = False) -> None:
         if self.live_answer:
@@ -648,6 +658,7 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
             "messages": messages,
             "stream": True,
             "model": "local-model",
+            "max_tokens": 2048,
             "reasoning_budget": budget_val,
             "thinking_budget_tokens": budget_val,
             "chat_template_kwargs": {"enable_thinking": enable_think}
@@ -771,18 +782,11 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
 
 
 def get_accurate_token_count(text: str, server_url: str = "http://localhost:8080") -> int:
-    """Queries the local llama server tokenize endpoint or estimates token count accurately."""
+    """Fast local token estimator that eliminates HTTP post-turn latency completely."""
     if not text:
         return 0
-    try:
-        res = _session.post(f"{server_url}/tokenize", json={"content": text}, timeout=2)
-        if res.status_code == 200:
-            toks = res.json().get("tokens", [])
-            if toks:
-                return len(toks)
-    except Exception:
-        pass
-    return max(1, len(text) // 4)
+    # Instant local estimation (~3.6 chars/token ratio for code and prose)
+    return max(1, int(len(text) / 3.6))
 
 
 def show_memory_status(messages: List[Dict[str, Any]], max_context: int = 8192, server_url: str = "http://localhost:8080") -> None:
