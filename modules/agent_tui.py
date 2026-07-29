@@ -407,7 +407,7 @@ class LocalAITUI(App):
             t.add_row("▲ Show", "Toggle Bottom Shortcut Bar")
             t.add_row("/help", "View All Commands")
 
-            panel = Panel(t, title=" >_ Local-AI Agent ", title_align="left", border_style=self.border_accent, box=ROUNDED, padding=(1, 2))
+            panel = Panel(t, title=" ❖ Local-AI Agent ", title_align="left", border_style=self.border_accent, box=ROUNDED, padding=(1, 2))
             self.query_one("#welcome-banner", Static).update(panel)
         except Exception: pass
 

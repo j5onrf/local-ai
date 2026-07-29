@@ -49,6 +49,10 @@ class InlineSpinner:
         sys.stderr.write("\r\x1b[2K\r")
         sys.stderr.flush()
 
+    def update(self, message: str) -> None:
+        """Dynamically updates the spinner label without resetting the runtime counter."""
+        self.message = message
+
     def start(self, message: str = "Thinking...") -> None:
         if not self.active:
             self.active = True
@@ -354,13 +358,19 @@ def show_help() -> None:
 def select_workspace_profile(workspace_name: str) -> Tuple[str, bool]:
     """Renders the workspace profile selector menu with minimal confirmation for YOLO mode."""
     options = [
-        ("default",     "Default",            "~120t | Standard assistant"),
-        ("pi/full",     "Pi Agent [1:1]",     "~400t | Full Pi prompt (Large models)"),
-        ("claude/full", "Claude Code",        "~440t | Full Claude prompt (Large models)"),
-        ("hermes/full", "Hermes Agent",       "~380t | Full Hermes prompt (Large models)"),
-        ("pi/lite",     "Pi Lite",            "~220t | Index-first prompt (Small models)"),
-        ("claude/lite", "Claude Lite",        "~230t | Index-first prompt (Small models)"),
-        ("hermes/lite", "Hermes Lite",        "~220t | Index-first prompt (Small models)"),
+        ("default",     "Default Assistant", "~120t | Standard assistant",              "Standard"),
+        
+        ("pi/full",     "Pi Agent [1:1]",    "~400t | Direct tool prompt",              "Full 1:1 Tier (Direct Action)"),
+        ("claude/full", "Claude Code",       "~440t | Direct tool prompt",              None),
+        ("hermes/full", "Hermes Agent",      "~380t | Direct tool prompt",              None),
+
+        ("pi/pro",      "Pi Pro",            "~280t | Index-first + reasoning prompt",  "Pro Tier (Index-First / 35B+ & Cloud)"),
+        ("claude/pro",  "Claude Pro",        "~290t | Index-first + reasoning prompt",  None),
+        ("hermes/pro",  "Hermes Pro",        "~280t | Index-first + reasoning prompt",  None),
+
+        ("pi/lite",     "Pi Lite",           "~220t | Index-first standby prompt",      "Lite Tier (Index-First / 1B–7B Models)"),
+        ("claude/lite", "Claude Lite",       "~230t | Index-first standby prompt",      None),
+        ("hermes/lite", "Hermes Lite",       "~220t | Index-first standby prompt",      None),
     ]
     
     sys.stderr.write(f"\n\033[1;36m[ai init]\033[0m Select default Agent Profile for workspace \033[1;33m{workspace_name}\033[0m:\n\n")
@@ -370,20 +380,25 @@ def select_workspace_profile(workspace_name: str) -> Tuple[str, bool]:
     current_idx = 0
     is_yolo = False
     num_opts = len(options)
+    num_headers = sum(1 for item in options if item[3] is not None)
+    lines_to_clear = num_opts + num_headers + 2  # Total rendered rows (16 lines)
     first_render = True
 
     try:
         while True:
             if not first_render:
-                sys.stderr.write(f"\x1b[{num_opts + 2}A\r")
+                sys.stderr.write(f"\x1b[{lines_to_clear}A\r")
             first_render = False
 
-            # Render option rows
-            for idx, (k, lbl, d) in enumerate(options):
+            # Render option rows with section headers
+            for idx, (k, lbl, d, cat) in enumerate(options):
+                if cat:
+                    sys.stderr.write(f"\r\x1b[K\033[1;30m  ─── {cat} ───────────────────────────────────────────\033[0m\n")
+                
                 if idx == current_idx:
-                    sys.stderr.write(f"\r\x1b[K\033[1;32m  ❯ {idx + 1:2d}. {lbl:<18}\033[0m \033[1;36m({d})\033[0m\n")
+                    sys.stderr.write(f"\r\x1b[K\033[1;32m  ❯ {idx + 1:2d}. {lbl:<20}\033[0m \033[1;36m({d})\033[0m\n")
                 else:
-                    sys.stderr.write(f"\r\x1b[K\033[90m    {idx + 1:2d}. {lbl:<18} ({d})\033[0m\n")
+                    sys.stderr.write(f"\r\x1b[K\033[90m    {idx + 1:2d}. {lbl:<20} ({d})\033[0m\n")
 
             # Render minimal status bar
             yolo_badge = "\033[1;33m[ON]\033[0m" if is_yolo else "\033[90m[OFF]\033[0m"
@@ -397,16 +412,16 @@ def select_workspace_profile(workspace_name: str) -> Tuple[str, bool]:
                 is_yolo = not is_yolo
 
             elif char in ('\x03', '\x1b'):  # Esc or Ctrl+C -> default
-                sys.stderr.write(f"\x1b[{num_opts + 2}A\r\x1b[J")
+                sys.stderr.write(f"\x1b[{lines_to_clear}A\r\x1b[J")
                 mode_str = " (Autonomous YOLO)" if is_yolo else ""
                 sys.stderr.write(f"\033[1;32m✓ Profile set to: Default{mode_str}\033[0m\n\n")
                 sys.stderr.flush()
                 return "default", is_yolo
 
             elif char in ('\r', '\n', ''):  # Enter key
-                _, label, _ = options[current_idx]
-                key, _, _ = options[current_idx]
-                sys.stderr.write(f"\x1b[{num_opts + 2}A\r\x1b[J")
+                _, label, _, _ = options[current_idx]
+                key, _, _, _ = options[current_idx]
+                sys.stderr.write(f"\x1b[{lines_to_clear}A\r\x1b[J")
 
                 # If YOLO wasn't toggled ON via Tab, ask clean confirmation
                 if not is_yolo:

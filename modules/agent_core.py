@@ -46,15 +46,13 @@ except ImportError:
 
 
 class RichStreamer:
-    """Streams fast direct text via a transient buffer, then replaces it with full Rich Markdown on completion."""
+    """Ultra-fast direct text streamer with borderless thinking output for maximum performance and zero layout glitches."""
     def __init__(self, prefix: str = "", active: bool = True, spinner: Any = None) -> None:
         self.prefix: str = prefix
         self.active: bool = active and sys.stdout.isatty()
         self.spinner: Any = spinner
         self.accumulated_thinking: str = ""
         self.accumulated_answer: str = ""
-        self.live_think: Optional[Live] = None
-        self.live_answer: Optional[Live] = None
         self.phase: str = "INIT"  # "INIT", "THINKING", "ANSWER"
         self.answer_started: bool = False
 
@@ -67,75 +65,55 @@ class RichStreamer:
             sys.stdout.flush()
             return
 
-        show_think_panel = os.environ.get("AI_SHOW_THINKING", "1") == "1"
+        show_think = os.environ.get("AI_SHOW_THINKING", "1") == "1"
 
         # Detect start of thinking phase
         if "<think>" in token and self.phase != "THINKING":
             self.phase = "THINKING"
-            if show_think_panel:
+            if self.spinner:
+                try:
+                    self.spinner.update("Thinking...")
+                except Exception:
+                    pass
+            if show_think:
                 if self.spinner:
                     try:
                         self.spinner.stop()
                     except Exception:
                         pass
-                self.live_think = Live("", console=_console, auto_refresh=False, vertical_overflow="crop", transient=True, screen=False)
-                self.live_think.start()
+                _console_err.print("[dim]╭─ ⚙ Thinking Process ──────────────────────────────────────────[/dim]")
             token = token.replace("<think>", "")
 
         # Detect end of thinking phase
         if "</think>" in token:
-            if not show_think_panel and self.spinner:
-                try:
-                    self.spinner.stop()
-                except Exception:
-                    pass
-
             parts = token.split("</think>", 1)
             thinking_part = parts[0]
             answer_part = parts[1] if len(parts) > 1 else ""
 
             self.accumulated_thinking += thinking_part
 
-            if self.live_think:
-                try:
-                    self.live_think.stop()
-                except Exception:
-                    pass
-                self.live_think = None
-
-            if show_think_panel and self.accumulated_thinking.strip():
-                panel = Panel(
-                    Text(self.accumulated_thinking.strip(), style="italic dim white"),
-                    title="⚙ Thinking Process",
-                    title_align="left",
-                    border_style="bright_black",
-                    box=ROUNDED,
-                    expand=True
-                )
-                _console.print(panel)
+            if show_think and self.phase == "THINKING":
+                _console_err.print("[dim]╰───────────────────────────────────────────────────────────────[/dim]\n")
 
             self.phase = "ANSWER"
+            if self.spinner:
+                try:
+                    self.spinner.update("Working...")
+                except Exception:
+                    pass
 
             if answer_part:
                 self.update(answer_part)
             return
 
-        # Handle active THINKING phase
+        # Handle active THINKING phase (Direct stream in dim italic — ultra fast, 0 box bugs)
         if self.phase == "THINKING":
             self.accumulated_thinking += token
-            if show_think_panel and self.live_think:
-                panel = Panel(
-                    Text(self.accumulated_thinking.strip(), style="italic dim white"),
-                    title="⚙ Thinking Process...",
-                    title_align="left",
-                    border_style="yellow",
-                    box=ROUNDED,
-                    expand=True
-                )
-                self.live_think.update(panel)
-                self.live_think.refresh()
+            if show_think:
+                sys.stderr.write(f"\033[2;3m{token}\033[0m")
+                sys.stderr.flush()
         else:
-            # Handle active ANSWER phase (Transient fast text stream)
+            # Handle active ANSWER phase (Direct fast text stream)
             if self.phase != "ANSWER":
                 self.phase = "ANSWER"
 
@@ -146,33 +124,14 @@ class RichStreamer:
                     except Exception:
                         pass
                 self.answer_started = True
-                self.live_answer = Live("", console=_console, auto_refresh=False, vertical_overflow="crop", transient=True, screen=False)
-                self.live_answer.start()
+                p_style = "bold green" if "Agent" in self.prefix else "bold cyan"
+                _console.print(Text(f"{self.prefix.strip()} ", style=p_style), end="")
 
             self.accumulated_answer += token
-
-            if self.live_answer:
-                clean_ans = self.accumulated_answer.replace("\\n", "\n")
-                self.live_answer.update(Text(f"{self.prefix.strip()} {clean_ans}"))
-                self.live_answer.refresh()
+            sys.stdout.write(token)
+            sys.stdout.flush()
 
     def stop(self, interrupted: bool = False) -> None:
-        show_think_panel = os.environ.get("AI_SHOW_THINKING", "1") == "1"
-
-        if self.live_think:
-            try:
-                self.live_think.stop()
-            except Exception:
-                pass
-            self.live_think = None
-
-        if self.live_answer:
-            try:
-                self.live_answer.stop()
-            except Exception:
-                pass
-            self.live_answer = None
-
         if self.spinner:
             try:
                 self.spinner.stop()
@@ -182,25 +141,13 @@ class RichStreamer:
         if interrupted:
             return
 
-        if self.phase == "THINKING" or (self.accumulated_thinking.strip() and not self.answer_started):
-            if show_think_panel and self.accumulated_thinking.strip():
-                panel = Panel(
-                    Text(self.accumulated_thinking.strip(), style="italic dim white"),
-                    title="⚙ Thinking Process",
-                    title_align="left",
-                    border_style="bright_black",
-                    box=ROUNDED,
-                    expand=True
-                )
-                _console.print(panel)
+        if self.phase == "THINKING" and self.accumulated_thinking.strip():
+            _console_err.print("[dim]╰───────────────────────────────────────────────────────────────[/dim]\n")
             self.phase = "ANSWER"
 
-        # Render final formatted Rich Markdown pass
         if self.answer_started and self.accumulated_answer.strip():
-            p_style = "bold green" if "Agent" in self.prefix else "bold cyan"
-            _console.print(Text(f"{self.prefix.strip()}", style=p_style))
-            _console.print(Markdown(self.accumulated_answer.strip().replace("\\n", "\n"), code_theme="ansi_dark"))
-            _console.print()
+            sys.stdout.write("\n\n")
+            sys.stdout.flush()
 
 
 def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float, show_stats: bool, ctx_used: Optional[int] = None) -> None:
@@ -282,7 +229,7 @@ def stream(messages: List[Dict[str, str]], prefix: str, gkey: str, spinner_class
     spinner = spinner_class()
 
     try:
-        spinner.start()
+        spinner.start("Working...")
         with urlreq.urlopen(req, timeout=180) as response:
             first, acc, resolved_id, streamer = True, [], None, None
             for line in response:
@@ -500,7 +447,11 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
 
         shell = os.environ.get("SHELL") or "/bin/sh"
         if spinner:
-            spinner.start("running")
+            try:
+                spinner.update("Working...")
+            except Exception:
+                pass
+            spinner.start("Working...")
         try:
             res = subprocess.run([shell, "-lc", cmd], cwd=workspace, capture_output=True, text=True, timeout=300)
             out = ((res.stdout or "") + (("\n" + res.stderr) if res.stderr else "")).strip()[:10000]
@@ -541,7 +492,12 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
         if is_agent:
             body_tools["tools"] = _EDIT_TOOLS
 
-        spinner.start()
+        if spinner:
+            try:
+                spinner.update("Working...")
+            except Exception:
+                pass
+            spinner.start("Working...")
         try:
             res = _session.post(url, json=body_tools, headers={"Content-Type": "application/json", **headers}, timeout=timeout, stream=True)
             first_chunk, acc_content, tool_calls_map, in_think_block, captured_usage = True, [], {}, False, None
@@ -563,6 +519,18 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
                     delta = choices[0].get("delta", {})
 
                     content, reasoning = delta.get("content", "") or "", delta.get("reasoning_content", "") or delta.get("thinking", "") or ""
+                    
+                    if reasoning and spinner:
+                        try:
+                            spinner.update("Thinking...")
+                        except Exception:
+                            pass
+                    elif content and spinner and not reasoning and not in_think_block:
+                        try:
+                            spinner.update("Working...")
+                        except Exception:
+                            pass
+
                     chunk_to_stream, is_thinking, in_think_block = _process_stream_chunk(content, reasoning, in_think_block)
 
                     if chunk_to_stream:
@@ -616,8 +584,13 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
                 verb = TOOL_VERBS.get(fname, "working")
 
                 _console_err.print(f"[dim]∗ {verb} • [cyan]{fname}[/cyan] [italic]{brief}[/italic][/dim]")
-                if spinner and fname in ("read_file", "list_dir"):
-                    spinner.start(verb)
+                if spinner:
+                    try:
+                        spinner.update("Working...")
+                    except Exception:
+                        pass
+                    spinner.start("Working...")
+
                 try:
                     result = _run_edit_tool(fname, args, workspace, spinner)
                 except Exception as e:
@@ -694,7 +667,7 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
 
             while retries >= 0:
                 try:
-                    spinner.start()
+                    spinner.start("Working...")
                     with urlreq.urlopen(req, timeout=timeout) as response:
                         if cfg_dir:
                             p = "gemini" if "generativelanguage" in url else ("openrouter" if "openrouter" in url else ("openai" if "api.openai" in url else ("claude" if "api.anthropic" in url else None)))
