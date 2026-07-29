@@ -169,11 +169,11 @@ class RichStreamer:
             _console_err.print("[dim]╰───────────────────────────────────────────────────────────────[/dim]\n")
             self.phase = "ANSWER"
 
+        # Render final formatted Rich Markdown pass
         if self.answer_started and self.accumulated_answer.strip():
             p_style = "bold green" if "Agent" in self.prefix else "bold cyan"
             _console.print(Text(f"{self.prefix.strip()}", style=p_style))
             _console.print(Markdown(self.accumulated_answer.strip().replace("\\n", "\n"), code_theme="ansi_dark"))
-            _console.print()
 
 
 def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float, show_stats: bool, ctx_used: Optional[int] = None) -> None:
