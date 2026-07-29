@@ -104,7 +104,7 @@ Switch box styles using `/box [1-5]` (or type `/box` to cycle). Selection persis
 
 Running `ai init <path>` prompts the default workspace agent profile:
 
-```text
+```console
 [ai init] Select default Agent Profile for workspace session-test:
 
   ─── Standard ────────────────────────────────────────────────────────
@@ -120,7 +120,7 @@ Running `ai init <path>` prompts the default workspace agent profile:
      6. Claude Pro           (~290t | Index-first + reasoning prompt)
   ❯  7. Hermes Pro           (~280t | Index-first + reasoning prompt)
 
-  ─── Lite Tier (Index-First / 1B–7B Models) ─────────────────────────
+  ─── Lite Tier (Index-First / 1B–7B Models) ───────────────────────────
      8. Pi Lite              (~220t | Index-first standby prompt)
      9. Claude Lite          (~230t | Index-first standby prompt)
     10. Hermes Lite          (~220t | Index-first standby prompt)
