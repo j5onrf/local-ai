@@ -3,26 +3,37 @@
 High-speed local developer agent, episodic memory, SQLite checkpoints, and codebase index graph.
 
 ```console
-~ ❯ session
+~ ❯ sess
 [01/03] ❯ [session test] ai init ~/session-test --init
 :: ↵ run  Esc: 
-╭─  ❖ Local-AI Agent  ───────────────────────────────────╮
-│     model:  Hermes3.6-35B-A3B.gguf                     │
-│ directory:  ~/.config/local-ai/projects/session-test   │
-│     skill:  hermes/pro                                 │
-│  database:  active (0 facts, 0 turns)                  │
-╰─────────────────────────────────────── Ctrl+C to exit ─╯
+✔ Mapping complete! [session-test index-map & SQLite graph database updated]
+✓ Profile set to: Hermes Pro (Autonomous YOLO)
+
+╔═  ❖ Local-AI Agent  ═══════════════════════════════════╗
+║     model:  Hermes3.6-35B-A3B.gguf                     ║
+║ directory:  ~/.config/local-ai/projects/session-test   ║
+║     skill:  hermes/pro                                 ║
+║  database:  active (0 facts, 0 turns)                  ║
+╚═══════════════════════════════════════ Ctrl+C to exit ═╝
  Startup context: 418 tokens
 
 ╭─ ⚙ Thinking Process ──────────────────────────────────────────
-The user provided a codespace map without a task. According to Rule 1, acknowledge workspace in 1 
-brief sentence and standby.
+The user has provided a system prompt override and a CODESPACE MAP for the workspace `session-test`. 
+No explicit user task or goal is provided in the conversation yet.
+
+According to Execution Protocol #1: "Unprompted Initialization: If no explicit user task or goal is 
+provided in the conversation, acknowledge the workspace in 1 brief sentence and standby for 
+instructions."
+
+I should simply acknowledge the workspace and wait for instructions. I will not execute any 
+exploratory tool calls.
 ╰───────────────────────────────────────────────────────────────
 
-Agent: Hermes Agent initialized at `/home/user/.config/local-ai/projects/session-test` — standing by.
-
- [ think: 58 | ans: 22 | 80 tokens | 3.6s @ 28.1 t/s ]
- [ 1315 in | 80 out | ctx: 17.0% ]
+Agent:
+Hermes Agent initialized and ready at /home/j5/.config/local-ai/projects/session-test. Standing by 
+for your task or instructions.                                                
+ [ think: 138 | ans: 39 | 177 tokens | 4.8s @ 28.0 t/s ]
+ [ 1471 in | 177 out | ctx: 20.1% ]
 ❯ 
 ```
 ---
