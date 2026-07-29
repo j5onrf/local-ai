@@ -110,7 +110,7 @@ Running `ai init <path>` prompts the default workspace agent profile:
   ─── Standard ────────────────────────────────────────────────────────
      1. Default Assistant    (~120t | Standard assistant)
 
-  ─── Full 1:1 Tier (Direct Action / Large Models) ────────────────────
+  ─── Full Tier (Direct Action / Large Models) ────────────────────────
      2. Pi Agent             (~400t | Direct tool prompt)
      3. Claude Code          (~440t | Direct tool prompt)
      4. Hermes Agent         (~380t | Direct tool prompt)
@@ -133,7 +133,7 @@ Running `ai init <path>` prompts the default workspace agent profile:
 | Tier | Profiles | Scale | Overhead | Behavior |
 | :--- | :--- | :--- | :--- | :--- |
 | **Standard** | `default` | Any | `~120t` | General assistant without workspace tool loops. |
-| **Full 1:1** | `pi/full`, `claude/full`, `hermes/full` | 35B+ / Cloud | `~380t–440t` | Direct multi-file action and editing loops. |
+| **Full** | `pi/full`, `claude/full`, `hermes/full` | 35B+ / Cloud | `~380t–440t` | Direct multi-file action and editing loops. |
 | **Pro** | `pi/pro`, `claude/pro`, `hermes/pro` | 35B+ / Cloud | `~280t–290t` | Index-first mapping + standby rule + reasoning (`/t`). |
 | **Lite** | `pi/lite`, `claude/lite`, `hermes/lite` | 1B–7B Local | `~220t–230t` | Index-first standby preventing tool-eagerness loops. |
 
