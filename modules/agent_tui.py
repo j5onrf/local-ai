@@ -153,10 +153,10 @@ class Message(Static):
         is_dark = getattr(self.app, "is_dark_theme", True)
         self.styles.color = "#c8d3f5" if theme == "code" else None
 
-        if theme in ("mono", "grok"): u_style = "bold #888888"  # Grey contrast on monochrome
+        if theme in ("mono", "grok"): u_style = "bold #888888"
         elif theme == "code": u_style = "bold #89b4fa"
         elif theme == "dark": u_style = "bold cyan"
-        elif not is_dark: u_style = "bold #0265dc"              # Deep blue for light mode
+        elif not is_dark: u_style = "bold #0265dc"
         else: u_style = "bold cyan"
 
         code_fmt = "ansi_dark" if is_dark else "ansi_light"
@@ -226,7 +226,17 @@ class LocalAITUI(App):
     Screen { background: $background; }
     #layout { height: 1fr; }
     #main-container { height: 100%; width: 1fr; background: transparent; }
-    #chat-area { height: 1fr; background: transparent; overflow-y: scroll; padding: 1 0 1 2; scrollbar-size-vertical: 1; }
+    #chat-area { 
+        height: 1fr; 
+        background: transparent; 
+        overflow-y: scroll; 
+        padding: 1 0 1 2; 
+        scrollbar-size-vertical: 1; 
+        scrollbar-color: $panel; 
+        scrollbar-color-hover: $primary; 
+        scrollbar-color-active: $accent; 
+        scrollbar-gutter: stable;
+    }
     #welcome-banner { margin-right: 2; }
     #input-pane { height: 3; border: none; background: $surface; padding: 0; margin: 0; align: left middle; }
     #input-bar { width: auto; height: 100%; color: $primary; padding: 0; margin: 0; }
@@ -604,7 +614,8 @@ class LocalAITUI(App):
                 ("/f, /tk, /b, /a", "Presets"),
                 ("file <path>", "Load File"),
                 ("exit, quit, q", "Exit"),
-            ]: t.add_row(c, d)
+            ]:
+                t.add_row(c, d)
             panel = Panel(t, title="⚙ Agent TUI Commands", title_align="left", border_style=self.border_accent, box=ROUNDED, expand=False)
             await self.chat_area.mount(Static(Group(Text(""), panel)))
 
@@ -709,6 +720,7 @@ class LocalAITUI(App):
             self.generation_cancelled, self.active_response = False, None
             accumulated, start_time, first_token_time, token_count = "", time.perf_counter(), None, 0
             thinking_budget = self.reasoning_budget if self.reasoning_active else 0
+            last_ui_update = 0.0
 
             for _round in range(10):
                 accumulated, in_thinking, tool_calls_map = "", False, {}
@@ -754,12 +766,17 @@ class LocalAITUI(App):
                                 if in_thinking: accumulated += "</think>"; in_thinking = False
                                 accumulated += text_chunk
 
-                            if text_chunk or thinking_chunk:
+                            now = time.perf_counter()
+                            if (text_chunk or thinking_chunk) and (now - last_ui_update >= 0.04):
+                                last_ui_update = now
                                 self.call_from_thread(assistant_msg.update_content, accumulated)
                                 self.call_from_thread(self.chat_area.scroll_end, animate=False)
                         except Exception: pass
 
                 if in_thinking: accumulated += "</think>"
+                self.call_from_thread(assistant_msg.update_content, accumulated)
+                self.call_from_thread(self.chat_area.scroll_end, animate=False)
+
                 calls = [v for _, v in sorted(tool_calls_map.items())] if tool_calls_map else None
                 if not calls:
                     self.history.append({"role": "assistant", "content": accumulated})
