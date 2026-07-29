@@ -67,12 +67,12 @@ Built with zero context-stuffing for extreme efficiency on quantized local model
 ╭────────────────────────────────────────────────────────╮
 │   >_ Local-AI Agent [sub-agent #1]                     │
 │                                                        │
-│     model:  Qwen3.5-2B.gguf                            │
+│     model:  Hermes3.6-35B-A3B.gguf                     │
 │ directory:  ~/.config/local-ai/projects/session-test   │
-│     skill:  hermes/lite                                │
+│     skill:  hermes/pro                                 │
 │  database:  active (0 facts, 2 turns)                  │
 ╰─────────────────────────────────────── Ctrl+C to exit ─╯
- Startup context: 95 tokens
+ Startup context: 195 tokens
 
 Agent: Workspace loaded. Awaiting instructions.
 
