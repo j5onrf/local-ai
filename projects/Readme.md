@@ -147,6 +147,7 @@ Running `ai init <path>` prompts the default workspace agent profile:
 | **Lite** | `pi/lite`, `claude/lite`, `hermes/lite` | Small Models | `~220t–230t` | Index-first standby preventing tool-eagerness loops. |
 
 * **Reset Workspace Profile:** Delete `.agent/config.json` inside the project folder (`rm .agent/config.json`).
+* **Customize Skills:** Modify or create profile `.md` files in `~/.config/local-ai/skills/profiles/`.
 
 ---
 
