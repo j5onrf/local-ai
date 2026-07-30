@@ -8,8 +8,8 @@
 
 
 <p align="center">
-  <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/badge/language-python.svg?color=emerald&variant=outline" alt="Language"></a>
   <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/github/last-commit/j5onrf/local-ai.svg?color=emerald&variant=outline" alt="Last Commit"></a>
+  <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/badge/language-python.svg?color=emerald&variant=outline" alt="Language"></a>
   <a href="https://github.com/j5onrf/local-ai/blob/main/LICENSE"><img src="https://shieldcn.dev/badge/license-MIT.svg?color=emerald&variant=outline" alt="License"></a>
   <img src="https://shieldcn.dev/badge/version-v0.9.7.2--beta-violet.svg?variant=outline" alt="Version"></a>
 </p>
