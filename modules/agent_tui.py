@@ -441,7 +441,7 @@ class LocalAITUI(App):
 
     def get_db_status_string(self) -> str:
         if not self.is_agent: return "stateless"
-        return f"active ({self.tpm_count} facts, {self.db_turns} turns)" if self.memory_active else "disabled"
+        return f"active • {self.tpm_count} facts" if self.memory_active else "disabled"
 
     def update_welcome_banner(self) -> None:
         try:
@@ -487,7 +487,7 @@ class LocalAITUI(App):
                 with Vertical(classes="sidebar-section"):
                     yield Static("CONTEXT & MEMORY", classes="sidebar-label")
                     yield Static(f"[dim]DB State[/dim]  {self.get_db_status_string()}", id="lbl-database", classes="sidebar-val")
-                    yield Static("Turns: 0 | Speed: -- t/s", id="lbl-stats", classes="sidebar-val")
+                    yield Static("[dim]Turns[/dim]     0 @ -- t/s", id="lbl-stats", classes="sidebar-val")
 
                 with Vertical(id="card-tips"):
                     with Horizontal(id="card-tips-header"):
@@ -558,7 +558,9 @@ class LocalAITUI(App):
         if clean != event.value: event.input.value = clean
 
     def update_stats_ui(self, turns: int, tps: float, elapsed: float) -> None:
-        if hasattr(self, "lbl_stats"): self.lbl_stats.update(f"Turns: {turns} | Speed: {tps:.1f} t/s")
+        if hasattr(self, "lbl_stats"):
+            speed_str = f"{tps:.1f} t/s" if tps > 0 else "-- t/s"
+            self.lbl_stats.update(f"[dim]Turns[/dim]     {turns} @ {speed_str}")
 
     def action_scroll_page_up(self) -> None: self.chat_area.scroll_page_up(animate=False)
     def action_scroll_page_down(self) -> None: self.chat_area.scroll_page_down(animate=False)
