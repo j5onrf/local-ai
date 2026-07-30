@@ -7,13 +7,11 @@ High-speed local developer agent, episodic memory, SQLite checkpoints, and codeb
 [01/03] ❯ [session test] ai init ~/session-test --init
 :: ↵ run  Esc: 
 ✔ Mapping complete! [session-test index-map & SQLite graph database updated]
-✓ Profile set to: Hermes Pro (Autonomous YOLO)
-
 ╔═  ❖ Local-AI Agent  ═══════════════════════════════════╗
 ║     model:  Hermes3.6-35B-A3B.gguf                     ║
 ║ directory:  ~/.config/local-ai/projects/session-test   ║
 ║     skill:  hermes/pro                                 ║
-║  database:  active (0 facts, 0 turns)                  ║
+║  database:  active (0 facts, 1 turns)                  ║
 ╚═══════════════════════════════════════ Ctrl+C to exit ═╝
  Startup context: 418 tokens
 

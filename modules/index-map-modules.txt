@@ -1,4 +1,4 @@
-# CODEBASE INDEX MAP | Generated: 2026-07-23 16:48 | Workspace: modules | Path: ~/.config/local-ai/modules
+# CODEBASE INDEX MAP | Generated: 2026-07-30 10:00 | Workspace: modules | Path: ~/.config/local-ai/modules
 # Active symbols and structural connections mapped in the local SQLite graph DB.
 # Intents: trace symbol <sym> | blast radius <sym> | read function <sym> | find symbol <pat> | architecture overview
 # -----------------------------------------------------------------------------------------
@@ -6,33 +6,31 @@
 #   ├── modules/Readme.md        - Spellchecker Privacy Disclosure
 #   ├── modules/agent_cloud.py   - Dynamic Cloud Cascade Engine (Top-Down .env Priority)
 #   ├── modules/agent_context.py - import os
-#   ├── modules/agent_core.py    - import os
+#   ├── modules/agent_core.py    - """
 #   ├── modules/agent_skills.py  - Description: Unified library & executable for static, dynamic, and on-demand skills
 #   ├── modules/agent_spell.py   - import os
-#   ├── modules/agent_tui.py     - import os
-#   ├── modules/agent_ui.py      - import os
+#   ├── modules/agent_tui.py     - """Production Minimal Textual TUI for Local-AI Agent Engine."""
+#   ├── modules/agent_ui.py      - """
 #   ├── modules/agent_usage.py   - import os
 #   ├── modules/ai-agent-memories - Description: SQLite-backed semantic recall and Temporal Personality Memory (TPM) manager
 #   ├── modules/ai-agent-sessions - Description: SQLite-backed session, checkpoint, and turn logger with Global Handoff and sub-agent re
 #   ├── modules/chat             - chat - Unified Agentic Brainstorm, Thinking & Follow-up Engine
 #   ├── modules/index-map-memory-modules.db
-#   ├── modules/index-map-modules.txt - CODEBASE INDEX MAP | Generated: 2026-07-21 18:11 | Workspace: modules | Path: ~/.config/local-ai/mod
 #   ├── modules/model-select.py  - model-select.py - Fully Dynamic TUI Model Selector driven by OpenRouter Rankings
 #   └── modules/speed_test.py    - ~/.config/local-ai/modules/speed_test.py
 # -----------------------------------------------------------------------------------------
 [markdown:Readme.md] title:Spellchecker Privacy Disclosure
 [python:agent_cloud.py] imp:json,os,re,typing | fn:get_active_configs
 [python:agent_context.py] imp:fnmatch,os,re,shutil,sys,typing | fn:tokenize,load_context_entries,jaccard_search,clean_tool_prefix
-[python:agent_core.py] imp:agent_cloud,agent_ui,agent_usage,ast,difflib,json,os,requests,rich,speed_test,subprocess,sys,time,typing,urllib | cls:RichStreamer | fn:__init__,start,update,stop,_log_turn_usage,extract_stream_content,_process_stream_chunk,_calc_turn_tokens,stream,_safe_path,_is_outside_workspace,_confirm_gate,_run_edit_tool,agentic_turn,stream_response,get_accurate_token_count,show_memory_status,prune_history
+[python:agent_core.py] imp:agent_cloud,agent_ui,agent_usage,ast,difflib,json,os,re,requests,rich,speed_test,subprocess,sys,time,typing,urllib | cls:RichStreamer | fn:__init__,_stop_spinner,_update_spinner,start,update,stop,_log_turn_usage,extract_stream_content,_process_stream_chunk,_calc_turn_tokens,stream,_safe_path,_is_outside_workspace,_confirm_gate,_run_edit_tool,agentic_turn,stream_response,get_accurate_token_count,show_memory_status,prune_history
 [python:agent_skills.py] imp:agent_context,agent_ui,json,os,re,subprocess,sys,typing | fn:ensure_mysys_exists,find_skill_file,load_skill_content,run_local_tool,run_interactive_tool,get_system_context,load_skill_blueprints,run_skill_selector
 [python:agent_spell.py] imp:difflib,json,os,re,shutil,sys,typing,urllib | fn:load_system_dictionary,edits1,correct_word,edit_priority,apply_static_overrides,highlight_diff,check_query_spelling_offline,check_query_spelling,get_prio
-[python:agent_tui.py] imp:agent_cloud,agent_core,agent_skills,agent_ui,asyncio,base64,json,os,requests,rich,sqlite3,subprocess,sys,textual,time,typing,urllib | cls:Message,AgentCommandProvider,LocalAITUI | fn:load_env_file,load_tui_compact_state,save_tui_compact_state,get_dynamic_code_block_background,custom_code_block_rich_console,copy_to_clipboard,inspect_workspace_db,__init__,update_content,render,search,command_sources,__init__,ensure_system_context,get_db_status_string,update_welcome_banner,compose,on_mount,update_stats_ui,action_copy_last_response,handle_view_file,handle_slash_command,submit_query,on_input_submitted,blocking_stream,disable_input,enable_input,action_stop_generation,action_attach_image_url,action_toggle_sidebar,action_toggle_maximized,action_toggle_compact,action_cycle_theme,action_toggle_reasoning
-[python:agent_ui.py] imp:agent_cloud,json,os,re,rich,select,sys,termios,threading,time,tty,typing,urllib | cls:InlineSpinner | fn:__init__,_spin,start,stop,_read_fd,get_key,get_local_model_name,draw_session_box,confirm_tool,run_interactive_selection,show_help
+[python:agent_tui.py] imp:agent_cloud,agent_core,agent_skills,agent_ui,base64,contextlib,json,os,re,rich,sqlite3,subprocess,sys,textual,threading,time,typing,urllib,uvloop | cls:FooterToggle,CloseCardButton,Message,AgentCommandProvider,LocalAITUI | fn:workspace_safe_name,format_dir_path,load_tui_state,save_tui_state,copy_to_clipboard,tokenize,get_recalled_memory,on_click,on_click,__init__,update_content,render,search,command_sources,border_accent,is_dark_theme,watch_theme,__init__,on_unmount,notify,set_skill,set_mode,set_reasoning,set_image,on_key,refresh_db_counts,ensure_system_context,get_db_status_string,update_welcome_banner,compose,action_close_tips_card,on_mount,action_toggle_plan_build,on_input_changed,update_stats_ui,action_scroll_page_up,action_scroll_page_down,action_scroll_up,action_scroll_down,action_copy_last_response,action_copy_entire_chat,handle_view_file,handle_meta_chat_command,_run_chat_sub,handle_slash_command,prompt_tui_confirm,_show,process_query_worker,on_input_submitted,disable_input,enable_input,action_stop_generation,action_attach_image_url,update_sidebar_visibility,action_toggle_sidebar,update_footer_visibility,action_toggle_footer,action_toggle_compact,action_cycle_theme,action_toggle_reasoning
+[python:agent_ui.py] imp:agent_cloud,json,os,re,rich,select,sys,termios,threading,time,tty,typing,urllib | cls:InlineSpinner | fn:__init__,_spin,update,start,stop,_read_fd,get_key,get_local_model_name,draw_session_box,confirm_tool,run_interactive_selection,show_help,select_workspace_profile
 [python:agent_usage.py] imp:json,os,time | fn:record,refresh_balance_async,turn_line
 [file:ai-agent-memories] sum:Description: SQLite-backed semantic recall and Temporal Personality Memory (TPM) manager
 [file:ai-agent-sessions] sum:Description: SQLite-backed session, checkpoint, and turn logger with Global Handoff and sub-agent re
 [file:chat] sum:chat - Unified Agentic Brainstorm, Thinking & Follow-up Engine
 [binary/db:index-map-memory-modules.db]
-[txt:index-map-modules.txt] sum:CODEBASE INDEX MAP | Generated: 2026-07-21 18:11 | Workspace: modules | Path: ~/.config/local-ai/mod
-[python:model-select.py] imp:json,os,re,requests,select,shutil,subprocess,sys,termios,tty | fn:classify_openrouter_models,load_env_vars,update_env,is_key_active,set_key_commented_state,toggle_env_api_keys,load_cached_lists,save_cached_lists,fetch_openrouter_models,get_key,draw_main_menu,run_selector,get_filtered_list,get_menu_options,main
+[python:model-select.py] imp:asyncio,atexit,json,os,re,select,shutil,subprocess,sys,termios,tty,urllib | fn:cleanup_terminal,classify_openrouter_models,load_env_vars,update_env,is_key_active,set_key_commented_state,toggle_env_api_keys,load_cached_lists,save_cached_lists,async_fetch_openrouter_models,_fetch,async_get_key,_read,draw_main_menu,run_selector,get_menu_options,async_main
 [python:speed_test.py] imp:sys,time | fn:start,count_token,end

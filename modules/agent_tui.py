@@ -59,6 +59,17 @@ def format_dir_path(path: str) -> str:
     p = path.replace(os.path.expanduser("~"), "~")
     return p if len(p) <= 20 else f".../{os.path.basename(path.rstrip('/'))}"
 
+def format_model_name(name: str, max_len: int = 18) -> str:
+    if not name: return "Unknown"
+    clean = name.strip()
+    if len(clean) <= max_len: return clean
+    if "/" in clean:
+        base = clean.split("/")[-1]
+        if len(base) <= max_len: return f".../{base}"
+        clean = base
+    half = (max_len - 3) // 2
+    return f"{clean[:half]}...{clean[-half:]}"
+
 def load_tui_state(key: str, default: Any) -> Any:
     if os.path.exists(STATE_FILE):
         try:
@@ -296,15 +307,50 @@ class LocalAITUI(App):
         
         self.gate_auth_event = threading.Event()
         self.gate_auth_result, self.entering_gate_authorization, self.current_gate_prompt = False, False, ""
-        self.spell_enabled, self.active_skill, self.pending_skill_prefix = True, os.environ.get("AI_ACTIVE_SKILL", "default"), None
-        self.is_agent = (os.environ.get("AI_IS_AGENT", "").lower() in ("1", "true", "yes") or "/projects/" in workspace_path) if is_agent is None else is_agent
+        self.spell_enabled, self.pending_skill_prefix = True, None
+
+        # --- Resolve Session Mode (Agent Workspace vs Conversational Chat) ---
+        agent_dir = os.path.join(workspace_path, ".agent")
+        cfg_file = os.path.join(agent_dir, "config.json")
+
+        if is_agent is not None:
+            self.is_agent = is_agent
+        else:
+            env_agent = os.environ.get("AI_IS_AGENT")
+            if env_agent is not None:
+                self.is_agent = env_agent.lower() in ("1", "true", "yes")
+            else:
+                # Agent workspace if .agent folder exists OR path is under /projects/
+                self.is_agent = os.path.exists(agent_dir) or "/projects/" in workspace_path
+
+        # --- Inherit Active Skill / Profile from Raw Terminal or .agent/config.json ---
+        inherited_skill = os.environ.get("AI_ACTIVE_SKILL")
+        if not inherited_skill or inherited_skill.lower() in ("default", "none", ""):
+            if os.path.exists(cfg_file):
+                try:
+                    with open(cfg_file, "r", encoding="utf-8") as f:
+                        cfg = json.load(f)
+                        inherited_skill = cfg.get("profile") or cfg.get("skill") or cfg.get("active_skill")
+                except Exception: pass
+
+        if not inherited_skill or inherited_skill.lower() in ("default", "none", ""):
+            inherited_skill = "default" if self.is_agent else "chat"
+
+        # --- 2-Slot Skill Pipeline: [Base Skill] + [On-Demand Skill] ---
+        skills_split = [s for s in inherited_skill.split() if s]
+        self.base_skill = skills_split[0] if skills_split else ("default" if self.is_agent else "chat")
+        self.on_demand_skill = skills_split[1] if len(skills_split) > 1 else None
+        self.active_skill = f"{self.base_skill} {self.on_demand_skill}".strip() if self.on_demand_skill else self.base_skill
+
         self.memory_active = load_tui_state("memory_active", True)
         self.db_turns, self.tpm_count = 0, 0
         self.refresh_db_counts()
 
         raw_c = load_tui_state("compact_mode", 0)
         self.compact_mode = int(raw_c) if isinstance(raw_c, (int, bool)) else 0
-        self.reasoning_active, self.reasoning_budget, self.entering_reasoning_budget = False, 500, False
+        self.reasoning_active = load_tui_state("reasoning_active", False)
+        self.reasoning_budget = load_tui_state("reasoning_budget", 500)
+        self.entering_reasoning_budget = False
         self.active_image_url, self.entering_image_url = None, False
         
         cli_hist = os.environ.get("AI_SESSION_HISTORY")
@@ -367,12 +413,11 @@ class LocalAITUI(App):
 
     def ensure_system_context(self) -> None:
         if not any(m.get("role") == "system" for m in self.history):
-            s_list = [s.lstrip("-").lower() for s in self.active_skill.split() if s] if (self.active_skill and self.active_skill.lower() != "default") else []
+            s_list = [s.lstrip("-").lower() for s in self.active_skill.split() if s] if (self.active_skill and self.active_skill.lower() not in ("default", "none")) else []
             s_content = skills.load_skill_content(" ".join(s_list), SKILLS_DIR, CFG_DIR) if (skills and s_list) else ""
-            base = BASE_PROMPT_AGENT if self.is_agent else (BASE_PROMPT_CHAT if not s_list else BASE_PROMPT)
-            sys_p = s_content if (self.is_agent and s_content) else (base + (f"\n\n### Active Skill/Role Instructions:\n{s_content}\n" if s_content else ""))
             
             if self.is_agent:
+                sys_p = s_content if s_content else BASE_PROMPT_AGENT
                 sys_p += f"\n\n### ACTIVE PROJECT WORKSPACE:\nYour active project root directory is: {self.workspace_path}\n"
                 if hasattr(core, "EDIT_SYSTEM_ADD") and "### EDIT MODE" not in sys_p:
                     sys_p += core.EDIT_SYSTEM_ADD.format(ws=self.workspace_path) + core.TOOLS_SYSTEM_ADD.format(names="read_file, write_file, list_dir, run_command", ws=self.workspace_path)
@@ -384,6 +429,11 @@ class LocalAITUI(App):
                                 cmap = mf.read().strip()
                                 if cmap: sys_p += f"\n\n### CODESPACE MAP:\n{cmap}\n"
                 except Exception: pass
+            else:
+                if s_content:
+                    sys_p = s_content if "### Conversational Guidelines" in s_content else BASE_PROMPT_CHAT + f"\n\n### Active Skill/Role Instructions:\n{s_content}\n"
+                else:
+                    sys_p = BASE_PROMPT_CHAT
 
             self.history.insert(0, {"role": "system", "content": sys_p})
             if self.is_agent and len(self.history) == 1:
@@ -424,7 +474,7 @@ class LocalAITUI(App):
             with Vertical(id="sidebar"):
                 with Vertical(classes="sidebar-section"):
                     yield Static("MODEL & SESSION", classes="sidebar-label")
-                    yield Static(f"[dim]Model[/dim]   {self.model_name}", id="lbl-model", classes="sidebar-val")
+                    yield Static(f"[dim]Model[/dim]   {format_model_name(self.model_name)}", id="lbl-model", classes="sidebar-val")
                     yield Static(f"[dim]Dir[/dim]     {format_dir_path(self.workspace_path)}", id="lbl-dir", classes="sidebar-val")
                     yield Static(f"[dim]Skill[/dim]   {self.active_skill}", id="lbl-skill", classes="sidebar-val")
                     yield Static(f"[dim]Mode[/dim]    {self.agent_mode}", id="lbl-mode", classes="sidebar-val")
@@ -443,7 +493,7 @@ class LocalAITUI(App):
                     with Horizontal(id="card-tips-header"):
                         yield Static("Quick Tips", id="lbl-tips-title")
                         yield CloseCardButton("×", id="btn-close-tips")
-                    yield Static("Tab: Switch Mode\nCtrl+B: Toggle Sidebar\nShift+Drag: Highlight Copy\n/help: Commands List", id="lbl-tips-body")
+                    yield Static("Tab: Switch Mode\nCtrl+B: Sidebar\nCtrl+G: Compact\nCtrl+T: Cycle Themes\nShift+Drag: Highlight Copy\n/help: Commands List", id="lbl-tips-body")
 
         with Horizontal(id="footer-bar"):
             yield Footer(id="footer-keys")
@@ -478,6 +528,7 @@ class LocalAITUI(App):
         self.lbl_stats = self.query_one("#lbl-stats", Static)
 
         self.set_skill(self.active_skill)
+        self.set_reasoning(f"{self.reasoning_budget} tokens" if self.reasoning_active else "Disabled")
         self.update_welcome_banner()
         self.chat_input.cursor_blink = True
         self.update_footer_visibility()
@@ -569,8 +620,6 @@ class LocalAITUI(App):
         await self.chat_area.mount(assistant_msg)
         self.chat_area.scroll_end(animate=False)
 
-        self.set_skill(output_hdr.lower())
-
         def _run_chat_sub():
             if os.path.exists(think_bin):
                 try:
@@ -647,9 +696,18 @@ class LocalAITUI(App):
                 content = skills.load_skill_content(args, SKILLS_DIR, CFG_DIR)
                 if content:
                     s_name, s_text = content if isinstance(content, tuple) else (args, content)
-                    self.set_skill(s_name)
+                    
+                    # Update On-Demand slot (Slot 2) without overwriting Base Skill (Slot 1)
+                    self.on_demand_skill = s_name
+                    combined_skill = f"{self.base_skill} {self.on_demand_skill}"
+                    self.set_skill(combined_skill)
+
+                    # Prune any previous [SKILL BLUEPRINT: ...] entries to prevent context bloat
+                    self.history = [m for m in self.history if not (m.get("role") == "system" and str(m.get("content", "")).startswith("[SKILL BLUEPRINT:"))]
+                    
+                    # Append active on-demand skill blueprint
                     self.history.append({"role": "system", "content": f"[SKILL BLUEPRINT: {s_name}]\n{s_text}"})
-                    self.notify(f"Loaded skill blueprint: [bold]{s_name}[/bold]")
+                    self.notify(f"Active skills: [bold]{combined_skill}[/bold] (Swapped on-demand skill to [bold]{s_name}[/bold])")
                 else: self.notify(f"No skill blueprint file found for '[bold]{args}[/bold]'.")
             else: self.notify("Usage: /skill <query> or /s <query>")
         elif root in ("/compact", "/c"): self.action_toggle_compact()
@@ -862,6 +920,8 @@ class LocalAITUI(App):
             self.chat_input.placeholder = "Ask your agent anything..."
             if not query:
                 self.reasoning_budget, self.reasoning_active = 500, True
+                save_tui_state("reasoning_active", True)
+                save_tui_state("reasoning_budget", 500)
                 self.set_reasoning("500 tokens")
                 self.notify("Deep reasoning enabled (default 500 tokens).")
             else:
@@ -869,11 +929,14 @@ class LocalAITUI(App):
                     val = int(query)
                     if val > 0:
                         self.reasoning_budget, self.reasoning_active = val, True
+                        save_tui_state("reasoning_active", True)
+                        save_tui_state("reasoning_budget", val)
                         self.set_reasoning(f"{val} tokens")
                         self.notify(f"Deep reasoning enabled ({val} tokens).")
                     else: raise ValueError
                 except ValueError:
                     self.reasoning_active = False
+                    save_tui_state("reasoning_active", False)
                     self.set_reasoning("Disabled")
                     self.notify("[bold red]Invalid budget. Deep reasoning disabled.[/bold red]", sys_prefix=False)
             return
@@ -974,6 +1037,7 @@ class LocalAITUI(App):
             self.chat_input.placeholder = "Ask your agent anything..."
         elif self.reasoning_active:
             self.reasoning_active = False
+            save_tui_state("reasoning_active", False)
             self.set_reasoning("Disabled")
             self.notify("Deep reasoning disabled.")
         else:
