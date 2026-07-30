@@ -41,7 +41,7 @@ Built with zero context-stuffing for extreme efficiency on quantized local engin
 
 ---
 
-## 💻 CLI Launch Interfaces
+## 💻 CLI Launch Interface
 
 > Customize box themes with `/box [1-5]`. For detailed multi-agent workflows, read the [**Workspace Manual**](https://github.com/j5onrf/local-ai/blob/main/projects/Readme.md).
 
@@ -55,6 +55,28 @@ Built with zero context-stuffing for extreme efficiency on quantized local engin
 │  database:  stateless              │
 ╰─────────────────── Ctrl+C to exit ─╯
  Startup context: 103 tokens
+❯ 
+```
+#### 2. Workspace & Sub-Agent (`ai init <path>`)
+```console
+~ ❯ sess
+[01/03] ❯ [session test] ai init ~/session-test --init
+:: ↵ run  Esc: 
+✔ Mapping complete! [session-test index-map & SQLite graph database updated]
+╭────────────────────────────────────────────────────────╮
+│   >_ Local-AI Agent [sub-agent #1]                     │
+│                                                        │
+│     model:  Qwen3.6-35B-A3B.gguf                       │
+│ directory:  ~/.config/local-ai/projects/session-test   │
+│     skill:  hermes/pro                                 │
+│  database:  active (0 facts, 2 turns)                  │
+╰─────────────────────────────────────── Ctrl+C to exit ─╯
+ Startup context: 195 tokens
+
+Agent: Workspace loaded. Awaiting instructions.
+
+ [ 7 tokens | 0.28s | 28.23 t/s ]
+ [ 703 in | 7 out | ctx: 8.7% ]
 ❯ 
 ```
 
