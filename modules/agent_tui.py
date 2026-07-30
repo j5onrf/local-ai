@@ -2,8 +2,8 @@
 # File: ~/.config/local-ai/modules/agent_tui.py
 """Production Minimal Textual TUI for Local-AI Agent Engine."""
 
-try: import uvloop; uvloop.install()
-except ImportError: pass
+import uvloop
+uvloop.install()
 
 import base64, json, os, re, sqlite3, subprocess, sys, threading, time
 import urllib.request as urlreq
@@ -23,14 +23,14 @@ from textual.containers import Horizontal, Vertical
 from textual.theme import Theme
 from textual.widgets import Footer, Input, Static
 
-# --- Paths & Constants ---
+# --- Core Local-AI Imports ---
 CFG_DIR: str = os.path.expanduser("~/.config/local-ai")
 sys.path.append(os.path.join(CFG_DIR, "modules"))
 
-import agent_cloud, agent_core as core, agent_ui as ui
-try: import agent_skills as skills
-except ImportError: skills = None
+import agent_cloud, agent_core as core, agent_skills as skills, agent_ui as ui
+import agent_tui_async as tui_async
 
+# --- Paths & Constants ---
 STATE_FILE = os.path.join(CFG_DIR, ".state.json")
 CONTEXT_FILE = os.path.join(CFG_DIR, "ai-context.md")
 SKILLS_DIR = os.path.join(CFG_DIR, "skills")
@@ -164,23 +164,13 @@ class Message(Static):
         is_dark = getattr(self.app, "is_dark_theme", True)
         self.styles.color = "#c8d3f5" if theme == "code" else None
 
-        if theme in ("mono", "grok"): u_style = "bold #888888"
-        elif theme == "code": u_style = "bold #89b4fa"
-        elif theme == "dark": u_style = "bold cyan"
-        elif not is_dark: u_style = "bold #0265dc"
-        else: u_style = "bold cyan"
-
+        u_style = "bold #888888" if theme in ("mono", "grok") else ("bold #89b4fa" if theme == "code" else ("bold #0265dc" if not is_dark else "bold cyan"))
         code_fmt = "ansi_dark" if is_dark else "ansi_light"
 
         if self.sender == "User":
-            text = self.content
-            if isinstance(text, list): text = next((i["text"] for i in text if i.get("type") == "text"), "[Multimodal]")
+            text = self.content if isinstance(self.content, str) else next((i["text"] for i in self.content if i.get("type") == "text"), "[Multimodal]")
             if compact_state == 0:
-                if theme in ("mono", "grok"): bar_col, bg_col, user_txt_col = "#555555", "#0d0d0d", "white"
-                elif theme == "dark": bar_col, bg_col, user_txt_col = "cyan", "#1a1a1a", "white"
-                elif theme == "code": bar_col, bg_col, user_txt_col = "#cba6f7", "#1b1c2b", "#c8d3f5"
-                elif not is_dark: bar_col, bg_col, user_txt_col = "#555555", "#e8e8ec", "#111111"
-                else: bar_col, bg_col, user_txt_col = "#888888", "#1e1e1e", "#ffffff"
+                bar_col, bg_col, user_txt_col = ("#555555", "#0d0d0d", "white") if theme in ("mono", "grok") else (("cyan", "#1a1a1a", "white") if theme == "dark" else (("#cba6f7", "#1b1c2b", "#c8d3f5") if theme == "code" else ("#555555", "#e8e8ec", "#111111")))
                 return Panel(Text(text, style=user_txt_col), box=LEFT_BAR, border_style=bar_col, style=f"on {bg_col}", padding=(0, 2))
             return Text(f"{text}", style=u_style)
 
@@ -202,7 +192,6 @@ class AgentCommandProvider(Provider):
         cmds = [
             ("Copy Last Response", "copy_last_response", "Copy latest agent response"),
             ("Copy Entire Chat Page", "copy_entire_chat", "Copy complete conversation transcript"),
-            ("Attach Image URL", "attach_image_url", "Attach an image URL to analyze"),
             ("Cycle Theme", "cycle_theme", "Cycle through color themes"),
             ("Toggle Sidebar", "toggle_sidebar", "Show or hide metadata panel"),
             ("Toggle Compact Mode", "toggle_compact", "Toggle spacing layouts"),
@@ -237,17 +226,7 @@ class LocalAITUI(App):
     Screen { background: $background; }
     #layout { height: 1fr; }
     #main-container { height: 100%; width: 1fr; background: transparent; }
-    #chat-area { 
-        height: 1fr; 
-        background: transparent; 
-        overflow-y: scroll; 
-        padding: 1 0 1 2; 
-        scrollbar-size-vertical: 1; 
-        scrollbar-color: $panel; 
-        scrollbar-color-hover: $primary; 
-        scrollbar-color-active: $accent; 
-        scrollbar-gutter: stable;
-    }
+    #chat-area { height: 1fr; background: transparent; overflow-y: scroll; padding: 1 0 1 2; scrollbar-size-vertical: 1; scrollbar-color: $panel; scrollbar-color-hover: $primary; scrollbar-color-active: $accent; scrollbar-gutter: stable; }
     #welcome-banner { margin-right: 2; }
     #input-pane { height: 3; border: none; background: $surface; padding: 0; margin: 0; align: left middle; }
     #input-bar { width: auto; height: 100%; color: $primary; padding: 0; margin: 0; }
@@ -280,7 +259,6 @@ class LocalAITUI(App):
         Binding("ctrl+r", "toggle_reasoning", "Reasoning", show=True),
         Binding("ctrl+t", "cycle_theme", "Theme", show=True),
         Binding("ctrl+o", "copy_last_response", "Copy Out", show=True),
-        Binding("ctrl+y", "attach_image_url", "Image", show=True),
         Binding("ctrl+c", "stop_generation", "Stop Out", show=True),
         Binding("pageup", "scroll_page_up", "Page Up", show=False),
         Binding("pagedown", "scroll_page_down", "Page Down", show=False),
@@ -303,41 +281,55 @@ class LocalAITUI(App):
         super().__init__()
         self.workspace_path, self.model_name = workspace_path, model_name
         self.safe_name = workspace_safe_name(workspace_path, os.path.expanduser("~"))
-        self.agent_mode, self.gates_enabled = "Plan", True
-        os.environ["AI_CONFIRM_GATES"] = "1"
-        
-        self.gate_auth_event = threading.Event()
-        self.gate_auth_result, self.entering_gate_authorization, self.current_gate_prompt = False, False, ""
-        self.spell_enabled, self.pending_skill_prefix = True, None
 
-        # --- Resolve Session Mode (Agent Workspace vs Conversational Chat) ---
+        # 1. Resolve Session Mode First
         agent_dir = os.path.join(workspace_path, ".agent")
         cfg_file = os.path.join(agent_dir, "config.json")
 
         if is_agent is not None:
             self.is_agent = is_agent
+        elif "AI_IS_AGENT" in os.environ:
+            self.is_agent = os.environ["AI_IS_AGENT"].lower() in ("1", "true", "yes")
         else:
-            env_agent = os.environ.get("AI_IS_AGENT")
-            if env_agent is not None:
-                self.is_agent = env_agent.lower() in ("1", "true", "yes")
-            else:
-                # Agent workspace if .agent folder exists OR path is under /projects/
-                self.is_agent = os.path.exists(agent_dir) or "/projects/" in workspace_path
+            is_home = os.path.abspath(workspace_path) == os.path.abspath(os.path.expanduser("~"))
+            self.is_agent = (not is_home) and (os.path.exists(agent_dir) or "/projects/" in workspace_path)
 
-        # --- Inherit Active Skill / Profile from Raw Terminal or .agent/config.json ---
+        # 2. Configure Gates & Mode
+        if not self.is_agent:
+            self.agent_mode = "Disabled"
+            self.gates_enabled = True
+        else:
+            env_gates = os.environ.get("AI_CONFIRM_GATES")
+            is_yolo = (env_gates == "0") if env_gates is not None else load_tui_state("yolo_mode", False)
+            self.agent_mode = "Build" if is_yolo else "Plan"
+            self.gates_enabled = not is_yolo
+            os.environ["AI_CONFIRM_GATES"] = "0" if is_yolo else "1"
+
+        self.gate_auth_event = threading.Event()
+        self.gate_auth_result, self.entering_gate_authorization, self.current_gate_prompt = False, False, ""
+        self.spell_enabled, self.pending_skill_prefix = True, None
+
+        # --- Persistent Gates / Mode Setup ---
+        if not self.is_agent:
+            self.agent_mode = "Disabled"
+            self.gates_enabled = True
+        else:
+            env_gates = os.environ.get("AI_CONFIRM_GATES")
+            is_yolo = (env_gates == "0") if env_gates is not None else load_tui_state("yolo_mode", False)
+            self.agent_mode = "Build" if is_yolo else "Plan"
+            self.gates_enabled = not is_yolo
+            os.environ["AI_CONFIRM_GATES"] = "0" if is_yolo else "1"
+
+        # --- Skill Resolution & 2-Slot Pipeline ---
         inherited_skill = os.environ.get("AI_ACTIVE_SKILL")
         if not inherited_skill or inherited_skill.lower() in ("default", "none", ""):
             if os.path.exists(cfg_file):
                 try:
-                    with open(cfg_file, "r", encoding="utf-8") as f:
-                        cfg = json.load(f)
-                        inherited_skill = cfg.get("profile") or cfg.get("skill") or cfg.get("active_skill")
+                    with open(cfg_file, "r", encoding="utf-8") as f: inherited_skill = json.load(f).get("profile") or json.load(f).get("skill")
                 except Exception: pass
-
         if not inherited_skill or inherited_skill.lower() in ("default", "none", ""):
             inherited_skill = "default" if self.is_agent else "chat"
 
-        # --- 2-Slot Skill Pipeline: [Base Skill] + [On-Demand Skill] ---
         skills_split = [s for s in inherited_skill.split() if s]
         self.base_skill = skills_split[0] if skills_split else ("default" if self.is_agent else "chat")
         self.on_demand_skill = skills_split[1] if len(skills_split) > 1 else None
@@ -352,12 +344,11 @@ class LocalAITUI(App):
         self.reasoning_active = load_tui_state("reasoning_active", False)
         self.reasoning_budget = load_tui_state("reasoning_budget", 500)
         self.entering_reasoning_budget = False
-        self.active_image_url, self.entering_image_url = None, False
-        
+
         cli_hist = os.environ.get("AI_SESSION_HISTORY")
         try: self.history: List[Dict[str, Any]] = json.loads(cli_hist) if cli_hist else []
         except Exception: self.history = []
-        
+
         self.generation_cancelled, self.active_response, self.stats_turns = False, None, 0
         self.footer_hidden = load_tui_state("footer_hidden", True)
         self.sidebar_hidden = load_tui_state("sidebar_hidden", False)
@@ -378,11 +369,7 @@ class LocalAITUI(App):
     def set_skill(self, skill_name: str) -> None:
         self.active_skill = skill_name
         t = getattr(self, "theme", "code")
-        if t == "code": bg, fg = "#26273b", "#cba6f7"
-        elif t in ("mono", "grok"): bg, fg = "#222222", "#ffffff"
-        elif t == "dark": bg, fg = "#333333", "#e0e0e0"
-        elif not self.is_dark_theme: bg, fg = "#dcdce2", "#111111"
-        else: bg, fg = "#333333", "#e0e0e0"
+        bg, fg = ("#26273b", "#cba6f7") if t == "code" else (("#222222", "#ffffff") if t in ("mono", "grok") else (("#333333", "#e0e0e0") if t == "dark" else ("#dcdce2", "#111111")))
         if hasattr(self, "lbl_skill"): self.lbl_skill.update(f"[dim]Skill[/dim]   [bold {fg} on {bg}] {skill_name} [/]")
 
     def set_mode(self, mode_name: str) -> None:
@@ -392,14 +379,8 @@ class LocalAITUI(App):
     def set_reasoning(self, text: str) -> None:
         if hasattr(self, "lbl_reasoning"): self.lbl_reasoning.update(f"[dim]Reasoning[/dim] {text}")
 
-    def set_image(self, text: str) -> None:
-        if hasattr(self, "lbl_image"): self.lbl_image.update(f"[dim]Image[/dim]     {text}")
-
     def on_key(self, event) -> None:
-        if event.key == "tab":
-            self.action_toggle_plan_build()
-            event.prevent_default()
-            event.stop()
+        if event.key == "tab": self.action_toggle_plan_build(); event.prevent_default(); event.stop()
 
     def refresh_db_counts(self) -> None:
         db_path = os.path.join(SESSIONS_DIR, f"{self.safe_name}.db")
@@ -415,8 +396,8 @@ class LocalAITUI(App):
     def ensure_system_context(self) -> None:
         if not any(m.get("role") == "system" for m in self.history):
             s_list = [s.lstrip("-").lower() for s in self.active_skill.split() if s] if (self.active_skill and self.active_skill.lower() not in ("default", "none")) else []
-            s_content = skills.load_skill_content(" ".join(s_list), SKILLS_DIR, CFG_DIR) if (skills and s_list) else ""
-            
+            s_content = skills.load_skill_content(" ".join(s_list), SKILLS_DIR, CFG_DIR) if s_list else ""
+
             if self.is_agent:
                 sys_p = s_content if s_content else BASE_PROMPT_AGENT
                 sys_p += f"\n\n### ACTIVE PROJECT WORKSPACE:\nYour active project root directory is: {self.workspace_path}\n"
@@ -431,10 +412,7 @@ class LocalAITUI(App):
                                 if cmap: sys_p += f"\n\n### CODESPACE MAP:\n{cmap}\n"
                 except Exception: pass
             else:
-                if s_content:
-                    sys_p = s_content if "### Conversational Guidelines" in s_content else BASE_PROMPT_CHAT + f"\n\n### Active Skill/Role Instructions:\n{s_content}\n"
-                else:
-                    sys_p = BASE_PROMPT_CHAT
+                sys_p = (s_content if "### Conversational Guidelines" in s_content else BASE_PROMPT_CHAT + f"\n\n### Active Skill/Role Instructions:\n{s_content}\n") if s_content else BASE_PROMPT_CHAT
 
             self.history.insert(0, {"role": "system", "content": sys_p})
             if self.is_agent and len(self.history) == 1:
@@ -450,14 +428,12 @@ class LocalAITUI(App):
             cmd_style = "bold #89b4fa" if self.theme == "code" else ("bold #0265dc" if not self.is_dark_theme else "bold cyan")
             t.add_column("Key", style=cmd_style, justify="left")
             t.add_column("Action", style="default")
-            
             t.add_row("Tab", "Plan / Build Mode")
             t.add_row("Ctrl+B", "Toggle Sidebar Panel")
             t.add_row("Ctrl+T", "Cycle Themes")
             t.add_row("Ctrl+O", "Copy Latest Response")
             t.add_row("▲ Show", "Toggle Bottom Shortcut Bar")
             t.add_row("/help", "View All Commands")
-
             panel = Panel(t, title=" ❖ Local-AI Agent ", title_align="left", border_style=self.border_accent, box=ROUNDED, padding=(1, 2))
             self.query_one("#welcome-banner", Static).update(panel)
         except Exception: pass
@@ -465,13 +441,12 @@ class LocalAITUI(App):
     def compose(self) -> ComposeResult:
         with Horizontal(id="layout"):
             with Vertical(id="main-container"):
-                with Vertical(id="chat-area"):
-                    yield Static(id="welcome-banner")
+                with Vertical(id="chat-area"): yield Static(id="welcome-banner")
                 with Horizontal(id="input-pane"):
                     yield Static("▌\n▌\n▌", id="input-bar")
                     yield Input(placeholder="Ask your agent anything...", id="chat-input")
                     yield FooterToggle("▲ Show", id="input-toggle")
-            
+
             with Vertical(id="sidebar"):
                 with Vertical(classes="sidebar-section"):
                     yield Static("MODEL & SESSION", classes="sidebar-label")
@@ -479,12 +454,11 @@ class LocalAITUI(App):
                     yield Static(f"[dim]Dir[/dim]     {format_dir_path(self.workspace_path)}", id="lbl-dir", classes="sidebar-val")
                     yield Static(f"[dim]Skill[/dim]   {self.active_skill}", id="lbl-skill", classes="sidebar-val")
                     yield Static(f"[dim]Mode[/dim]    {self.agent_mode}", id="lbl-mode", classes="sidebar-val")
-                
+
                 with Vertical(classes="sidebar-section"):
                     yield Static("SETTINGS", classes="sidebar-label")
                     yield Static("[dim]Reasoning[/dim] Disabled", id="lbl-reasoning", classes="sidebar-val")
-                    yield Static("[dim]Image[/dim]     None", id="lbl-image", classes="sidebar-val")
-                
+
                 with Vertical(classes="sidebar-section"):
                     yield Static("CONTEXT & MEMORY", classes="sidebar-label")
                     yield Static(f"[dim]DB State[/dim]  {self.get_db_status_string()}", id="lbl-database", classes="sidebar-val")
@@ -496,8 +470,7 @@ class LocalAITUI(App):
                         yield CloseCardButton("×", id="btn-close-tips")
                     yield Static("Tab: Switch Mode\nCtrl+B: Sidebar\nCtrl+G: Compact Layout\nCtrl+T: Cycle Themes\nShift+Drag: Highlight Copy\n/help: Commands List", id="lbl-tips-body")
 
-        with Horizontal(id="footer-bar"):
-            yield Footer(id="footer-keys")
+        with Horizontal(id="footer-bar"): yield Footer(id="footer-keys")
 
     def action_close_tips_card(self) -> None:
         self.tips_card_hidden = True
@@ -510,25 +483,20 @@ class LocalAITUI(App):
             for t in (code_theme, mono_theme, dark_theme):
                 try: self.register_theme(t)
                 except Exception: pass
-        
+
         saved_theme = load_tui_state("tui_theme", "code")
-        if saved_theme == "grok": saved_theme = "mono"
-        try: self.theme = saved_theme
+        try: self.theme = "mono" if saved_theme == "grok" else saved_theme
         except Exception: pass
 
-        # $O(1)$ Cached Widget Lookups
         self.chat_area = self.query_one("#chat-area", Vertical)
         if self.compact_mode == 2: self.chat_area.add_class("zero-spacing")
 
         self.chat_input = self.query_one("#chat-input", Input)
-        self.lbl_skill = self.query_one("#lbl-skill", Static)
-        self.lbl_mode = self.query_one("#lbl-mode", Static)
-        self.lbl_reasoning = self.query_one("#lbl-reasoning", Static)
-        self.lbl_image = self.query_one("#lbl-image", Static)
-        self.lbl_database = self.query_one("#lbl-database", Static)
-        self.lbl_stats = self.query_one("#lbl-stats", Static)
+        self.lbl_skill, self.lbl_mode = self.query_one("#lbl-skill", Static), self.query_one("#lbl-mode", Static)
+        self.lbl_reasoning, self.lbl_database, self.lbl_stats = self.query_one("#lbl-reasoning", Static), self.query_one("#lbl-database", Static), self.query_one("#lbl-stats", Static)
 
         self.set_skill(self.active_skill)
+        self.set_mode(self.agent_mode)
         self.set_reasoning(f"{self.reasoning_budget} tokens" if self.reasoning_active else "Disabled")
         self.update_welcome_banner()
         self.chat_input.cursor_blink = True
@@ -547,11 +515,19 @@ class LocalAITUI(App):
                 if r == "user" and c: self.chat_area.mount(Message("User", c))
                 elif r == "assistant" and c: self.chat_area.mount(Message("Agent", c))
 
+        # --- Launch Background uvloop Async Workers ---
+        self.run_worker(tui_async.watch_workspace_changes(self), exclusive=False)
+        self.run_worker(tui_async.start_subagent_ipc_hub(self), exclusive=False)
+
         self.chat_input.focus()
 
     def action_toggle_plan_build(self) -> None:
+        if not self.is_agent:
+            return  # Disable Plan/Build mode switching in conversational chat mode
         self.agent_mode, self.gates_enabled = ("Build", False) if self.agent_mode == "Plan" else ("Plan", True)
-        os.environ["AI_CONFIRM_GATES"] = "1" if self.gates_enabled else "0"
+        is_yolo = not self.gates_enabled
+        os.environ["AI_CONFIRM_GATES"] = "0" if is_yolo else "1"
+        save_tui_state("yolo_mode", is_yolo)
         self.set_mode(self.agent_mode)
 
     def on_input_changed(self, event: Input.Changed) -> None:
@@ -576,17 +552,7 @@ class LocalAITUI(App):
         else: self.notify("No response available to copy yet.")
 
     def action_copy_entire_chat(self) -> None:
-        transcript = []
-        for msg in self.history:
-            role, content = msg.get("role"), msg.get("content")
-            if not content or role == "system": continue
-            if role == "user":
-                txt = content if isinstance(content, str) else next((i["text"] for i in content if i.get("type") == "text"), "[Multimodal]")
-                transcript.append(f"❯ USER: {txt}")
-            elif role == "assistant":
-                clean_c = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL).strip()
-                if clean_c: transcript.append(f"AGENT:\n{clean_c}")
-
+        transcript = [f"❯ USER: {m['content']}" if m.get("role") == "user" else f"AGENT:\n{re.sub(r'<think>.*?</think>', '', m['content'], flags=re.DOTALL).strip()}" for m in self.history if m.get("content") and m.get("role") != "system"]
         full_text = "\n\n".join(transcript)
         if full_text:
             copy_to_clipboard(full_text)
@@ -614,7 +580,7 @@ class LocalAITUI(App):
         sub_arg = "/t" if c_raw in ("tk", "thinking") else f"/{c_raw}"
         hdr_map = {"f": "Follow-up", "b": "Brainstorm", "t": "Thinking", "tk": "Thinking", "a": "All"}
         output_hdr = hdr_map.get(c_raw, "Follow-up")
-        
+
         user_disp = f"/{c_raw} {args}".strip()
         await self.chat_area.mount(Message("User", user_disp))
         if args: self.history.append({"role": "user", "content": args})
@@ -651,22 +617,8 @@ class LocalAITUI(App):
         if root in ("/help", "/h"):
             t = Table(show_header=False, box=None, padding=(0, 1), expand=False)
             cmd_style = "bold #89b4fa" if self.theme == "code" else ("bold #0265dc" if not self.is_dark_theme else "bold cyan")
-            t.add_column("Command", style=cmd_style)
-            t.add_column("Description", style="default")
-            for c, d in [
-                ("/help, /h", "Help"),
-                ("Tab", "Plan/Build"),
-                ("/copy", "Copy page"),
-                ("/m", "Memory"),
-                ("/clear", "Chat & history"),
-                ("/tok", "Tokens"),
-                ("/sync", "Sync index"),
-                ("/s <q>", "Skill"),
-                ("/t <toks>", "Reasoning"),
-                ("/f, /tk, /b, /a", "Presets"),
-                ("file <path>", "Load File"),
-                ("exit, quit, q", "Exit"),
-            ]:
+            t.add_column("Command", style=cmd_style); t.add_column("Description", style="default")
+            for c, d in [("/help, /h", "Help"), ("Tab", "Plan/Build"), ("/copy", "Copy page"), ("/m", "Memory"), ("/clear", "Chat & history"), ("/tok", "Tokens"), ("/sync", "Sync index"), ("/s <q>", "Skill"), ("/t <toks>", "Reasoning"), ("/f, /tk, /b, /a", "Presets"), ("file <path>", "Load File"), ("exit, quit, q", "Exit")]:
                 t.add_row(c, d)
             panel = Panel(t, title="⚙ Agent TUI Commands", title_align="left", border_style=self.border_accent, box=ROUNDED, expand=False)
             await self.chat_area.mount(Static(Group(Text(""), panel)))
@@ -676,12 +628,16 @@ class LocalAITUI(App):
         elif root == "/m":
             self.memory_active = not self.memory_active
             save_tui_state("memory_active", self.memory_active)
-            if hasattr(self, "lbl_database"): self.lbl_database.update(self.get_db_status_string())
+            if hasattr(self, "lbl_database"): self.lbl_database.update(f"[dim]DB State[/dim]  {self.get_db_status_string()}")
             self.notify(f"Memory {'enabled' if self.memory_active else 'disabled'}.")
-        elif root in ("/plan", "/build"):
-            if root == "/plan" and self.agent_mode != "Plan": self.action_toggle_plan_build()
-            elif root == "/build" and self.agent_mode != "Build": self.action_toggle_plan_build()
-            self.notify(f"Mode set to [bold]{self.agent_mode}[/bold].")
+        elif root in ("/plan", "/build", "/g", "/yolo"):
+            if not self.is_agent:
+                self.notify("Plan/Build modes are only available in project workspace sessions.", sys_prefix=False)
+            else:
+                if root == "/plan" and self.agent_mode != "Plan": self.action_toggle_plan_build()
+                elif root == "/build" and self.agent_mode != "Build": self.action_toggle_plan_build()
+                elif root in ("/g", "/yolo"): self.action_toggle_plan_build()
+                self.notify(f"Mode set to [bold]{self.agent_mode}[/bold].")
         elif root in ("/clear", "/reset"):
             self.history.clear(); self.stats_turns = 0
             self.update_stats_ui(0, 0.0, 0.0)
@@ -695,20 +651,14 @@ class LocalAITUI(App):
             try: subprocess.Popen(["index-map", self.workspace_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             except Exception: pass
         elif root in ("/skill", "/s"):
-            if args and skills:
+            if args:
                 content = skills.load_skill_content(args, SKILLS_DIR, CFG_DIR)
                 if content:
                     s_name, s_text = content if isinstance(content, tuple) else (args, content)
-                    
-                    # Update On-Demand slot (Slot 2) without overwriting Base Skill (Slot 1)
                     self.on_demand_skill = s_name
                     combined_skill = f"{self.base_skill} {self.on_demand_skill}"
                     self.set_skill(combined_skill)
-
-                    # Prune any previous [SKILL BLUEPRINT: ...] entries to prevent context bloat
                     self.history = [m for m in self.history if not (m.get("role") == "system" and str(m.get("content", "")).startswith("[SKILL BLUEPRINT:"))]
-                    
-                    # Append active on-demand skill blueprint
                     self.history.append({"role": "system", "content": f"[SKILL BLUEPRINT: {s_name}]\n{s_text}"})
                     self.notify(f"Active skills: [bold]{combined_skill}[/bold] (Swapped on-demand skill to [bold]{s_name}[/bold])")
                 else: self.notify(f"No skill blueprint file found for '[bold]{args}[/bold]'.")
@@ -719,8 +669,7 @@ class LocalAITUI(App):
         else: self.notify(f"Unknown command '{root}'. Type [bold]/help[/bold] for commands.")
 
     def prompt_tui_confirm(self, prompt_text: str) -> bool:
-        self.gate_auth_event.clear()
-        self.gate_auth_result = False
+        self.gate_auth_event.clear(); self.gate_auth_result = False
         def _show():
             self.entering_gate_authorization, self.current_gate_prompt = True, prompt_text
             self.chat_input.disabled, self.chat_input.value = False, ""
@@ -739,13 +688,12 @@ class LocalAITUI(App):
 
         self.ensure_system_context()
         self.call_from_thread(self.chat_area.mount, Message("User", query))
-
         old_confirm = getattr(ui, "confirm_tool", None)
         ui.confirm_tool = lambda reason: self.prompt_tui_confirm(reason)
 
         try:
             past_mem, tpm_ctx = "", ""
-            if self.memory_active:
+            if self.is_agent and self.memory_active:
                 try:
                     mem_bin = os.path.join(CFG_DIR, "modules", "ai-agent-memories")
                     if os.path.exists(mem_bin):
@@ -765,18 +713,13 @@ class LocalAITUI(App):
             self.call_from_thread(self.chat_area.mount, assistant_msg)
             self.call_from_thread(self.chat_area.scroll_end, animate=False)
 
-            try: sys_ctx = skills.get_system_context(query, CONTEXT_FILE, STOP_WORDS, SKILLS_DIR, CFG_DIR) if (skills and hasattr(skills, "get_system_context")) else ""
+            try: sys_ctx = skills.get_system_context(query, CONTEXT_FILE, STOP_WORDS, SKILLS_DIR, CFG_DIR) if hasattr(skills, "get_system_context") else ""
             except Exception: sys_ctx = ""
             if sys_ctx == "__ABORT_TURN__": sys_ctx = ""
 
             combined = "\n\n".join(filter(None, [tpm_ctx, past_mem, sys_ctx]))
             fmt_p = f"<context>\n{combined}\n</context>\n\nUser Question: {query}" if combined else f"User Question: {query}"
-
-            if self.active_image_url:
-                self.history.append({"role": "user", "content": [{"type": "text", "text": fmt_p}, {"type": "image_url", "image_url": {"url": self.active_image_url}}]})
-                self.active_image_url = None
-                self.set_image("None")
-            else: self.history.append({"role": "user", "content": fmt_p})
+            self.history.append({"role": "user", "content": fmt_p})
 
             self.call_from_thread(self.disable_input)
             self.generation_cancelled, self.active_response = False, None
@@ -945,19 +888,7 @@ class LocalAITUI(App):
                     self.notify("[bold red]Invalid budget. Deep reasoning disabled.[/bold red]", sys_prefix=False)
             return
 
-        if self.entering_image_url:
-            self.entering_image_url = False
-            self.chat_input.placeholder = "Ask your agent anything..."
-            if query:
-                self.active_image_url = query
-                fname = query.split("/")[-1].split("?")[0][:25]
-                self.set_image(fname or 'attached')
-                self.notify(f"Attached image URL: [bold]{query}[/bold]")
-            else: self.notify("Image attachment cancelled.")
-            return
-
         if not query: return
-
         if query.startswith("/"): await self.handle_slash_command(query); return
 
         if self.pending_skill_prefix:
@@ -986,15 +917,6 @@ class LocalAITUI(App):
                 try: self.active_response.close()
                 except Exception: pass
             self.notify("(Generation stopped by user.)", sys_prefix=False)
-
-    def action_attach_image_url(self) -> None:
-        if self.entering_image_url:
-            self.entering_image_url = False
-            self.chat_input.placeholder = "Ask your agent anything..."
-        else:
-            self.entering_image_url, self.entering_reasoning_budget = True, False
-            self.chat_input.placeholder = "Enter Web Image URL (http://... or https://...):"
-            self.chat_input.focus()
 
     def update_sidebar_visibility(self) -> None:
         try: self.query_one("#sidebar", Vertical).display = not self.sidebar_hidden
@@ -1045,7 +967,7 @@ class LocalAITUI(App):
             self.set_reasoning("Disabled")
             self.notify("Deep reasoning disabled.")
         else:
-            self.entering_reasoning_budget, self.entering_image_url = True, False
+            self.entering_reasoning_budget = True
             self.chat_input.placeholder = "Enter Reasoning Budget (Press Enter for default 500):"
             self.chat_input.focus()
 
@@ -1055,7 +977,7 @@ if __name__ == "__main__":
         configs = agent_cloud.get_active_configs([]) if agent_cloud else []
         model = configs[0][2].get("model", "local-model") if configs else ui.get_local_model_name()
     except Exception: model = ui.get_local_model_name()
-            
+
     app = LocalAITUI(workspace, model)
     try: app.run()
     finally:
