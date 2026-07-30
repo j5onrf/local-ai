@@ -8,7 +8,7 @@ High-speed local developer agent, episodic memory, SQLite checkpoints, and codeb
 :: ↵ run  Esc: 
 ✔ Mapping complete! [session-test index-map & SQLite graph database updated]
 ╔═  ❖ Local-AI Agent  ═══════════════════════════════════╗
-║     model:  Hermes3.6-35B-A3B.gguf                     ║
+║     model:  Qwen3.6-35B-A3B.gguf                       ║
 ║ directory:  ~/.config/local-ai/projects/session-test   ║
 ║     skill:  hermes/pro                                 ║
 ║  database:  active (0 facts, 1 turns)                  ║
@@ -43,7 +43,7 @@ Switch box styles using `/box [1-5]` (or type `/box` to cycle). Selection persis
 #### Style #1: Double Border (Default)
 ```console
 ╔═  ❖ Local-AI Agent  ══════════╗
-║     model:  Hermes3.6-35B     ║
+║     model:  Qwen3.5-2B.gguf   ║
 ║ directory:  ~                 ║
 ║     skill:  default           ║
 ║  database:  stateless         ║
@@ -53,9 +53,9 @@ Switch box styles using `/box [1-5]` (or type `/box` to cycle). Selection persis
 #### Style #2: Codex Rounded
 ```console
 ╭─  >_ Local-AI Agent  ─────────╮
-│     model:  Hermes3.6-35B     │
+│     model:  Qwen3.5-2B.gguf   │
 │ directory:  ~                 │
-│     skill:  default           │
+│     skill:  chat              │
 │  database:  stateless         │
 ╰────────────── Ctrl+C to exit ─╯
 ```
@@ -63,7 +63,7 @@ Switch box styles using `/box [1-5]` (or type `/box` to cycle). Selection persis
 #### Style #3: Heavy Square
 ```console
 ┏━  ❖ Local-AI Agent  ━━━━━━━━━━┓
-┃     model:  Hermes3.6-35B     ┃
+┃     model:  Qwen3.5-2B.gguf   ┃
 ┃ directory:  ~                 ┃
 ┃     skill:  default           ║
 ┃  database:  stateless         ║
@@ -73,7 +73,7 @@ Switch box styles using `/box [1-5]` (or type `/box` to cycle). Selection persis
 #### Style #4: Minimalist Line
 ```console
  ─  Local-AI Agent  ──────────── 
-      model:  Hermes3.6-35B      
+      model:  Qwen3.5-2B.gguf    
   directory:  ~                  
       skill:  default            
    database:  stateless          
@@ -85,7 +85,7 @@ Switch box styles using `/box [1-5]` (or type `/box` to cycle). Selection persis
 ╭───────────────────────────────╮
 │  >_ Local-AI Agent            │
 │                               │
-│     model:  Hermes3.6-35B     │
+│     model:  Qwen3.5-2B.gguf   │
 │ directory:  ~                 │
 │     skill:  default           │
 │  database:  stateless         │
