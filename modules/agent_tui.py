@@ -262,6 +262,7 @@ class LocalAITUI(App):
     .sidebar-section { height: auto; border-bottom: none; padding-bottom: 1; margin-bottom: 1; }
     .sidebar-label { color: $primary; text-style: bold; margin-bottom: 0; }
     .sidebar-val { color: $text; margin-bottom: 0; }
+    .sys-notice, .theme-notice { margin-top: 1; margin-bottom: 0; }
     #card-tips { background: $panel; padding: 1; margin-top: 1; }
     #card-tips-header { height: 1; width: 100%; }
     #lbl-tips-title { width: 1fr; color: $primary; text-style: bold; }
@@ -493,7 +494,7 @@ class LocalAITUI(App):
                     with Horizontal(id="card-tips-header"):
                         yield Static("Quick Tips", id="lbl-tips-title")
                         yield CloseCardButton("×", id="btn-close-tips")
-                    yield Static("Tab: Switch Mode\nCtrl+B: Sidebar\nCtrl+G: Compact\nCtrl+T: Cycle Themes\nShift+Drag: Highlight Copy\n/help: Commands List", id="lbl-tips-body")
+                    yield Static("Tab: Switch Mode\nCtrl+B: Sidebar\nCtrl+G: Compact Layout\nCtrl+T: Cycle Themes\nShift+Drag: Highlight Copy\n/help: Commands List", id="lbl-tips-body")
 
         with Horizontal(id="footer-bar"):
             yield Footer(id="footer-keys")
@@ -755,8 +756,9 @@ class LocalAITUI(App):
                     if matched:
                         if not self.gates_enabled or self.prompt_tui_confirm(f"inject recalled memory for '{query}'"):
                             past_mem = matched
-                            self.call_from_thread(self.notify, "Memory injected.")
-                        else: self.call_from_thread(self.notify, "Memory recall skipped.")
+                            self.call_from_thread(self.notify, "[dim]Memory injected.[/dim]", sys_prefix=False)
+                        else:
+                            self.call_from_thread(self.notify, "[dim]Memory recall skipped.[/dim]", sys_prefix=False)
                 except Exception: pass
 
             assistant_msg = Message("Agent", "Thinking...")
@@ -914,7 +916,7 @@ class LocalAITUI(App):
             self.gate_auth_result = is_yes
             self.gate_auth_event.set()
             color, status = ("green", "Authorized") if is_yes else ("red", "Denied")
-            self.notify(f"Gate: [bold {color}]{status}[/bold {color}]")
+            self.notify(f"[dim]Gate: [bold {color}]{status}[/bold {color}][/dim]", sys_prefix=False)
             return
 
         if self.entering_reasoning_budget:
