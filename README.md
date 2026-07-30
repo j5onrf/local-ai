@@ -1,15 +1,17 @@
+<!-- Adaptive Header Banner (Auto-switches on GitHub Dark/Light Theme) -->
 <p align="center">
-  <img alt="Local-AI Agent Logo" src="logo.png" width="800" />
-</p>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/header/graph.svg?title=Local-AI+Agent&subtitle=High-Speed+Local+%26+Cloud+Developer+Harness&logo=python&logoColor=10b981&theme=zinc&mode=dark&accent=10b981&glow=true&pattern=grid" />
+    <img alt="Local-AI Agent" src="https://shieldcn.dev/header/graph.svg?title=Local-AI+Agent&subtitle=High-Speed+Local+%26+Cloud+Developer+Harness&logo=python&logoColor=10b981&theme=zinc&mode=light&accent=10b981&glow=false&pattern=grid" />
+  </picture>
 
-<h1 align="center">Local-AI Agent <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/badge/version-v0.9.7.2--beta-violet.svg?variant=outline" alt="Version"></a></h1>
+
 
 <p align="center">
-  <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/github/stars/j5onrf/local-ai.svg?color=emerald&variant=outline" alt="GitHub Stars"></a>
   <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/badge/language-python.svg?color=emerald&variant=outline" alt="Language"></a>
   <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/github/last-commit/j5onrf/local-ai.svg?color=emerald&variant=outline" alt="Last Commit"></a>
   <a href="https://github.com/j5onrf/local-ai/blob/main/LICENSE"><img src="https://shieldcn.dev/badge/license-MIT.svg?color=emerald&variant=outline" alt="License"></a>
-  <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/views/repo/j5onrf/local-ai.svg?color=emerald&variant=outline" alt="Views"></a>
+  <img src="https://shieldcn.dev/badge/version-v0.9.7.2--beta-violet.svg?variant=outline" alt="Version"></a>
 </p>
 
 <p align="center">
@@ -175,4 +177,5 @@ AI_MAX_TOKENS="8192"
 
 * **Contributions:** [suyadnya](https://github.com/wibawasuyadnya) for `.env` architecture, macOS compatibility testing, and alias optimization.
 * **Community:** Contributions are always welcome!
+
 
