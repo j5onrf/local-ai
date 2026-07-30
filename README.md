@@ -20,18 +20,18 @@
 
 ---
 
-## ⚡ Overview & Execution Modes
+## Overview & Execution Modes
 
 Built with zero context-stuffing for extreme efficiency on quantized local engines (`Qwen-3.5-2B+`, `Gemma-4-E2B+`) and frontier cloud provider cascades.
 
-- ⚡ **Direct Shell Jaccard (`<shortcut>`):** Sub-millisecond keyword routing to local shell scripts via [`ai-context.md`](ai-context.md).
-- 💬 **Single-Turn Query (`ai <query>`):** Instant response piped straight back to your active shell prompt.
-- 🔄 **Multi-Turn Chat (`ai`):** Persistent interactive terminal session with memory context.
-- 🛠️ **Workspace Agent (`ai init <path>`):** Full codebase graph indexing, path-healing file editing, and sub-agent concurrency.
+- **Direct Shell Jaccard (`<shortcut>`):** Sub-millisecond keyword routing to shell scripts via [`ai-context.md`](ai-context.md).
+- **Single-Turn Query (`ai <query>`):** Instant response piped straight back to your active shell prompt.
+- **Multi-Turn Chat (`ai`):** Persistent interactive terminal session with memory context.
+- **Workspace Agent (`ai init <path>`):** Full codebase graph indexing, path-healing file editing, and sub-agent concurrency.
 
 ---
 
-## 🧩 Key Systems & Integrations
+## Key Systems & Integrations
 
 | Feature System | Foundation & Architectural Roots | Interface Command / Link |
 | :--- | :--- | :--- |
@@ -43,7 +43,7 @@ Built with zero context-stuffing for extreme efficiency on quantized local engin
 
 ---
 
-## 💻 CLI Launch Interface
+## CLI Launch Interface
 
 > Customize box themes with `/box [1-5]`. For detailed multi-agent workflows, read the [**Workspace Manual**](https://github.com/j5onrf/local-ai/blob/main/projects/Readme.md).
 
@@ -84,7 +84,7 @@ Agent: Workspace loaded. Awaiting instructions.
 
 ---
 
-## 🛡️ Core Capabilities
+## Core Capabilities
 
 | Core Module | Capability | Description |
 | :--- | :--- | :--- |
@@ -97,7 +97,7 @@ Agent: Workspace loaded. Awaiting instructions.
 
 ---
 
-## ⚙️ Command Reference
+## Command Reference
 
 ```console
 ╭─  ⚙ Help & Commands  ───────────────────────────────────────────────╮
@@ -126,7 +126,7 @@ Agent: Workspace loaded. Awaiting instructions.
 
 ---
 
-## 🚀 Setup & Installation
+## Setup & Installation
 
 ```bash
 # 1. Install system dependencies
@@ -161,7 +161,7 @@ AI_MAX_TOKENS="8192"
 
 ---
 
-## 📊 Developer Activity
+## Developer Activity
 
 <p align="center">
   <img src="https://shieldcn.dev/chart/github/commits/j5onrf.svg?title=Commit+Activity&theme=zinc&mode=dark&bg=transparent&color=10b981&fill=true" alt="Commit Activity" />
@@ -169,7 +169,7 @@ AI_MAX_TOKENS="8192"
 
 ---
 
-## 👥 Contributors & Credits
+## Contributors & Credits
 
 <p align="center">
   <img src="https://shieldcn.dev/contributors/j5onrf/local-ai.svg?theme=zinc&limit=10&radius=12" alt="Contributors Grid" />
@@ -177,5 +177,4 @@ AI_MAX_TOKENS="8192"
 
 * **Contributions:** [suyadnya](https://github.com/wibawasuyadnya) for `.env` architecture, macOS compatibility testing, and alias optimization.
 * **Community:** Contributions are always welcome!
-
 
