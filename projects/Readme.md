@@ -111,7 +111,7 @@ Switch box styles using `/box [1-5]` (or type `/box` to cycle). Selection persis
 
 ## 2. Profile Selector (`ai init`)
 
-Running `ai init <path>` prompts the default workspace agent profile:
+Running `ai init <path>` set default workspace agent profile:
 
 ```console
 [ai init] Agent Profile: session-test
