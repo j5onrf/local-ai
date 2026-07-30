@@ -388,19 +388,19 @@ def show_help() -> None:
 def select_workspace_profile(workspace_name: str) -> Tuple[str, bool]:
     """Renders the workspace profile selector menu with minimal confirmation for YOLO mode."""
     options = [
-        ("default",     "Default Assistant", "~120t | Standard assistant",              "Standard"),
+        ("default",     "Default Assistant", "~120t", "Standard"),
 
-        ("pi/full",     "Pi Agent [1:1]",    "~400t | Direct tool prompt",              "Full 1:1 Tier (Direct Action)"),
-        ("claude/full", "Claude Code",       "~440t | Direct tool prompt",              None),
-        ("hermes/full", "Hermes Agent",      "~380t | Direct tool prompt",              None),
+        ("pi/full",     "Pi Full",           "~400t", "Full Tier (Direct Action)"),
+        ("claude/full", "Claude Full",       "~440t", None),
+        ("hermes/full", "Hermes Full",      "~380t", None),
 
-        ("pi/pro",      "Pi Pro",            "~280t | Index-first + reasoning prompt",  "Pro Tier (Index-First / 35B+ & Cloud)"),
-        ("claude/pro",  "Claude Pro",        "~290t | Index-first + reasoning prompt",  None),
-        ("hermes/pro",  "Hermes Pro",        "~280t | Index-first + reasoning prompt",  None),
+        ("pi/pro",      "Pi Pro",            "~280t", "Pro Tier (Index-First)"),
+        ("claude/pro",  "Claude Pro",        "~290t", None),
+        ("hermes/pro",  "Hermes Pro",        "~280t", None),
 
-        ("pi/lite",     "Pi Lite",           "~220t | Index-first standby prompt",      "Lite Tier (Index-First / 1B–7B Models)"),
-        ("claude/lite", "Claude Lite",       "~230t | Index-first standby prompt",      None),
-        ("hermes/lite", "Hermes Lite",       "~220t | Index-first standby prompt",      None),
+        ("pi/lite",     "Pi Lite",           "~220t", "Lite Tier (1B–3B)"),
+        ("claude/lite", "Claude Lite",       "~230t", None),
+        ("hermes/lite", "Hermes Lite",       "~220t", None),
     ]
 
     sys.stderr.write(f"\n\033[1;36m[ai init]\033[0m Select default Agent Profile for workspace \033[1;33m{workspace_name}\033[0m:\n\n")
@@ -411,7 +411,7 @@ def select_workspace_profile(workspace_name: str) -> Tuple[str, bool]:
     is_yolo = False
     num_opts = len(options)
     num_headers = sum(1 for item in options if item[3] is not None)
-    lines_to_clear = num_opts + num_headers + 2
+    lines_to_clear = num_opts + (num_headers * 2 - 1) + 2
     first_render = True
 
     try:
@@ -422,6 +422,8 @@ def select_workspace_profile(workspace_name: str) -> Tuple[str, bool]:
 
             for idx, (k, lbl, d, cat) in enumerate(options):
                 if cat:
+                    if idx > 0:
+                        sys.stderr.write("\r\x1b[K\n")
                     sys.stderr.write(f"\r\x1b[K\033[1;30m  ─── {cat} ───────────────────────────────────────────\033[0m\n")
 
                 if idx == current_idx:

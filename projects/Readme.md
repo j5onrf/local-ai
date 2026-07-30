@@ -114,27 +114,27 @@ Switch box styles using `/box [1-5]` (or type `/box` to cycle). Selection persis
 Running `ai init <path>` prompts the default workspace agent profile:
 
 ```console
-[ai init] Select default Agent Profile for workspace session-test:
+[ai init] Agent Profile: session-test
 
-  ─── Standard ────────────────────────────────────────────────────────
-     1. Default Assistant    (~120t | Standard assistant)
+  Standard
+     1. Default Assistant    ~120t
 
-  ─── Full Tier (Direct Action / Large Models) ────────────────────────
-     2. Pi Agent             (~400t | Direct tool prompt)
-     3. Claude Code          (~440t | Direct tool prompt)
-     4. Hermes Agent         (~380t | Direct tool prompt)
+  Full Tier (Direct Action)
+     2. Pi Full              ~400t
+     3. Claude Full          ~440t
+     4. Hermes Full          ~380t
 
-  ─── Pro Tier (Index-First / 35B+ & Cloud) ───────────────────────────
-     5. Pi Pro               (~280t | Index-first + reasoning prompt)
-     6. Claude Pro           (~290t | Index-first + reasoning prompt)
-  ❯  7. Hermes Pro           (~280t | Index-first + reasoning prompt)
+  Pro Tier (Index-First)
+     5. Pi Pro               ~280t
+     6. Claude Pro           ~290t
+  ❯  7. Hermes Pro           ~280t
 
-  ─── Lite Tier (Index-First / 1B–7B Models) ───────────────────────────
-     8. Pi Lite              (~220t | Index-first standby prompt)
-     9. Claude Lite          (~230t | Index-first standby prompt)
-    10. Hermes Lite          (~220t | Index-first standby prompt)
+  Lite Tier (1B–7B)
+     8. Pi Lite              ~220t
+     9. Claude Lite          ~230t
+    10. Hermes Lite          ~220t
 
-  :: ↵ select  ↑/↓ navigate  Tab: YOLO [OFF]  Esc: default
+  ↵ select  ↑/↓ navigate  Tab: YOLO [OFF]  Esc: default
 ```
 
 #### Profile Tiers
