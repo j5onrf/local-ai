@@ -2,8 +2,11 @@
 # File: ~/.config/local-ai/modules/agent_tui.py
 """Production Minimal Textual TUI for Local-AI Agent Engine."""
 
-import uvloop
-uvloop.install()
+try:
+    import uvloop
+    uvloop.install()
+except (ImportError, NotImplementedError):
+    pass  # On Windows, falls back gracefully to standard asyncio
 
 import base64, json, os, re, sqlite3, subprocess, sys, threading, time
 import urllib.request as urlreq
