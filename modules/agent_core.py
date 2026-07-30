@@ -54,7 +54,6 @@ class RichStreamer:
         self.spinner: Any = spinner
         self.accumulated_thinking: str = ""
         self.accumulated_answer: str = ""
-        self.live_answer: Optional[Live] = None
         self.phase: str = "INIT"
         self.answer_started: bool = False
 
@@ -133,47 +132,61 @@ class RichStreamer:
                 except (IOError, OSError):
                     pass
         else:
-            # Handle active ANSWER phase
             if self.phase != "ANSWER":
                 self.phase = "ANSWER"
 
             if not self.answer_started:
                 self._stop_spinner()
                 self.answer_started = True
-                self.live_answer = Live("", console=_console, auto_refresh=False, vertical_overflow="crop", transient=True, screen=False)
-                self.live_answer.start()
-
-            self.accumulated_answer += token
-            if self.live_answer:
+                p_style = "\033[1;32m" if "Agent" in self.prefix else "\033[1;36m"
                 try:
-                    clean_ans = self.accumulated_answer.replace("\\n", "\n")
-                    self.live_answer.update(Text(f"{self.prefix.strip()} {clean_ans}"))
-                    self.live_answer.refresh()
+                    sys.stdout.write(f"{p_style}{self.prefix.strip()}\033[0m ")
+                    sys.stdout.write("\033[?25h")
+                    sys.stdout.flush()
                 except (IOError, OSError):
                     pass
 
-    def stop(self, interrupted: bool = False) -> None:
-        if self.live_answer:
+            clean_tok = token.replace("\\n", "\n")
+            self.accumulated_answer += token
             try:
-                self.live_answer.stop()
-            except Exception:
+                sys.stdout.write(clean_tok)
+                sys.stdout.write("\033[?25h")
+                sys.stdout.flush()
+            except (IOError, OSError):
                 pass
-            self.live_answer = None
 
+    def stop(self, interrupted: bool = False) -> None:
         self._stop_spinner()
 
         if interrupted:
+            try:
+                sys.stdout.write("\033[?25h\n")
+                sys.stdout.flush()
+            except Exception:
+                pass
             return
 
         if self.phase == "THINKING" and self.accumulated_thinking.strip():
             _console_err.print("[dim]╰───────────────────────────────────────────────────────────────[/dim]\n")
             self.phase = "ANSWER"
 
-        # Render final formatted Rich Markdown pass
+        # Erase raw live stream and replace with final Rich Markdown pass
         if self.answer_started and self.accumulated_answer.strip():
+            clean_ans = self.accumulated_answer.strip().replace("\\n", "\n")
+            term_w = _console.width or 80
+            full_raw = f"{self.prefix.strip()} {clean_ans}"
+
+            # Calculate physical terminal lines used by live stream
+            lines_to_clear = sum(max(1, (len(line) + term_w - 1) // term_w) for line in full_raw.split("\n"))
+            try:
+                sys.stdout.write(f"\033[{lines_to_clear}A\033[1G\033[0J")
+                sys.stdout.flush()
+            except Exception:
+                sys.stdout.write("\n")
+
             p_style = "bold green" if "Agent" in self.prefix else "bold cyan"
             _console.print(Text(f"{self.prefix.strip()}", style=p_style))
-            _console.print(Markdown(self.accumulated_answer.strip().replace("\\n", "\n"), code_theme="ansi_dark"))
+            _console.print(Markdown(clean_ans, code_theme="ansi_dark"))
 
 
 def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float, show_stats: bool, ctx_used: Optional[int] = None) -> None:

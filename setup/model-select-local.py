@@ -23,8 +23,8 @@ LOCAL_MODELS = [
         "script": "q2b.sh"
     },
     {
-        "name": "Qwen 3.6 35B (4-bit base)",
-        "file": "Qwen3.6-35B-A3B.gguf",
+        "name": "Hermes3.6-35B-A3B-Uncensored-Genesis-V6-APEX-Compact",
+        "file": "Hermes3.6-35B-A3B.gguf",
         "script": "q35b.sh"
     }
 ]
@@ -42,7 +42,7 @@ async def async_set_cpu_chill():
 
 async def async_set_cpu_balanced():
     try:
-        await asyncio.create_subprocess_exec("sudo", "-n", "cpupower", "frequency-set", "-g", "powersave", "--max", "4.4GHz", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        await asyncio.create_subprocess_exec("sudo", "-n", "cpupower", "frequency-set", "-g", "powersave", "--max", "5.2GHz", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         with open(STATE_FILE, "w") as f:
             f.write("balanced")
         if shutil.which("notify-send"):
