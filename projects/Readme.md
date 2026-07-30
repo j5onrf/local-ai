@@ -129,7 +129,7 @@ Running `ai init <path>` prompts the default workspace agent profile:
      6. Claude Pro           ~290t
   ❯  7. Hermes Pro           ~280t
 
-  Lite Tier (1B–7B)
+  Lite Tier (1B+)
      8. Pi Lite              ~220t
      9. Claude Lite          ~230t
     10. Hermes Lite          ~220t
