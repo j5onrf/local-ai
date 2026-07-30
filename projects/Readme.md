@@ -143,8 +143,8 @@ Running `ai init <path>` prompts the default workspace agent profile:
 | :--- | :--- | :--- | :--- | :--- |
 | **Standard** | `default` | Any | `~120t` | General assistant without workspace tool loops. |
 | **Full** | `pi/full`, `claude/full`, `hermes/full` | 35B+ / Cloud | `~380t–440t` | Direct multi-file action and editing loops. |
-| **Pro** | `pi/pro`, `claude/pro`, `hermes/pro` | 35B+ / Cloud | `~280t–290t` | Index-first mapping + standby rule + reasoning (`/t`). |
-| **Lite** | `pi/lite`, `claude/lite`, `hermes/lite` | 1B–7B Local | `~220t–230t` | Index-first standby preventing tool-eagerness loops. |
+| **Pro** | `pi/pro`, `claude/pro`, `hermes/pro` | 35B+ / Cloud | `~280t–290t` | Index-first + standby rule (`/t`). |
+| **Lite** | `pi/lite`, `claude/lite`, `hermes/lite` | 1B–3B Local | `~220t–230t` | Index-first standby preventing tool-eagerness loops. |
 
 * **Reset Workspace Profile:** Delete `.agent/config.json` inside the project folder (`rm .agent/config.json`).
 

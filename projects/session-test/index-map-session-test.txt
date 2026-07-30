@@ -1,4 +1,4 @@
-# CODEBASE INDEX MAP | Generated: 2026-07-30 14:49 | Workspace: session-test | Path: ~/.config/local-ai/projects/session-test
+# CODEBASE INDEX MAP | Generated: 2026-07-30 14:57 | Workspace: session-test | Path: ~/.config/local-ai/projects/session-test
 # Active symbols and structural connections mapped in the local SQLite graph DB.
 # Intents: trace symbol <sym> | blast radius <sym> | read function <sym> | find symbol <pat> | architecture overview
 # -----------------------------------------------------------------------------------------
