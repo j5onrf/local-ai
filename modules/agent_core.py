@@ -56,6 +56,8 @@ class RichStreamer:
         self.accumulated_answer: str = ""
         self.phase: str = "INIT"
         self.answer_started: bool = False
+        self.first_think_token: bool = False
+        self.pending_think_newlines: str = ""
 
     def _stop_spinner(self) -> None:
         if self.spinner:
@@ -93,10 +95,12 @@ class RichStreamer:
         # Detect start of thinking phase
         if "<think>" in token and self.phase != "THINKING":
             self.phase = "THINKING"
+            self.first_think_token = True
+            self.pending_think_newlines = ""
             self._update_spinner("Thinking...")
             if show_think:
                 self._stop_spinner()
-                _console_err.print("[dim]╭─ ⚙ Thinking Process ──────────────────────────────────────────[/dim]")
+                _console_err.print("[dim]╭─ ⚙ Thinking  ──────────────────────────────────────────[/dim]")
                 try:
                     sys.stderr.write("\033[?25h")
                     sys.stderr.flush()
@@ -113,7 +117,27 @@ class RichStreamer:
             self.accumulated_thinking += thinking_part
 
             if show_think and self.phase == "THINKING":
-                _console_err.print("[dim]╰───────────────────────────────────────────────────────────────[/dim]\n")
+                text_part = thinking_part.rstrip("\r\n")
+                if text_part:
+                    try:
+                        if self.pending_think_newlines:
+                            sys.stderr.write(f"\033[2;3m{self.pending_think_newlines}\033[0m")
+                            self.pending_think_newlines = ""
+                        sys.stderr.write(f"\033[2;3m{text_part}\033[0m")
+                        sys.stderr.flush()
+                    except (IOError, OSError):
+                        pass
+
+                # Discard any pending trailing newlines emitted before </think>
+                self.pending_think_newlines = ""
+
+                try:
+                    sys.stderr.write("\n")
+                    sys.stderr.flush()
+                except (IOError, OSError):
+                    pass
+
+                _console_err.print("[dim]╰────────────────────────────────────────────────────────[/dim]")
 
             self.phase = "ANSWER"
             self._update_spinner("Working...")
@@ -124,13 +148,29 @@ class RichStreamer:
 
         # Handle active THINKING phase
         if self.phase == "THINKING":
-            self.accumulated_thinking += token
-            if show_think:
-                try:
-                    sys.stderr.write(f"\033[2;3m{token}\033[0m")
-                    sys.stderr.flush()
-                except (IOError, OSError):
-                    pass
+            if self.first_think_token:
+                token = token.lstrip("\r\n")
+                if token:
+                    self.first_think_token = False
+
+            if token:
+                self.accumulated_thinking += token
+                if show_think:
+                    text_part = token.rstrip("\r\n")
+                    newlines_part = token[len(text_part):]
+
+                    try:
+                        if text_part:
+                            if self.pending_think_newlines:
+                                sys.stderr.write(f"\033[2;3m{self.pending_think_newlines}\033[0m")
+                                self.pending_think_newlines = ""
+                            sys.stderr.write(f"\033[2;3m{text_part}\033[0m")
+                            sys.stderr.flush()
+
+                        if newlines_part:
+                            self.pending_think_newlines += newlines_part
+                    except (IOError, OSError):
+                        pass
         else:
             if self.phase != "ANSWER":
                 self.phase = "ANSWER"
@@ -167,7 +207,12 @@ class RichStreamer:
             return
 
         if self.phase == "THINKING" and self.accumulated_thinking.strip():
-            _console_err.print("[dim]╰───────────────────────────────────────────────────────────────[/dim]\n")
+            try:
+                sys.stderr.write("\n")
+                sys.stderr.flush()
+            except (IOError, OSError):
+                pass
+            _console_err.print("[dim]╰────────────────────────────────────────────────────────[/dim]")
             self.phase = "ANSWER"
 
         # Erase raw live stream and replace with final Rich Markdown pass (if enabled)
@@ -178,7 +223,6 @@ class RichStreamer:
                 term_w = _console.width or 80
                 full_raw = f"{self.prefix.strip()} {clean_ans}"
 
-                # Calculate physical terminal lines used by live stream
                 lines_to_clear = sum(max(1, (len(line) + term_w - 1) // term_w) for line in full_raw.split("\n"))
                 try:
                     sys.stdout.write(f"\033[{lines_to_clear}A\033[1G\033[0J")

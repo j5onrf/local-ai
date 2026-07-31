@@ -59,12 +59,12 @@ Built with zero context-stuffing for extreme efficiency on quantized local engin
 #### 1. Interactive Multi-Turn Chat (`ai`)
 ```console
 ~ ❯ ai
-╭─  >_ Local-AI Agent  ──────────────╮
-│     model:  Qwen3.6-35B-A3B.gguf   │
-│ directory:  ~                      │
-│     skill:  chat                   │
-│  database:  stateless              │
-╰─────────────────── Ctrl+C to exit ─╯
+╭─  >_ Local-AI Agent  ────────────╮
+│     model:  LFM2.5-8B-A1B.gguf   │
+│ directory:  ~                    │
+│     skill:  chat                 │
+│  database:  stateless            │
+╰───────────────── Ctrl+C to exit ─╯
  Startup context: 103 tokens
 ❯ 
 ```

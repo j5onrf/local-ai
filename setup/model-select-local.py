@@ -42,7 +42,7 @@ async def async_set_cpu_chill():
 
 async def async_set_cpu_balanced():
     try:
-        await asyncio.create_subprocess_exec("sudo", "-n", "cpupower", "frequency-set", "-g", "powersave", "--max", "5.2GHz", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        await asyncio.create_subprocess_exec("sudo", "-n", "cpupower", "frequency-set", "-g", "powersave", "--max", "4.4GHz", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         with open(STATE_FILE, "w") as f:
             f.write("balanced")
         if shutil.which("notify-send"):
@@ -150,24 +150,25 @@ async def async_get_key():
     return await asyncio.to_thread(_read)
 
 def draw_menu(selected, active_model, message=""):
+    # Clear screen and move cursor to top-left
     sys.stdout.write("\x1b[H\x1b[2J")
     amber, green, reset, bold, dim = "\033[38;2;230;120;60m", "\033[1;32m", "\033[0m", "\033[1m", "\033[90m"
 
-    sys.stdout.write(f"\n   {bold}  LOCAL-AI OFFLINE WORKSPACE{reset}\n   {dim}────────────────────────────────────────────────────────────{reset}\n\n")
+    sys.stdout.write(f"\r\n   {bold}  LOCAL-AI OFFLINE WORKSPACE{reset}\r\n   {dim}────────────────────────────────────────────────────────────{reset}\r\n\r\n")
 
     for i, model in enumerate(LOCAL_MODELS):
         status = f" {green}(active){reset}" if model["file"] == active_model else ""
-        opt_text = f"Run {model['name']}{status}\n       {dim}Start backend container for {model['file']}{reset}"
+        opt_text = f"Run {model['name']}{status}\r\n       {dim}Start backend container for {model['file']}{reset}"
         prefix = f"   {amber}❯{reset}  {bold}" if i == selected else "      "
-        sys.stdout.write(f"{prefix}{opt_text}{reset}\n\n")
+        sys.stdout.write(f"{prefix}{opt_text}{reset}\r\n\r\n")
 
     stop_idx, exit_idx = len(LOCAL_MODELS), len(LOCAL_MODELS) + 1
 
-    sys.stdout.write(f"{'   ' + amber + '❯' + reset + '  ' + bold if selected == stop_idx else '      '}🚫  Unload All Local Models {dim}(Free System RAM){reset}\n\n")
-    sys.stdout.write(f"{'   ' + amber + '❯' + reset + '  ' + bold if selected == exit_idx else '      '}✕   Close Settings{reset}\n")
+    sys.stdout.write(f"{'   ' + amber + '❯' + reset + '  ' + bold if selected == stop_idx else '      '}🚫  Unload All Local Models {dim}(Free System RAM){reset}\r\n\r\n")
+    sys.stdout.write(f"{'   ' + amber + '❯' + reset + '  ' + bold if selected == exit_idx else '      '}✕   Close Settings{reset}\r\n")
 
-    sys.stdout.write(f"\n   {dim}────────────────────────────────────────────────────────────{reset}\n")
-    sys.stdout.write(f"   {message or f'{dim}Use ▲/▼ Arrows to choose local server, Enter to initialize.{reset}'}\n")
+    sys.stdout.write(f"\r\n   {dim}────────────────────────────────────────────────────────────{reset}\r\n")
+    sys.stdout.write(f"   {message or f'{dim}Use ▲/▼ Arrows to choose local server, Enter to initialize.{reset}'}\r\n")
     sys.stdout.flush()
 
 async def async_main():
@@ -225,6 +226,8 @@ async def async_main():
             elif key == 'q':
                 break
     finally:
+        # Reset terminal to clean state upon exiting
+        os.system("stty sane")
         sys.stdout.write("\x1b[H\x1b[2J")
         sys.stdout.flush()
 
