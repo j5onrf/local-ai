@@ -42,14 +42,21 @@ changes=$(git diff --cached -U0 -- \
         }
     }' || true)
 
-# 4. Strict prompt for local quantized models
-PROMPT="Files:
+# 4. Strict prompt with 1-shot example for local models
+PROMPT="Summarize these staged git changes as a commit title.
+
+Rules:
+- STRICT LENGTH: Between 3 and 7 words long.
+- Start with an action verb (Add, Fix, Refactor, Update).
+- Output ONLY the title text. No quotes, no semicolons, no period at the end.
+
+Example: Update model reference and fix token streamer logic
+
+Files:
 $stats
 
 Diff:
-$changes
-
-Instruction: Write a 3-5 word git commit message for these changes. Start with an action verb (e.g., Fix, Add, Refactor, Update). Be extremely direct. Do not use 'by', 'and', or descriptive fluff. Output ONLY the message."
+$changes"
 
 # 5. Query Python AI Gateway with active terminal spinner
 tmp_out=$(mktemp)
