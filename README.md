@@ -52,14 +52,6 @@ Built with zero context-stuffing for extreme efficiency on quantized local engin
 
 ---
 
-## Interactive Textual TUI
-
-<p align="center">
-<img width="800" alt="20260731_113218" src="https://github.com/user-attachments/assets/b76444a5-c69b-4b09-9e04-c7e03fb12262" />
-</p>
-
----
-
 ## CLI Launch Interface
 
 > Customize box themes with `/box [1-5]`. For detailed multi-agent workflows, read the [**Workspace Manual**](https://github.com/j5onrf/local-ai/blob/main/projects/Readme.md).
@@ -99,32 +91,13 @@ Agent: Workspace loaded. Awaiting instructions.
 ❯ 
 ```
 
-#### 3. Help & Commands
+---
 
-```console
-╭─  ⚙ Help & Commands  ───────────────────────────────────────────────╮
-│   Shortcuts: Esc: bypass  Ctrl+C: cancel                            │
-│                                                                     │
-│   Available commands:                                               │
-│  /h                          - Help menu                            │
-│  /box [1-5]                  - Box style preset                     │
-│  /t [N|show|hide]            - Set reasoning budget or show/hide    │
-│  /g, /yolo                   - Toggle confirmation gates (YOLO)     │
-│  /m                          - Toggle database memory               │
-│  /stats                      - Generation speed stats               │
-│  /tok                        - Context token usage                  │
-│  /sync                       - Sync index                           │
-│  /clear                      - Chat & memory                        │
-│  /sp                         - Toggle spellchecker                  │
-│  /s <q>                      - Skills                               │
-│  /tui                        - Textual UI                           │
-│  -save <tag>                 - Save session checkpoint              │
-│  -load                       - Load or clone checkpoint             │
-│  /f, /tk, /b, /a             - Follow-up, Think, Brainstorm, All    │
-│  view file <path>            - Load file into context               │
-│  exit, quit, q               - Exit                                 │
-╰─────────────────────────────────────────────────────────────────────╯
-```
+## Interactive Textual TUI
+
+<p align="center">
+<img width="800" alt="20260731_113218" src="https://github.com/user-attachments/assets/b76444a5-c69b-4b09-9e04-c7e03fb12262" />
+</p>
 
 ---
 
@@ -172,7 +145,7 @@ AI_MAX_TOKENS="8192"
 
 ---
 
-<h2 align="center">Roadmap to v1.0.0</h2>
+## Roadmap to v1.0.0
 
 - [x] **Core Engine Optimization:** Production pass on streaming, token counting, and sub-agent concurrency.
 - [x] **Thinking UI Controls:** Real-time thinking TPS metrics and `/t show|hide` panel toggles.
@@ -186,6 +159,5 @@ AI_MAX_TOKENS="8192"
 
 ## Credits
 
-*   **License**: Licensed under the permissive [MIT LICENSE](LICENSE).
+*   **License**: Licensed under the permissive [MODIFIED MIT LICENSE](LICENSE).
 *   **Community:** Contributions are always welcome!
-
