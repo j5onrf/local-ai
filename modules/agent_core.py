@@ -83,11 +83,25 @@ class RichStreamer:
 
     def update(self, token: str) -> None:
         if not self.active:
-            try:
-                sys.stdout.write(token)
-                sys.stdout.flush()
-            except (IOError, OSError):
-                pass
+            # Handle thinking state suppression when piped to a file/non-tty
+            if "<think>" in token and self.phase != "THINKING":
+                self.phase = "THINKING"
+                token = token.replace("<think>", "")
+
+            if "</think>" in token:
+                parts = token.split("</think>", 1)
+                self.phase = "ANSWER"
+                token = parts[1] if len(parts) > 1 else ""
+
+            if self.phase == "THINKING":
+                return  # Suppress thinking tokens when output is piped to a file or script
+
+            if token:
+                try:
+                    sys.stdout.write(token)
+                    sys.stdout.flush()
+                except (IOError, OSError):
+                    pass
             return
 
         show_think = os.environ.get("AI_SHOW_THINKING", "1") == "1"

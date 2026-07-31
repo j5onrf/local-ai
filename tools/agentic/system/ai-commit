@@ -71,10 +71,12 @@ rm -f "$tmp_out"
 
 # 6. Safe string cleaning (Replaces xargs to handle single quotes/apostrophes cleanly)
 message=$(echo "$raw_message" | sed -E \
+    -e 's/<\/?think>//g' \
     -e 's/^[Cc]ommit [Mm]essage:?\s*//' \
     -e 's/^[`"'\''\s]+//' \
     -e 's/[`"'\''\s\.]+$//' \
-    -e 's/^[[:space:]]+//; s/[[:space:]]+$//')
+    -e 's/^[[:space:]]+//; s/[[:space:]]+$//' \
+    | grep -v '^$' | head -n 1)
 
 # Fallback if LLM output was empty or failed
 if [[ -z "$message" ]]; then
