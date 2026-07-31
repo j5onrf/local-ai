@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.9.7.3]
+# Local-Ai Agent [j5onrf] [v0.9.7.4]
 
 import json
 import os
@@ -101,6 +101,7 @@ def _get_state() -> Dict[str, Any]:
         "show_thinking": True,
         "reasoning_active": False,
         "reasoning_budget": 500,
+        "render_markdown": True,
     }
     if os.path.exists(state_path):
         try:
@@ -226,8 +227,8 @@ def run_interactive_chat(args: List[str]) -> None:
     reasoning_active = st.get("reasoning_active", False)
     reasoning_budget = st.get("reasoning_budget", 500)
 
-    # Set persistent thinking display state
-    os.environ["AI_SHOW_THINKING"] = "1" if st.get("show_thinking", True) else "0"
+    # Set persistent markdown rendering state
+    os.environ["AI_RENDER_MARKDOWN"] = "1" if st.get("render_markdown", True) else "0"
 
     # Apply persistent YOLO state (from workspace config or global .state.json)
     if is_yolo or st.get("yolo_mode", False):
@@ -316,6 +317,14 @@ def run_interactive_chat(args: List[str]) -> None:
                     memory_active = not memory_active
                     _save_state("memory_active", memory_active)
                     ui._console.print(f"[green][sys] Memory {'enabled' if memory_active else 'disabled'}.[/green]\n")
+                    continue
+
+                if query in ("/md", "/markdown"):
+                    curr_md = os.environ.get("AI_RENDER_MARKDOWN", "1") == "1"
+                    new_md = not curr_md
+                    os.environ["AI_RENDER_MARKDOWN"] = "1" if new_md else "0"
+                    _save_state("render_markdown", new_md)
+                    ui._console.print(f"[green][sys] Markdown rendering {'enabled' if new_md else 'disabled'}.[/green]\n")
                     continue
 
                 if query in ("/g", "/yolo"):

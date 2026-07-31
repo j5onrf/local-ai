@@ -46,7 +46,7 @@ except ImportError:
 
 
 class RichStreamer:
-    """Streams fast direct text during generation, then renders full Rich Markdown on completion."""
+    """Streams fast direct text during generation, then renders full Rich Markdown on completion if enabled."""
 
     def __init__(self, prefix: str = "", active: bool = True, spinner: Any = None) -> None:
         self.prefix: str = prefix
@@ -170,23 +170,31 @@ class RichStreamer:
             _console_err.print("[dim]╰───────────────────────────────────────────────────────────────[/dim]\n")
             self.phase = "ANSWER"
 
-        # Erase raw live stream and replace with final Rich Markdown pass
+        # Erase raw live stream and replace with final Rich Markdown pass (if enabled)
         if self.answer_started and self.accumulated_answer.strip():
             clean_ans = self.accumulated_answer.strip().replace("\\n", "\n")
-            term_w = _console.width or 80
-            full_raw = f"{self.prefix.strip()} {clean_ans}"
 
-            # Calculate physical terminal lines used by live stream
-            lines_to_clear = sum(max(1, (len(line) + term_w - 1) // term_w) for line in full_raw.split("\n"))
-            try:
-                sys.stdout.write(f"\033[{lines_to_clear}A\033[1G\033[0J")
-                sys.stdout.flush()
-            except Exception:
-                sys.stdout.write("\n")
+            if os.environ.get("AI_RENDER_MARKDOWN", "1") == "1":
+                term_w = _console.width or 80
+                full_raw = f"{self.prefix.strip()} {clean_ans}"
 
-            p_style = "bold green" if "Agent" in self.prefix else "bold cyan"
-            _console.print(Text(f"{self.prefix.strip()}", style=p_style))
-            _console.print(Markdown(clean_ans, code_theme="ansi_dark"))
+                # Calculate physical terminal lines used by live stream
+                lines_to_clear = sum(max(1, (len(line) + term_w - 1) // term_w) for line in full_raw.split("\n"))
+                try:
+                    sys.stdout.write(f"\033[{lines_to_clear}A\033[1G\033[0J")
+                    sys.stdout.flush()
+                except Exception:
+                    sys.stdout.write("\n")
+
+                p_style = "bold green" if "Agent" in self.prefix else "bold cyan"
+                _console.print(Text(f"{self.prefix.strip()}", style=p_style))
+                _console.print(Markdown(clean_ans, code_theme="ansi_dark"))
+            else:
+                try:
+                    sys.stdout.write("\n")
+                    sys.stdout.flush()
+                except Exception:
+                    pass
 
 
 def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float, show_stats: bool, ctx_used: Optional[int] = None) -> None:
@@ -418,7 +426,10 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
                 if spinner:
                     spinner.stop()
                 _console_err.print()
-                _console_err.print(Markdown(content, code_theme="ansi_dark") if ("#" in content or "|" in content) else content)
+                if os.environ.get("AI_RENDER_MARKDOWN", "1") == "1" and ("#" in content or "|" in content):
+                    _console_err.print(Markdown(content, code_theme="ansi_dark"))
+                else:
+                    _console_err.print(content)
                 _console_err.print()
             return content
         except Exception as e:
@@ -509,7 +520,7 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
                 if spinner:
                     spinner.stop()
                 _console_err.print()
-                if "#" in out or "|" in out or "```" in out:
+                if os.environ.get("AI_RENDER_MARKDOWN", "1") == "1" and ("#" in out or "|" in out or "```" in out):
                     _console_err.print(Markdown(out, code_theme="ansi_dark"))
                 else:
                     _console_err.print(out)

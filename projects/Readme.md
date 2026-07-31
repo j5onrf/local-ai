@@ -163,6 +163,7 @@ Running `ai init <path>` set default workspace agent profile:
 │  /t [N|show|hide]            - Set reasoning budget or show/hide    │
 │  /g, /yolo                   - Toggle confirmation gates (YOLO)     │
 │  /m                          - Toggle database memory               │
+│  /md                         - Toggle Markdown                      │
 │  /stats                      - Generation speed stats               │
 │  /tok                        - Context token usage                  │
 │  /sync                       - Sync index                           │
