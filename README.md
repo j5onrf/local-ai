@@ -54,7 +54,7 @@ Built with zero context-stuffing for extreme efficiency on quantized local engin
 
 ---
 
-## Textual TUI
+## Interactive Textual TUI
 
 <p align="center">
 <img width="800" alt="20260731_093258" src="https://github.com/user-attachments/assets/b5ec5a10-0a91-46c6-a109-f2578025ac96" />
@@ -101,7 +101,7 @@ Agent: Workspace loaded. Awaiting instructions.
 ❯ 
 ```
 
-#### 3. Commands
+#### 3. Help & Commands
 
 ```console
 ╭─  ⚙ Help & Commands  ───────────────────────────────────────────────╮
@@ -190,5 +190,6 @@ AI_MAX_TOKENS="8192"
 
 * **Contributions:** [suyadnya](https://github.com/wibawasuyadnya) for `.env` architecture, macOS compatibility testing, and alias optimization.
 * **Community:** Contributions are always welcome!
+
 
 
