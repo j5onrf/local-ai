@@ -89,7 +89,7 @@ def search_past_context(workspace: str, query: str) -> None:
             if key == '\x03':
                 sys.stderr.write("Cancelled.\n")
                 sys.exit(2)
-            elif key in ('\r', '\n', ''):
+            elif key in ('\r', '\n'):
                 sys.stderr.write("\033[2;32m[sys] Memory injected.\033[0m\n")
                 sys.stderr.flush()
                 print("\n### Relevant Past Discussion (Retrieved from Session Memory):")

@@ -1,17 +1,15 @@
-<!-- Adaptive Header Banner (Auto-switches on GitHub Dark/Light Theme) -->
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/header/graph.svg?title=Local-AI+Agent&subtitle=High-Speed+Local+%26+Cloud+Developer+Harness&logo=python&logoColor=10b981&theme=zinc&mode=dark&accent=10b981&glow=true&pattern=grid" />
-    <img alt="Local-AI Agent" src="https://shieldcn.dev/header/graph.svg?title=Local-AI+Agent&subtitle=High-Speed+Local+%26+Cloud+Developer+Harness&logo=python&logoColor=10b981&theme=zinc&mode=light&accent=10b981&glow=false&pattern=grid" />
-  </picture>
+  <img alt="Local-AI Agent Logo" src="logo.png" width="800" />
+</p>
 
-
+<h1 align="center">Local-AI Agent <kbd>v0.9.7.3-beta</kbd></h1>
 
 <p align="center">
-  <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/github/last-commit/j5onrf/local-ai.svg?color=emerald&variant=outline" alt="Last Commit"></a>
+  <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/github/stars/j5onrf/local-ai.svg?color=emerald&variant=outline" alt="GitHub Stars"></a>
   <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/badge/language-python.svg?color=emerald&variant=outline" alt="Language"></a>
+  <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/github/last-commit/j5onrf/local-ai.svg?color=emerald&variant=outline" alt="Last Commit"></a>
   <a href="https://github.com/j5onrf/local-ai/blob/main/LICENSE"><img src="https://shieldcn.dev/badge/license-MIT.svg?color=emerald&variant=outline" alt="License"></a>
-  <img src="https://shieldcn.dev/badge/version-v0.9.7.2--beta-violet.svg?variant=outline" alt="Version"></a>
+  <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/views/repo/j5onrf/local-ai.svg?color=emerald&variant=outline" alt="Views"></a>
 </p>
 
 <p align="center">
@@ -24,7 +22,7 @@
 
 Built with zero context-stuffing for extreme efficiency on quantized local engines (`Qwen-3.5-2B+`, `Gemma-4-E2B+`) and frontier cloud provider cascades.
 
-- **Direct Shell Jaccard (`<shortcut>`):** Sub-millisecond keyword routing to shell scripts via [`ai-context.md`](ai-context.md).
+- **Direct Shell Jaccard (`<shortcut>`):** Sub-millisecond keyword routing to local shell scripts via [`ai-context.md`](ai-context.md).
 - **Single-Turn Query (`ai <query>`):** Instant response piped straight back to your active shell prompt.
 - **Multi-Turn Chat (`ai`):** Persistent interactive terminal session with memory context.
 - **Workspace Agent (`ai init <path>`):** Full codebase graph indexing, path-healing file editing, and sub-agent concurrency.
