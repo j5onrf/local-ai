@@ -55,7 +55,8 @@ Built with zero context-stuffing for extreme efficiency on quantized local engin
 ## Interactive Textual TUI
 
 <p align="center">
-    <img alt="[Local-AI Agent](https://github.com/user-attachments/assets/544ee44d-bd4e-4c5c-a4cd-e2c7e33efe84)" src="https://github.com/user-attachments/assets/544ee44d-bd4e-4c5c-a4cd-e2c7e33efe84" width="800" />
+<img width="800" alt="20260731_113218" src="https://github.com/user-attachments/assets/b76444a5-c69b-4b09-9e04-c7e03fb12262" />
+
 </p>
 
 ---
@@ -186,8 +187,9 @@ AI_MAX_TOKENS="8192"
 
 ## Credits
 
-*   **License**: Licensed under the permissive [MIT LICENSE](LICENSE).
+*   **License**: Licensed under the permissive [MODIFIED MIT LICENSE](LICENSE).
 *   **Community:** Contributions are always welcome!
+
 
 
 
