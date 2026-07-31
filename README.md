@@ -41,6 +41,27 @@ Built with zero context-stuffing for extreme efficiency on quantized local engin
 
 ---
 
+## Core Capabilities
+
+| Core Module | Capability | Description |
+| :--- | :--- | :--- |
+| **Engine** | **Zero-Daemon** | 0% idle CPU/RAM usage. Native Python standard-library execution. |
+| **Resilience** | **Provider Cascade** | Top-down `.env` fallback: Gemini $\rightarrow$ OpenRouter $\rightarrow$ OpenAI $\rightarrow$ Claude $\rightarrow$ Grok $\rightarrow$ Local GGUF. |
+| **Multi-Agent** | **Subagents** | [Vercel Eve](https://github.com/vercel/eve)-style sub-agents with [herdr](https://github.com/ogulcancelik/herdr) multiplexing via (`-save`/`-load`). |
+| **Safety** | **Zero-Trust Gates** | Mandatory approval prompts for commands and out-of-bounds file access. |
+| **Validation** | **Type-Safe & AST Guard** | [Pydantic AI](https://github.com/pydantic/pydantic-ai) schemas + [OpenAI Agents](https://github.com/openai/openai-agents-python)-style self-correcting `.py`/`.json` writes. |
+| **Optimization** | **Token-Slasher** | Custom [`tool`](https://github.com/j5onrf/fetch/tree/main/tools) and [`skill`](https://github.com/j5onrf/fetch/tree/main/skills) integration built for minimal token consumption. |
+
+---
+
+## Textual TUI
+
+<p align="center">
+<img width="800" alt="20260731_093258" src="https://github.com/user-attachments/assets/b5ec5a10-0a91-46c6-a109-f2578025ac96" />
+</p>
+
+---
+
 ## CLI Launch Interface
 
 > Customize box themes with `/box [1-5]`. For detailed multi-agent workflows, read the [**Workspace Manual**](https://github.com/j5onrf/local-ai/blob/main/projects/Readme.md).
@@ -80,22 +101,7 @@ Agent: Workspace loaded. Awaiting instructions.
 ❯ 
 ```
 
----
-
-## Core Capabilities
-
-| Core Module | Capability | Description |
-| :--- | :--- | :--- |
-| **Engine** | **Zero-Daemon** | 0% idle CPU/RAM usage. Native Python standard-library execution. |
-| **Resilience** | **Provider Cascade** | Top-down `.env` fallback: Gemini $\rightarrow$ OpenRouter $\rightarrow$ OpenAI $\rightarrow$ Claude $\rightarrow$ Grok $\rightarrow$ Local GGUF. |
-| **Multi-Agent** | **Subagents** | [Vercel Eve](https://github.com/vercel/eve)-style sub-agents with [herdr](https://github.com/ogulcancelik/herdr) multiplexing via (`-save`/`-load`). |
-| **Safety** | **Zero-Trust Gates** | Mandatory approval prompts for commands and out-of-bounds file access. |
-| **Validation** | **Type-Safe & AST Guard** | [Pydantic AI](https://github.com/pydantic/pydantic-ai) schemas + [OpenAI Agents](https://github.com/openai/openai-agents-python)-style self-correcting `.py`/`.json` writes. |
-| **Optimization** | **Token-Slasher** | Custom [`tool`](https://github.com/j5onrf/fetch/tree/main/tools) and [`skill`](https://github.com/j5onrf/fetch/tree/main/skills) integration built for minimal token consumption. |
-
----
-
-## Command Reference
+#### 3. Commands
 
 ```console
 ╭─  ⚙ Help & Commands  ───────────────────────────────────────────────╮
@@ -154,6 +160,15 @@ GEMINI_MODEL="gemini-3.5-flash-lite"
 OPENROUTER_API_KEY="sk-or-v1-YourOpenRouterKey"
 OPENROUTER_MODEL="openrouter/free"
 
+OPENAI_API_KEY="your-openai-key"
+OPENAI_MODEL="gpt-5.6"
+
+CLAUDE_API_KEY="your-claude-key"
+CLAUDE_MODEL="claude-opus-5"
+
+XAI_API_KEY="xai-your-grok-key"
+XAI_MODEL="grok-4.5"
+
 AI_MAX_TOKENS="8192"
 ```
 
@@ -175,4 +190,5 @@ AI_MAX_TOKENS="8192"
 
 * **Contributions:** [suyadnya](https://github.com/wibawasuyadnya) for `.env` architecture, macOS compatibility testing, and alias optimization.
 * **Community:** Contributions are always welcome!
+
 
