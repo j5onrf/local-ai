@@ -1,15 +1,13 @@
 <p align="center">
-  <img alt="Local-AI Agent Logo" src="logo.png" width="800" />
+  <img alt="Local-AI Agent" src="logo.png" width="800" />
 </p>
 
 <h1 align="center">Local-AI Agent <kbd>v0.9.7.3-beta</kbd></h1>
 
 <p align="center">
-  <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/github/stars/j5onrf/local-ai.svg?color=emerald&variant=outline" alt="GitHub Stars"></a>
-  <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/badge/language-python.svg?color=emerald&variant=outline" alt="Language"></a>
-  <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/github/last-commit/j5onrf/local-ai.svg?color=emerald&variant=outline" alt="Last Commit"></a>
-  <a href="https://github.com/j5onrf/local-ai/blob/main/LICENSE"><img src="https://shieldcn.dev/badge/license-MIT.svg?color=emerald&variant=outline" alt="License"></a>
-  <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/views/repo/j5onrf/local-ai.svg?color=emerald&variant=outline" alt="Views"></a>
+  <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
+  <img src="https://img.shields.io/badge/language-python-a3be8c?style=for-the-badge&labelColor=1f1f1f" alt="Language">
+  <img src="https://img.shields.io/github/repo-size/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=d6b4e0" alt="Repo Size">
 </p>
 
 <p align="center">
@@ -57,7 +55,7 @@ Built with zero context-stuffing for extreme efficiency on quantized local engin
 ## Interactive Textual TUI
 
 <p align="center">
-<img width="800" alt="20260731_093258" src="https://github.com/user-attachments/assets/b5ec5a10-0a91-46c6-a109-f2578025ac96" />
+    <img alt="[Local-AI Agent](https://github.com/user-attachments/assets/544ee44d-bd4e-4c5c-a4cd-e2c7e33efe84)" src="https://github.com/user-attachments/assets/544ee44d-bd4e-4c5c-a4cd-e2c7e33efe84" width="800" />
 </p>
 
 ---
@@ -174,22 +172,22 @@ AI_MAX_TOKENS="8192"
 
 ---
 
-## Developer Activity
+<h2 align="center">Roadmap to v1.0.0</h2>
 
-<p align="center">
-  <img src="https://shieldcn.dev/chart/github/commits/j5onrf.svg?title=Commit+Activity&theme=zinc&mode=dark&bg=transparent&color=10b981&fill=true" alt="Commit Activity" />
-</p>
+- [x] **Core Engine Optimization:** Production pass on streaming, token counting, and sub-agent concurrency.
+- [x] **Thinking UI Controls:** Real-time thinking TPS metrics and `/t show|hide` panel toggles.
+- [x] **Modular Agent Personas & Tool Loop:** Interactive profile selector on `ai init` (`pi`, `claude`, `hermes`) with automated path-healing file editing & YOLO execution loops.
+- [x] **Textual Async TUI:** Sub-millisecond `uvloop` event loop integration, Unix socket sub-agent hub, and live workspace watchers.
+- [ ] **Context Stress Testing:** Continuous context-window pressure tests across quantized local engines.
+- [ ] **Automated File Containment Validation:** Zero-trust security verification on traversal boundaries.
+- [ ] **v1.0.0 Production Release Tag!**
 
 ---
 
-## Contributors & Credits
+## Credits
 
-<p align="center">
-  <img src="https://shieldcn.dev/contributors/j5onrf/local-ai.svg?theme=zinc&limit=10&radius=12" alt="Contributors Grid" />
-</p>
-
-* **Contributions:** [suyadnya](https://github.com/wibawasuyadnya) for `.env` architecture, macOS compatibility testing, and alias optimization.
-* **Community:** Contributions are always welcome!
+*   **License**: Licensed under the permissive [MIT LICENSE](LICENSE).
+*   **Community:** Contributions are always welcome!
 
 
 
