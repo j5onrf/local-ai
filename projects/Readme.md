@@ -21,7 +21,9 @@ Enable Autonomous YOLO mode? [y/N]: y
 ╰─────────────────────────────────────── Ctrl+C to exit ─╯
  Startup context: 294 tokens
 
-Agent: I'm Claude Lite, a precise software development agent. I acknowledge your workspace at ~/.config/local-ai/projects/session-test and will wait for your explicit instructions before proceeding with any operations.
+Agent: I'm Claude Lite, a precise software development agent. I acknowledge your workspace at 
+~/.config/local-ai/projects/session-test and will wait for your explicit instructions before 
+proceeding with any operations.
  [ 58 tokens | 1.11s | 42.12 t/s ]
  [ 1162 in | 58 out | ctx: 14.9% ]
 ```
@@ -32,17 +34,7 @@ Agent: I'm Claude Lite, a precise software development agent. I acknowledge your
 
 Switch box styles using `/box [1-5]` (or type `/box` to cycle). Selection persists in `~/.config/local-ai/.state.json`.
 
-#### Style #1: Double Border
-```console
-╔═  ❖ Local-AI Agent  ══════════╗
-║     model:  Qwen3.5-2B.gguf   ║
-║ directory:  ~                 ║
-║     skill:  default           ║
-║  database:  stateless         ║
-╚══════════════ Ctrl+C to exit ═╝
-```
-
-#### Style #2: Codex Rounded (Default)
+#### Style #1: Codex Rounded (Default)
 ```console
 ╭─  >_ Local-AI Agent  ─────────╮
 │     model:  Qwen3.5-2B.gguf   │
@@ -50,6 +42,16 @@ Switch box styles using `/box [1-5]` (or type `/box` to cycle). Selection persis
 │     skill:  chat              │
 │  database:  stateless         │
 ╰────────────── Ctrl+C to exit ─╯
+```
+
+#### Style #2: Double Border
+```console
+╔═  ❖ Local-AI Agent  ══════════╗
+║     model:  Qwen3.5-2B.gguf   ║
+║ directory:  ~                 ║
+║     skill:  default           ║
+║  database:  stateless         ║
+╚══════════════ Ctrl+C to exit ═╝
 ```
 
 #### Style #3: Heavy Square

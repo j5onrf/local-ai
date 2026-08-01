@@ -174,10 +174,10 @@ def draw_session_box(
     table.add_row("database:", mem_status if is_agent else "stateless")
 
     # Style Presets Map: (Base Title, Box Type, Border Color, Title Style)
-    # Style #2 is configured as the default fallback
+    # Style #1 is configured as the default fallback
     STYLES = {
-        1: ("❖ Local-AI Agent", DOUBLE, "bright_blue", "bold bright_blue"),
-        2: (">_ Local-AI Agent", ROUNDED, "green", "bold bright_green"),  # DEFAULT
+        1: (">_ Local-AI Agent", ROUNDED, "green", "bold bright_green"),  # DEFAULT
+        2: ("❖ Local-AI Agent", DOUBLE, "bright_blue", "bold bright_blue"),
         3: ("❖ Local-AI Agent", HEAVY, "bright_cyan", "bold bright_white"),
         4: ("Local-AI Agent", HORIZONTALS, "dim white", "bold cyan"),
     }
@@ -194,7 +194,7 @@ def draw_session_box(
             subtitle_align="right"
         )
     else:
-        base_title, box_type, border_col, title_style = STYLES.get(box_style, STYLES[2])
+        base_title, box_type, border_col, title_style = STYLES.get(box_style, STYLES[1])
         if sub_id:
             title_text = f" {base_title} [sub-agent #{sub_id}] "
         elif version:

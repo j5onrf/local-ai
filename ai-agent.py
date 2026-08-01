@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.9.7.26]
+# Local-Ai Agent [j5onrf] [v0.9.7.27]
 
 import json
 import os
@@ -119,7 +119,7 @@ def _get_state() -> Dict[str, Any]:
         "spell_active": True,
         "show_stats": True,
         "memory_active": True,
-        "box_style": 2,
+        "box_style": 1,
         "yolo_mode": False,
         "show_thinking": True,
         "reasoning_active": False,
