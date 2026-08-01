@@ -14,7 +14,7 @@ Enable Autonomous YOLO mode? [y/N]: y
 ✓ Profile set to: Claude Lite (Autonomous YOLO)
 
 ╭─  >_ Local-AI Agent [sub-agent #1]  ───────────────────╮
-│     model:  Qwen3.5-2B-Claude.gguf                     │
+│     model:  Qwen3.5-2B.gguf                            │
 │ directory:  ~/.config/local-ai/projects/session-test   │
 │     skill:  claude/lite                                │
 │  database:  active (0 facts, 1 turns)                  │
