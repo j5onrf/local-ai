@@ -56,6 +56,7 @@ class RichStreamer:
         self.accumulated_answer: str = ""
         self.phase: str = "INIT"
         self.answer_started: bool = False
+        self.thinking_started: bool = False
         self.first_think_token: bool = False
         self.pending_think_newlines: str = ""
 
@@ -83,7 +84,6 @@ class RichStreamer:
 
     def update(self, token: str) -> None:
         if not self.active:
-            # Handle thinking state suppression when piped to a file/non-tty
             if "<think>" in token and self.phase != "THINKING":
                 self.phase = "THINKING"
                 token = token.replace("<think>", "")
@@ -94,7 +94,7 @@ class RichStreamer:
                 token = parts[1] if len(parts) > 1 else ""
 
             if self.phase == "THINKING":
-                return  # Suppress thinking tokens when output is piped to a file or script
+                return
 
             if token:
                 try:
@@ -110,16 +110,9 @@ class RichStreamer:
         if "<think>" in token and self.phase != "THINKING":
             self.phase = "THINKING"
             self.first_think_token = True
+            self.thinking_started = False
             self.pending_think_newlines = ""
             self._update_spinner("Thinking...")
-            if show_think:
-                self._stop_spinner()
-                _console_err.print("[dim]╭─ ⚙ Thinking  ──────────────────────────────────────────[/dim]")
-                try:
-                    sys.stderr.write("\033[?25h")
-                    sys.stderr.flush()
-                except (IOError, OSError):
-                    pass
             token = token.replace("<think>", "")
 
         # Detect end of thinking phase
@@ -130,7 +123,7 @@ class RichStreamer:
 
             self.accumulated_thinking += thinking_part
 
-            if show_think and self.phase == "THINKING":
+            if show_think and self.phase == "THINKING" and self.accumulated_thinking.strip():
                 text_part = thinking_part.rstrip("\r\n")
                 if text_part:
                     try:
@@ -142,7 +135,6 @@ class RichStreamer:
                     except (IOError, OSError):
                         pass
 
-                # Discard any pending trailing newlines emitted before </think>
                 self.pending_think_newlines = ""
 
                 try:
@@ -170,6 +162,12 @@ class RichStreamer:
             if token:
                 self.accumulated_thinking += token
                 if show_think:
+                    # Delay header render until actual printable text arrives
+                    if not self.thinking_started and token.strip():
+                        self.thinking_started = True
+                        self._stop_spinner()
+                        _console_err.print("[dim]╭─ ⚙ Thinking  ──────────────────────────────────────────[/dim]")
+
                     text_part = token.rstrip("\r\n")
                     newlines_part = token[len(text_part):]
 
@@ -234,7 +232,7 @@ class RichStreamer:
             clean_ans = self.accumulated_answer.strip().replace("\\n", "\n")
 
             if os.environ.get("AI_RENDER_MARKDOWN", "1") == "1":
-                term_w = _console.width or 80
+                term_w = _console_width or 80
                 full_raw = f"{self.prefix.strip()} {clean_ans}"
 
                 lines_to_clear = sum(max(1, (len(line) + term_w - 1) // term_w) for line in full_raw.split("\n"))

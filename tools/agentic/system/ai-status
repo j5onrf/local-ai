@@ -202,7 +202,7 @@ fi
 # Retrieve the dynamic limits based on the active GEMINI_MODEL
 gemini_limits=$(get_gemini_limits "${GEMINI_MODEL:-gemini-3.5-flash-lite}")
 
-echo -e "# ACTIVE AI ROUTING DIAGNOSTICS\n\n> **AI Instructions:**\n> Summarize the active provider, model, 24h RPD count, and the configured standby fallback route in 1-2 direct, unformatted sentences.\n> If primary is offline and fallback is actively being used, briefly state why.\n\n---\n\n## CREDENTIALS & CONFIGURATION"
+echo -e "# ACTIVE AI ROUTING DIAGNOSTICS\n\nSummarize the active provider, model, 24h RPD count, and standby fallback route in 1-2 direct sentences:\n\n---\n\n## CREDENTIALS & CONFIGURATION"
 echo "* **GEMINI_API_KEY**  : $(mask_key "${GEMINI_API_KEY:-}")"
 echo "* **GEMINI_MODEL**     : \`${GEMINI_MODEL:-gemini-3.5-flash-lite}\` (Free Limits: ${gemini_limits})"
 echo "* **GEMINI METRICS**  : \`RPM: ${gemini_rpm} | RPD: ${gemini_rpd}\` (Last 24h rolling)"
