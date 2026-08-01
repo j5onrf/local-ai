@@ -18,7 +18,7 @@
 
 ## Overview & Execution Modes
 
-Built with zero context-stuffing for extreme efficiency on quantized local engines (`Qwen-3.5-2B+`, `Gemma-4-E2B+`) and frontier cloud provider cascades.
+Lightweight Python orchestration (rich + requests + sqlite-vec) controlling a C++ backend (llama-server). Built with zero context-stuffing for extreme efficiency on quantized local engines (`Qwen-3.5-2B+`, `Qwen3.6-35B-A3B+`) and frontier cloud provider cascades.
 
 - **Direct Shell Jaccard (`<shortcut>`):** Sub-millisecond keyword routing to local shell scripts via [`ai-context.md`](ai-context.md).
 - **Single-Turn Query (`ai <query>`):** Instant response piped straight back to your active shell prompt.
@@ -96,7 +96,7 @@ Agent: Workspace loaded. Awaiting instructions.
 ## Interactive Textual TUI
 
 <p align="center">
-<img width="800" alt="20260731_113218" src="https://github.com/user-attachments/assets/b76444a5-c69b-4b09-9e04-c7e03fb12262" />
+<img width="800" alt="20260731_113218a" src="https://github.com/user-attachments/assets/76488b10-7cfd-4b50-8c2b-a231b6dda627" />
 </p>
 
 ---
@@ -161,3 +161,4 @@ AI_MAX_TOKENS="8192"
 
 *   **License**: Licensed under the permissive [MODIFIED MIT LICENSE](LICENSE).
 *   **Community:** Contributions are always welcome!
+
