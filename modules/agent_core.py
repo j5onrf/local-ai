@@ -232,7 +232,7 @@ class RichStreamer:
             clean_ans = self.accumulated_answer.strip().replace("\\n", "\n")
 
             if os.environ.get("AI_RENDER_MARKDOWN", "1") == "1":
-                term_w = _console_width or 80
+                term_w = _console.width or 80
                 full_raw = f"{self.prefix.strip()} {clean_ans}"
 
                 lines_to_clear = sum(max(1, (len(line) + term_w - 1) // term_w) for line in full_raw.split("\n"))
