@@ -6,7 +6,7 @@ High-speed local developer agent, episodic memory, SQLite checkpoints, and codeb
 ~ ❯ sess
 [01/03] ❯ [session test] ai init ~/session-test --init
 :: ↵ run  Esc: 
-✔ Mapping complete! [session-test index-map & SQLite graph database updated]
+✔ Mapping complete! [session-test index-map updated]
 
 [ai init] Select default Agent Profile for workspace session-test:
 
@@ -21,11 +21,11 @@ Enable Autonomous YOLO mode? [y/N]: y
 ╰─────────────────────────────────────── Ctrl+C to exit ─╯
  Startup context: 294 tokens
 
-Agent: I'm Claude Lite, a precise software development agent. I acknowledge your workspace at 
-~/.config/local-ai/projects/session-test and will wait for your explicit instructions before 
-proceeding with any operations.
- [ 58 tokens | 1.11s | 42.12 t/s ]
- [ 1162 in | 58 out | ctx: 14.9% ]
+Agent: I'm Claude Lite, a precise software development agent. Ready to work with your session-test 
+workspace starting at ~/.config/local-ai/projects/session-test. STOP and WAIT for user instructions.
+ [ 53 tokens | 1.21s | 41.03 t/s ]
+ [ 1098 in | 53 out | ctx: 14.1% ]
+❯ 
 ```
 
 ---
