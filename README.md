@@ -114,7 +114,8 @@ yay -S python-sqlite-vec && sudo pacman -S python-textual python-uvloop
 git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai
 
 # 4. Register shell environment hook
-echo '[ -f "$HOME/.config/local-ai/ai-hook.sh" ] && source "$HOME/.config/local-ai/ai-hook.sh"' >> ~/.bashrc
+echo '[ -f "$HOME/.config/local-ai/ai-hook.sh" ] && \
+source "$HOME/.config/local-ai/ai-hook.sh"' >> ~/.bashrc
 source ~/.bashrc
 
 # 5. Create your configuration file
