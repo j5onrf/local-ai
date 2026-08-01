@@ -18,9 +18,14 @@ STATE_FILE = "/tmp/cpu_mode_state"
 # Map local GGUF filenames to their respective launch scripts
 LOCAL_MODELS = [
     {
-        "name": "Qwen 3.5 2B (4-bit base)",
+        "name": "Qwen3.5-2B-Claude-4.6-OS-Auto-Variable-HERETIC-UNCENSORED-THINKING",
         "file": "Qwen3.5-2B.gguf",
         "script": "q2b.sh"
+    },
+    {
+        "name": "LFM2.5-8B-A1B-APEX-I-Compact", 
+        "file": "LFM2.5-8B-A1B.gguf", 
+        "script": "lfm.sh"
     },
     {
         "name": "Hermes3.6-35B-A3B-Uncensored-Genesis-V6-APEX-Compact",
