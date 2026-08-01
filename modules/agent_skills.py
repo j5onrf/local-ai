@@ -28,16 +28,15 @@ def ensure_mysys_exists(skills_dir: str, cfg_dir: str) -> None:
 
 
 def find_skill_file(base_dir: str, skill_name: str) -> Optional[str]:
-    """Scans subdirectories to locate target Markdown skill file (supports nested paths like pi/pro)."""
+    """Scans subdirectories to locate target Markdown skill file."""
     skill_clean = skill_name.lstrip("-").lower()
-    
+
     # Direct candidate checks (e.g., pi/pro -> skills/profiles/pi/pro.md)
-    direct_candidates = [
+    for cand in (
         os.path.join(base_dir, "profiles", f"{skill_clean}.md"),
         os.path.join(base_dir, f"{skill_clean}.md"),
         os.path.join(base_dir, "system", f"{skill_clean}.md")
-    ]
-    for cand in direct_candidates:
+    ):
         if os.path.exists(cand):
             return cand
 
@@ -74,13 +73,15 @@ def run_local_tool(cmd: str) -> str:
     try:
         sanitized = PAGER_STRIP_RE.sub('', cmd.strip()).strip()
         workspace_path = os.environ.get("AI_WORKSPACE_PATH") or os.getcwd()
+        env = os.environ.copy()
+        env["AI_CONTEXT_RUN"] = "1"
         out = subprocess.check_output(
-            sanitized, 
-            shell=True, 
-            text=True, 
-            timeout=15, 
-            cwd=workspace_path, 
-            env={**os.environ, "AI_CONTEXT_RUN": "1"}
+            sanitized,
+            shell=True,
+            text=True,
+            timeout=15,
+            cwd=workspace_path,
+            env=env
         ).strip()
         return f"{out}\n" if out else "Action executed successfully.\n"
     except subprocess.CalledProcessError:
@@ -98,11 +99,13 @@ def run_interactive_tool(cmd: str) -> str:
     try:
         sanitized = PAGER_STRIP_RE.sub('', cmd.strip()).strip()
         workspace_path = os.environ.get("AI_WORKSPACE_PATH") or os.getcwd()
+        env = os.environ.copy()
+        env["AI_CONTEXT_RUN"] = "1"
         subprocess.run(
-            sanitized, 
-            shell=True, 
-            cwd=workspace_path, 
-            env={**os.environ, "AI_CONTEXT_RUN": "1"}
+            sanitized,
+            shell=True,
+            cwd=workspace_path,
+            env=env
         )
         return "__ABORT_TURN__"
     except Exception as e:
@@ -122,22 +125,20 @@ def get_system_context(query: str, context_file: str, stop_words: Set[str], skil
             tool = entry.get("cmd", "")
             if tool.startswith("[TOOL]"):
                 tool = tool.replace("[TOOL]", "").strip()
-                
-                # Check for interactive components to run in foreground
+
                 if "read -p" in tool or "less" in tool or "fzf" in tool:
                     return run_interactive_tool(tool)
-                
+
                 if " --s" not in tool:
                     if not ui.confirm_tool(tool):
                         return "__ABORT_TURN__"
                 if "system" in tool.lower():
                     ensure_mysys_exists(skills_dir, cfg_dir)
                 tool = tool.replace(" --s", "").strip()
-                for flag in [" --leaf", " --glow", " --cat", " --mdcat", " --view"]:
+                for flag in (" --leaf", " --glow", " --cat", " --mdcat", " --view"):
                     tool = tool.replace(flag, "")
                 intent_tokens = set(context.tokenize(entry.get("intent", ""), stop_words))
-                
-                # Dynamic path-aware arguments parsing
+
                 args_list = []
                 for w in query.split():
                     if any(c in w for c in ("/", "~", ".")):
@@ -145,7 +146,7 @@ def get_system_context(query: str, context_file: str, stop_words: Set[str], skil
                     elif context.tokenize(w, stop_words) and context.tokenize(w, stop_words)[0] not in intent_tokens:
                         args_list.append(w)
                 args = " ".join(args_list)
-                
+
                 if "$1" in tool or "{}" in tool:
                     tool = tool.replace("$1", args).replace("{}", args).strip()
                 sys.stderr.write(f"\033[2m[sys] Executing: {tool}\033[0m\n")
@@ -167,7 +168,7 @@ def load_skill_blueprints(dept_skills_dir: str, stop_words: Set[str]) -> List[Di
                     try:
                         with open(path, "r", encoding="utf-8") as sf:
                             lines = [line.strip() for line in sf.readlines()]
-                        
+
                         if not lines:
                             continue
 
@@ -187,11 +188,8 @@ def load_skill_blueprints(dept_skills_dir: str, stop_words: Set[str]) -> List[Di
                         else:
                             base_name = os.path.splitext(f)[0]
                             first_header = next((l.replace("#", "").strip() for l in lines if l.startswith("#")), None)
-                            if first_header:
-                                skill_name = first_header
-                            else:
-                                skill_name = base_name.replace("-", " ").replace("_", " ").title()
-                            
+                            skill_name = first_header if first_header else base_name.replace("-", " ").replace("_", " ").title()
+
                             filename_tokens = re.split(r"[-_]", base_name.lower())
                             skill_name_tokens = context.tokenize(skill_name, stop_words)
                             intent_list = list(set(filename_tokens + skill_name_tokens))
@@ -201,7 +199,7 @@ def load_skill_blueprints(dept_skills_dir: str, stop_words: Set[str]) -> List[Di
                             "name": skill_name.lower(),
                             "path": path,
                             "rel_path": rel_path,
-                            "desc": desc_line if desc_line else "No description provided.",
+                            "desc": desc_line or "No description provided.",
                             "intents": intent_list,
                             "tokens": context.tokenize(" ".join(intent_list), stop_words)
                         })
@@ -224,20 +222,21 @@ def run_skill_selector(workspace: str, raw_cmd: str, dept_skills_dir: str, stop_
     skills = load_skill_blueprints(dept_skills_dir, stop_words)
     current_idx = 0
 
-    sys.stderr.write("\033[?25l")  # Hide terminal cursor
+    sys.stderr.write("\033[?25l")
     sys.stderr.flush()
-    
+
     try:
         while True:
             candidates = []
+            q_tokens = set(context.tokenize(search_query, stop_words)) if search_query else set()
+            sq_lower = search_query.lower()
+
             for s in skills:
                 if not search_query:
                     candidates.append((1.0, s))
                 else:
-                    q_tokens = set(context.tokenize(search_query, stop_words))
                     s_tokens = set(s["tokens"])
                     score = len(q_tokens & s_tokens) / len(q_tokens | s_tokens) if (q_tokens & s_tokens) else 0.0
-                    sq_lower = search_query.lower()
                     if sq_lower in s["name"] or sq_lower in os.path.basename(s["path"]).lower() or any(sq_lower in i for i in s["intents"]):
                         score = max(score, 0.8)
                     if score > 0.0:
@@ -257,21 +256,21 @@ def run_skill_selector(workspace: str, raw_cmd: str, dept_skills_dir: str, stop_
                 _, selected_skill = candidates[current_idx]
                 idx_str = f"{current_idx + 1:02d}/{num_opts:02d}"
                 filter_indicator = f" \033[90m| Filter: \033[1;33m{search_query}\033[0m" if search_query else ""
-                
+
                 sys.stderr.write(f"\r\x1b[K\033[1;30m[\033[1;32m{idx_str}\033[1;30m]\033[0m ❯ \x1b[1;36m[skill]\x1b[0m \033[1;32m{selected_skill['name']}\033[0m \033[90m({selected_skill['rel_path']}){filter_indicator}\033[0m\n")
                 sys.stderr.write(f"\r\x1b[K\033[3m   \"{selected_skill['desc']}\"\033[0m [↵ load  Type to filter  Esc]: ")
                 sys.stderr.flush()
-            
+
             key = ui.get_key()
             if key in ('\x03', '\x1b'):
                 sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[KCancelled.\n")
                 break
-                
+
             elif key in ('\r', ''):
                 if num_opts > 0:
                     _, selected_skill = candidates[current_idx]
                     try:
-                        with open(selected_skill["path"], "r") as sf: 
+                        with open(selected_skill["path"], "r", encoding="utf-8") as sf:
                             skill_body = sf.read().strip()
                         chat_history[0]["content"] += f"\n\n### Loaded On-Demand Skill: {selected_skill['name']}\n{skill_body}\n"
                         sys.stderr.write(f"\r\x1b[K\x1b[1A\r\x1b[K\033[2;32m[sys] Skill '{selected_skill['name']}' successfully loaded.\033[0m\n")
@@ -281,40 +280,39 @@ def run_skill_selector(workspace: str, raw_cmd: str, dept_skills_dir: str, stop_
                 else:
                     sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[KNo skill selected.\n")
                 break
-                
+
             elif key in ('\x1b[A', '\x1b[B'):
                 if num_opts > 0:
                     current_idx = (current_idx + (1 if key == '\x1b[B' else -1) + num_opts) % num_opts
                 sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
-                
+
             elif key in ('\x7f', '\x08'):
-                if len(search_query) > 0:
+                if search_query:
                     search_query = search_query[:-1]
                     current_idx = 0
                 sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
-                
+
             elif len(key) == 1 and key.isprintable():
                 search_query += key
                 current_idx = 0
                 sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
             else:
                 sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
-                
+
     except KeyboardInterrupt:
-        sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[KCancelled.\n")
+        sys.stderr.write("\r\x1b[2K\nCancelled.\n")
         sys.stderr.flush()
         sys.exit(130)
     finally:
-        sys.stderr.write("\033[?25h")  # Show terminal cursor
+        sys.stderr.write("\033[?25h")
         sys.stderr.flush()
 
 
 if __name__ == "__main__":
     CFG_DIR = os.path.expanduser("~/.config/local-ai")
-    ON_DEMAND_SKILLS_DIR = os.path.join(CFG_DIR, "skills", "on-demand")  # Clean on-demand search target
+    ON_DEMAND_SKILLS_DIR = os.path.join(CFG_DIR, "skills", "on-demand")
     STOP_WORDS = {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"}
-    
+
     if len(sys.argv) < 3:
-        sys.argv.append("")
-        sys.argv.append("")
+        sys.argv.extend(["", ""])
     run_skill_selector(sys.argv[1], sys.argv[2], ON_DEMAND_SKILLS_DIR, STOP_WORDS)

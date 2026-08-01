@@ -18,7 +18,7 @@ STATE_FILE = "/tmp/cpu_mode_state"
 # Map local GGUF filenames to their respective launch scripts
 LOCAL_MODELS = [
     {
-        "name": "Qwen3.5-2B-Claude-4.6-OS-Auto-Variable-HERETIC-UNCENSORED-THINKING",
+        "name": "Qwen 3.5 2B (unsloth)",
         "file": "Qwen3.5-2B.gguf",
         "script": "q2b.sh"
     },

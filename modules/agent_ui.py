@@ -18,7 +18,7 @@ from rich.console import Console, Group
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
-from rich.box import DOUBLE, ROUNDED, HEAVY, SQUARE, HORIZONTALS
+from rich.box import DOUBLE, ROUNDED, HEAVY, HORIZONTALS
 
 try:
     import tty
@@ -103,14 +103,16 @@ def _read_fd(fd: int) -> str:
 
 def get_key() -> str:
     """Reads a single key or raw keyboard escape sequence securely from /dev/tty or stdin."""
-    for target in ("/dev/tty", None):
+    if sys.stdin.isatty():
         try:
-            if target:
-                with open(target, "r") as f:
-                    return _read_fd(f.fileno())
             return _read_fd(sys.stdin.fileno())
         except Exception:
             pass
+    try:
+        with open("/dev/tty", "r") as f:
+            return _read_fd(f.fileno())
+    except Exception:
+        pass
     try:
         return os.read(sys.stdin.fileno(), 1).decode("utf-8", errors="ignore")
     except Exception:
@@ -141,19 +143,6 @@ def draw_session_box(
     box_style: int = 1
 ) -> None:
     """Renders the system initialization box with customizable style presets (1-5)."""
-    version = ""
-    main_script_path = os.path.join(home_dir, ".config", "local-ai", "ai-agent.py")
-    if os.path.exists(main_script_path):
-        try:
-            with open(main_script_path, "r", encoding="utf-8") as f:
-                for line in f:
-                    match = re.search(r"Local-Ai Agent\s+(v[0-9.]+)", line, re.I)
-                    if match:
-                        version = match.group(1)
-                        break
-        except Exception:
-            pass
-
     display_dir = workspace_path.replace(home_dir, "~", 1) if workspace_path.startswith(home_dir) else workspace_path
 
     try:
@@ -173,18 +162,15 @@ def draw_session_box(
     mem_status = f"active ({tpm_count} facts, {db_turns} turns)" if memory_active else "disabled"
     table.add_row("database:", mem_status if is_agent else "stateless")
 
-    # Style Presets Map: (Base Title, Box Type, Border Color, Title Style)
-    # Style #1 is configured as the default fallback
     STYLES = {
-        1: (">_ Local-AI Agent", ROUNDED, "green", "bold bright_green"),  # DEFAULT
+        1: (">_ Local-AI Agent", ROUNDED, "green", "bold bright_green"),
         2: ("❖ Local-AI Agent", DOUBLE, "bright_blue", "bold bright_blue"),
         3: ("❖ Local-AI Agent", HEAVY, "bright_cyan", "bold bright_white"),
         4: ("Local-AI Agent", HORIZONTALS, "dim white", "bold cyan"),
     }
 
-    # Style #5: Original In-Panel Codex Style
     if box_style == 5:
-        title_str = f"  >_ Local-AI Agent [sub-agent #{sub_id}]" if sub_id else (f"  >_ Local-AI Agent ({version})" if version else "  >_ Local-AI Agent")
+        title_str = f"  >_ Local-AI Agent [sub-agent #{sub_id}]" if sub_id else "  >_ Local-AI Agent"
         panel = Panel(
             Group(Text(title_str, style="bold bright_green"), Text(""), table),
             border_style="green",
@@ -195,12 +181,7 @@ def draw_session_box(
         )
     else:
         base_title, box_type, border_col, title_style = STYLES.get(box_style, STYLES[1])
-        if sub_id:
-            title_text = f" {base_title} [sub-agent #{sub_id}] "
-        elif version:
-            title_text = f" {base_title} ({version}) "
-        else:
-            title_text = f" {base_title} "
+        title_text = f" {base_title} [sub-agent #{sub_id}] " if sub_id else f" {base_title} "
 
         panel = Panel(
             table,
@@ -213,7 +194,6 @@ def draw_session_box(
             subtitle_align="right"
         )
 
-    # Unified Render & Cursor Restore Pass
     _console.print(panel)
     _console.print(f"[dim][sys] Startup context: {len(active_system_prompt) // 4:,} tokens[/dim]\n")
     try:
@@ -312,7 +292,6 @@ def run_interactive_selection(
                 sys.exit(0)
             elif key in ('\x1b[A', '\x1b[B'):
                 current_idx = (current_idx + (1 if key == '\x1b[B' else -1) + num_opts) % num_opts
-                sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
         sys.exit(127)
     except KeyboardInterrupt:
         sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")

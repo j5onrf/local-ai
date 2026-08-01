@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# index-map [Graph-Enabled Workspace Intelligence Engine] v1.7.0
+# index-map [Graph-Enabled Workspace Intelligence Engine] v1.7.8
 
 import os
 import re
@@ -14,12 +14,6 @@ import struct
 import urllib.request as urlreq
 
 try:
-    import tty, termios, select
-except ImportError:
-    pass
-
-# --- OPTIONAL SQLITE-VEC INTEGRATION ---
-try:
     import sqlite_vec
     HAS_VEC = True
 except ImportError:
@@ -27,7 +21,6 @@ except ImportError:
 
 EMBEDDING_SERVER = "http://localhost:8080"
 
-# --- PRE-COMPILED LANGUAGE PATTERNS FOR FAST SCANNING ---
 LANG_RULES = {
     'rust': {
         'class_pattern': r'\b(?:struct|enum|trait|union)\s+(\w+)',
@@ -51,7 +44,7 @@ LANG_RULES = {
     },
     'typescript': {
         'class_pattern': r'\b(?:class|interface|type)\s+(\w+)',
-        'func_pattern': r'\b(?:function\s+(\w+)|(\w+)\s*=\s*(?:\([^)]*\)|[^\s=]+)\s*=>|const\s+(\w+)\s*=\s*function)',
+        'func_pattern': r'\b(?:class|interface|type)\s+(\w+)',
         'call_pattern': r'\b(\w+)\s*\('
     },
     'cpp': {
@@ -75,31 +68,19 @@ COMPILED_LANG_RULES = {
     for lang, rules in LANG_RULES.items()
 }
 
-# --- SYSTEM UTILS ---
+DEFAULT_IGNORED = {
+    '.git', '__pycache__', 'logs', '.auto-f', 'node_modules', 
+    'venv', '.venv', 'SSD_BACKUPS', '.cargo', '.rustup', 
+    '.cache', '.npm', '.local', '.mozilla', 'target', '.agent',
+    '.idea', '.vscode'
+}
+
 def safe_exit(code=0):
     try: sys.stdout.flush(); sys.stderr.flush()
     except: pass
     try: sys.stdout, sys.stderr = open(os.devnull, 'w'), open(os.devnull, 'w')
     except: pass
     sys.exit(code)
-
-def get_key():
-    try:
-        import tty, termios, select
-    except ImportError:
-        try: return sys.stdin.read(1)
-        except: return ""
-    fd = sys.stdin.fileno()
-    try: old = termios.tcgetattr(fd)
-    except termios.error:
-        try: return os.read(fd, 1).decode("utf-8", errors="ignore")
-        except: return ""
-    try:
-        tty.setraw(fd); r = os.read(fd, 1)
-        if r == b'\x1b' and select.select([fd], [], [], 0.05)[0]: r += os.read(fd, 2)
-    finally:
-        termios.tcsetattr(fd, termios.TCSADRAIN, old)
-    return r.decode("utf-8", errors="ignore")
 
 def load_gitignore_patterns(target_dir):
     path = os.path.join(target_dir, ".gitignore")
@@ -110,11 +91,20 @@ def load_gitignore_patterns(target_dir):
         except Exception: pass
     return []
 
-def should_ignore(rel_path, is_dir, gitignore_patterns, default_ignored_dirs):
-    norm_path = rel_path.replace(os.sep, '/')
+def should_ignore(rel_path, is_dir, gitignore_patterns, default_ignored):
+    norm_path = rel_path.replace(os.sep, '/').lower()
     parts = norm_path.split('/')
-    if any(p in default_ignored_dirs for p in parts): return True
+    filename = parts[-1]
     
+    for p in parts:
+        if p in default_ignored:
+            return True
+            
+    if filename in ('history.md', 'tpm.md', '.state.json', '.ds_store', 'thumbs.db'):
+        return True
+    if filename.startswith('index-map-') or filename.endswith('.db') or filename.endswith('.sqlite') or filename.endswith('.sqlite3') or filename.endswith('.log') or filename.endswith('.tmp'):
+        return True
+
     for pattern in gitignore_patterns:
         pat, dir_only = pattern.rstrip('/'), pattern.endswith('/')
         if dir_only and not is_dir: continue
@@ -122,8 +112,8 @@ def should_ignore(rel_path, is_dir, gitignore_patterns, default_ignored_dirs):
         anchored = False
         if pat.startswith('/'): pat, anchored = pat[1:], True
         
+        target = norm_path if not dir_only else norm_path.rstrip('/')
         if anchored:
-            target = norm_path if not dir_only else norm_path.rstrip('/')
             if fnmatch.fnmatchcase(target, pat): return True
             pat_parts = pat.split('/')
             if len(parts) >= len(pat_parts) and fnmatch.fnmatchcase('/'.join(parts[:len(pat_parts)]), pat):
@@ -144,7 +134,6 @@ def is_binary(filepath):
     except Exception: return True
 
 def get_file_summary(filepath, limit=10):
-    """Fast, memory-efficient single-pass text summary extractor."""
     if not os.path.isfile(filepath) or is_binary(filepath):
         return ""
     try:
@@ -163,7 +152,30 @@ def get_file_summary(filepath, limit=10):
         pass
     return ""
 
-# --- AST VISITOR FOR PYTHON SYMBOLS & INTERNAL CALLS ---
+def is_map_up_to_date(target_dir, map_file, default_ignored):
+    if not os.path.exists(map_file):
+        root_map = os.path.join(target_dir, os.path.basename(map_file))
+        if os.path.exists(root_map):
+            map_file = root_map
+        else:
+            return False
+            
+    map_mtime = os.path.getmtime(map_file)
+    patterns = load_gitignore_patterns(target_dir)
+    try:
+        for root, dirs, files in os.walk(target_dir):
+            dirs[:] = [d for d in dirs if not should_ignore(os.path.relpath(os.path.join(root, d), target_dir), True, patterns, default_ignored)]
+            for file in files:
+                filepath = os.path.join(root, file)
+                rel_path = os.path.relpath(filepath, target_dir)
+                if should_ignore(rel_path, False, patterns, default_ignored):
+                    continue
+                if os.path.getmtime(filepath) > map_mtime + 0.1:
+                    return False
+        return True
+    except Exception:
+        return False
+
 class PythonGraphVisitor(ast.NodeVisitor):
     def __init__(self, filepath):
         self.filepath = filepath
@@ -216,7 +228,6 @@ class PythonGraphVisitor(ast.NodeVisitor):
                 self.calls.append((self.current_function, self.current_class, callee, node.lineno))
         self.generic_visit(node)
 
-# --- HYBRID REGEX-BASED MULTI-LANGUAGE PARSER (PRE-COMPILED) ---
 def parse_non_python_file(filepath, ext):
     lang = {
         '.rs': 'rust', '.go': 'go', '.lua': 'lua',
@@ -580,31 +591,22 @@ def compile_flat_shorthand(skeleton):
     return "\n".join(lines)
 
 def run_indexing(target_dir, force=False, is_agent=False, no_db=False):
-    is_interactive = sys.stdin.isatty() and sys.stderr.isatty()
-    if is_interactive and not force:
-        try:
-            sys.stderr.write("\r\x1b[2K\033[2mℹ Mapping workspace... [Confirming compile]\033[0m")
-            sys.stderr.flush()
-            key = get_key()
-            if key in ('\x03', '\x1b', 'n', 'N'):
-                sys.stderr.write("\r\x1b[2K\033[2;31m[sys] Bypassed mapping execution.\033[0m\n")
-                sys.stderr.flush(); safe_exit(0)
-            sys.stderr.write("\r\x1b[2K"); sys.stderr.flush()
-        except Exception: pass
+    proj_name = os.path.basename(target_dir)
+    
+    out_dir = os.path.join(target_dir, ".agent")
+    os.makedirs(out_dir, exist_ok=True)
+
+    output_file = os.path.join(out_dir, f"index-map-{proj_name}.txt")
+
+    # 1. Silent Cache Check: Return immediately if workspace files haven't changed
+    if not force and is_map_up_to_date(target_dir, output_file, DEFAULT_IGNORED):
+        return
 
     if target_dir == os.path.expanduser("~"):
         try:
             sys.stderr.write("\n\033[1;33m[sys] Warning: Scanning entire Home Directory. Proceed? (y/N): \033[0m"); sys.stderr.flush()
             if sys.stdin.readline().strip().lower() not in ['y', 'yes']: safe_exit(0)
         except Exception: safe_exit(0)
-
-    proj_name = os.path.basename(target_dir)
-    
-    if is_agent or "--agent" in sys.argv or os.environ.get("AI_IS_AGENT") == "1":
-        out_dir = os.path.join(target_dir, ".agent")
-        os.makedirs(out_dir, exist_ok=True)
-    else:
-        out_dir = target_dir
 
     db_conn = None
     use_vec = False
@@ -633,24 +635,18 @@ def run_indexing(target_dir, force=False, is_agent=False, no_db=False):
         sys.stderr.write("\r\x1b[2K\033[2mℹ Mapping workspace... [Compiling text map only]\033[0m")
         sys.stderr.flush()
     
-    default_ignored = {
-        '.git', '__pycache__', 'logs', '.auto-f', 'node_modules', 
-        'venv', '.venv', 'SSD_BACKUPS', '.cargo', '.rustup', 
-        '.cache', '.npm', '.local', '.mozilla', 'target', '.agent'
-    }
     patterns = load_gitignore_patterns(target_dir)
-    
     skeleton = {}
     raw_calls = {}
     file_imports = {}
-    
     file_count = 0
+
     for root, dirs, files in os.walk(target_dir):
-        dirs[:] = [d for d in dirs if not should_ignore(os.path.relpath(os.path.join(root, d), target_dir), True, patterns, default_ignored)]
+        dirs[:] = [d for d in dirs if not should_ignore(os.path.relpath(os.path.join(root, d), target_dir), True, patterns, DEFAULT_IGNORED)]
         for file in files:
             filepath = os.path.join(root, file)
             rel_path = os.path.relpath(filepath, target_dir)
-            if should_ignore(rel_path, False, patterns, default_ignored): continue
+            if should_ignore(rel_path, False, patterns, DEFAULT_IGNORED): continue
             
             file_count += 1
             if file_count == 1000:
@@ -740,10 +736,21 @@ def run_indexing(target_dir, force=False, is_agent=False, no_db=False):
     else: header += "# -----------------------------------------------------------------------------------------\n\n"
         
     flat_map = header + flat_map
-    output_file = os.path.join(out_dir, f"index-map-{proj_name}.txt")
     
     try:
-        with open(output_file, 'w', encoding='utf-8') as f: fill = f.write(flat_map)
+        # Write primary map to .agent/
+        with open(output_file, 'w', encoding='utf-8') as f: f.write(flat_map)
+        try: os.utime(output_file, None)
+        except Exception: pass
+        
+        # Also mirror map to root if root index-map file exists
+        root_file = os.path.join(target_dir, f"index-map-{proj_name}.txt")
+        if os.path.exists(root_file):
+            try:
+                with open(root_file, 'w', encoding='utf-8') as f: f.write(flat_map)
+                os.utime(root_file, None)
+            except Exception: pass
+
         msg_suffix = "& SQLite graph database updated" if db_conn else "updated"
         sys.stderr.write(f"\r\x1b[2K\033[1;32m✔ Mapping complete! [{proj_name} index-map {msg_suffix}]\033[0m\n")
         sys.stderr.flush()
@@ -968,32 +975,30 @@ def search_symbols(pattern, server_url=EMBEDDING_SERVER):
 
 def main():
     raw_args = sys.argv[1:]
-    is_agent = "--agent" in raw_args or os.environ.get("AI_IS_AGENT") == "1"
+    is_agent = True
     
     force_db = "--db" in raw_args or "--with-db" in raw_args
     force_no_db = "--no-db" in raw_args or "--txt-only" in raw_args
+    force_compile = "--force" in raw_args or "-f" in raw_args
     
     if force_no_db:
         no_db = True
     elif force_db:
         no_db = False
     else:
-        # Default: Standalone CLI = no DB (text map only), Agent mode = build full DB
-        no_db = not is_agent
+        no_db = False
         
-    args = [a for a in raw_args if a not in ("--agent", "--db", "--with-db", "--no-db", "--txt-only")]
+    args = [a for a in raw_args if a not in ("--agent", "--db", "--with-db", "--no-db", "--txt-only", "--force", "-f")]
     
     if len(args) == 0:
-        run_indexing(os.getcwd(), is_agent=is_agent, no_db=no_db)
+        run_indexing(os.getcwd(), force=force_compile, is_agent=is_agent, no_db=no_db)
         return
         
     cmd = args[0].lower()
     
-    if cmd in ("--force", "-f"):
-        run_indexing(os.getcwd(), force=True, is_agent=is_agent, no_db=no_db)
-    elif cmd in ("--help", "-h"):
+    if cmd in ("--help", "-h"):
         print("""
-Usage: index-map <command> [argument] [--agent] [--db] [--no-db]
+Usage: index-map <command> [argument] [--db] [--no-db] [--force]
 
 Commands:
   (no arguments)        Interactive initialization & map compiler in local directory
@@ -1005,14 +1010,14 @@ Commands:
   snippet <symbol>      Statically loads structural code blocks directly via offsets
   query "<SQL>"         Executes low-level queries directly against the graph schema
 Flags:
-  --agent               Outputs generated map files into project/.agent/ directory
   --db                  Forces SQLite relational graph database generation
   --no-db               Skips SQLite database generation and produces index-map-<project>.txt only
+  --force, -f           Forces full re-compilation, bypassing modification cache
         """)
     elif cmd == "init":
         t_dir = os.path.abspath(os.path.expanduser(args[1])) if len(args) > 1 else os.getcwd()
         if not os.path.isdir(t_dir): os.makedirs(t_dir, exist_ok=True)
-        run_indexing(t_dir, is_agent=is_agent, no_db=no_db)
+        run_indexing(t_dir, force=force_compile, is_agent=is_agent, no_db=no_db)
     elif cmd == "architecture":
         show_architecture()
     elif cmd == "search":
@@ -1034,7 +1039,7 @@ Flags:
     else:
         path_test = os.path.abspath(os.path.expanduser(args[0]))
         if os.path.isdir(path_test):
-            run_indexing(path_test, force=("--force" in args), is_agent=is_agent, no_db=no_db)
+            run_indexing(path_test, force=force_compile, is_agent=is_agent, no_db=no_db)
         else:
             print(f"❌ Unknown command or folder: {args[0]}. Run with --help for documentation.")
 

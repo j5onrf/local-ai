@@ -1,8 +1,6 @@
 # File: ~/.config/local-ai/modules/agent_context.py
 import os
 import re
-import fnmatch
-import shutil
 import sys
 from typing import List, Set, Dict, Any, Optional, Tuple
 
@@ -28,16 +26,17 @@ def load_context_entries(context_file: str, stop_words: Set[str]) -> List[Dict[s
         current_mtime: float = os.path.getmtime(context_file)
         if _CACHED_ENTRIES is not None and current_mtime <= _LAST_M_TIME:
             return _CACHED_ENTRIES
-            
+
         with open(context_file, "r", encoding="utf-8") as f:
             lines: List[str] = [
                 cleaned for line in f.read().splitlines()
                 if (cleaned := line.strip()) and not cleaned.startswith("#") and "--->" in cleaned
             ]
-            
+
         parsed_entries: List[Dict[str, Any]] = []
         for line in lines:
             cmd, intents_str = line.split("--->", 1)
+            cmd_clean = cmd.strip()
             intents: List[str] = [intent.strip() for intent in intents_str.split(",") if intent.strip()]
             if not intents:
                 continue
@@ -45,10 +44,11 @@ def load_context_entries(context_file: str, stop_words: Set[str]) -> List[Dict[s
                 tokens: List[str] = tokenize(intent, stop_words)
                 if tokens:
                     parsed_entries.append({
-                        "cmd": cmd.strip(),
+                        "cmd": cmd_clean,
                         "intent": intent,
                         "primary": intents[0],
-                        "tokens": tokens
+                        "tokens": tokens,
+                        "tokens_set": set(tokens)  # Pre-computed set for O(1) Jaccard intersections
                     })
         _CACHED_ENTRIES = parsed_entries
         _LAST_M_TIME = current_mtime
@@ -64,41 +64,44 @@ def jaccard_search(query: str, context_file: str, stop_words: Set[str], threshol
     q_tokens: Set[str] = set(tokenize(query, stop_words))
     if not q_tokens:
         return None
-        
+
     entries: List[Dict[str, Any]] = load_context_entries(context_file, stop_words)
     if not entries:
         return None
-        
+
     candidates: List[Tuple[float, str, str]] = []
     for entry in entries:
-        ent_tokens: Set[str] = set(entry["tokens"])
+        ent_tokens: Set[str] = entry["tokens_set"]
         ent_clean: str = entry["intent"].strip().lower()
-        
-        intersection: Set[str] = q_tokens & ent_tokens
-        union: Set[str] = q_tokens | ent_tokens
-        score: float = len(intersection) / len(union) if union else 0.0
-        
+
+        intersection_len: int = len(q_tokens & ent_tokens)
+        if not intersection_len and q_clean not in ent_clean:
+            continue
+
+        union_len: int = len(q_tokens | ent_tokens)
+        score: float = intersection_len / union_len if union_len else 0.0
+
         if q_clean in ent_clean:
             score = max(score, 0.8)
         if q_clean == ent_clean:
             score = 3.0
-            
+
         if score >= threshold:
             candidates.append((score, entry["cmd"], entry.get("primary", entry["intent"])))
-            
+
     if not candidates:
         return None
-        
+
     # Sort descending by score, ascending by length of primary string
     candidates.sort(key=lambda x: (-x[0], len(x[2])))
-    
+
     seen: Set[str] = set()
     top_entries: List[str] = []
     for _, cmd, primary in candidates:
         if cmd not in seen and len(top_entries) < 5:
             seen.add(cmd)
             top_entries.append(f"{primary}|||{clean_tool_prefix(cmd)}")
-            
+
     return "\n".join(top_entries)
 
 
@@ -106,18 +109,17 @@ def clean_tool_prefix(cmd: str) -> str:
     """Strips command metadata and appends default shell pagers."""
     is_tool: bool = cmd.startswith("[TOOL]")
     cleaned: str = cmd.replace("[TOOL]", "", 1).strip() if is_tool else cmd
-    
+
     if cleaned.startswith("DANGER_FLAGGED:"):
         cleaned = f"DANGER_FLAGGED:{cleaned.replace('DANGER_FLAGGED:', '').replace('[TOOL]', '').strip()}"
-        
+
     cleaned = cleaned.replace(" --s", "").strip()
     pager: str = ""
-    
-    # We replaced deprecated "mdcat" with our new unified smart shell utility "view"
+
     pagers: List[Tuple[str, str]] = [
-        (" --leaf", "leaf"), 
-        (" --glow", "glow"), 
-        (" --cat", "cat"), 
+        (" --leaf", "leaf"),
+        (" --glow", "glow"),
+        (" --cat", "cat"),
         (" --view", "view")
     ]
     for flag, pg in pagers:
@@ -125,11 +127,8 @@ def clean_tool_prefix(cmd: str) -> str:
             cleaned = cleaned[:-len(flag)].strip()
             pager = pg
             break
-            
+
     if not pager and is_tool:
-        # Defaults tools straight to view so markdown outputs are automatically formatted via rich.markdown
         pager = "view"
-        
-    if pager:
-        return f"{cleaned} | {pager}"
-    return cleaned
+
+    return f"{cleaned} | {pager}" if pager else cleaned
