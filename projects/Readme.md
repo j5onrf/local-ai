@@ -13,11 +13,11 @@ High-speed local developer agent, episodic memory, SQLite checkpoints, and codeb
 Enable Autonomous YOLO mode? [y/N]: y
 ✓ Profile set to: Claude Lite (Autonomous YOLO)
 
-╭─  >_ Local-AI Agent  ──────────────────────────────────╮
+╭─  >_ Local-AI Agent [sub-agent #1]  ───────────────────╮
 │     model:  Qwen3.5-2B-Claude.gguf                     │
 │ directory:  ~/.config/local-ai/projects/session-test   │
 │     skill:  claude/lite                                │
-│  database:  active (0 facts, 0 turns)                  │
+│  database:  active (0 facts, 1 turns)                  │
 ╰─────────────────────────────────────── Ctrl+C to exit ─╯
  Startup context: 294 tokens
 
