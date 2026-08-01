@@ -7,40 +7,32 @@ High-speed local developer agent, episodic memory, SQLite checkpoints, and codeb
 [01/03] ❯ [session test] ai init ~/session-test --init
 :: ↵ run  Esc: 
 ✔ Mapping complete! [session-test index-map & SQLite graph database updated]
-╔═  ❖ Local-AI Agent  ═══════════════════════════════════╗
-║     model:  Qwen3.6-35B-A3B.gguf                       ║
-║ directory:  ~/.config/local-ai/projects/session-test   ║
-║     skill:  hermes/pro                                 ║
-║  database:  active (0 facts, 1 turns)                  ║
-╚═══════════════════════════════════════ Ctrl+C to exit ═╝
- Startup context: 418 tokens
 
-╭─ ⚙ Thinking Process ──────────────────────────────────────────
-The user has provided a system prompt override and a CODESPACE MAP for the workspace `session-test`. 
-No explicit user task or goal is provided in the conversation yet.
+[ai init] Select default Agent Profile for workspace session-test:
 
-According to Execution Protocol #1: "Unprompted Initialization: If no explicit user task or goal is 
-provided in the conversation, acknowledge the workspace in 1 brief sentence and standby for 
-instructions."
+Enable Autonomous YOLO mode? [y/N]: y
+✓ Profile set to: Claude Lite (Autonomous YOLO)
 
-I should simply acknowledge the workspace and wait for instructions. I will not execute any 
-exploratory tool calls.
-╰───────────────────────────────────────────────────────────────
+╭─  >_ Local-AI Agent  ──────────────────────────────────╮
+│     model:  Qwen3.5-2B-Claude.gguf                     │
+│ directory:  ~/.config/local-ai/projects/session-test   │
+│     skill:  claude/lite                                │
+│  database:  active (0 facts, 0 turns)                  │
+╰─────────────────────────────────────── Ctrl+C to exit ─╯
+ Startup context: 294 tokens
 
-Agent:
-Hermes Agent initialized and ready at /home/j5/.config/local-ai/projects/session-test. Standing by 
-for your task or instructions.                                                
- [ think: 138 | ans: 39 | 177 tokens | 4.8s @ 28.0 t/s ]
- [ 1471 in | 177 out | ctx: 20.1% ]
-❯ 
+Agent: I'm Claude Lite, a precise software development agent. I acknowledge your workspace at ~/.config/local-ai/projects/session-test and will wait for your explicit instructions before proceeding with any operations.
+ [ 58 tokens | 1.11s | 42.12 t/s ]
+ [ 1162 in | 58 out | ctx: 14.9% ]
 ```
+
 ---
 
 ## UI Box Themes
 
 Switch box styles using `/box [1-5]` (or type `/box` to cycle). Selection persists in `~/.config/local-ai/.state.json`.
 
-#### Style #1: Double Border (Default)
+#### Style #1: Double Border
 ```console
 ╔═  ❖ Local-AI Agent  ══════════╗
 ║     model:  Qwen3.5-2B.gguf   ║
@@ -50,7 +42,7 @@ Switch box styles using `/box [1-5]` (or type `/box` to cycle). Selection persis
 ╚══════════════ Ctrl+C to exit ═╝
 ```
 
-#### Style #2: Codex Rounded
+#### Style #2: Codex Rounded (Default)
 ```console
 ╭─  >_ Local-AI Agent  ─────────╮
 │     model:  Qwen3.5-2B.gguf   │
@@ -64,7 +56,7 @@ Switch box styles using `/box [1-5]` (or type `/box` to cycle). Selection persis
 ```console
 ┏━  ❖ Local-AI Agent  ━━━━━━━━━━┓
 ┃     model:  Qwen3.5-2B.gguf   ┃
-┃ directory:  ~                 ┃
+┃ directory:  ~                 ║
 ┃     skill:  default           ║
 ┃  database:  stateless         ║
 ┗━━━━━━━━━━━━━━ Ctrl+C to exit ━┛
@@ -96,22 +88,25 @@ Switch box styles using `/box [1-5]` (or type `/box` to cycle). Selection persis
 
 ## 1. Directory Structure
 
+All auto-created agent metadata files are strictly isolated inside `project/.agent/` to keep project workspaces completely clean.
+
 | Path | Purpose |
 | :--- | :--- |
-| `~/.config/local-ai/projects/database/*.db` | SQLite turn and memory database. |
-| `~/.config/local-ai/.active_sessions/` | Sub-agent PID lockfiles. |
-| `~/.config/local-ai/.spend_ledger.json` | Token usage ledger. |
+| `~/.config/local-ai/projects/database/*.db` | Global SQLite turn history and fact memory database. |
+| `~/.config/local-ai/.active_sessions/` | Sub-agent PID lockfiles for process tracking. |
+| `~/.config/local-ai/.spend_ledger.json` | Token usage ledger and spend tracking. |
+| `~/<workspace>/.agent/config.json` | Default workspace agent profile and YOLO settings. |
 | `~/<workspace>/.agent/session.json` | Cloud API interaction tracking. |
-| `~/<workspace>/.agent/tpm.md` | Human-editable Markdown memory facts. |
-| `~/<workspace>/index-map-<project>.txt` | Shorthand codebase index map. |
-| `~/<workspace>/index-map-memory-<project>.db` | Relational knowledge graph & `sqlite-vec` embeddings. |
-| `~/<workspace>/history.md` | Chronological multi-agent session log. |
+| `~/<workspace>/.agent/tpm.md` | Human-editable Markdown fact memory store. |
+| `~/<workspace>/.agent/history.md` | Chronological session history log. |
+| `~/<workspace>/.agent/index-map-<project>.txt` | Shorthand codebase index map (Agent mode). |
+| `~/<workspace>/.agent/index-map-memory-<project>.db` | Relational knowledge graph & `sqlite-vec` embeddings. |
 
 ---
 
 ## 2. Profile Selector (`ai init`)
 
-Running `ai init <path>` set default workspace agent profile:
+Running `ai init <path>` sets default workspace agent profile:
 
 ```console
 [ai init] Agent Profile: session-test
@@ -197,6 +192,10 @@ Running `ai init <path>` set default workspace agent profile:
 
 ## 6. Codebase Graph Mapper
 
+The codebase intelligence engine features **dual-mode output routing**:
+
+- **Agent Mode (`ai init` / `/sync`):** Outputs map files directly to `project/.agent/` to keep source directories clean.
+- **Standalone CLI Mode (`index-map`):** Outputs map files to the project root directory when run independently in shell.
 - **AST Graph:** Maps classes, methods, and call-chains across Python, Rust, Go, JS/TS, C/C++, Lua.
 - **Vector Search:** Embeds codeblocks into `sqlite-vec` virtual tables for semantic retrieval.
 
@@ -204,8 +203,9 @@ Running `ai init <path>` set default workspace agent profile:
 
 ## 7. Temporal Personality Memory (TPM)
 
-- **Async Fact Extraction:** Auto-extracts facts in background thread after turns.
-- **Sync:** Auto-syncs manual edits in `.agent/tpm.md` into SQLite on startup.
+- **Async Fact Extraction:** Auto-extracts persistent facts, environment details, and user preferences in a background thread after each turn.
+- **Context Injection:** Facts are automatically compiled and injected into model `<context>` blocks on every turn.
+- **Human-Editable Sync:** Reconciles manual edits in `.agent/tpm.md` into the SQLite database on startup.
 
 ---
 
@@ -218,7 +218,7 @@ Running `ai init <path>` set default workspace agent profile:
 
 ## 9. Security & Execution Isolation
 
-- **Read-Only Default:** Workspace edits require `ai init`.
+- **Read-Only Default:** Workspace edits require explicit `ai init` enablement.
 - **Directory Lock:** Enforces confirmation gates for paths outside project root.
 - **Visual Diffs:** Shows colorized diffs prior to file writes.
 

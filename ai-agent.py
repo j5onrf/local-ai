@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.9.7.8]
+# Local-Ai Agent [j5onrf] [v0.9.8.1]
 
 import json
 import os
@@ -78,6 +78,29 @@ def workspace_db_counts(safe_name: str) -> Tuple[int, int]:
     return int(turns or 0), int(facts or 0)
 
 
+def ensure_clean_agent_dir(workspace_path: str) -> None:
+    """Relocates auto-created agent files (maps, DBs, logs) into project/.agent/ to keep workspace clean."""
+    agent_dir = os.path.join(workspace_path, ".agent")
+    ws_name = os.path.basename(workspace_path)
+    if not ws_name:
+        return
+    targets = [
+        f"index-map-{ws_name}.txt",
+        f"index-map-memory-{ws_name}.db",
+        "history.md",
+        "tpm.md"
+    ]
+    for fname in targets:
+        src = os.path.join(workspace_path, fname)
+        if os.path.exists(src):
+            os.makedirs(agent_dir, exist_ok=True)
+            dst = os.path.join(agent_dir, fname)
+            try:
+                os.replace(src, dst)
+            except Exception:
+                pass
+
+
 def sync_md_to_sqlite(workspace: str, workspace_path: str) -> None:
     md_path = os.path.join(workspace_path, ".agent", "tpm.md")
     if os.path.exists(md_path):
@@ -96,7 +119,7 @@ def _get_state() -> Dict[str, Any]:
         "spell_active": True,
         "show_stats": True,
         "memory_active": True,
-        "box_style": 1,
+        "box_style": 2,
         "yolo_mode": False,
         "show_thinking": True,
         "reasoning_active": False,
@@ -128,35 +151,50 @@ def background_tpm_update(user_msg: str, assistant_msg: str, workspace: str, wor
         import sqlite3
         db_path = os.path.join(SESSIONS_DIR, f"{workspace}.db")
         existing_facts = ""
-        if os.path.exists(db_path):
-            with closing(sqlite3.connect(db_path, timeout=5)) as conn:
-                cur = conn.cursor()
-                cur.execute("SELECT key, value FROM tpm_memories")
-                rows = cur.fetchall()
-                if rows:
-                    existing_facts = "\n".join(f"* {k}: {v}" for k, v in rows)
+        os.makedirs(SESSIONS_DIR, exist_ok=True)
+        with closing(sqlite3.connect(db_path, timeout=5)) as conn:
+            cur = conn.cursor()
+            cur.execute("CREATE TABLE IF NOT EXISTS tpm_memories (key TEXT PRIMARY KEY, value TEXT, timestamp INTEGER);")
+            cur.execute("SELECT key, value FROM tpm_memories")
+            rows = cur.fetchall()
+            if rows:
+                existing_facts = "\n".join(f"* {k}: {v}" for k, v in rows)
 
-        sys_p = "You are an asynchronous memory compiler. Analyze turn. Output ONLY flat JSON object of updated facts key-value pairs."
+        sys_p = "You are an asynchronous memory compiler. Analyze the turn and extract persistent user facts, roles, preferences, or environment details. Output ONLY a flat JSON object of key-value pairs (e.g. {\"role\": \"python dev\"}). Output {} if no facts exist. Do not add conversational text."
         usr_p = f"### Existing Profile:\n{existing_facts or 'None'}\n\n### Turn:\nUser: {user_msg}\nAssistant: {assistant_msg}\n\nOutput JSON:"
 
-        payload = {"messages": [{"role": "system", "content": sys_p}, {"role": "user", "content": usr_p}], "temperature": 0.0, "thinking_budget_tokens": 0, "stream": False}
+        payload = {
+            "messages": [{"role": "system", "content": sys_p}, {"role": "user", "content": usr_p}],
+            "temperature": 0.0,
+            "reasoning_budget": 0,
+            "chat_template_kwargs": {"enable_thinking": False},
+            "max_tokens": 300,
+            "stream": False,
+        }
         req = urlreq.Request("http://localhost:8080/v1/chat/completions", data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"}, method="POST")
 
-        with urlreq.urlopen(req, timeout=5) as resp:
-            llm_out = json.loads(resp.read().decode("utf-8"))["choices"][0]["message"].get("content", "").strip()
+        with urlreq.urlopen(req, timeout=10) as resp:
+            raw_body = resp.read().decode("utf-8")
+            llm_out = json.loads(raw_body)["choices"][0]["message"].get("content", "").strip()
 
-        llm_out = re.sub(r"^```json\s*|\s*```$", "", llm_out, flags=re.IGNORECASE).strip()
-        parsed = json.loads(llm_out)
-        if isinstance(parsed, dict) and all(isinstance(k, str) and isinstance(v, str) for k, v in parsed.items()):
-            mem_tool = f"{CFG_DIR}/modules/ai-agent-memories"
-            _run_cmd([sys.executable, mem_tool, "tpm-reconcile", workspace], json.dumps(parsed))
-            res_get = _run_cmd([sys.executable, mem_tool, "tpm-get", workspace])
-            if res_get:
-                md_dir = os.path.join(workspace_path, ".agent")
-                os.makedirs(md_dir, exist_ok=True)
-                open(os.path.join(md_dir, "tpm.md"), "w", encoding="utf-8").write(res_get + "\n")
-    except Exception:
-        pass
+        # Universal JSON extraction
+        match = re.search(r"\{[\s\S]*\}", llm_out)
+        if match:
+            clean_json = match.group(0)
+            parsed = json.loads(clean_json)
+            if isinstance(parsed, dict) and parsed:
+                clean_parsed = {str(k).strip().lower(): str(v).strip() for k, v in parsed.items() if k and v is not None}
+                if clean_parsed:
+                    mem_tool = f"{CFG_DIR}/modules/ai-agent-memories"
+                    _run_cmd([sys.executable, mem_tool, "tpm-reconcile", workspace], json.dumps(clean_parsed))
+                    res_get = _run_cmd([sys.executable, mem_tool, "tpm-get", workspace])
+                    if res_get:
+                        md_dir = os.path.join(workspace_path, ".agent")
+                        os.makedirs(md_dir, exist_ok=True)
+                        open(os.path.join(md_dir, "tpm.md"), "w", encoding="utf-8").write(res_get + "\n")
+    except Exception as e:
+        sys.stderr.write(f"\n\033[1;31m[TPM Error]: {e}\033[0m\n")
+        sys.stderr.flush()
 
 
 def clean_exit(safe_name: Optional[str] = None) -> None:
@@ -175,6 +213,7 @@ def run_interactive_chat(args: List[str]) -> None:
     home_dir = os.path.expanduser("~")
     safe_name = workspace_safe_name(workspace_path, home_dir)
 
+    ensure_clean_agent_dir(workspace_path)
     cfg_file = os.path.join(workspace_path, ".agent", "config.json")
     selected_profile = "default"
     is_yolo = False
@@ -230,7 +269,7 @@ def run_interactive_chat(args: List[str]) -> None:
     # Set persistent markdown rendering state
     os.environ["AI_RENDER_MARKDOWN"] = "1" if st.get("render_markdown", True) else "0"
 
-    # Apply persistent YOLO state (from workspace config or global .state.json)
+    # Apply persistent YOLO state
     if is_yolo or st.get("yolo_mode", False):
         os.environ["AI_CONFIRM_GATES"] = "0"
 
@@ -247,7 +286,7 @@ def run_interactive_chat(args: List[str]) -> None:
         except Exception:
             pass
 
-    box_style = st.get("box_style", 1)
+    box_style = st.get("box_style", 2)
     ui.draw_session_box(workspace_path, home_dir, is_agent, db_turns, tpm_count, memory_active, active_system_prompt, clean_name, sub_id=sub_id, box_style=box_style)
     try:
         while True:
@@ -385,8 +424,12 @@ def run_interactive_chat(args: List[str]) -> None:
                 if query in ("/sync", "/re"):
                     sys.stdout.write("\033[2m[sys] Syncing codespace map...\033[0m\r")
                     sys.stdout.flush()
-                    subprocess.run([sys.executable, f"{CFG_DIR}/tools/map/index-map", workspace_path])
-                    txt_path = os.path.join(workspace_path, f"index-map-{os.path.basename(workspace_path)}.txt")
+                    subprocess.run([sys.executable, f"{CFG_DIR}/tools/map/index-map", "--agent", workspace_path])
+                    
+                    txt_path = os.path.join(agent_dir, f"index-map-{os.path.basename(workspace_path)}.txt")
+                    if not os.path.exists(txt_path):
+                        txt_path = os.path.join(workspace_path, f"index-map-{os.path.basename(workspace_path)}.txt")
+                    
                     if os.path.exists(txt_path):
                         try:
                             new_map = open(txt_path, "r", encoding="utf-8").read().strip()
@@ -404,7 +447,19 @@ def run_interactive_chat(args: List[str]) -> None:
 
                 if query.lower() in ("/clear", "/reset"):
                     chat_history = [{"role": "system", "content": active_system_prompt}, {"role": "assistant", "content": "Agent: Workspace loaded. Awaiting instructions."}]
-                    for p in (os.path.join(workspace_path, ".agent", "session.json"), os.path.join(workspace_path, ".agent", "tpm.md"), os.path.join(workspace_path, "history.md")):
+                    ws_base = os.path.basename(workspace_path)
+                    
+                    # Clean all workspace metadata files inside .agent/ and root
+                    for p in (
+                        os.path.join(workspace_path, ".agent", "session.json"),
+                        os.path.join(workspace_path, ".agent", "tpm.md"),
+                        os.path.join(workspace_path, ".agent", "history.md"),
+                        os.path.join(workspace_path, "history.md"),
+                        os.path.join(workspace_path, ".agent", f"index-map-{ws_base}.txt"),
+                        os.path.join(workspace_path, f"index-map-{ws_base}.txt"),
+                        os.path.join(workspace_path, ".agent", f"index-map-memory-{ws_base}.db"),
+                        os.path.join(workspace_path, f"index-map-memory-{ws_base}.db")
+                    ):
                         if os.path.exists(p):
                             try:
                                 os.remove(p)
@@ -484,7 +539,7 @@ def run_interactive_chat(args: List[str]) -> None:
             else:
                 sys_ctx = "" if query.startswith("init") and "--init" in query else skills.get_system_context(query, CONTEXT_FILE, STOP_WORDS, SKILLS_DIR, CFG_DIR)
                 if sys_ctx == "__ABORT_TURN__":
-                    sys_ctx = ""  # If user declines running the script shortcut, clear context and send question directly to AI!
+                    sys_ctx = ""
                 comb_ctx = "\n\n".join(filter(None, [tpm_context, past_memory, sys_ctx]))
                 prompt = f"<context>\n{comb_ctx}\n</context>\n\nUser Question: {query}" if comb_ctx else f"User Question: {query}"
 
@@ -511,12 +566,14 @@ def run_interactive_chat(args: List[str]) -> None:
                         threading.Thread(target=background_tpm_update, args=(query, ans, safe_name, workspace_path), daemon=True).start()
 
                     if not is_init_map:
-                        hist_file = os.path.join(workspace_path, "history.md")
+                        agent_dir = os.path.join(workspace_path, ".agent")
+                        os.makedirs(agent_dir, exist_ok=True)
+                        hist_file = os.path.join(agent_dir, "history.md")
                         try:
                             mode = "a" if os.path.exists(hist_file) else "w"
                             with open(hist_file, mode, encoding="utf-8") as hf:
                                 if mode == "w":
-                                    hf.write(f"# Workspace History: {os.path.basename(os.path.dirname(workspace_path))}\n\n")
+                                    hf.write(f"# Workspace History: {os.path.basename(workspace_path)}\n\n")
                                 hf.write(f"## [{time.strftime('%Y-%m-%d %H:%M')}] User:\n{query}\n\n### Agent:\n{ans}\n\n---\n\n")
                         except Exception:
                             pass
@@ -535,7 +592,7 @@ def run_direct_query(args: List[str]) -> None:
     query = " ".join(query_parts)
     sys_ctx = skills.get_system_context(query, CONTEXT_FILE, STOP_WORDS, SKILLS_DIR, CFG_DIR)
     if sys_ctx == "__ABORT_TURN__":
-        sys_ctx = ""  # If user declines tool execution, send question directly to AI!
+        sys_ctx = ""
 
     messages = [{"role": "system", "content": active_p}, {"role": "user", "content": (f"<context>\n{sys_ctx}\n</context>\n\n" if sys_ctx else "") + f"User Question: {query}"}]
     core.stream_response(messages, prefix="AI:", show_stats=False)
@@ -547,7 +604,6 @@ def run_matching_search(args: List[str]) -> None:
     if not user_input or args[0].startswith("--"):
         sys.exit(0)
 
-    # Catch /help or /h typed directly in Bash/Zsh prompt
     if user_input.lower() in ("/help", "/h"):
         ui.show_help()
         sys.exit(0)

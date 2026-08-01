@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# index-map [Graph-Enabled Workspace Intelligence Engine] v1.6.0
+# index-map [Graph-Enabled Workspace Intelligence Engine] v1.6.2
 
 import os, re, ast, json, fnmatch, time, sys, warnings, sqlite3, struct
 import urllib.request as urlreq
@@ -18,7 +18,6 @@ except ImportError:
 
 EMBEDDING_SERVER = "http://localhost:8080"
 
-# --- GLOBAL LANGUAGE PATTERNS FOR REGEX PARSING (NON-PYTHON) ---
 LANG_RULES = {
     'rust': {
         'class_pattern': r'\b(?:struct|enum|trait|union)\s+(\w+)',
@@ -57,7 +56,6 @@ LANG_RULES = {
     }
 }
 
-# --- SYSTEM UTILS ---
 def safe_exit(code=0):
     try: sys.stdout.flush(); sys.stderr.flush()
     except: pass
@@ -126,7 +124,6 @@ def is_binary(filepath):
     except Exception: return True
 
 def get_file_summary(filepath, limit=15, is_shell=False):
-    """Consolidated, high-speed single-pass text summary and description extractor."""
     if not os.path.isfile(filepath) or is_binary(filepath):
         return ""
     try:
@@ -137,7 +134,6 @@ def get_file_summary(filepath, limit=15, is_shell=False):
                 s = line.strip()
                 if not s or s.startswith('#!'):
                     continue
-                # Clean up common commenting prefixes natively in a fast slice check
                 s = s.lstrip('#/ \t')
                 if s.lower().startswith(("file:", "path:")):
                     continue
@@ -146,14 +142,13 @@ def get_file_summary(filepath, limit=15, is_shell=False):
         pass
     return ""
 
-# --- AST VISITOR FOR PYTHON SYMBOLS & INTERNAL CALLS ---
 class PythonGraphVisitor(ast.NodeVisitor):
     def __init__(self, filepath):
         self.filepath = filepath
-        self.classes = []  # (name, start_line, end_line)
-        self.functions = []  # (name, parent_class, start_line, end_line, args)
-        self.calls = []  # (caller_func, caller_class, callee, line)
-        self.imports = []  # (module_full_name, imported_as_name)
+        self.classes = []
+        self.functions = []
+        self.calls = []
+        self.imports = []
         self.current_class = None
         self.current_function = None
 
@@ -199,7 +194,6 @@ class PythonGraphVisitor(ast.NodeVisitor):
                 self.calls.append((self.current_function, self.current_class, callee, node.lineno))
         self.generic_visit(node)
 
-# --- HYBRID REGEX-BASED MULTI-LANGUAGE PARSER ---
 def parse_non_python_file(filepath, ext):
     lang = {
         '.rs': 'rust', '.go': 'go', '.lua': 'lua',
@@ -223,7 +217,6 @@ def parse_non_python_file(filepath, ext):
     current_class, current_func = None, None
     for idx, line in enumerate(lines, 1):
         clean_line = line.strip()
-        # High-speed sub-slice index lookup bypasses slow multi-startswith evaluations
         if not clean_line or clean_line[:2] in ('//', '/*', '--') or clean_line[0] == '#':
             continue
             
@@ -284,13 +277,10 @@ def analyze_image_file(filepath):
         with open(filepath, 'rb') as f: head = f.read(512)
         w, h = 0, 0
         if ext == "png" and head.startswith(b'\x89PNG\r\n\x1a\n'):
-            import struct
             w, h = struct.unpack('>II', head[16:24])
         elif ext == "gif" and (head.startswith(b'GIF87a') or head.startswith(b'GIF89a')):
-            import struct
             w, h = struct.unpack('<HH', head[6:10])
         elif ext in ("jpg", "jpeg") and head.startswith(b'\xff\xd8'):
-            import struct
             f_idx = 2
             while f_idx < len(head):
                 marker, length = struct.unpack('>HH', head[f_idx:f_idx+4])
@@ -329,7 +319,6 @@ def analyze_generic_file(filepath):
     if is_binary(filepath): return {"type": f"binary/{ext}"}
     return {"type": ext, "summary": get_file_summary(filepath, 15) or "Empty file"}
 
-# --- SQLITE-VEC HELPER FUNCTIONS ---
 def load_vec_extension(conn):
     if not HAS_VEC:
         return False
@@ -365,15 +354,13 @@ def detect_embedding_dim(server_url=EMBEDDING_SERVER):
     return len(emb) if emb else 384
 
 def serialize_vec(vector):
-    """Serializes a float array into direct binary bytes for sqlite-vec execution."""
     return struct.pack(f"{len(vector)}f", *vector)
 
-# --- DATABASE MANAGEMENT & GRAPH BUILDING ---
 def init_db(db_path, use_vec=False, dim=384):
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
-    # 1. Load the vector extension FIRST so SQLite recognizes the vec0 module
     vec_loaded = False
     if use_vec:
         vec_loaded = load_vec_extension(conn)
@@ -381,7 +368,6 @@ def init_db(db_path, use_vec=False, dim=384):
     cursor.execute("DROP TABLE IF EXISTS edges")
     cursor.execute("DROP TABLE IF EXISTS nodes")
     
-    # 2. Only attempt to drop the virtual table if the module is loaded
     if vec_loaded:
         cursor.execute("DROP TABLE IF EXISTS nodes_vec")
         
@@ -408,7 +394,6 @@ def init_db(db_path, use_vec=False, dim=384):
     cursor.execute("CREATE INDEX idx_edges_source ON edges(source)")
     cursor.execute("CREATE INDEX idx_edges_target ON edges(target)")
     
-    # 3. Create virtual table if loaded
     if vec_loaded:
         cursor.execute(f"""
         CREATE VIRTUAL TABLE nodes_vec USING vec0(
@@ -423,6 +408,11 @@ def find_db_path(start_dir=None):
     if not start_dir: start_dir = os.getcwd()
     curr = os.path.abspath(start_dir)
     while True:
+        agent_dir = os.path.join(curr, ".agent")
+        if os.path.isdir(agent_dir):
+            for f in os.listdir(agent_dir):
+                if f.startswith("index-map-memory-") and f.endswith(".db"):
+                    return os.path.join(agent_dir, f)
         for f in os.listdir(curr):
             if f.startswith("index-map-memory-") and f.endswith(".db"):
                 return os.path.join(curr, f)
@@ -446,9 +436,7 @@ def insert_node(conn, node_id, name, ntype, filepath, lang, meta_dict, text_to_e
             except Exception as e:
                 sys.stderr.write(f"\033[90m[sys] Vector write failed on row {rowid}: {e}\033[0m\n")
 
-# --- CONSOLIDATED STRUCTURAL WRITE HELPER (DEDUPLICATED) ---
 def _commit_structures_to_db(db_conn, rel_path, ext_label, classes, functions, file_lines, use_vec):
-    """Consolidated structure-node inserter for classes and functions across all languages."""
     for name, start, end in classes:
         class_id = f"class:{rel_path}:{name}"
         code = "\n".join(file_lines[max(0, start-1):end]).strip() if file_lines else ""
@@ -465,7 +453,6 @@ def _commit_structures_to_db(db_conn, rel_path, ext_label, classes, functions, f
         container = f"class:{rel_path}:{parent_class}" if parent_class else f"file:{rel_path}"
         db_conn.execute("INSERT OR IGNORE INTO edges VALUES (?, ?, ?)", (container, func_id, 'contains'))
 
-# --- CORE ALGORITHM: RESOLVING EXPLICIT AND HEURISTIC DEPENDENCIES ---
 def resolve_and_insert_edges(conn, raw_calls, file_imports):
     cursor = conn.cursor()
     cursor.execute("SELECT id, name, type, filepath FROM nodes WHERE type IN ('function', 'class')")
@@ -485,12 +472,10 @@ def resolve_and_insert_edges(conn, raw_calls, file_imports):
             resolved_target = None
             candidates = target_map.get(callee_name, [])
             
-            # Scenario A: Candidate defined in same file
             local_cand = [c for c in candidates if c[1] == filepath]
             if local_cand:
                 resolved_target = local_cand[0][0]
                 
-            # Scenario B: Target matches local module imports
             if not resolved_target and callee_name in import_names:
                 full_import_name = import_names[callee_name]
                 import_cand_name = full_import_name.split('.')[-1]
@@ -498,11 +483,9 @@ def resolve_and_insert_edges(conn, raw_calls, file_imports):
                 if cands_for_import:
                     resolved_target = cands_for_import[0][0]
                     
-            # Scenario C: Globally unique match
             if not resolved_target and len(candidates) == 1:
                 resolved_target = candidates[0][0]
                 
-            # Scenario D: Multiple matches: draw edges to all possible paths to ensure blast-radius stability
             if not resolved_target and len(candidates) > 1:
                 for cand_id, _, _ in candidates:
                     edges_to_insert.append((caller_id, cand_id, 'calls'))
@@ -512,16 +495,13 @@ def resolve_and_insert_edges(conn, raw_calls, file_imports):
                 edges_to_insert.append((caller_id, resolved_target, 'calls'))
                 
     try:
-        # High-speed batch sqlite executemany replaces slower looping evaluations
         cursor.executemany("INSERT OR IGNORE INTO edges VALUES (?, ?, ?)", edges_to_insert)
     except Exception:
         pass
     conn.commit()
 
-# --- ASCII TREE BUILDER ---
 def compile_ascii_tree(target_dir: str) -> str:
     files_to_check = []
-    # Compact directory scanner loop
     for root in (target_dir, os.path.join(target_dir, "modules")):
         if os.path.isdir(root):
             sub = "modules" if "modules" in root else ""
@@ -537,7 +517,6 @@ def compile_ascii_tree(target_dir: str) -> str:
         lines.append(f"#   {connector}{display_name:<24} - {desc}" if desc else f"#   {connector}{display_name}")
     return "\n".join(lines) + "\n# -----------------------------------------------------------------------------------------\n"
 
-# --- COMPRESSED SHORTHAND COMPILER ---
 def compile_flat_shorthand(skeleton):
     lines = []
     for rel_path, data in sorted(skeleton.items()):
@@ -576,8 +555,7 @@ def compile_flat_shorthand(skeleton):
         lines.append(f"[{t}:{rel_path}] {meta}" if meta else f"[{t}:{rel_path}]")
     return "\n".join(lines)
 
-# --- CORE INDEXER ---
-def run_indexing(target_dir, force=False):
+def run_indexing(target_dir, force=False, is_agent=False):
     is_interactive = sys.stdin.isatty() and sys.stderr.isatty()
     if is_interactive and not force:
         try:
@@ -596,11 +574,17 @@ def run_indexing(target_dir, force=False):
             if sys.stdin.readline().strip().lower() not in ['y', 'yes']: safe_exit(0)
         except: safe_exit(0)
 
-    # 1. Establish SQLite Database Connections
     proj_name = os.path.basename(target_dir)
-    db_path = os.path.join(target_dir, f"index-map-memory-{proj_name}.db")
     
-    # Check if local embedding model server is active and get model dimensions
+    # Dual-Mode Routing: Save to .agent/ when run from Agent or ai init, else save to root
+    if is_agent or "--agent" in sys.argv or os.environ.get("AI_IS_AGENT") == "1":
+        out_dir = os.path.join(target_dir, ".agent")
+        os.makedirs(out_dir, exist_ok=True)
+    else:
+        out_dir = target_dir
+
+    db_path = os.path.join(out_dir, f"index-map-memory-{proj_name}.db")
+    
     use_vec = HAS_VEC
     embedding_dim = 384
     if use_vec:
@@ -615,7 +599,7 @@ def run_indexing(target_dir, force=False):
             use_vec = False
             sys.stderr.write("\r\x1b[2K\033[2mℹ Mapping workspace... [Embedding server offline. Using relational graph only]\033[0m")
             sys.stderr.flush()
-            time.sleep(0.6) # Slight pause so warning can be read
+            time.sleep(0.6)
             
     sys.stderr.write("\r\x1b[2K\033[2mℹ Mapping workspace... [Compiling relational index graph]\033[0m")
     sys.stderr.flush()
@@ -624,7 +608,7 @@ def run_indexing(target_dir, force=False):
     default_ignored = {
         '.git', '__pycache__', 'logs', '.auto-f', 'node_modules', 
         'venv', '.venv', 'SSD_BACKUPS', '.cargo', '.rustup', 
-        '.cache', '.npm', '.local', '.mozilla', 'target'
+        '.cache', '.npm', '.local', '.mozilla', 'target', '.agent'
     }
     patterns = load_gitignore_patterns(target_dir)
     
@@ -649,7 +633,6 @@ def run_indexing(target_dir, force=False):
                 
             ext = os.path.splitext(file)[1].lower()
             
-            # File Node Registration
             insert_node(db_conn, f"file:{rel_path}", rel_path, 'file', rel_path, ext.lstrip('.'), {}, rel_path, use_vec, EMBEDDING_SERVER)
             
             if ext == '.py':
@@ -662,11 +645,9 @@ def run_indexing(target_dir, force=False):
                     visitor = PythonGraphVisitor(rel_path)
                     visitor.visit(tree)
                     
-                    # Store variables for resolution pass
                     raw_calls[rel_path] = visitor.calls
                     file_imports[rel_path] = visitor.imports
                     
-                    # Map to skeleton formatting for flat file backward compatibility
                     skeleton[rel_path] = {
                         "type": "python",
                         "imports": sorted(list({i[0].split('.')[0] for i in visitor.imports})),
@@ -674,7 +655,6 @@ def run_indexing(target_dir, force=False):
                         "functions": [f[0] for f in visitor.functions]
                     }
                     
-                    # Store Python structure directly to DB
                     _commit_structures_to_db(db_conn, rel_path, 'python', visitor.classes, visitor.functions, lines, use_vec)
                 except Exception as e:
                     skeleton[rel_path] = {"type": "python", "error": f"AST error: {e}"}
@@ -695,7 +675,6 @@ def run_indexing(target_dir, force=False):
                     "functions": [f[0] for f in parsed['functions']]
                 }
                 
-                # Store multi-language structure directly to DB
                 _commit_structures_to_db(db_conn, rel_path, ext.lstrip('.'), parsed['classes'], parsed['functions'], file_lines, use_vec)
             else:
                 dispatch = {
@@ -718,7 +697,6 @@ def run_indexing(target_dir, force=False):
         
     date_str = time.strftime('%Y-%m-%d %H:%M')
     
-# ADVANCED CODE INTELLIGENCE SYSTEM INDEX MAP
     header = (
         f"# CODEBASE INDEX MAP | Generated: {date_str} | Workspace: {proj_name} | Path: {display_dir}\n"
         f"# Active symbols and structural connections mapped in the local SQLite graph DB.\n"
@@ -731,18 +709,16 @@ def run_indexing(target_dir, force=False):
     else: header += "# -----------------------------------------------------------------------------------------\n\n"
         
     flat_map = header + flat_map
-    output_file = os.path.join(target_dir, f"index-map-{proj_name}.txt")
+    output_file = os.path.join(out_dir, f"index-map-{proj_name}.txt")
     
     try:
         with open(output_file, 'w', encoding='utf-8') as f: fill = f.write(flat_map)
-        # Overwrite the progress line with a single, clean, 1-line confirmation
         sys.stderr.write(f"\r\x1b[2K\033[1;32m✔ Mapping complete! [{proj_name} index-map & SQLite graph database updated]\033[0m\n")
         sys.stderr.flush()
     except Exception as e:
         sys.stderr.write(f"\r\x1b[2K\033[1;31m❌ Error: Failed to write output files: {e}\033[0m\n")
         sys.stderr.flush()
 
-# --- QUERY TOOL: SHOW ARCHITECTURAL STATISTICS ---
 def show_architecture():
     db = find_db_path()
     if not db:
@@ -775,7 +751,6 @@ def show_architecture():
         print(f"  ├── {name:<35} ({lang or 'unknown'}) - {out_edges} exports/relations")
     conn.close()
 
-# --- QUERY TOOL: SYMBOL TRACING (CALLERS & CALLEES) ---
 def trace_symbol(symbol):
     db = find_db_path()
     if not db:
@@ -793,7 +768,6 @@ def trace_symbol(symbol):
     for node_id, node_type, filepath in nodes:
         print(f"\n\033[1;34m[Trace Call Tree] For: {symbol} ({node_type}) in {filepath}\033[0m")
         
-        # Upstream callers
         print("\n\033[1;32m◀── [Callers] (Who invokes/uses this symbol):\033[0m")
         cursor.execute("SELECT source FROM edges WHERE target = ? AND type = 'calls'", (node_id,))
         callers = cursor.fetchall()
@@ -802,7 +776,6 @@ def trace_symbol(symbol):
             parts = caller.split(":")
             print(f"  ├── \033[36m{parts[-1]}\033[0m [{parts[0]}] ({parts[1]})")
             
-        # Downstream callees
         print("\n\033[1;35m──▶ [Callees] (Who/What this symbol calls):\033[0m")
         cursor.execute("SELECT target FROM edges WHERE source = ? AND type = 'calls'", (node_id,))
         callees = cursor.fetchall()
@@ -812,7 +785,6 @@ def trace_symbol(symbol):
             print(f"  ├── \033[36m{parts[-1]}\033[0m [{parts[0]}] ({parts[1]})")
     conn.close()
 
-# --- QUERY TOOL: RECURSIVE BLAST-RADIUS ANALYSIS ---
 def get_blast_radius(symbol):
     db = find_db_path()
     if not db:
@@ -837,7 +809,7 @@ def get_blast_radius(symbol):
             curr, lvl = queue.pop(0)
             if lvl > 0:
                 levels.setdefault(lvl, []).append(curr)
-            if lvl >= 5: continue  # safety gate recursion depth limit
+            if lvl >= 5: continue
             
             cursor.execute("SELECT source FROM edges WHERE target = ? AND type IN ('calls', 'contains')", (curr,))
             for (source,) in cursor.fetchall():
@@ -858,7 +830,6 @@ def get_blast_radius(symbol):
                     print(f"{indent}  - {color}{parts[-1]}\033[0m [{parts[0]}] ({parts[1]})")
     conn.close()
 
-# --- QUERY TOOL: CODE SNIPPET EXTRACTOR ---
 def extract_snippet(symbol):
     db = find_db_path()
     if not db:
@@ -870,8 +841,10 @@ def extract_snippet(symbol):
     if not results:
         print(f"❌ Symbol '{symbol}' not found."); conn.close(); return
         
-    # Find active working folder
     root_dir = os.path.dirname(db)
+    if os.path.basename(root_dir) == ".agent":
+        root_dir = os.path.dirname(root_dir)
+
     for filepath, meta_str, node_type in results:
         meta = json.loads(meta_str) if meta_str else {}
         l_start = meta.get('line_start')
@@ -893,7 +866,6 @@ def extract_snippet(symbol):
             print("  (Offsets were not cached for this node structure)")
     conn.close()
 
-# --- CUSTOM CYPHER-LIKE DIRECT SQL CONSOLE ---
 def run_custom_query(sql_str):
     db = find_db_path()
     if not db:
@@ -914,7 +886,6 @@ def run_custom_query(sql_str):
         print(f"❌ SQL Syntax Execution Error: {e}")
     conn.close()
 
-# --- HYBRID/SEMANTIC SEARCH ---
 def search_symbols(pattern, server_url=EMBEDDING_SERVER):
     db = find_db_path()
     if not db:
@@ -922,7 +893,6 @@ def search_symbols(pattern, server_url=EMBEDDING_SERVER):
         return
     conn = sqlite3.connect(db)
     
-    # Attempt to load sqlite-vec for active semantic searches
     use_vec = False
     if HAS_VEC:
         try:
@@ -957,7 +927,6 @@ def search_symbols(pattern, server_url=EMBEDDING_SERVER):
             except Exception as e:
                 sys.stderr.write(f"\033[90m[sys] Semantic query failed: {e}. Falling back to LIKE...\033[0m\n")
                 
-    # Direct database fallback when offline or lacking dependencies
     cursor.execute("SELECT id, type, filepath FROM nodes WHERE name LIKE ? OR filepath LIKE ? LIMIT 50", (f"%{pattern}%", f"%{pattern}%"))
     res = cursor.fetchall()
     print(f"\n\033[1;32m[Matches Found: {len(res)}]\033[0m")
@@ -965,21 +934,22 @@ def search_symbols(pattern, server_url=EMBEDDING_SERVER):
         print(f"  - \033[1;36m{rid}\033[0m [{rtype}] ({rpath})")
     conn.close()
 
-# --- CLI ARGUMENT ROUTING ---
 def main():
-    args = sys.argv[1:]
+    raw_args = sys.argv[1:]
+    is_agent = "--agent" in raw_args or os.environ.get("AI_IS_AGENT") == "1"
+    args = [a for a in raw_args if a != "--agent"]
     
     if len(args) == 0:
-        run_indexing(os.getcwd())
+        run_indexing(os.getcwd(), is_agent=is_agent)
         return
         
     cmd = args[0].lower()
     
     if cmd in ("--force", "-f"):
-        run_indexing(os.getcwd(), force=True)
+        run_indexing(os.getcwd(), force=True, is_agent=is_agent)
     elif cmd in ("--help", "-h"):
         print("""
-Usage: index-map-memory.py <command> [argument]
+Usage: index-map <command> [argument] [--agent]
 
 Commands:
   (no arguments)        Interactive initialization & map compiler in local directory
@@ -990,11 +960,13 @@ Commands:
   blast-radius <symbol> Traces recursively what dependencies will be broken if changed
   snippet <symbol>      Statically loads structural code blocks directly via offsets
   query "<SQL>"         Executes low-level queries directly against the graph schema
+Flags:
+  --agent               Outputs generated map files into project/.agent/ directory
         """)
     elif cmd == "init":
         t_dir = os.path.abspath(os.path.expanduser(args[1])) if len(args) > 1 else os.getcwd()
         if not os.path.isdir(t_dir): os.makedirs(t_dir, exist_ok=True)
-        run_indexing(t_dir)
+        run_indexing(t_dir, is_agent=is_agent)
     elif cmd == "architecture":
         show_architecture()
     elif cmd == "search":
@@ -1016,7 +988,7 @@ Commands:
     else:
         path_test = os.path.abspath(os.path.expanduser(args[0]))
         if os.path.isdir(path_test):
-            run_indexing(path_test, force=("--force" in args))
+            run_indexing(path_test, force=("--force" in args), is_agent=is_agent)
         else:
             print(f"❌ Unknown command or folder: {args[0]}. Run with --help for documentation.")
 
