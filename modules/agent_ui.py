@@ -173,63 +173,48 @@ def draw_session_box(
     mem_status = f"active ({tpm_count} facts, {db_turns} turns)" if memory_active else "disabled"
     table.add_row("database:", mem_status if is_agent else "stateless")
 
-    # Style Preset #5: Original In-Panel Codex Style
+    # Style Presets Map: (Base Title, Box Type, Border Color, Title Style)
+    # Style #2 is configured as the default fallback
+    STYLES = {
+        1: ("❖ Local-AI Agent", DOUBLE, "bright_blue", "bold bright_blue"),
+        2: (">_ Local-AI Agent", ROUNDED, "green", "bold bright_green"),  # DEFAULT
+        3: ("❖ Local-AI Agent", HEAVY, "bright_cyan", "bold bright_white"),
+        4: ("Local-AI Agent", HORIZONTALS, "dim white", "bold cyan"),
+    }
+
+    # Style #5: Original In-Panel Codex Style
     if box_style == 5:
-        title_text_inside = f"  >_ Local-AI Agent [sub-agent #{sub_id}]" if sub_id else f"  >_ Local-AI Agent ({version})" if version else "  >_ Local-AI Agent"
-        content_group = Group(
-            Text(title_text_inside, style="bold bright_green"),
-            Text(""),
-            table
-        )
-        _console.print(Panel(
-            content_group,
+        title_str = f"  >_ Local-AI Agent [sub-agent #{sub_id}]" if sub_id else (f"  >_ Local-AI Agent ({version})" if version else "  >_ Local-AI Agent")
+        panel = Panel(
+            Group(Text(title_str, style="bold bright_green"), Text(""), table),
             border_style="green",
             box=ROUNDED,
             expand=False,
             subtitle="[dim]Ctrl+C to exit[/dim]",
             subtitle_align="right"
-        ))
-        _console.print(f"[dim][sys] Startup context: {len(active_system_prompt) // 4:,} tokens[/dim]\n")
-        try:
-            sys.stderr.write("\033[?25h")
-            sys.stderr.flush()
-        except (IOError, OSError):
-            pass
-        return
-
-    # Style Presets Configuration (1-4)
-    if box_style == 2:
-        title_text = f" >_ Local-AI Agent [sub-agent #{sub_id}] " if sub_id else " >_ Local-AI Agent "
-        box_type = ROUNDED
-        border_col = "green"
-        title_style = "bold bright_green"
-    elif box_style == 3:
-        title_text = f" ❖ Local-AI Agent [sub-agent #{sub_id}] " if sub_id else " ❖ Local-AI Agent "
-        box_type = HEAVY
-        border_col = "bright_cyan"
-        title_style = "bold bright_white"
-    elif box_style == 4:
-        title_text = f" Local-AI Agent [sub-agent #{sub_id}] " if sub_id else " Local-AI Agent "
-        box_type = HORIZONTALS
-        border_col = "dim white"
-        title_style = "bold cyan"
+        )
     else:
-        # Style #1 (Default)
-        title_text = f" ❖ Local-AI Agent [sub-agent #{sub_id}] " if sub_id else (f" ❖ Local-AI Agent ({version}) " if version else " ❖ Local-AI Agent ")
-        box_type = DOUBLE
-        border_col = "bright_blue"
-        title_style = "bold bright_blue"
+        base_title, box_type, border_col, title_style = STYLES.get(box_style, STYLES[2])
+        if sub_id:
+            title_text = f" {base_title} [sub-agent #{sub_id}] "
+        elif version:
+            title_text = f" {base_title} ({version}) "
+        else:
+            title_text = f" {base_title} "
 
-    _console.print(Panel(
-        table,
-        title=Text(title_text, style=title_style),
-        title_align="left",
-        border_style=border_col,
-        box=box_type,
-        expand=False,
-        subtitle="[dim]Ctrl+C to exit[/dim]",
-        subtitle_align="right"
-    ))
+        panel = Panel(
+            table,
+            title=Text(title_text, style=title_style),
+            title_align="left",
+            border_style=border_col,
+            box=box_type,
+            expand=False,
+            subtitle="[dim]Ctrl+C to exit[/dim]",
+            subtitle_align="right"
+        )
+
+    # Unified Render & Cursor Restore Pass
+    _console.print(panel)
     _console.print(f"[dim][sys] Startup context: {len(active_system_prompt) // 4:,} tokens[/dim]\n")
     try:
         sys.stderr.write("\033[?25h")

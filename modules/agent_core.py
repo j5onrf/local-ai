@@ -148,6 +148,13 @@ class RichStreamer:
             self.phase = "ANSWER"
             self._update_spinner("Working...")
 
+            # Ensure stdout starts on a clean newline below the bottom border
+            try:
+                sys.stdout.write("\n")
+                sys.stdout.flush()
+            except (IOError, OSError):
+                pass
+
             if answer_part:
                 self.update(answer_part)
             return
@@ -162,11 +169,10 @@ class RichStreamer:
             if token:
                 self.accumulated_thinking += token
                 if show_think:
-                    # Delay header render until actual printable text arrives
                     if not self.thinking_started and token.strip():
                         self.thinking_started = True
                         self._stop_spinner()
-                        _console_err.print("[dim]╭─ ⚙ Thinking  ──────────────────────────────────────────[/dim]")
+                        _console_err.print("[dim]╭─ ⚙ ────────────────────────────────────────────────────[/dim]")
 
                     text_part = token.rstrip("\r\n")
                     newlines_part = token[len(text_part):]
@@ -218,6 +224,7 @@ class RichStreamer:
                 pass
             return
 
+        # Close thinking box if stream stopped during thinking
         if self.phase == "THINKING" and self.accumulated_thinking.strip():
             try:
                 sys.stderr.write("\n")
@@ -227,30 +234,13 @@ class RichStreamer:
             _console_err.print("[dim]╰────────────────────────────────────────────────────────[/dim]")
             self.phase = "ANSWER"
 
-        # Erase raw live stream and replace with final Rich Markdown pass (if enabled)
-        if self.answer_started and self.accumulated_answer.strip():
-            clean_ans = self.accumulated_answer.strip().replace("\\n", "\n")
-
-            if os.environ.get("AI_RENDER_MARKDOWN", "1") == "1":
-                term_w = _console.width or 80
-                full_raw = f"{self.prefix.strip()} {clean_ans}"
-
-                lines_to_clear = sum(max(1, (len(line) + term_w - 1) // term_w) for line in full_raw.split("\n"))
-                try:
-                    sys.stdout.write(f"\033[{lines_to_clear}A\033[1G\033[0J")
-                    sys.stdout.flush()
-                except Exception:
-                    sys.stdout.write("\n")
-
-                p_style = "bold green" if "Agent" in self.prefix else "bold cyan"
-                _console.print(Text(f"{self.prefix.strip()}", style=p_style))
-                _console.print(Markdown(clean_ans, code_theme="ansi_dark"))
-            else:
-                try:
-                    sys.stdout.write("\n")
-                    sys.stdout.flush()
-                except Exception:
-                    pass
+        # Clean finish: No line erasing, prompt stays 100% visible on screen
+        if self.answer_started:
+            try:
+                sys.stdout.write("\n")
+                sys.stdout.flush()
+            except Exception:
+                pass
 
 
 def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float, show_stats: bool, ctx_used: Optional[int] = None) -> None:

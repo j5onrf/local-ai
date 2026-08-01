@@ -33,8 +33,8 @@ exec uwsm app -- "$LLAMA_SERVER_BIN" \
   --jinja \
   --temp 0.15 \
   --min-p 0.05 \
-  --repeat-penalty 1.05 \
-  --presence-penalty 0.0 \
-  --repeat-last-n 64 \
+  --repeat-penalty 1.15 \
+  --repeat-last-n 256 \
+  --presence-penalty 0.15 \
   --no-ui \
   --port "$PORT" >> "$LOG_FILE" 2>&1

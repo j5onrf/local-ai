@@ -296,11 +296,12 @@ def run_interactive_chat(args: List[str]) -> None:
                 # Session Box Style Handler
                 parts = query.split()
                 if parts and parts[0] in ("/box", "/box-style", "/boxstyle"):
-                    curr_style = st.get("box_style", 1)
+                    curr_style = st.get("box_style", 2)
                     if len(parts) > 1:
                         try:
                             val = int(parts[1])
                             if 1 <= val <= 5:
+                                st["box_style"] = val
                                 _save_state("box_style", val)
                                 ui._console.print(f"[green][sys] Session box style updated to #{val}.[/green]\n")
                             else:
@@ -309,6 +310,7 @@ def run_interactive_chat(args: List[str]) -> None:
                             ui._console.print("[red][sys] Usage: /box [1-5][/red]\n")
                     else:
                         next_style = (curr_style % 5) + 1
+                        st["box_style"] = next_style
                         _save_state("box_style", next_style)
                         ui._console.print(f"[green][sys] Switched box style to #{next_style}.[/green]\n")
                     continue
