@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.9.7.49]
+# Local-Ai Agent [j5onrf] [v0.9.7.55]
 
 import json
 import os
@@ -24,14 +24,6 @@ BASE_PROMPT_AGENT: str = "Active local project workspace developer agent.\nIf <c
 STOP_WORDS = {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"}
 
 
-def _run_cmd(args: List[str], stdin: Optional[str] = None) -> str:
-    try:
-        res = subprocess.run(args, input=stdin, capture_output=True, text=True, timeout=10)
-        return res.stdout.strip() if res.returncode == 0 else ""
-    except (subprocess.SubprocessError, OSError):
-        return ""
-
-
 def load_env_file(path: str) -> None:
     if os.path.exists(path):
         try:
@@ -43,8 +35,7 @@ def load_env_file(path: str) -> None:
                         k, v = k.strip(), v.split(" #")[0].strip().strip('"').strip("'")
                         if k and k not in os.environ:
                             os.environ[k] = v
-        except OSError:
-            pass
+        except OSError: pass
 
 
 load_env_file(os.path.join(CFG_DIR, ".env"))
@@ -54,8 +45,7 @@ try:
     import readline
     readline.parse_and_bind(r'"\e[A": previous-history')
     readline.parse_and_bind(r'"\e[B": next-history')
-except ImportError:
-    pass
+except ImportError: pass
 
 try:
     import agent_context as context
@@ -66,11 +56,6 @@ try:
 except ImportError as e:
     sys.stderr.write(f"\033[1;31m[CRITICAL]: Failed to load modules: {e}\033[0m\n")
     sys.exit(1)
-
-
-def workspace_safe_name(workspace_path: str, home_dir: str) -> str:
-    safe = workspace_path[len(home_dir):].lstrip("/") if workspace_path.startswith(home_dir) else workspace_path
-    return safe.replace("/", "-").strip("-") or "home"
 
 
 def workspace_db_counts(safe_name: str) -> Tuple[int, int]:
@@ -84,15 +69,12 @@ def workspace_db_counts(safe_name: str) -> Tuple[int, int]:
                 try:
                     cur.execute("SELECT COUNT(*) FROM turns WHERE workspace = ?", (safe_name,))
                     turns = cur.fetchone()[0]
-                except sqlite3.OperationalError:
-                    pass
+                except sqlite3.OperationalError: pass
                 try:
                     cur.execute("SELECT COUNT(*) FROM tpm_memories")
                     facts = cur.fetchone()[0]
-                except sqlite3.OperationalError:
-                    pass
-        except sqlite3.Error:
-            pass
+                except sqlite3.OperationalError: pass
+        except sqlite3.Error: pass
     return turns, facts
 
 
@@ -100,23 +82,15 @@ def ensure_clean_agent_dir(workspace_path: str) -> None:
     """Relocates auto-created agent files into project/.agent/ to keep workspace clean."""
     agent_dir = os.path.join(workspace_path, ".agent")
     ws_name = os.path.basename(workspace_path)
-    if not ws_name:
-        return
-    targets = (
-        f"index-map-{ws_name}.txt",
-        f"index-map-memory-{ws_name}.db",
-        "history.md",
-        "tpm.md"
-    )
+    if not ws_name: return
+    targets = (f"index-map-{ws_name}.txt", f"index-map-memory-{ws_name}.db", "history.md", "tpm.md")
     for fname in targets:
         src = os.path.join(workspace_path, fname)
         if os.path.exists(src):
             os.makedirs(agent_dir, exist_ok=True)
             dst = os.path.join(agent_dir, fname)
-            try:
-                os.replace(src, dst)
-            except OSError:
-                pass
+            try: os.replace(src, dst)
+            except OSError: pass
 
 
 def sync_md_to_sqlite(workspace: str, workspace_path: str) -> None:
@@ -127,101 +101,14 @@ def sync_md_to_sqlite(workspace: str, workspace_path: str) -> None:
                 matches = re.findall(r"\*\s+\*\*([^*]+)\*\*:\s*(.*)", f.read())
             if matches:
                 reconciled = {k.strip().lower(): v.strip() for k, v in matches}
-                _run_cmd([sys.executable, f"{CFG_DIR}/modules/ai-agent-memories", "tpm-reconcile", workspace], json.dumps(reconciled))
-        except (OSError, json.JSONDecodeError):
-            pass
-
-
-def _get_state() -> Dict[str, Any]:
-    state_path = os.path.join(CFG_DIR, ".state.json")
-    default = {
-        "spell_active": True,
-        "show_stats": True,
-        "memory_active": True,
-        "box_style": 1,
-        "yolo_mode": False,
-        "show_thinking": True,
-        "reasoning_active": False,
-        "reasoning_budget": 500,
-        "render_markdown": True,
-    }
-    if os.path.exists(state_path):
-        try:
-            with open(state_path, "r", encoding="utf-8") as f:
-                return {**default, **json.load(f)}
-        except (OSError, json.JSONDecodeError):
-            pass
-    return default
-
-
-def _save_state(key: str, value: Any) -> None:
-    state = _get_state()
-    state[key] = value
-    try:
-        with open(os.path.join(CFG_DIR, ".state.json"), "w", encoding="utf-8") as f:
-            json.dump(state, f, indent=2)
-    except OSError:
-        pass
-
-
-def background_tpm_update(user_msg: str, assistant_msg: str, workspace: str, workspace_path: str) -> None:
-    cleaned = user_msg.lower().strip()
-    if len(cleaned) < 8 or cleaned in ("hello", "hi", "hey", "exit", "quit", "q", "/clear", "/reset", "/stats", "/tok", "/m", "/r"):
-        return
-    try:
-        db_path = os.path.join(SESSIONS_DIR, f"{workspace}.db")
-        existing_facts = ""
-        os.makedirs(SESSIONS_DIR, exist_ok=True)
-        with closing(sqlite3.connect(db_path, timeout=5)) as conn:
-            cur = conn.cursor()
-            cur.execute("CREATE TABLE IF NOT EXISTS tpm_memories (key TEXT PRIMARY KEY, value TEXT, timestamp INTEGER);")
-            cur.execute("SELECT key, value FROM tpm_memories")
-            rows = cur.fetchall()
-            if rows:
-                existing_facts = "\n".join(f"* {k}: {v}" for k, v in rows)
-
-        sys_p = "You are an asynchronous memory compiler. Analyze the turn and extract persistent user facts, roles, preferences, or environment details. Output ONLY a flat JSON object of key-value pairs (e.g. {\"role\": \"python dev\"}). Output {} if no facts exist. Do not add conversational text."
-        usr_p = f"### Existing Profile:\n{existing_facts or 'None'}\n\n### Turn:\nUser: {user_msg}\nAssistant: {assistant_msg}\n\nOutput JSON:"
-
-        payload = {
-            "messages": [{"role": "system", "content": sys_p}, {"role": "user", "content": usr_p}],
-            "temperature": 0.0,
-            "reasoning_budget": 0,
-            "chat_template_kwargs": {"enable_thinking": False},
-            "max_tokens": 300,
-            "stream": False,
-        }
-        req = urlreq.Request("http://localhost:8080/v1/chat/completions", data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"}, method="POST")
-
-        with urlreq.urlopen(req, timeout=10) as resp:
-            raw_body = resp.read().decode("utf-8")
-            llm_out = json.loads(raw_body)["choices"][0]["message"].get("content", "").strip()
-
-        match = re.search(r"\{[\s\S]*\}", llm_out)
-        if match:
-            parsed = json.loads(match.group(0))
-            if isinstance(parsed, dict) and parsed:
-                clean_parsed = {str(k).strip().lower(): str(v).strip() for k, v in parsed.items() if k and v is not None}
-                if clean_parsed:
-                    mem_tool = f"{CFG_DIR}/modules/ai-agent-memories"
-                    _run_cmd([sys.executable, mem_tool, "tpm-reconcile", workspace], json.dumps(clean_parsed))
-                    res_get = _run_cmd([sys.executable, mem_tool, "tpm-get", workspace])
-                    if res_get:
-                        md_dir = os.path.join(workspace_path, ".agent")
-                        os.makedirs(md_dir, exist_ok=True)
-                        with open(os.path.join(md_dir, "tpm.md"), "w", encoding="utf-8") as tf:
-                            tf.write(res_get + "\n")
-    except Exception as e:
-        sys.stderr.write(f"\n\033[1;31m[TPM Error]: {e}\033[0m\n")
-        sys.stderr.flush()
+                core.run_mod("ai-agent-memories", "tpm-reconcile", workspace, input_data=json.dumps(reconciled))
+        except (OSError, json.JSONDecodeError): pass
 
 
 def clean_exit(safe_name: Optional[str] = None) -> None:
     if safe_name:
-        try:
-            _run_cmd([sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "cleanup-sub", safe_name, str(os.getpid())])
-        except Exception:
-            pass
+        try: core.run_mod("ai-agent-sessions", "cleanup-sub", safe_name, str(os.getpid()))
+        except Exception: pass
     ui._console.print("\n[yellow]Exiting conversation.[/yellow]")
     sys.exit(0)
 
@@ -230,7 +117,7 @@ def run_interactive_chat(args: List[str]) -> None:
     is_agent = args[0] == "--talk-chat"
     workspace_path = os.environ.get("AI_WORKSPACE_PATH", os.getcwd())
     home_dir = os.path.expanduser("~")
-    safe_name = workspace_safe_name(workspace_path, home_dir)
+    safe_name = core.workspace_safe_name(workspace_path, home_dir)
 
     ensure_clean_agent_dir(workspace_path)
     cfg_file = os.path.join(workspace_path, ".agent", "config.json")
@@ -244,16 +131,14 @@ def run_interactive_chat(args: List[str]) -> None:
                 os.makedirs(os.path.dirname(cfg_file), exist_ok=True)
                 with open(cfg_file, "w", encoding="utf-8") as cf:
                     json.dump({"profile": selected_profile, "yolo": is_yolo, "created_at": time.strftime("%Y-%m-%d %H:%M")}, cf, indent=2)
-            except OSError:
-                pass
+            except OSError: pass
         else:
             try:
                 with open(cfg_file, "r", encoding="utf-8") as cf:
                     cfg_data = json.load(cf)
                     selected_profile = cfg_data.get("profile", "default")
                     is_yolo = cfg_data.get("yolo", False)
-            except (OSError, json.JSONDecodeError):
-                pass
+            except (OSError, json.JSONDecodeError): pass
 
     for arg in args:
         if arg.startswith("-") and arg not in ("--talk", "--talk-chat"):
@@ -277,12 +162,13 @@ def run_interactive_chat(args: List[str]) -> None:
     chat_history = [{"role": "system", "content": active_system_prompt}]
     pending_query = " ".join(args[1:]) if len(args) > 1 else None
 
-    st = _get_state()
+    st = core.get_state()
     spell_active, show_stats, memory_active = st["spell_active"], st["show_stats"], st["memory_active"]
     reasoning_active = st.get("reasoning_active", False)
     reasoning_budget = st.get("reasoning_budget", 500)
 
     os.environ["AI_RENDER_MARKDOWN"] = "1" if st.get("render_markdown", True) else "0"
+    os.environ["AI_REASONIX_ACTIVE"] = "1" if st.get("reasonix_active", True) else "0"
 
     if is_yolo or st.get("yolo_mode", False):
         os.environ["AI_CONFIRM_GATES"] = "0"
@@ -294,11 +180,9 @@ def run_interactive_chat(args: List[str]) -> None:
     sub_id = None
     if is_agent:
         try:
-            sub_str = _run_cmd([sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "get-sub-id", safe_name, str(os.getpid())])
-            if sub_str.isdigit() and int(sub_str) > 0:
-                sub_id = int(sub_str)
-        except Exception:
-            pass
+            sub_str = core.run_mod("ai-agent-sessions", "get-sub-id", safe_name, str(os.getpid()))
+            if sub_str.isdigit() and int(sub_str) > 0: sub_id = int(sub_str)
+        except Exception: pass
 
     box_style = st.get("box_style", 2)
     ui.draw_session_box(workspace_path, home_dir, is_agent, db_turns, tpm_count, memory_active, active_system_prompt, clean_name, sub_id=sub_id, box_style=box_style)
@@ -310,15 +194,11 @@ def run_interactive_chat(args: List[str]) -> None:
                 try:
                     prompt_str = "\001\033[1;30m\002❯\001\033[0m\002 "
                     query = input(prompt_str).strip()
-                except EOFError:
-                    break
+                except EOFError: break
                 finally:
-                    try:
-                        readline.set_startup_hook(None)
-                    except Exception:
-                        pass
-                if not query:
-                    continue
+                    try: readline.set_startup_hook(None)
+                    except Exception: pass
+                if not query: continue
                 if query.lower() in ("exit", "quit", "q"):
                     clean_exit(safe_name if is_agent else None)
 
@@ -341,7 +221,7 @@ def run_interactive_chat(args: List[str]) -> None:
 
                 if query in ("/spell", "/sp"):
                     spell_active = not spell_active
-                    _save_state("spell_active", spell_active)
+                    core.save_state("spell_active", spell_active)
                     ui._console.print(f"[green][sys] Spellchecker {'enabled' if spell_active else 'disabled'}.[/green]\n")
                     continue
 
@@ -352,23 +232,19 @@ def run_interactive_chat(args: List[str]) -> None:
                         try:
                             val = int(parts[1])
                             if 1 <= val <= 5:
-                                st["box_style"] = val
-                                _save_state("box_style", val)
+                                core.save_state("box_style", val)
                                 ui._console.print(f"[green][sys] Session box style updated to #{val}.[/green]\n")
-                            else:
-                                ui._console.print("[red][sys] Usage: /box [1-5][/red]\n")
-                        except ValueError:
-                            ui._console.print("[red][sys] Usage: /box [1-5][/red]\n")
+                            else: ui._console.print("[red][sys] Usage: /box [1-5][/red]\n")
+                        except ValueError: ui._console.print("[red][sys] Usage: /box [1-5][/red]\n")
                     else:
                         next_style = (curr_style % 5) + 1
-                        st["box_style"] = next_style
-                        _save_state("box_style", next_style)
+                        core.save_state("box_style", next_style)
                         ui._console.print(f"[green][sys] Switched box style to #{next_style}.[/green]\n")
                     continue
 
                 if query == "/m":
                     memory_active = not memory_active
-                    _save_state("memory_active", memory_active)
+                    core.save_state("memory_active", memory_active)
                     ui._console.print(f"[green][sys] Memory {'enabled' if memory_active else 'disabled'}.[/green]\n")
                     continue
 
@@ -376,7 +252,7 @@ def run_interactive_chat(args: List[str]) -> None:
                     curr_md = os.environ.get("AI_RENDER_MARKDOWN", "1") == "1"
                     new_md = not curr_md
                     os.environ["AI_RENDER_MARKDOWN"] = "1" if new_md else "0"
-                    _save_state("render_markdown", new_md)
+                    core.save_state("render_markdown", new_md)
                     ui._console.print(f"[green][sys] Markdown rendering {'enabled' if new_md else 'disabled'}.[/green]\n")
                     continue
 
@@ -384,7 +260,7 @@ def run_interactive_chat(args: List[str]) -> None:
                     yolo_active = os.environ.get("AI_CONFIRM_GATES", "1") == "0"
                     new_yolo = not yolo_active
                     os.environ["AI_CONFIRM_GATES"] = "0" if new_yolo else "1"
-                    _save_state("yolo_mode", new_yolo)
+                    core.save_state("yolo_mode", new_yolo)
                     msg = "disabled (Autonomous / YOLO mode active)" if new_yolo else "enabled (y/n confirmation required per action)"
                     ui._console.print(f"[yellow][sys] Confirmation gates {msg}.[/yellow]\n")
                     continue
@@ -395,40 +271,39 @@ def run_interactive_chat(args: List[str]) -> None:
                         sub = parts[1].lower()
                         if sub in ("hide", "off", "mute", "quiet"):
                             os.environ["AI_SHOW_THINKING"] = "0"
-                            _save_state("show_thinking", False)
+                            core.save_state("show_thinking", False)
                             ui._console.print("[yellow][sys] Thinking display hidden (thinking mode remains active).[/yellow]\n")
                             continue
                         elif sub in ("show", "on", "visible"):
                             os.environ["AI_SHOW_THINKING"] = "1"
-                            _save_state("show_thinking", True)
+                            core.save_state("show_thinking", True)
                             ui._console.print("[yellow][sys] Thinking display enabled.[/yellow]\n")
                             continue
                         elif sub in ("toggle", "t"):
                             curr = os.environ.get("AI_SHOW_THINKING", "1") == "1"
                             new_val = not curr
                             os.environ["AI_SHOW_THINKING"] = "1" if new_val else "0"
-                            _save_state("show_thinking", new_val)
+                            core.save_state("show_thinking", new_val)
                             ui._console.print(f"[yellow][sys] Thinking display {'enabled' if new_val else 'hidden'}.[/yellow]\n")
                             continue
                         else:
                             try:
                                 val = int(parts[1])
                                 reasoning_active, reasoning_budget = val > 0, max(0, val)
-                                _save_state("reasoning_active", reasoning_active)
-                                _save_state("reasoning_budget", reasoning_budget)
+                                core.save_state("reasoning_active", reasoning_active)
+                                core.save_state("reasoning_budget", reasoning_budget)
                                 ui._console.print(f"[yellow][sys] Deep reasoning {'enabled' if reasoning_active else 'disabled'} (budget: {reasoning_budget} tokens).[/yellow]\n")
-                            except ValueError:
-                                ui._console.print("[red][sys] Usage: /t [number|show|hide|toggle][/red]\n")
+                            except ValueError: ui._console.print("[red][sys] Usage: /t [number|show|hide|toggle][/red]\n")
                             continue
                     else:
                         reasoning_active = not reasoning_active
-                        _save_state("reasoning_active", reasoning_active)
+                        core.save_state("reasoning_active", reasoning_active)
                         ui._console.print(f"[yellow][sys] Deep reasoning {'enabled' if reasoning_active else 'disabled'} (budget: {reasoning_budget} tokens).[/yellow]\n")
                     continue
 
                 if query == "/stats":
                     show_stats = not show_stats
-                    _save_state("show_stats", show_stats)  
+                    core.save_state("show_stats", show_stats)  
                     ui._console.print(f"[green][sys] Stats {'enabled' if show_stats else 'disabled'}.[/green]\n")
                     continue
 
@@ -444,18 +319,15 @@ def run_interactive_chat(args: List[str]) -> None:
                     
                     if os.path.exists(txt_path):
                         try:
-                            with open(txt_path, "r", encoding="utf-8") as mf:
-                                new_map = mf.read().strip()
+                            with open(txt_path, "r", encoding="utf-8") as mf: new_map = mf.read().strip()
                             updated = False
                             for msg in chat_history:
                                 if "### CODESPACE MAP:" in msg["content"]:
                                     msg["content"] = msg["content"].split("### CODESPACE MAP:")[0] + f"### CODESPACE MAP:\n{new_map}"
                                     updated = True
-                            if not updated:
-                                chat_history[0]["content"] += f"\n\n### CODESPACE MAP:\n{new_map}"
+                            if not updated: chat_history[0]["content"] += f"\n\n### CODESPACE MAP:\n{new_map}"
                             ui._console.print("\r\x1b[2K[green][sys] Map synchronized.[/green]\n")
-                        except Exception as e:
-                            ui._console.print(f"\r\x1b[2K[red][sys] Sync failed: {e}[/red]\n")
+                        except Exception as e: ui._console.print(f"\r\x1b[2K[red][sys] Sync failed: {e}[/red]\n")
                     continue
 
                 if query.lower() in ("/clear", "/reset"):
@@ -473,12 +345,10 @@ def run_interactive_chat(args: List[str]) -> None:
                         os.path.join(workspace_path, f"index-map-memory-{ws_base}.db")
                     ):
                         if os.path.exists(p):
-                            try:
-                                os.remove(p)
-                            except OSError:
-                                pass
-                    _run_cmd([sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "clear", safe_name])
-                    _run_cmd([sys.executable, f"{CFG_DIR}/modules/ai-agent-memories", "tpm-clear", safe_name])
+                            try: os.remove(p)
+                            except OSError: pass
+                    core.run_mod("ai-agent-sessions", "clear", safe_name)
+                    core.run_mod("ai-agent-memories", "tpm-clear", safe_name)
                     ui._console.print("[green][sys] Session and memory cleared.[/green]\n")
                     continue
 
@@ -489,25 +359,20 @@ def run_interactive_chat(args: List[str]) -> None:
                 if spell_active and not query.startswith(("/", "-", "#", "```")):
                     action, query = spell.check_query_spelling(query, ui.get_key)
                     if action == "EDIT":
-                        try:
-                            readline.set_startup_hook(lambda: readline.insert_text(query))
-                        except Exception:
-                            pass
+                        try: readline.set_startup_hook(lambda: readline.insert_text(query))
+                        except Exception: pass
                         continue
-                    elif action == "DISABLE":
-                        spell_active = False
+                    elif action == "DISABLE": spell_active = False
 
             if query.startswith(("/", "-")) and (query.startswith(("/skill", "/s")) or query.startswith(("/skill ", "/s "))):
                 res = subprocess.run([sys.executable, f"{CFG_DIR}/modules/agent_skills.py", safe_name, query], input=json.dumps(chat_history), stdout=subprocess.PIPE, text=True)
                 if res.stdout.strip():
-                    try:
-                        chat_history = json.loads(res.stdout.strip())
-                    except json.JSONDecodeError as e:
-                        ui._console.print(f"[red]Error loading session: {e}[/red]")
+                    try: chat_history = json.loads(res.stdout.strip())
+                    except json.JSONDecodeError as e: ui._console.print(f"[red]Error loading session: {e}[/red]")
                 continue
 
             if query.startswith("-save"):
-                _run_cmd([sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "save", safe_name, query.replace("-save", "").strip()], json.dumps(chat_history))
+                core.run_mod("ai-agent-sessions", "save", safe_name, query.replace("-save", "").strip(), input_data=json.dumps(chat_history))
                 continue
 
             if query in ("-load", "-timeline"):
@@ -530,11 +395,10 @@ def run_interactive_chat(args: List[str]) -> None:
                         continue
                     if res.returncode == 3:
                         memory_active = False
-                        _save_state("memory_active", False)
+                        core.save_state("memory_active", False)
                     past_memory = res.stdout.strip()
-                except Exception:
-                    pass
-                tpm_context = _run_cmd([sys.executable, f"{CFG_DIR}/modules/ai-agent-memories", "tpm-get", safe_name])
+                except Exception: pass
+                tpm_context = core.run_mod("ai-agent-memories", "tpm-get", safe_name)
 
             if re.match(r"^/?([ftba])(?:\s+(\d+))?$", query.lower()):
                 think_bin = f"{CFG_DIR}/modules/chat"
@@ -550,32 +414,27 @@ def run_interactive_chat(args: List[str]) -> None:
                 prompt = f"### SYSTEM INSTRUCTIONS (CRITICAL OVERRIDE):\n{active_system_prompt}\n\n### CODESPACE MAP:\n{query}"
             else:
                 sys_ctx = "" if query.startswith("init") and "--init" in query else skills.get_system_context(query, CONTEXT_FILE, STOP_WORDS, SKILLS_DIR, CFG_DIR)
-                if sys_ctx == "__ABORT_TURN__":
-                    sys_ctx = ""
+                if sys_ctx == "__ABORT_TURN__": sys_ctx = ""
                 comb_ctx = "\n\n".join(filter(None, [tpm_context, past_memory, sys_ctx]))
                 prompt = f"<context>\n{comb_ctx}\n</context>\n\nUser Question: {query}" if comb_ctx else f"User Question: {query}"
 
             chat_history.append({"role": "user", "content": prompt})
             if not is_init_map:
-                try:
-                    readline.add_history(query)
-                except Exception:
-                    pass
+                try: readline.add_history(query)
+                except Exception: pass
 
             ans = core.stream_response(chat_history, prefix="Agent:" if is_agent else "AI:", show_stats=show_stats, thinking_budget=reasoning_budget if reasoning_active else 0, is_agent=is_agent)
             if ans:
                 chat_history.append({"role": "assistant", "content": ans})
                 if is_agent:
-                    _run_cmd([sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "log-turn", safe_name, query, ans])
+                    core.run_mod("ai-agent-sessions", "log-turn", safe_name, query, ans)
                     match = re.search(r"Run:\s*((?:trace symbol|blast radius|read function|find symbol)\s+\S+|architecture overview)", ans)
                     if match:
-                        try:
-                            readline.set_startup_hook(lambda: readline.insert_text(match.group(1).strip()))
-                        except Exception:
-                            pass
+                        try: readline.set_startup_hook(lambda: readline.insert_text(match.group(1).strip()))
+                        except Exception: pass
 
                     if memory_active and not is_init_map:
-                        threading.Thread(target=background_tpm_update, args=(query, ans, safe_name, workspace_path), daemon=True).start()
+                        threading.Thread(target=core.background_tpm_update, args=(query, ans, safe_name, workspace_path), daemon=True).start()
 
                     if not is_init_map:
                         agent_dir = os.path.join(workspace_path, ".agent")
@@ -584,11 +443,9 @@ def run_interactive_chat(args: List[str]) -> None:
                         try:
                             mode = "a" if os.path.exists(hist_file) else "w"
                             with open(hist_file, mode, encoding="utf-8") as hf:
-                                if mode == "w":
-                                    hf.write(f"# Workspace History: {os.path.basename(workspace_path)}\n\n")
+                                if mode == "w": hf.write(f"# Workspace History: {os.path.basename(workspace_path)}\n\n")
                                 hf.write(f"## [{time.strftime('%Y-%m-%d %H:%M')}] User:\n{query}\n\n### Agent:\n{ans}\n\n---\n\n")
-                        except OSError:
-                            pass
+                        except OSError: pass
     except KeyboardInterrupt:
         clean_exit(safe_name if is_agent else None)
 
@@ -603,8 +460,7 @@ def run_direct_query(args: List[str]) -> None:
     active_p = BASE_PROMPT + (f"### Active Skill/Role Instructions:\n{skill_content}\n" if skill_content else "")
     query = " ".join(query_parts)
     sys_ctx = skills.get_system_context(query, CONTEXT_FILE, STOP_WORDS, SKILLS_DIR, CFG_DIR)
-    if sys_ctx == "__ABORT_TURN__":
-        sys_ctx = ""
+    if sys_ctx == "__ABORT_TURN__": sys_ctx = ""
 
     messages = [{"role": "system", "content": active_p}, {"role": "user", "content": (f"<context>\n{sys_ctx}\n</context>\n\n" if sys_ctx else "") + f"User Question: {query}"}]
     core.stream_response(messages, prefix="AI:", show_stats=False)
@@ -613,8 +469,7 @@ def run_direct_query(args: List[str]) -> None:
 
 def run_matching_search(args: List[str]) -> None:
     user_input = re.sub(r"[`$]", "", " ".join(args)).strip()
-    if not user_input or args[0].startswith("--"):
-        sys.exit(0)
+    if not user_input or args[0].startswith("--"): sys.exit(0)
 
     if user_input.lower() in ("/help", "/h"):
         ui.show_help()

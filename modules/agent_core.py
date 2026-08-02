@@ -1,6 +1,6 @@
 """
 Local-AI Agent Core Module
-Handles streaming SSE payloads, function execution, tool gates, and Rich Markdown rendering.
+Handles streaming SSE payloads, function execution, tool gates, shared state, and Rich rendering.
 """
 
 import os
@@ -14,6 +14,7 @@ import difflib
 import urllib.parse
 import urllib.request as urlreq
 from typing import List, Dict, Any, Optional, Tuple
+from contextlib import closing
 
 import requests
 from rich.console import Console, Group
@@ -26,38 +27,19 @@ from rich.syntax import Syntax
 import agent_ui as ui
 import agent_cloud
 
+CFG_DIR: str = os.path.expanduser("~/.config/local-ai")
+STATE_FILE: str = os.path.join(CFG_DIR, ".state.json")
+
 _console = Console()
 _console_err = Console(stderr=True)
 _session = requests.Session()
 
-# Reasonix Step Keywords (Universal Cognitive Vocabulary)
-REASONIX_KEYWORDS = {
-    "step", "phase", "analyze", "analysis", "determine", "determination", "strategy", 
-    "drafting", "draft", "refine", "refining", "polish", "planning", "plan", 
-    "verify", "verification", "reflect", "reflecting", "reflection", "correction", 
-    "alternative", "hypothesis", "evaluate", "evaluation", "check", "checking", 
-    "context", "goal", "goals", "process", "overview", "breakdown", "selecting", 
-    "selection", "final", "finalizing", "review", "reviewing", "wait", "decision", 
-    "decide", "deciding", "option", "options", "solution", "solutions", "conclusion", 
-    "concluding", "summary", "summarize", "reasoning", "assessment", "assess", 
-    "implementation", "execution", "testing", "input", "inputs", "output", "outputs", 
-    "constraint", "constraints", "requirement", "requirements", "validation", 
-    "validate", "thought", "thoughts"
-}
-
-def _check_reasonix_header(buf: str) -> Optional[str]:
-    clean = re.sub(r'^[\d\.\s\*\#\-]+|[\:\*\#]+$', '', buf).strip()
-    if not clean or len(clean) > 50:
-        return None
-    if ":" in clean:
-        clean = clean.split(":", 1)[0].strip()
-    first_word = clean.split()[0].lower() if clean.split() else ""
-    if first_word in REASONIX_KEYWORDS or first_word.startswith("step"):
-        return clean.title()
-    return None
-
-# Pre-compiled module constants
+# Pre-compiled regular expressions for 0% streaming overhead
 ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*m')
+RE_THINKING_TITLE = re.compile(r'^\s*Thinking Process:\s*', re.IGNORECASE)
+RE_FINAL_ANSWER = re.compile(r'^\s*Final Answer:\s*', re.IGNORECASE)
+RE_TRIPLE_NEWLINES = re.compile(r'\n{3,}')
+
 BINARY_EXTENSIONS = {
     ".db", ".sqlite", ".sqlite3", ".bin", ".pyc", ".so", ".dll", 
     ".exe", ".png", ".jpg", ".jpeg", ".gif", ".zip", ".tar", ".gz", 
@@ -82,8 +64,87 @@ except ImportError:
     speed_test = None
 
 
+def get_state(key: str = "", default: Any = None) -> Any:
+    """Centralized state JSON getter."""
+    defs = {
+        "spell_active": True, "show_stats": True, "memory_active": True,
+        "box_style": 2, "yolo_mode": False, "show_thinking": True,
+        "reasoning_active": False, "reasoning_budget": 500, "render_markdown": True,
+        "compact_mode": 0, "sidebar_hidden": False, "footer_hidden": True,
+        "tips_card_hidden": False, "tui_theme": "code"
+    }
+    if os.path.exists(STATE_FILE):
+        try:
+            with open(STATE_FILE, "r", encoding="utf-8") as f:
+                defs.update(json.load(f))
+        except Exception: pass
+    return defs.get(key, default) if key else defs
+
+
+def save_state(key: str, value: Any) -> None:
+    """Centralized state JSON setter."""
+    st = get_state()
+    st[key] = value
+    try:
+        os.makedirs(CFG_DIR, exist_ok=True)
+        with open(STATE_FILE, "w", encoding="utf-8") as f:
+            json.dump(st, f, indent=2)
+    except Exception: pass
+
+
+def workspace_safe_name(workspace_path: str, home_dir: str = "") -> str:
+    """Sanitizes workspace directory path to safe database string key."""
+    home = home_dir or os.path.expanduser("~")
+    abs_ws, abs_home = os.path.abspath(workspace_path), os.path.abspath(home)
+    if abs_ws == abs_home: return "home"
+    clean = abs_ws.replace("/", "-").strip("-.")
+    return clean or "home"
+
+
+def run_mod(module_name: str, *args: str, input_data: Optional[str] = None) -> str:
+    """Compact subprocess executor for Local-AI modules."""
+    mod_path = os.path.join(CFG_DIR, "modules", module_name)
+    if not os.path.exists(mod_path):
+        mod_path = os.path.join(CFG_DIR, module_name)
+    try:
+        cmd = [sys.executable, mod_path] + list(args)
+        res = subprocess.run(cmd, input=input_data, capture_output=True, text=True, timeout=15)
+        return res.stdout.strip() if res.returncode == 0 else ""
+    except Exception: return ""
+
+
+def background_tpm_update(user_msg: str, assistant_msg: str, workspace: str, workspace_path: str) -> None:
+    """Streamlined asynchronous background TPM memory compiler."""
+    cleaned = user_msg.lower().strip()
+    if len(cleaned) < 8 or cleaned in ("hello", "hi", "hey", "exit", "quit", "q", "/clear", "/reset", "/stats", "/tok", "/m", "/r"):
+        return
+    try:
+        ex_facts = run_mod("ai-agent-memories", "tpm-get", workspace)
+        sys_p = "You are an async memory compiler. Extract persistent user facts, roles, or preferences. Output ONLY a flat JSON object of key-value pairs (e.g. {\"role\": \"python dev\"}). Output {} if none exist."
+        usr_p = f"### Profile:\n{ex_facts or 'None'}\n\n### Turn:\nUser: {user_msg}\nAssistant: {assistant_msg}\n\nJSON:"
+        
+        payload = {
+            "messages": [{"role": "system", "content": sys_p}, {"role": "user", "content": usr_p}],
+            "stream": False
+        }
+        req = urlreq.Request("http://localhost:8080/v1/chat/completions", data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"}, method="POST")
+        with urlreq.urlopen(req, timeout=10) as resp:
+            out = json.loads(resp.read().decode("utf-8"))["choices"][0]["message"].get("content", "")
+
+        if m := re.search(r"\{[\s\S]*\}", out):
+            if parsed := json.loads(m.group(0)):
+                clean = {str(k).strip().lower(): str(v).strip() for k, v in parsed.items() if k and v is not None}
+                if clean:
+                    run_mod("ai-agent-memories", "tpm-reconcile", workspace, input_data=json.dumps(clean))
+                    if res := run_mod("ai-agent-memories", "tpm-get", workspace):
+                        md_dir = os.path.join(workspace_path, ".agent")
+                        os.makedirs(md_dir, exist_ok=True)
+                        with open(os.path.join(md_dir, "tpm.md"), "w", encoding="utf-8") as f: f.write(res + "\n")
+    except Exception: pass
+
+
 class RichStreamer:
-    """Streams direct text during generation, then renders full Rich Markdown on completion in a final pass."""
+    """Streams direct text during generation, then renders clean Rich Markdown on completion in a final pass."""
 
     def __init__(self, prefix: str = "", active: bool = True, spinner: Any = None) -> None:
         self.prefix: str = prefix
@@ -91,8 +152,6 @@ class RichStreamer:
         self.spinner: Any = spinner
         self.accumulated_thinking: str = ""
         self.accumulated_answer: str = ""
-        self.thinking_line_buf: str = ""
-        self.thinking_line_start: bool = True
         self.phase: str = "INIT"
         self.answer_started: bool = False
         self.thinking_started: bool = False
@@ -126,8 +185,7 @@ class RichStreamer:
                 self.phase = "ANSWER"
                 token = parts[1] if len(parts) > 1 else ""
 
-            if self.phase == "THINKING":
-                return
+            if self.phase == "THINKING": return
 
             if token:
                 try:
@@ -142,8 +200,6 @@ class RichStreamer:
             self.phase = "THINKING"
             self.first_think_token = True
             self.thinking_started = False
-            self.thinking_line_buf = ""
-            self.thinking_line_start = True
             self._update_spinner("Thinking...")
             token = token.replace("<think>", "")
 
@@ -152,44 +208,32 @@ class RichStreamer:
             thinking_part = parts[0]
             answer_part = parts[1] if len(parts) > 1 else ""
 
-            self.accumulated_thinking += thinking_part
+            if thinking_part:
+                self.accumulated_thinking += thinking_part
+                if show_think and self.phase == "THINKING":
+                    try:
+                        clean_text = thinking_part.rstrip("\r\n")
+                        if clean_text:
+                            sys.stderr.write(clean_text + "\n")
+                            sys.stderr.flush()
+                    except (IOError, OSError): pass
 
             if show_think and self.phase == "THINKING":
-                if self.thinking_line_buf:
-                    header = _check_reasonix_header(self.thinking_line_buf)
-                    try:
-                        if header:
-                            sys.stderr.write(f"\033[1;33m ❖ [{header}]\033[0m\033[2;3m ")
-                        else:
-                            sys.stderr.write(f"\033[2;3m{self.thinking_line_buf}\033[0m")
-                        sys.stderr.flush()
-                    except (IOError, OSError): pass
-                    self.thinking_line_buf = ""
-
-                try:
-                    sys.stderr.write("\n")
-                    sys.stderr.flush()
-                except (IOError, OSError): pass
                 _console_err.print("[dim]╰────────────────────────────────────────────────────────[/dim]")
 
             self.phase = "ANSWER"
             self._update_spinner("Working...")
-            try:
-                sys.stdout.write("\n")
-                sys.stdout.flush()
-            except (IOError, OSError): pass
 
-            if answer_part:
-                self.update(answer_part)
+            if answer_part: self.update(answer_part)
             return
 
         if self.phase == "THINKING":
             if self.first_think_token:
                 token = token.lstrip("\r\n")
-                if token:
-                    self.first_think_token = False
+                if token: self.first_think_token = False
 
             if token:
+                token = RE_THINKING_TITLE.sub('', token.replace("\\n", "\n").replace("\r\n\r\n", "\n").replace("\n\n", "\n"))
                 self.accumulated_thinking += token
                 if show_think:
                     if not self.thinking_started and token.strip():
@@ -198,36 +242,13 @@ class RichStreamer:
                         _console_err.print("[dim]╭─ ⚙ ────────────────────────────────────────────────────[/dim]")
                         token = token.lstrip("\r\n")
 
-                    if self.thinking_line_start:
-                        self.thinking_line_buf += token
-                        if ":" in token or "\n" in token or len(self.thinking_line_buf) > 40:
-                            header = _check_reasonix_header(self.thinking_line_buf)
-                            if header:
-                                try:
-                                    sys.stderr.write(f"\033[1;33m ❖ [{header}]\033[0m\033[2;3m ")
-                                    sys.stderr.flush()
-                                except (IOError, OSError): pass
-                                self.thinking_line_buf = ""
-                                self.thinking_line_start = False
-                            else:
-                                try:
-                                    sys.stderr.write(f"\033[2;3m{self.thinking_line_buf}\033[0m")
-                                    sys.stderr.flush()
-                                except (IOError, OSError): pass
-                                self.thinking_line_buf = ""
-                                self.thinking_line_start = False
-                    else:
-                        if "\n" in token:
-                            self.thinking_line_start = True
-                            self.thinking_line_buf = ""
-                            token = re.sub(r'[\r\n]{2,}', '\n', token)
+                    if token:
                         try:
-                            sys.stderr.write(f"\033[2;3m{token}\033[0m")
+                            sys.stderr.write(token)
                             sys.stderr.flush()
                         except (IOError, OSError): pass
         else:
-            if self.phase != "ANSWER":
-                self.phase = "ANSWER"
+            if self.phase != "ANSWER": self.phase = "ANSWER"
 
             if not self.answer_started:
                 self._stop_spinner()
@@ -239,13 +260,15 @@ class RichStreamer:
                     sys.stdout.flush()
                 except (IOError, OSError): pass
 
-            clean_tok = token.replace("\\n", "\n")
+            clean_tok = RE_FINAL_ANSWER.sub('', token.replace("\\n", "\n"))
             self.accumulated_answer += clean_tok
-            try:
-                sys.stdout.write(clean_tok)
-                sys.stdout.write("\033[?25h")
-                sys.stdout.flush()
-            except (IOError, OSError): pass
+
+            if clean_tok:
+                try:
+                    sys.stdout.write(clean_tok)
+                    sys.stdout.write("\033[?25h")
+                    sys.stdout.flush()
+                except (IOError, OSError): pass
 
     def stop(self, interrupted: bool = False) -> None:
         self._stop_spinner()
@@ -258,38 +281,35 @@ class RichStreamer:
             return
 
         if self.phase == "THINKING" and self.accumulated_thinking.strip():
-            try:
-                sys.stderr.write("\n")
-                sys.stderr.flush()
-            except (IOError, OSError): pass
             _console_err.print("[dim]╰────────────────────────────────────────────────────────[/dim]")
             self.phase = "ANSWER"
 
-        # FINAL PASS: Rewind lines and render Rich Markdown
+        if not self.answer_started and self.accumulated_answer.strip():
+            self.answer_started = True
+
         if self.answer_started:
             render_md = os.environ.get("AI_RENDER_MARKDOWN", "1") == "1"
             if render_md and self.accumulated_answer.strip() and sys.stdout.isatty():
                 try:
                     cols = shutil.get_terminal_size((80, 24)).columns or 80
-                    p_str = f"{self.prefix.strip()} " if self.prefix else ""
-                    full_str = p_str + self.accumulated_answer
+                    p_clean = self.prefix.strip() if self.prefix else ""
+                    clean_ans = RE_FINAL_ANSWER.sub('', RE_TRIPLE_NEWLINES.sub('\n\n', self.accumulated_answer.strip())).strip()
 
-                    total_rows = 0
-                    for line in full_str.split("\n"):
-                        clean_len = len(ANSI_ESCAPE.sub('', line))
-                        total_rows += max(1, (clean_len + cols - 1) // cols)
+                    full_str = f"{p_clean} {clean_ans}" if p_clean else clean_ans
 
+                    total_rows = sum(max(1, (len(ANSI_ESCAPE.sub('', l)) + cols - 1) // cols) for l in full_str.split("\n"))
                     up_count = max(0, total_rows - 1)
+
                     if up_count > 0:
                         sys.stdout.write(f"\r\033[{up_count}A\033[J")
                     else:
-                        sys.stdout.write("\r\033[J")
+                        sys.stdout.write("\r\033[2K")
                     sys.stdout.flush()
 
-                    p_style = "bold green" if "Agent" in self.prefix else "bold cyan"
-                    if self.prefix.strip():
-                        _console.print(Text.from_markup(f"[{p_style}]{self.prefix.strip()}[/{p_style}]"))
-                    _console.print(Markdown(self.accumulated_answer, code_theme="ansi_dark"))
+                    p_col = "bold green" if "Agent" in p_clean else "bold cyan"
+                    if p_clean:
+                        _console.print(Text(p_clean, style=p_col))
+                    _console.print(Markdown(clean_ans, code_theme="ansi_dark"))
                 except Exception:
                     try:
                         sys.stdout.write("\n")
@@ -303,8 +323,7 @@ class RichStreamer:
 
 
 def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float, show_stats: bool, ctx_used: Optional[int] = None) -> None:
-    if not usage_log:
-        return
+    if not usage_log: return
     try:
         usage_log.record(model, in_tok, out_tok, cost)
         usage_log.refresh_balance_async(min_age=10)
@@ -315,6 +334,10 @@ def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float, show_sta
 
 
 def _process_stream_chunk(content: str, reasoning: str, in_think_block: bool) -> Tuple[str, bool, bool]:
+    """Reasonix Harness Stream Interceptor: Routes reasoning tokens vs response text."""
+    if content and "Final Answer:" in content:
+        content = RE_FINAL_ANSWER.sub('', content).lstrip()
+
     if reasoning:
         return (f"<think>{reasoning}", True, True) if not in_think_block else (reasoning, True, True)
     if content:
@@ -330,12 +353,11 @@ def _calc_turn_tokens(ans_text: str, messages: List[Dict[str, Any]], captured_us
         return captured_usage.get("prompt_tokens", 0), captured_usage.get("completion_tokens", 0)
     if is_local:
         return sum(get_accurate_token_count(m.get("content") or "") for m in messages), get_accurate_token_count(ans_text)
-    return sum(len(m.get("content") or "") for m in messages) // 4, len(ans_text) // 4
+    return sum(len(str(m.get("content") or "")) for m in messages) // 4, len(ans_text) // 4
 
 
 def _safe_path(workspace: str, p: str) -> str:
-    if not p:
-        return os.path.realpath(workspace)
+    if not p: return os.path.realpath(workspace)
     p = os.path.expanduser(urllib.parse.unquote(str(p).strip()))
     return os.path.realpath(p if os.path.isabs(p) else os.path.join(workspace, p))
 
@@ -346,8 +368,7 @@ def _is_outside_workspace(workspace: str, full_path: str) -> bool:
 
 
 def _confirm_gate(reason: str, spinner: Any) -> bool:
-    if spinner:
-        spinner.stop()
+    if spinner: spinner.stop()
     return sys.stdout.isatty() and ui.confirm_tool(reason)
 
 
@@ -366,19 +387,16 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
         if (outside or gates_active) and not _confirm_gate(f"read {full}" if outside else f"read file {raw_path}", spinner):
             return denial_msg
         try:
-            with open(full, "r", encoding="utf-8", errors="replace") as f:
-                content = f.read(60000)
+            with open(full, "r", encoding="utf-8", errors="replace") as f: content = f.read(60000)
             if sys.stdout.isatty() and content.strip():
                 if spinner: spinner.stop()
                 _console_err.print()
                 if os.environ.get("AI_RENDER_MARKDOWN", "1") == "1" and ("#" in content or "|" in content):
                     _console_err.print(Markdown(content, code_theme="ansi_dark"))
-                else:
-                    _console_err.print(content)
+                else: _console_err.print(content)
                 _console_err.print()
             return content
-        except Exception as e:
-            return f"[error] failed to read file: {e}"
+        except Exception as e: return f"[error] failed to read file: {e}"
 
     if name == "write_file":
         raw_path = args.get("path", "")
@@ -389,7 +407,7 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
 
         if full.endswith(".py"):
             try: ast.parse(content)
-            except SyntaxError as e: return f"[error] Write blocked. Python syntax error: {e.msg} on line {e.lineno}."
+            except SyntaxError as e: return f"[error] Write blocked. Python syntax error: {e} on line {getattr(e, 'lineno', '?')}."
         if full.endswith(".json"):
             try: json.loads(content)
             except Exception as e: return f"[error] Write blocked. JSON syntax error: {e}."
@@ -411,8 +429,7 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
             os.makedirs(os.path.dirname(full) or workspace, exist_ok=True)
             with open(full, "w", encoding="utf-8") as f: f.write(content)
             return f"wrote {len(content)} chars to {raw_path}"
-        except Exception as e:
-            return f"[error] failed to write file: {e}"
+        except Exception as e: return f"[error] failed to write file: {e}"
 
     if name == "list_dir":
         raw_path = args.get("path", "")
@@ -427,17 +444,15 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
                 if spinner: spinner.stop()
                 _console_err.print(f"[dim]{res_str}[/dim]")
             return res_str
-        except Exception as e:
-            return f"[error] failed to list files: {e}"
+        except Exception as e: return f"[error] failed to list files: {e}"
 
     if name == "run_command":
         cmd = args.get("command", "")
-        if not sys.stdout.isatty():
+        if gates_active and not sys.stdout.isatty():
             return "[denied] no terminal available to approve command execution"
         if gates_active:
             if spinner: spinner.stop()
-            if not ui.confirm_tool(f"execute: $ {cmd}"):
-                return denial_msg
+            if not ui.confirm_tool(f"execute: $ {cmd}"): return denial_msg
         else:
             _console_err.print(f"[dim]  Executing command autonomously: $ {cmd}[/dim]")
 
@@ -455,8 +470,7 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
                 _console_err.print()
                 if os.environ.get("AI_RENDER_MARKDOWN", "1") == "1" and ("#" in out or "|" in out or "```" in out):
                     _console_err.print(Markdown(out, code_theme="ansi_dark"))
-                else:
-                    _console_err.print(out)
+                else: _console_err.print(out)
                 _console_err.print()
 
             return f"(exit {res.returncode})\n{out}" if res.returncode != 0 else (out or "(exit 0, no output)")
@@ -480,8 +494,7 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
 
     for _round in range(10):
         body_tools = {**body, "messages": messages, "stream": True}
-        if is_agent:
-            body_tools["tools"] = EDIT_TOOLS
+        if is_agent: body_tools["tools"] = EDIT_TOOLS
 
         if spinner:
             try: spinner.update("Working...")
@@ -491,20 +504,19 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
             res = _session.post(url, json=body_tools, headers={"Content-Type": "application/json", **headers}, timeout=timeout, stream=True)
             first_chunk, acc_content, tool_calls_map, in_think_block, captured_usage = True, [], {}, False, None
 
-            for line in res.iter_lines(chunk_size=1):
-                if not line or not line.decode("utf-8", errors="ignore").strip().startswith("data:"):
-                    continue
-                data_str = line.decode("utf-8", errors="ignore").strip()[5:].strip()
-                if data_str == "[DONE]":
-                    break
+            for line in res.iter_lines():
+                if not line: continue
+                line_str = line.decode("utf-8", errors="ignore").strip()
+                if not line_str.startswith("data:"): continue
+                data_str = line_str[5:].strip()
+                if data_str == "[DONE]": break
 
                 try:
                     data = json.loads(data_str)
                     captured_usage = data.get("usage") or captured_usage
                     resolved_model = data.get("model") or resolved_model
                     choices = data.get("choices", [{}])
-                    if not choices:
-                        continue
+                    if not choices: continue
                     delta = choices[0].get("delta", {})
 
                     content, reasoning = delta.get("content", "") or "", delta.get("reasoning_content", "") or delta.get("thinking", "") or ""
@@ -521,32 +533,25 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
                     if chunk_to_stream:
                         if first_chunk:
                             first_chunk = False
-                            if os.environ.get("AI_SHOW_THINKING", "1") == "1":
-                                spinner.stop()
+                            if os.environ.get("AI_SHOW_THINKING", "1") == "1": spinner.stop()
                             streamer = RichStreamer(prefix="Agent:" if is_agent else "AI:", spinner=spinner)
                             streamer.start()
-                            if speed_test and show_stats:
-                                speed_test.start()
+                            if speed_test and show_stats: speed_test.start()
 
-                        if streamer:
-                            streamer.update(chunk_to_stream)
+                        if streamer: streamer.update(chunk_to_stream)
                         acc_content.append(chunk_to_stream)
-                        if speed_test and show_stats:
-                            speed_test.count_token(chunk_to_stream, is_thinking=is_thinking)
+                        if speed_test and show_stats: speed_test.count_token(chunk_to_stream, is_thinking=is_thinking)
 
                     for tc in delta.get("tool_calls", []):
                         idx = tc.get("index", 0)
                         if idx not in tool_calls_map:
                             tool_calls_map[idx] = {"id": tc.get("id", ""), "type": "function", "function": {"name": tc.get("function", {}).get("name", ""), "arguments": ""}}
-                        if tc.get("function", {}).get("name"):
-                            tool_calls_map[idx]["function"]["name"] = tc["function"]["name"]
+                        if tc.get("function", {}).get("name"): tool_calls_map[idx]["function"]["name"] = tc["function"]["name"]
                         tool_calls_map[idx]["function"]["arguments"] += tc.get("function", {}).get("arguments", "")
                 except Exception: pass
 
-            if streamer:
-                streamer.stop()
-            elif not first_chunk:
-                print("")
+            if streamer: streamer.stop()
+            elif not first_chunk: print("")
 
             ans_text = "".join(acc_content)
             in_tok, out_tok = _calc_turn_tokens(ans_text, messages, captured_usage, is_local)
@@ -580,7 +585,13 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
                 finally:
                     if spinner: spinner.stop()
 
-                messages.append({"role": "tool", "tool_call_id": tc.get("id", ""), "name": fname, "content": result})
+                # Reasonix Harness: Deterministic Tool Result Pruning for Prefix Cache Stability
+                if len(result) > 1500:
+                    pruned_result = result[:1200] + f"\n... [Reasonix Harness: Snipped {len(result) - 1200} chars for context stability]"
+                else:
+                    pruned_result = result
+
+                messages.append({"role": "tool", "tool_call_id": tc.get("id", ""), "name": fname, "content": pruned_result})
 
         except KeyboardInterrupt:
             if streamer:
@@ -606,24 +617,21 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
         enable_think = thinking_budget > 0
         budget_val = thinking_budget if enable_think else 0
 
-        local_body = {
-            "messages": messages,
-            "stream": True,
-            "model": "local-model",
-            "max_tokens": 2048,
-            "reasoning_budget": budget_val,
-            "thinking_budget_tokens": budget_val,
-            "chat_template_kwargs": {"enable_thinking": enable_think}
-        }
+        local_body = {"messages": messages, "stream": True}
+        if enable_think:
+            local_body["thinking_budget_tokens"] = budget_val
+            local_body["reasoning_budget"] = budget_val
+            local_body["chat_template_kwargs"] = {"enable_thinking": True}
 
         seen_urls = set()
         unique_configs = []
         for url, headers, body, timeout in configs:
             norm_url = "http://localhost:8080/v1/chat/completions" if ":8080" in url else url.replace("127.0.0.1", "localhost")
             if "localhost" in norm_url or "127.0.0.1" in norm_url:
-                body["reasoning_budget"] = budget_val
-                body["thinking_budget_tokens"] = budget_val
-                body["chat_template_kwargs"] = {"enable_thinking": enable_think}
+                if enable_think:
+                    body["thinking_budget_tokens"] = budget_val
+                    body["reasoning_budget"] = budget_val
+                    body["chat_template_kwargs"] = {"enable_thinking": True}
 
             if norm_url not in seen_urls:
                 seen_urls.add(norm_url)
@@ -634,8 +642,7 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
 
         for url, headers, body, timeout in unique_configs:
             ans = agentic_turn(messages, url, headers, body, timeout, spinner, show_stats, is_agent=is_agent)
-            if ans is not None:
-                return ans
+            if ans is not None: return ans
 
         return None
     except KeyboardInterrupt:
@@ -646,10 +653,11 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
         return None
 
 
-def get_accurate_token_count(text: str, server_url: str = "http://localhost:8080") -> int:
-    if not text:
-        return 0
-    return max(1, int(len(text) / 3.6))
+def get_accurate_token_count(text: Any, server_url: str = "http://localhost:8080") -> int:
+    """Fast non-allocating token estimation (3.6 chars/token average)."""
+    if not text: return 0
+    length = len(text) if isinstance(text, str) else len(str(text))
+    return max(1, (length * 10) // 36)
 
 
 def show_memory_status(messages: List[Dict[str, Any]], max_context: int = 8192, server_url: str = "http://localhost:8080") -> None:
@@ -669,23 +677,22 @@ def show_memory_status(messages: List[Dict[str, Any]], max_context: int = 8192, 
 
 
 def prune_history(history: List[Dict[str, Any]], max_tokens: Optional[int] = None) -> List[Dict[str, Any]]:
-    if len(history) <= 1:
-        return history
-    try:
-        limit = int(os.environ.get("AI_MAX_TOKENS", 8192)) if max_tokens is None else max_tokens
-    except (ValueError, TypeError):
-        limit = 8192
+    """Prune conversation history while preserving system prompt and maintaining Reasonix cache stability."""
+    if len(history) <= 1: return history
+    limit = max_tokens or int(os.environ.get("AI_MAX_TOKENS", 8192))
+    
+    # Reasonix Harness: Strip stale tool interactions during context compaction
+    history = [m for m in history if m.get("role") != "tool"]
 
     sys_prompt = history[0]
-    curr = len(sys_prompt.get("content", "")) // 4
+    curr = get_accurate_token_count(sys_prompt.get("content", ""))
     selected: List[Dict[str, Any]] = []
 
     for msg in reversed(history[1:]):
-        toks = len(msg.get("content", "") or "") // 4
-        if not selected or (curr + toks <= limit):
-            selected.append(msg)
-            curr += toks
-        else:
-            break
+        toks = get_accurate_token_count(msg.get("content", ""))
+        if curr + toks > limit and selected: break
+        selected.append(msg)
+        curr += toks
 
-    return [sys_prompt] + list(reversed(selected))
+    selected.reverse()
+    return [sys_prompt] + selected
