@@ -8,8 +8,7 @@ from typing import Any, Dict, Iterator, List, Optional, Set
 
 try:
     import uvloop; uvloop.install()
-except (ImportError, NotImplementedError):
-    pass
+except (ImportError, NotImplementedError): pass
 
 from rich.box import Box, ROUNDED
 from rich.console import Group
@@ -29,12 +28,21 @@ sys.path.append(os.path.join(CFG_DIR, "modules"))
 
 import agent_cloud, agent_core as core, agent_skills as skills, agent_ui as ui, agent_tui_async as tui_async
 
-STATE_FILE, CONTEXT_FILE = os.path.join(CFG_DIR, ".state.json"), os.path.join(CFG_DIR, "ai-context.md")
-SKILLS_DIR, SESSIONS_DIR = os.path.join(CFG_DIR, "skills"), os.path.join(CFG_DIR, "projects", "database")
+STATE_FILE = os.path.join(CFG_DIR, ".state.json")
+CONTEXT_FILE = os.path.join(CFG_DIR, "ai-context.md")
+SKILLS_DIR = os.path.join(CFG_DIR, "skills")
+SESSIONS_DIR = os.path.join(CFG_DIR, "projects", "database")
 LEFT_BAR = Box("▌   \n" * 8)
 
 TOKEN_RE, STOP_WORDS = re.compile(r"[^\w\s]"), {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"}
-CSI_U_REGEX, ANSI_CLEAN_REGEX, QUESTION_SPLIT_REGEX = re.compile(r'(?:\x1b\[<|\x1b\[|\[<)?\d+;\d+;\d+[mM]|\x1b\[[0-9;]*[a-zA-Z~]|\x1b[\[\(\=][0-9;]*[a-zA-Z~]?'), re.compile(r'\x1b\[[0-9;]*m'), re.compile(r'(?<=\?)\s+')
+CSI_U_REGEX = re.compile(r'(?:\x1b\[<|\x1b\[|\[<)?\d+;\d+;\d+[mM]|\x1b\[[0-9;]*[a-zA-Z~]|\x1b[\[\(\=][0-9;]*[a-zA-Z~]?')
+ANSI_CLEAN_REGEX = re.compile(r'\x1b\[[0-9;]*m')
+QUESTION_SPLIT_REGEX = re.compile(r'(?<=\?)\s+')
+
+REASONIX_STEP_RE = re.compile(
+    r'^(?:\d+\.\s*)?[\*\#\s]*(Step \d+|Phase \d+|Analyze|Analysis|Determine|Determination|Strategy|Drafting|Draft|Refine|Refining|Polish|Planning|Plan|Verify|Verification|Reflect|Reflecting|Reflection|Correction|Alternative|Hypothesis|Evaluate|Evaluation|Check|Checking|Context|Goal|Goals|Process|Overview|Breakdown|Selecting|Selection|Final|Finalizing|Review|Reviewing|Wait|Decision|Decide|Deciding|Option|Options|Solution|Solutions|Conclusion|Concluding|Summary|Summarize|Reasoning|Assessment|Assess|Implementation|Execution|Testing|Input|Inputs|Output|Outputs|Constraint|Constraints|Requirement|Requirements|Validation|Validate|Thought|Thoughts)[^\n:]*?(?::|\s*-|\s*\n|$)',
+    re.IGNORECASE
+)
 
 BASE_PROMPT = "Read-only local shell assistant.\nIf <context> is provided, answer directly using only its facts. Otherwise, answer normally.\n\n"
 BASE_PROMPT_CHAT = BASE_PROMPT + "### Conversational Guidelines:\n- Role: Active, natural, and highly articulate conversational assistant.\n- Tone: Professional, warm, objective, and intellectually engaging.\n\n"
@@ -43,7 +51,6 @@ BASE_PROMPT_AGENT = "Active local project workspace developer agent.\nIf <contex
 _CACHED_CLIPBOARD_TOOL: Optional[List[str]] = None
 
 
-# --- Helpers ---
 def workspace_safe_name(workspace_path: str, home_dir: str) -> str:
     if os.path.abspath(workspace_path) == os.path.abspath(home_dir): return "home"
     rel = os.path.relpath(workspace_path, home_dir)
@@ -58,9 +65,7 @@ def format_model_name(name: str, max_len: int = 18) -> str:
     clean = name.strip()
     if len(clean) <= max_len: return clean
     base = clean.split("/")[-1] if "/" in clean else clean
-    if len(base) <= max_len: return f".../{base}"
-    half = (max_len - 3) // 2
-    return f"{base[:half]}...{base[-half:]}"
+    return f".../{base}" if len(base) <= max_len else f"{base[:(max_len-3)//2]}...{base[-(max_len-3)//2:]}"
 
 def _json_state(op: str, key: str, value: Any = None) -> Any:
     data = {}
@@ -96,61 +101,28 @@ def copy_to_clipboard(text: str) -> bool:
         except Exception: continue
     return True
 
+def _format_tui_reasonix_text(text: str, theme: str = "code") -> Text:
+    """Formats Reasonix cognitive transition steps into dynamic theme-matched Rich Text."""
+    res = Text()
+    badge_style = {"code": "bold #cba6f7", "dark": "bold cyan", "mono": "bold white"}.get(theme, "bold yellow")
+    for line in text.splitlines():
+        clean_strip = line.strip()
+        if not clean_strip: continue
+        match = REASONIX_STEP_RE.match(clean_strip)
+        if match:
+            raw_text = match.group(0).strip()
+            clean = re.sub(r'^[\d\.\s\*\#\-]+|[\:\*\#]+$', '', raw_text).strip().title()
+            res.append(f"❖ [{clean or match.group(1).title()}]\n", style=badge_style)
+        else:
+            res.append(f"{line}\n", style="italic dim")
+    return res
+
 tokenize = lambda text: [w for w in TOKEN_RE.sub(" ", text.lower()).split() if len(w) > 1 and w not in STOP_WORDS] if text else []
 
 def _run_cmd(args: List[str], stdin: Optional[str] = None) -> str:
     try:
         res = subprocess.run(args, input=stdin, capture_output=True, text=True, timeout=10)
         return res.stdout.strip() if res.returncode == 0 else ""
-    except Exception: return ""
-
-def background_tpm_update(user_msg: str, assistant_msg: str, workspace: str, workspace_path: str) -> None:
-    cleaned = user_msg.lower().strip()
-    if len(cleaned) < 8 or cleaned in ("hello", "hi", "hey", "exit", "quit", "q", "/clear", "/reset", "/stats", "/tok", "/m", "/r"): return
-    try:
-        db_path = os.path.join(SESSIONS_DIR, f"{workspace}.db")
-        existing_facts = ""
-        if os.path.exists(db_path):
-            with closing(sqlite3.connect(db_path, timeout=5)) as conn:
-                rows = conn.cursor().execute("SELECT key, value FROM tpm_memories").fetchall()
-                if rows: existing_facts = "\n".join(f"* {k}: {v}" for k, v in rows)
-
-        sys_p = "You are an asynchronous memory compiler. Analyze turn. Output ONLY flat JSON object of updated facts key-value pairs."
-        usr_p = f"### Existing Profile:\n{existing_facts or 'None'}\n\n### Turn:\nUser: {user_msg}\nAssistant: {assistant_msg}\n\nOutput JSON:"
-        payload = json.dumps({"messages": [{"role": "system", "content": sys_p}, {"role": "user", "content": usr_p}], "temperature": 0.0, "thinking_budget_tokens": 0, "stream": False}).encode("utf-8")
-        req = urlreq.Request("http://localhost:8080/v1/chat/completions", data=payload, headers={"Content-Type": "application/json"}, method="POST")
-
-        with urlreq.urlopen(req, timeout=5) as resp:
-            llm_out = json.loads(resp.read().decode("utf-8"))["choices"][0]["message"].get("content", "").strip()
-
-        parsed = json.loads(re.sub(r"^```json\s*|\s*```$", "", llm_out, flags=re.IGNORECASE).strip())
-        if isinstance(parsed, dict) and all(isinstance(k, str) and isinstance(v, str) for k, v in parsed.items()):
-            mem_tool = f"{CFG_DIR}/modules/ai-agent-memories"
-            _run_cmd([sys.executable, mem_tool, "tpm-reconcile", workspace], json.dumps(parsed))
-            if res_get := _run_cmd([sys.executable, mem_tool, "tpm-get", workspace]):
-                md_dir = os.path.join(workspace_path, ".agent")
-                os.makedirs(md_dir, exist_ok=True)
-                with open(os.path.join(md_dir, "tpm.md"), "w", encoding="utf-8") as f: f.write(res_get + "\n")
-    except Exception: pass
-
-def get_recalled_memory(workspace: str, query: str) -> str:
-    q_tokens = set(tokenize(query))
-    db_path = os.path.join(SESSIONS_DIR, f"{workspace}.db")
-    if not q_tokens or not os.path.exists(db_path): return ""
-    try:
-        with closing(sqlite3.connect(db_path, timeout=5)) as conn:
-            rows = conn.cursor().execute("SELECT user_msg, assistant_msg, tokens, timestamp FROM turns WHERE workspace = ?", (workspace,)).fetchall()
-        candidates = []
-        for u, a, t, ts in rows:
-            t_tokens = set(t.split()) if t else set()
-            score = len(q_tokens & t_tokens) / len(q_tokens | t_tokens) if (q_tokens & t_tokens) else 0.0
-            if score >= 0.35:
-                dt_str = time.strftime('%Y-%m-%d %H:%M', time.localtime(ts)) if isinstance(ts, (int, float)) else str(ts)[:16]
-                candidates.append((score, u, a, dt_str))
-        if not candidates: return ""
-        candidates.sort(key=lambda x: -x[0])
-        blocks = [f"* **On {dt} you asked**: \"{u.strip()}\"\n  **Agent responded**: \"{re.sub(r'<think>.*?</think>', '', a, flags=re.DOTALL).strip()}\"" for _, u, a, dt in candidates[:3]]
-        return "### Relevant Past Discussion (Retrieved from Session Memory):\n" + "\n\n".join(blocks)
     except Exception: return ""
 
 
@@ -191,14 +163,17 @@ class Message(Static):
             return Text(text, style=u_style)
 
         text = str(self.content or "")
+        active_theme = getattr(self.app, "theme", "code")
         if "<think>" in text:
             before, after = text.split("<think>", 1)
             border_col = getattr(self.app, "border_accent", "bright_black")
             if "</think>" in after:
                 think, rest = after.split("</think>", 1)
-                panel = Panel(Text(think.strip(), style="italic dim"), title="⚙ Thinking Process", title_align="left", border_style=border_col, box=ROUNDED, expand=True)
+                panel = Panel(_format_tui_reasonix_text(think.strip(), active_theme), title="⚙ Thinking Process", title_align="left", border_style=border_col, box=ROUNDED, expand=True)
                 return Group(panel, Markdown(before + rest.strip(), code_theme=code_fmt) if (before + rest).strip() else Text(""))
-            return Panel(Text(after.strip(), style="italic dim white"), title="⚙ Thinking Process...", title_align="left", border_style=border_col, box=ROUNDED, expand=True)
+            
+            panel = Panel(_format_tui_reasonix_text(after.strip(), active_theme), title="⚙ Thinking Process...", title_align="left", border_style=border_col, box=ROUNDED, expand=True)
+            return Group(panel)
         return Markdown(text, code_theme=code_fmt)
 
 class AgentCommandProvider(Provider):
@@ -311,7 +286,8 @@ class LocalAITUI(App):
             os.environ["AI_CONFIRM_GATES"] = "0" if is_yolo else "1"
 
         self.gate_auth_event = threading.Event()
-        self.gate_auth_result, self.entering_gate_authorization, self.current_gate_prompt = False, False, ""
+        self.gate_auth_result = self.entering_gate_authorization = False
+        self.current_gate_prompt = ""
         self.spell_enabled, self.pending_skill_prefix = True, None
 
         inherited_skill = os.environ.get("AI_ACTIVE_SKILL")
@@ -425,7 +401,7 @@ class LocalAITUI(App):
             t.add_column("Action", style="default")
             for k, a in [("Tab", "Plan / Build Mode"), ("Ctrl+B", "Toggle Sidebar Panel"), ("Ctrl+T", "Cycle Themes"), ("Ctrl+O", "Copy Latest Response"), ("▲ Show", "Toggle Bottom Shortcut Bar"), ("/help", "View All Commands")]:
                 t.add_row(k, a)
-            self.query_one("#welcome-banner", Static).update(Panel(t, title=" ❖ Local-AI Agent ", title_align="left", border_style=self.border_accent, box=ROUNDED, padding=(1, 2)))
+            self.query_one("#welcome-banner", Static).update(Panel(t, title=" ❖ Local-AI Agent ", title_align="left", border_style=self.border_accent, box=ROUNDED, expand=False))
         except Exception: pass
 
     def compose(self) -> ComposeResult:
@@ -677,12 +653,6 @@ class LocalAITUI(App):
             past_mem = tpm_ctx = ""
             if self.is_agent and self.memory_active:
                 try:
-                    if matched := get_recalled_memory(self.safe_name, query):
-                        if self.prompt_tui_confirm(f"inject recalled memory for '{query}'"):
-                            past_mem = matched
-                            self.call_from_thread(self.notify, "[dim]Memory recalled.[/dim]", sys_prefix=False)
-                        else: self.call_from_thread(self.notify, "[dim]Memory recall skipped.[/dim]", sys_prefix=False)
-
                     mem_bin = os.path.join(CFG_DIR, "modules", "ai-agent-memories")
                     if os.path.exists(mem_bin):
                         tpm_res = subprocess.run([sys.executable, mem_bin, "tpm-get", self.safe_name], stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=2)
@@ -713,7 +683,7 @@ class LocalAITUI(App):
 
                 url, headers, body, timeout = configs[0] if configs else ("http://localhost:8080/v1/chat/completions", {}, {"messages": self.history, "stream": True, "model": "local-model", **local_extra}, 180)
                 body["stream"], body["messages"] = True, self.history
-                if self.is_agent and hasattr(core, "_EDIT_TOOLS"): body["tools"] = core._EDIT_TOOLS
+                if self.is_agent and hasattr(core, "EDIT_TOOLS"): body["tools"] = core.EDIT_TOOLS
 
                 req = urlreq.Request(url, data=json.dumps(body).encode("utf-8"), headers={"Content-Type": "application/json", **headers}, method="POST")
 
@@ -751,7 +721,7 @@ class LocalAITUI(App):
                                 accumulated += text_chunk
 
                             now = time.perf_counter()
-                            if (text_chunk or thinking_chunk) and (now - last_ui_update >= 0.04):
+                            if (text_chunk or thinking_chunk) and (now - last_ui_update >= 0.03):
                                 last_ui_update = now
                                 self.call_from_thread(assistant_msg.update_content, accumulated)
                                 self.call_from_thread(self.chat_area.scroll_end, animate=False)
@@ -818,7 +788,7 @@ class LocalAITUI(App):
                         if hasattr(self, "lbl_database"): self.call_from_thread(self.lbl_database.update, f"[dim]DB State[/dim]  {self.get_db_status_string()}")
 
                     if self.is_agent and self.memory_active:
-                        threading.Thread(target=background_tpm_update, args=(query, accumulated, self.safe_name, self.workspace_path), daemon=True).start()
+                        threading.Thread(target=core.background_tpm_update if hasattr(core, "background_tpm_update") else None, args=(query, accumulated, self.safe_name, self.workspace_path), daemon=True).start()
                 except Exception: pass
 
         except Exception as e:
@@ -840,7 +810,7 @@ class LocalAITUI(App):
             is_yes = query.lower() in ("y", "yes", "")
             self.gate_auth_result = is_yes
             self.gate_auth_event.set()
-            color, status = ("green", "Authorized") if is_yes else ("red", "Denied")
+            color, status = ("green", "Authorized") if is_yes else ("Denied", "Denied")
             self.notify(f"[dim]Gate: [bold {color}]{status}[/bold {color}][/dim]", sys_prefix=False)
             return
 

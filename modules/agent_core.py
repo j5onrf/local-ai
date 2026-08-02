@@ -30,19 +30,27 @@ _console = Console()
 _console_err = Console(stderr=True)
 _session = requests.Session()
 
-# Reasonix Step Keywords
+# Reasonix Step Keywords (Universal Cognitive Vocabulary)
 REASONIX_KEYWORDS = {
-    "step", "analyze", "analysis", "determine", "strategy", "drafting", "draft",
-    "refine", "refining", "polish", "planning", "plan", "verify",
-    "verification", "reflect", "reflecting", "correction", "alternative",
-    "hypothesis", "evaluate", "evaluation", "check", "context", "goal",
-    "process", "overview", "breakdown"
+    "step", "phase", "analyze", "analysis", "determine", "determination", "strategy", 
+    "drafting", "draft", "refine", "refining", "polish", "planning", "plan", 
+    "verify", "verification", "reflect", "reflecting", "reflection", "correction", 
+    "alternative", "hypothesis", "evaluate", "evaluation", "check", "checking", 
+    "context", "goal", "goals", "process", "overview", "breakdown", "selecting", 
+    "selection", "final", "finalizing", "review", "reviewing", "wait", "decision", 
+    "decide", "deciding", "option", "options", "solution", "solutions", "conclusion", 
+    "concluding", "summary", "summarize", "reasoning", "assessment", "assess", 
+    "implementation", "execution", "testing", "input", "inputs", "output", "outputs", 
+    "constraint", "constraints", "requirement", "requirements", "validation", 
+    "validate", "thought", "thoughts"
 }
 
 def _check_reasonix_header(buf: str) -> Optional[str]:
     clean = re.sub(r'^[\d\.\s\*\#\-]+|[\:\*\#]+$', '', buf).strip()
-    if not clean or len(clean) > 45:
+    if not clean or len(clean) > 50:
         return None
+    if ":" in clean:
+        clean = clean.split(":", 1)[0].strip()
     first_word = clean.split()[0].lower() if clean.split() else ""
     if first_word in REASONIX_KEYWORDS or first_word.startswith("step"):
         return clean.title()
