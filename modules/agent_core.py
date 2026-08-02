@@ -30,6 +30,24 @@ _console = Console()
 _console_err = Console(stderr=True)
 _session = requests.Session()
 
+# Reasonix Step Keywords
+REASONIX_KEYWORDS = {
+    "step", "analyze", "analysis", "determine", "strategy", "drafting", "draft",
+    "refine", "refining", "polish", "planning", "plan", "verify",
+    "verification", "reflect", "reflecting", "correction", "alternative",
+    "hypothesis", "evaluate", "evaluation", "check", "context", "goal",
+    "process", "overview", "breakdown"
+}
+
+def _check_reasonix_header(buf: str) -> Optional[str]:
+    clean = re.sub(r'^[\d\.\s\*\#\-]+|[\:\*\#]+$', '', buf).strip()
+    if not clean or len(clean) > 45:
+        return None
+    first_word = clean.split()[0].lower() if clean.split() else ""
+    if first_word in REASONIX_KEYWORDS or first_word.startswith("step"):
+        return clean.title()
+    return None
+
 # Pre-compiled module constants
 ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*m')
 BINARY_EXTENSIONS = {
@@ -65,11 +83,12 @@ class RichStreamer:
         self.spinner: Any = spinner
         self.accumulated_thinking: str = ""
         self.accumulated_answer: str = ""
+        self.thinking_line_buf: str = ""
+        self.thinking_line_start: bool = True
         self.phase: str = "INIT"
         self.answer_started: bool = False
         self.thinking_started: bool = False
         self.first_think_token: bool = False
-        self.pending_think_newlines: str = ""
 
     def _stop_spinner(self) -> None:
         if self.spinner:
@@ -115,7 +134,8 @@ class RichStreamer:
             self.phase = "THINKING"
             self.first_think_token = True
             self.thinking_started = False
-            self.pending_think_newlines = ""
+            self.thinking_line_buf = ""
+            self.thinking_line_start = True
             self._update_spinner("Thinking...")
             token = token.replace("<think>", "")
 
@@ -126,18 +146,18 @@ class RichStreamer:
 
             self.accumulated_thinking += thinking_part
 
-            if show_think and self.phase == "THINKING" and self.accumulated_thinking.strip():
-                text_part = thinking_part.rstrip("\r\n")
-                if text_part:
+            if show_think and self.phase == "THINKING":
+                if self.thinking_line_buf:
+                    header = _check_reasonix_header(self.thinking_line_buf)
                     try:
-                        if self.pending_think_newlines:
-                            sys.stderr.write(f"\033[2;3m{self.pending_think_newlines}\033[0m")
-                            self.pending_think_newlines = ""
-                        sys.stderr.write(f"\033[2;3m{text_part}\033[0m")
+                        if header:
+                            sys.stderr.write(f"\033[1;33m ❖ [{header}]\033[0m\033[2;3m ")
+                        else:
+                            sys.stderr.write(f"\033[2;3m{self.thinking_line_buf}\033[0m")
                         sys.stderr.flush()
                     except (IOError, OSError): pass
+                    self.thinking_line_buf = ""
 
-                self.pending_think_newlines = ""
                 try:
                     sys.stderr.write("\n")
                     sys.stderr.flush()
@@ -168,21 +188,35 @@ class RichStreamer:
                         self.thinking_started = True
                         self._stop_spinner()
                         _console_err.print("[dim]╭─ ⚙ ────────────────────────────────────────────────────[/dim]")
+                        token = token.lstrip("\r\n")
 
-                    text_part = token.rstrip("\r\n")
-                    newlines_part = token[len(text_part):]
-
-                    try:
-                        if text_part:
-                            if self.pending_think_newlines:
-                                sys.stderr.write(f"\033[2;3m{self.pending_think_newlines}\033[0m")
-                                self.pending_think_newlines = ""
-                            sys.stderr.write(f"\033[2;3m{text_part}\033[0m")
+                    if self.thinking_line_start:
+                        self.thinking_line_buf += token
+                        if ":" in token or "\n" in token or len(self.thinking_line_buf) > 40:
+                            header = _check_reasonix_header(self.thinking_line_buf)
+                            if header:
+                                try:
+                                    sys.stderr.write(f"\033[1;33m ❖ [{header}]\033[0m\033[2;3m ")
+                                    sys.stderr.flush()
+                                except (IOError, OSError): pass
+                                self.thinking_line_buf = ""
+                                self.thinking_line_start = False
+                            else:
+                                try:
+                                    sys.stderr.write(f"\033[2;3m{self.thinking_line_buf}\033[0m")
+                                    sys.stderr.flush()
+                                except (IOError, OSError): pass
+                                self.thinking_line_buf = ""
+                                self.thinking_line_start = False
+                    else:
+                        if "\n" in token:
+                            self.thinking_line_start = True
+                            self.thinking_line_buf = ""
+                            token = re.sub(r'[\r\n]{2,}', '\n', token)
+                        try:
+                            sys.stderr.write(f"\033[2;3m{token}\033[0m")
                             sys.stderr.flush()
-
-                        if newlines_part:
-                            self.pending_think_newlines += newlines_part
-                    except (IOError, OSError): pass
+                        except (IOError, OSError): pass
         else:
             if self.phase != "ANSWER":
                 self.phase = "ANSWER"
