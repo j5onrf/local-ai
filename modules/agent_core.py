@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Local-AI Agent Core Module
 Handles streaming SSE payloads, function execution, tool gates, shared state, and Rich rendering.
@@ -14,7 +15,6 @@ import difflib
 import urllib.parse
 import urllib.request as urlreq
 from typing import List, Dict, Any, Optional, Tuple
-from contextlib import closing
 
 import requests
 from rich.console import Console, Group
@@ -34,11 +34,10 @@ _console = Console()
 _console_err = Console(stderr=True)
 _session = requests.Session()
 
-# Pre-compiled regular expressions for 0% streaming overhead
 ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*m')
 RE_THINKING_TITLE = re.compile(r'^\s*Thinking Process:\s*', re.IGNORECASE)
 RE_FINAL_ANSWER = re.compile(r'^\s*Final Answer:\s*', re.IGNORECASE)
-RE_TRIPLE_NEWLINES = re.compile(r'\n{3,}')
+RE_MULTIPLE_NEWLINES = re.compile(r'\n{2,}')
 
 BINARY_EXTENSIONS = {
     ".db", ".sqlite", ".sqlite3", ".bin", ".pyc", ".so", ".dll", 
@@ -143,28 +142,54 @@ def background_tpm_update(user_msg: str, assistant_msg: str, workspace: str, wor
     except Exception: pass
 
 
+def _clear_lines(stream_err: bool, text: str, extra_top: int = 0) -> None:
+    """Helper to erase exact number of terminal rows written during streaming."""
+    cols = shutil.get_terminal_size((80, 24)).columns or 80
+    lines = text.split("\n")
+    rows = extra_top + sum(max(1, (len(ANSI_ESCAPE.sub('', l.replace('\t', '    '))) + cols - 1) // cols) for l in lines)
+    up = max(0, rows - 1)
+    target = sys.stderr if stream_err else sys.stdout
+    try:
+        target.write(f"\r\033[{up}A\033[J" if up > 0 else "\r\033[J")
+        target.flush()
+    except (IOError, OSError): pass
+
+
+def _render_compact_markdown_think(raw_think: str) -> None:
+    """Renders formatted Markdown lines back-to-back preserving natural LLM indentation with zero blank lines."""
+    cleaned = RE_THINKING_TITLE.sub('', raw_think).strip()
+    lines = [line.rstrip() for line in cleaned.splitlines() if line.strip()]
+    
+    for line in lines:
+        formatted = line
+        formatted = re.sub(r'\*\*(.*?)\*\*', r'[bold]\1[/bold]', formatted)
+        formatted = re.sub(r'\*(.*?)\*', r'[italic]\1[/italic]', formatted)
+        formatted = re.sub(r'`(.*?)`', r'[cyan]\1[/cyan]', formatted)
+        formatted = re.sub(r'^(\s*\d+\.)', r'[bold green]\1[/bold green]', formatted)
+        formatted = re.sub(r'^(\s*)[-•*]', r'\1[bold cyan]•[/bold cyan]', formatted)
+        
+        try:
+            _console_err.print(Text.from_markup(formatted))
+        except Exception:
+            _console_err.print(formatted)
+
+
 class RichStreamer:
-    """Streams direct text during generation, then renders clean Rich Markdown on completion in a final pass."""
+    """Fast streaming output engine with compact final-pass Rich Markdown rendering."""
 
     def __init__(self, prefix: str = "", active: bool = True, spinner: Any = None) -> None:
         self.prefix: str = prefix
         self.active: bool = active and sys.stdout.isatty()
         self.spinner: Any = spinner
-        self.accumulated_thinking: str = ""
-        self.accumulated_answer: str = ""
+        self.acc_think: str = ""
+        self.acc_ans: str = ""
         self.phase: str = "INIT"
-        self.answer_started: bool = False
-        self.thinking_started: bool = False
-        self.first_think_token: bool = False
+        self.think_hdr_printed: bool = False
+        self.ans_started: bool = False
 
     def _stop_spinner(self) -> None:
         if self.spinner:
             try: self.spinner.stop()
-            except Exception: pass
-
-    def _update_spinner(self, msg: str) -> None:
-        if self.spinner:
-            try: self.spinner.update(msg)
             except Exception: pass
 
     def start(self) -> None:
@@ -176,18 +201,9 @@ class RichStreamer:
 
     def update(self, token: str) -> None:
         if not self.active:
-            if "<think>" in token and self.phase != "THINKING":
-                self.phase = "THINKING"
-                token = token.replace("<think>", "")
-
-            if "</think>" in token:
-                parts = token.split("</think>", 1)
-                self.phase = "ANSWER"
-                token = parts[1] if len(parts) > 1 else ""
-
-            if self.phase == "THINKING": return
-
-            if token:
+            if "<think>" in token and self.phase != "THINKING": self.phase = "THINKING"; token = token.replace("<think>", "")
+            if "</think>" in token: self.phase = "ANSWER"; token = token.split("</think>", 1)[1] if "</think>" in token else ""
+            if self.phase != "THINKING" and token:
                 try:
                     sys.stdout.write(token)
                     sys.stdout.flush()
@@ -195,131 +211,114 @@ class RichStreamer:
             return
 
         show_think = os.environ.get("AI_SHOW_THINKING", "1") == "1"
+        render_md = os.environ.get("AI_RENDER_MARKDOWN", "1") == "1"
 
         if "<think>" in token and self.phase != "THINKING":
-            self.phase = "THINKING"
-            self.first_think_token = True
-            self.thinking_started = False
-            self._update_spinner("Thinking...")
-            token = token.replace("<think>", "")
+            self.phase, token = "THINKING", token.replace("<think>", "")
+            if self.spinner: self.spinner.update("Thinking...")
 
         if "</think>" in token:
             parts = token.split("</think>", 1)
-            thinking_part = parts[0]
-            answer_part = parts[1] if len(parts) > 1 else ""
+            if parts[0]: self.update(parts[0])
 
-            if thinking_part:
-                self.accumulated_thinking += thinking_part
-                if show_think and self.phase == "THINKING":
-                    try:
-                        clean_text = thinking_part.rstrip("\r\n")
-                        if clean_text:
-                            sys.stderr.write(clean_text + "\n")
-                            sys.stderr.flush()
-                    except (IOError, OSError): pass
-
-            if show_think and self.phase == "THINKING":
-                _console_err.print("[dim]╰────────────────────────────────────────────────────────[/dim]")
+            if show_think and self.think_hdr_printed and self.acc_think.strip():
+                if render_md:
+                    _clear_lines(True, self.acc_think, extra_top=1)
+                    _console_err.print("[dim]╭─ ⚙ ────────────────────────────────────────────────────[/dim]")
+                    _render_compact_markdown_think(self.acc_think)
+                    _console_err.print("[dim]╰────────────────────────────────────────────────────────[/dim]")
+                else:
+                    _console_err.print("[dim]╰────────────────────────────────────────────────────────[/dim]")
 
             self.phase = "ANSWER"
-            self._update_spinner("Working...")
-
-            if answer_part: self.update(answer_part)
+            if self.spinner: self.spinner.update("Working...")
+            if len(parts) > 1 and parts[1]: self.update(parts[1])
             return
 
         if self.phase == "THINKING":
-            if self.first_think_token:
-                token = token.lstrip("\r\n")
-                if token: self.first_think_token = False
+            tok = RE_THINKING_TITLE.sub('', token.replace("\\n", "\n"))
+            tok = RE_MULTIPLE_NEWLINES.sub('\n', tok)
+            if self.acc_think.endswith("\n") and tok.startswith("\n"):
+                tok = tok.lstrip("\r\n")
 
-            if token:
-                token = RE_THINKING_TITLE.sub('', token.replace("\\n", "\n").replace("\r\n\r\n", "\n").replace("\n\n", "\n"))
-                self.accumulated_thinking += token
-                if show_think:
-                    if not self.thinking_started and token.strip():
-                        self.thinking_started = True
-                        self._stop_spinner()
-                        _console_err.print("[dim]╭─ ⚙ ────────────────────────────────────────────────────[/dim]")
-                        token = token.lstrip("\r\n")
-
-                    if token:
-                        try:
-                            sys.stderr.write(token)
-                            sys.stderr.flush()
-                        except (IOError, OSError): pass
+            self.acc_think += tok
+            if show_think and tok:
+                if not self.think_hdr_printed and tok.strip():
+                    self.think_hdr_printed = True
+                    self._stop_spinner()
+                    _console_err.print("[dim]╭─ ⚙ ────────────────────────────────────────────────────[/dim]")
+                    tok = tok.lstrip("\r\n")
+                if tok:
+                    try:
+                        sys.stderr.write(tok)
+                        sys.stderr.flush()
+                    except (IOError, OSError): pass
         else:
-            if self.phase != "ANSWER": self.phase = "ANSWER"
-
-            if not self.answer_started:
+            if not self.ans_started:
                 self._stop_spinner()
-                self.answer_started = True
-                p_style = "\033[1;32m" if "Agent" in self.prefix else "\033[1;36m"
-                try:
-                    sys.stdout.write(f"{p_style}{self.prefix.strip()}\033[0m ")
-                    sys.stdout.write("\033[?25h")
-                    sys.stdout.flush()
-                except (IOError, OSError): pass
+                self.ans_started = True
+                p_clean = self.prefix.strip() if self.prefix else ""
+                p_str = f"{p_clean} " if p_clean else ""
+                p_style = "\033[1;32m" if "Agent" in p_clean else "\033[1;36m"
+                if p_str:
+                    try:
+                        sys.stdout.write(f"{p_style}{p_str}\033[0m")
+                        sys.stdout.flush()
+                    except (IOError, OSError): pass
+                self.acc_ans += p_str
 
-            clean_tok = RE_FINAL_ANSWER.sub('', token.replace("\\n", "\n"))
-            self.accumulated_answer += clean_tok
-
-            if clean_tok:
+            tok = RE_FINAL_ANSWER.sub('', token.replace("\\n", "\n"))
+            self.acc_ans += tok
+            if tok:
                 try:
-                    sys.stdout.write(clean_tok)
-                    sys.stdout.write("\033[?25h")
+                    sys.stdout.write(tok)
                     sys.stdout.flush()
                 except (IOError, OSError): pass
 
     def stop(self, interrupted: bool = False) -> None:
         self._stop_spinner()
-
         if interrupted:
             try:
                 sys.stdout.write("\033[?25h\n")
                 sys.stdout.flush()
-            except Exception: pass
+            except (IOError, OSError): pass
             return
 
-        if self.phase == "THINKING" and self.accumulated_thinking.strip():
+        show_think = os.environ.get("AI_SHOW_THINKING", "1") == "1"
+        render_md = os.environ.get("AI_RENDER_MARKDOWN", "1") == "1"
+
+        if self.phase == "THINKING" and show_think and self.think_hdr_printed and self.acc_think.strip():
+            if render_md:
+                _clear_lines(True, self.acc_think, extra_top=1)
+                _console_err.print("[dim]╭─ ⚙ ────────────────────────────────────────────────────[/dim]")
+                _render_compact_markdown_think(self.acc_think)
             _console_err.print("[dim]╰────────────────────────────────────────────────────────[/dim]")
             self.phase = "ANSWER"
 
-        if not self.answer_started and self.accumulated_answer.strip():
-            self.answer_started = True
+        if self.ans_started and self.acc_ans.strip():
+            p_clean = self.prefix.strip() if self.prefix else ""
+            p_str = f"{p_clean} " if p_clean else ""
+            raw_body = self.acc_ans[len(p_str):] if self.acc_ans.startswith(p_str) else self.acc_ans
+            
+            clean_ans = RE_FINAL_ANSWER.sub('', raw_body).strip()
+            clean_ans = RE_MULTIPLE_NEWLINES.sub('\n\n', clean_ans).strip()
 
-        if self.answer_started:
-            render_md = os.environ.get("AI_RENDER_MARKDOWN", "1") == "1"
-            if render_md and self.accumulated_answer.strip() and sys.stdout.isatty():
+            if render_md and clean_ans and sys.stdout.isatty():
                 try:
-                    cols = shutil.get_terminal_size((80, 24)).columns or 80
-                    p_clean = self.prefix.strip() if self.prefix else ""
-                    clean_ans = RE_FINAL_ANSWER.sub('', RE_TRIPLE_NEWLINES.sub('\n\n', self.accumulated_answer.strip())).strip()
-
-                    full_str = f"{p_clean} {clean_ans}" if p_clean else clean_ans
-
-                    total_rows = sum(max(1, (len(ANSI_ESCAPE.sub('', l)) + cols - 1) // cols) for l in full_str.split("\n"))
-                    up_count = max(0, total_rows - 1)
-
-                    if up_count > 0:
-                        sys.stdout.write(f"\r\033[{up_count}A\033[J")
-                    else:
-                        sys.stdout.write("\r\033[2K")
-                    sys.stdout.flush()
-
+                    _clear_lines(False, self.acc_ans)
                     p_col = "bold green" if "Agent" in p_clean else "bold cyan"
-                    if p_clean:
-                        _console.print(Text(p_clean, style=p_col))
+                    if p_clean: _console.print(Text(p_clean, style=p_col))
                     _console.print(Markdown(clean_ans, code_theme="ansi_dark"))
                 except Exception:
                     try:
                         sys.stdout.write("\n")
                         sys.stdout.flush()
-                    except Exception: pass
+                    except (IOError, OSError): pass
             else:
                 try:
                     sys.stdout.write("\n")
                     sys.stdout.flush()
-                except Exception: pass
+                except (IOError, OSError): pass
 
 
 def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float, show_stats: bool, ctx_used: Optional[int] = None) -> None:
@@ -330,6 +329,7 @@ def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float, show_sta
         if show_stats and sys.stdout.isatty():
             ctx_max = int(os.environ.get("AI_MAX_TOKENS", 8192)) if ctx_used is not None else None
             print(usage_log.turn_line(in_tok, out_tok, cost, ctx_used, ctx_max))
+            print("")  # Space after stats line, before next prompt (❯)
     except Exception: pass
 
 
@@ -384,11 +384,8 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
             return f"[error] Refused to read binary file or directory '{raw_path}'."
 
         outside = _is_outside_workspace(workspace, full)
-        # Permanent Zero-Trust Out-of-Bounds Gate
-        if outside and not _confirm_gate(f"OUT-OF-BOUNDS READ: {full}", spinner):
-            return denial_msg
-        if gates_active and not _confirm_gate(f"read file {raw_path}", spinner):
-            return denial_msg
+        if outside and not _confirm_gate(f"OUT-OF-BOUNDS READ: {full}", spinner): return denial_msg
+        if gates_active and not _confirm_gate(f"read file {raw_path}", spinner): return denial_msg
 
         try:
             with open(full, "r", encoding="utf-8", errors="replace") as f: content = f.read(60000)
@@ -426,11 +423,8 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
                     _console_err.print()
             except Exception: pass
 
-        # Permanent Zero-Trust Out-of-Bounds Gate
-        if outside and not _confirm_gate(f"OUT-OF-BOUNDS WRITE: {full}", spinner):
-            return denial_msg
-        if gates_active and not _confirm_gate(f"{'overwrite' if exists else 'create'} {raw_path}", spinner):
-            return denial_msg
+        if outside and not _confirm_gate(f"OUT-OF-BOUNDS WRITE: {full}", spinner): return denial_msg
+        if gates_active and not _confirm_gate(f"{'overwrite' if exists else 'create'} {raw_path}", spinner): return denial_msg
 
         try:
             os.makedirs(os.path.dirname(full) or workspace, exist_ok=True)
@@ -443,11 +437,8 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
         full = _safe_path(workspace, raw_path)
         outside = _is_outside_workspace(workspace, full)
 
-        # Permanent Zero-Trust Out-of-Bounds Gate
-        if outside and not _confirm_gate(f"OUT-OF-BOUNDS LIST DIR: {full}", spinner):
-            return denial_msg
-        if gates_active and not _confirm_gate(f"list directory {raw_path or '.'}", spinner):
-            return denial_msg
+        if outside and not _confirm_gate(f"OUT-OF-BOUNDS LIST DIR: {full}", spinner): return denial_msg
+        if gates_active and not _confirm_gate(f"list directory {raw_path or '.'}", spinner): return denial_msg
 
         try:
             entries = sorted(os.listdir(full))
@@ -460,20 +451,16 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
 
     if name == "run_command":
         cmd = args.get("command", "")
-        # Expand ~ home aliases and scan for absolute or relative '..' paths
         expanded_cmd = cmd.replace("~", os.path.expanduser("~"))
         abs_paths = re.findall(r'/(?:[a-zA-Z0-9_\-\.]+/)*[a-zA-Z0-9_\-\.]*', expanded_cmd)
         has_dotdot = ".." in cmd
         outside_cmd = has_dotdot or any(_is_outside_workspace(workspace, p) for p in abs_paths if os.path.exists(p) or os.path.isabs(p))
 
-        # Permanent Zero-Trust Out-of-Bounds Gate
         if outside_cmd:
             if spinner: spinner.stop()
-            if not ui.confirm_tool(f"OUT-OF-BOUNDS EXECUTION: $ {cmd}"):
-                return denial_msg
+            if not ui.confirm_tool(f"OUT-OF-BOUNDS EXECUTION: $ {cmd}"): return denial_msg
 
-        if gates_active and not sys.stdout.isatty():
-            return "[denied] no terminal available to approve command execution"
+        if gates_active and not sys.stdout.isatty(): return "[denied] no terminal available to approve command execution"
         if gates_active:
             if spinner: spinner.stop()
             if not ui.confirm_tool(f"execute: $ {cmd}"): return denial_msg
