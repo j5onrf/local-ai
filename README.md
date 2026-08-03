@@ -7,9 +7,11 @@
 <h1 align="center">Local-AI Agent <kbd>v0.9.7.62-beta</kbd></h1>
 
 <p align="center">
+  <kbd>
   <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
   <img src="https://img.shields.io/badge/language-python-a3be8c?style=for-the-badge&labelColor=1f1f1f" alt="Language">
   <img src="https://img.shields.io/github/repo-size/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=d6b4e0" alt="Repo Size">
+</kbd>
 </p>
 
 <p align="center">
