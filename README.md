@@ -1,6 +1,8 @@
-<p align="center">
-  <img alt="Local-AI Agent" src="logo.png" width="800" />
-</p>
+<div align="center">
+  <kbd>
+    <img alt="Local-AI Agent" src="logo.png" width="800" />
+  </kbd>
+</div>
 
 <h1 align="center">Local-AI Agent <kbd>v0.9.7.62-beta</kbd></h1>
 
