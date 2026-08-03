@@ -1,6 +1,6 @@
 <div align="center">
   <kbd>
-    <img alt="Local-AI Agent" src="logo.png" width="645" />
+    <img alt="Local-AI Agent" src="logo.png" width="800" />
   </kbd>
 </div>
 
@@ -97,7 +97,7 @@ Agent: Workspace loaded. Awaiting instructions.
 
 <div align="center">
   <kbd>
-    <img width="645" alt="20260731_113218b" src="https://github.com/user-attachments/assets/c1469fa4-a3ad-4379-93dd-44daff8668f4" />
+    <img width="800" alt="20260731_113218b" src="https://github.com/user-attachments/assets/c1469fa4-a3ad-4379-93dd-44daff8668f4" />
   </kbd>
 </div>
 
