@@ -1,6 +1,6 @@
 <div align="center">
   <kbd>
-    <img alt="Local-AI Agent" src="logo.png" width="800" />
+    <img alt="Local-AI Agent" src="logo.png" width="645" />
   </kbd>
 </div>
 
