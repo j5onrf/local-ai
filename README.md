@@ -1,17 +1,13 @@
 <div align="center">
-  <kbd>
     <img alt="Local-AI Agent" src="logo.png" width="800" />
-  </kbd>
 </div>
 
 <h1 align="center">Local-AI Agent <kbd>v0.9.7.62-beta</kbd></h1>
 
 <p align="center">
-  <kbd>
   <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
   <img src="https://img.shields.io/badge/language-python-a3be8c?style=for-the-badge&labelColor=1f1f1f" alt="Language">
   <img src="https://img.shields.io/github/repo-size/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=d6b4e0" alt="Repo Size">
-</kbd>
 </p>
 
 <p align="center">
@@ -33,6 +29,8 @@ Lightweight Python orchestration (rich + requests + sqlite-vec) controlling a C+
 
 ## Key Systems & Integrations
 
+  <kbd>
+
 | Feature System | Foundation & Architectural Roots | Interface Command / Link |
 | :--- | :--- | :--- |
 | **Temporal Personality Memory (TPM)** | Reconciles personal identity & workspace habits using [Weaviate Engram](https://github.com/weaviate/engram-python-sdk) concepts + [Noema](https://github.com/Fail-Safe/Noema) Markdown files. | `.agent/tpm.md` |
@@ -42,9 +40,13 @@ Lightweight Python orchestration (rich + requests + sqlite-vec) controlling a C+
 | **Model Select TUI** | Real-time **[Cloud Connection](https://github.com/j5onrf/local-ai/blob/main/modules/Readme.md)** TUI, key toggles, and endpoint selector. | `model select` |
 | **Interactive Textual TUI** | Full-screen, **[Textual](https://github.com/j5onrf/local-ai/blob/main/modules/Readme.md)** TUI workspace powered by a C-speed `uvloop` event loop. | `/tui` |
 
+  </kbd>
+
 ---
 
 ## Core Capabilities
+
+  <kbd>
 
 | Core Module | Capability | Description |
 | :--- | :--- | :--- |
@@ -55,6 +57,8 @@ Lightweight Python orchestration (rich + requests + sqlite-vec) controlling a C+
 | **Validation** | **Type-Safe & AST Guard** | [Pydantic AI](https://github.com/pydantic/pydantic-ai) schemas + [OpenAI Agents](https://github.com/openai/openai-agents-python)-style self-correcting `.py`/`.json` writes. |
 | **Optimization** | **Token-Slasher** | Custom [`tool`](https://github.com/j5onrf/fetch/tree/main/tools) and [`skill`](https://github.com/j5onrf/fetch/tree/main/skills) integration built for minimal token consumption. |
 
+  </kbd>
+
 ---
 
 ## CLI Launch Interface
@@ -62,6 +66,9 @@ Lightweight Python orchestration (rich + requests + sqlite-vec) controlling a C+
 > Customize box themes with `/box [1-5]`. For detailed multi-agent workflows, read the [**Workspace Manual**](https://github.com/j5onrf/local-ai/blob/main/projects/Readme.md).
 
 #### 1. Interactive Multi-Turn Chat (`ai`)
+
+<kbd>
+    
 ```console
 ~ ❯ ai
 ╭─  >_ Local-AI Agent  ─────────────╮
@@ -73,7 +80,12 @@ Lightweight Python orchestration (rich + requests + sqlite-vec) controlling a C+
  Startup context: 103 tokens
 ❯ 
 ```
+</kbd>
+
 #### 2. Workspace & Sub-Agent (`ai init <path>`)
+
+<kbd>
+
 ```console
 ~ ❯ sess
 [01/03] ❯ [session test] ai init ~/session-test --init
@@ -92,6 +104,8 @@ Lightweight Python orchestration (rich + requests + sqlite-vec) controlling a C+
 Agent: Workspace loaded. Awaiting instructions.
 ❯ 
 ```
+
+</kbd>
 
 ---
 
@@ -128,6 +142,8 @@ nano ~/.config/local-ai/.env
 
 #### Configuration Example (`~/.config/local-ai/.env`):
 
+<kbd>
+
 ```env
 # Top-Down Cascade Fallback Priority
 GEMINI_API_KEY="AIzaSyYourGeminiKey"
@@ -147,11 +163,14 @@ XAI_MODEL="grok-4.5"
 
 AI_MAX_TOKENS="8192"
 ```
+</kbd>
 
 ---
 
 ## Roadmap to v1.0.0
 
+<kbd>
+    
 - [x] **Core Engine Optimization:** Production pass on streaming, token counting, and sub-agent concurrency.
 - [x] **Thinking UI Controls:** Real-time thinking TPS metrics and `/t show|hide` panel toggles.
 - [x] **Modular Agent Personas & Tool Loop:** Interactive profile selector on `ai init` (`pi`, `claude`, `hermes`) with automated path-healing file editing & YOLO execution loops.
@@ -160,11 +179,14 @@ AI_MAX_TOKENS="8192"
 - [ ] **Context Stress Testing:** Continuous context-window pressure tests across quantized local engines.
 - [ ] **Automated File Containment Validation:** Zero-trust security verification on traversal boundaries.
 - [ ] **v1.0.0 Production Release Tag!**
-
+  
+</kbd>
+  
 ---
 
 ## Credits
 
 *   **License**: Licensed under the permissive [MODIFIED MIT LICENSE](LICENSE).
 *   **Community:** Contributions are always welcome!
+
 
