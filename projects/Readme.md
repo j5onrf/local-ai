@@ -6,25 +6,29 @@ High-speed local developer agent, episodic memory, SQLite checkpoints, and codeb
 ~ ❯ sess
 [01/03] ❯ [session test] ai init ~/session-test --init
 :: ↵ run  Esc: 
-✔ Mapping complete! [session-test index-map updated]
+✔ Mapping complete! [session-test index-map & SQLite graph database updated]
 
 [ai init] Select default Agent Profile for workspace session-test:
 
 Enable Autonomous YOLO mode? [y/N]: y
 ✓ Profile set to: Claude Lite (Autonomous YOLO)
 
-╭─  >_ Local-AI Agent [sub-agent #1]  ───────────────────╮
-│     model:  Qwen3.5-2B.gguf                            │
+╭─  >_ Local-AI Agent  ──────────────────────────────────╮
+│     model:  Qwen3.5-2B-Claude.gguf                     │
 │ directory:  ~/.config/local-ai/projects/session-test   │
 │     skill:  claude/lite                                │
-│  database:  active (0 facts, 1 turns)                  │
+│  database:  active (0 facts, 0 turns)                  │
 ╰─────────────────────────────────────── Ctrl+C to exit ─╯
  Startup context: 294 tokens
 
-Agent: I'm Claude Lite, a precise software development agent. Ready to work with your session-test 
-workspace starting at ~/.config/local-ai/projects/session-test. STOP and WAIT for user instructions.
- [ 53 tokens | 1.21s | 41.03 t/s ]
- [ 1098 in | 53 out | ctx: 14.1% ]
+╭─ ⚙ ────────────────────────────────────────────────────
+The workspace has been initialized with a codebase map showing several Python files that need attention. I
+should acknowledge this setup and wait for user instructions before proceeding with any edits or operations.
+╰────────────────────────────────────────────────────────
+Agent:
+Understood. Ready to work on session-test's Python modules based on your CODESPACE MAP. Please provide specific tasks (e.g., "fix average.py", "trace simulate function").       
+ [ think: 62 | ans: 49 | 111 tokens | 3.8s @ 29.4 t/s ]
+ [ 1082 in | 111 out | ctx: 14.6% ]
 ❯ 
 ```
 

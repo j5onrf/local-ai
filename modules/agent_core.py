@@ -384,8 +384,12 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
             return f"[error] Refused to read binary file or directory '{raw_path}'."
 
         outside = _is_outside_workspace(workspace, full)
-        if (outside or gates_active) and not _confirm_gate(f"read {full}" if outside else f"read file {raw_path}", spinner):
+        # Permanent Zero-Trust Out-of-Bounds Gate
+        if outside and not _confirm_gate(f"OUT-OF-BOUNDS READ: {full}", spinner):
             return denial_msg
+        if gates_active and not _confirm_gate(f"read file {raw_path}", spinner):
+            return denial_msg
+
         try:
             with open(full, "r", encoding="utf-8", errors="replace") as f: content = f.read(60000)
             if sys.stdout.isatty() and content.strip():
@@ -422,7 +426,10 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
                     _console_err.print()
             except Exception: pass
 
-        if (outside or gates_active) and not _confirm_gate(f"{'overwrite' if exists else 'create'} {raw_path}", spinner):
+        # Permanent Zero-Trust Out-of-Bounds Gate
+        if outside and not _confirm_gate(f"OUT-OF-BOUNDS WRITE: {full}", spinner):
+            return denial_msg
+        if gates_active and not _confirm_gate(f"{'overwrite' if exists else 'create'} {raw_path}", spinner):
             return denial_msg
 
         try:
@@ -435,8 +442,13 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
         raw_path = args.get("path", "")
         full = _safe_path(workspace, raw_path)
         outside = _is_outside_workspace(workspace, full)
-        if (outside or gates_active) and not _confirm_gate(f"list directory {raw_path or '.'}", spinner):
+
+        # Permanent Zero-Trust Out-of-Bounds Gate
+        if outside and not _confirm_gate(f"OUT-OF-BOUNDS LIST DIR: {full}", spinner):
             return denial_msg
+        if gates_active and not _confirm_gate(f"list directory {raw_path or '.'}", spinner):
+            return denial_msg
+
         try:
             entries = sorted(os.listdir(full))
             res_str = "\n".join((e + "/" if os.path.isdir(os.path.join(full, e)) else e) for e in entries) or "(empty)"
@@ -448,6 +460,18 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
 
     if name == "run_command":
         cmd = args.get("command", "")
+        # Expand ~ home aliases and scan for absolute or relative '..' paths
+        expanded_cmd = cmd.replace("~", os.path.expanduser("~"))
+        abs_paths = re.findall(r'/(?:[a-zA-Z0-9_\-\.]+/)*[a-zA-Z0-9_\-\.]*', expanded_cmd)
+        has_dotdot = ".." in cmd
+        outside_cmd = has_dotdot or any(_is_outside_workspace(workspace, p) for p in abs_paths if os.path.exists(p) or os.path.isabs(p))
+
+        # Permanent Zero-Trust Out-of-Bounds Gate
+        if outside_cmd:
+            if spinner: spinner.stop()
+            if not ui.confirm_tool(f"OUT-OF-BOUNDS EXECUTION: $ {cmd}"):
+                return denial_msg
+
         if gates_active and not sys.stdout.isatty():
             return "[denied] no terminal available to approve command execution"
         if gates_active:
