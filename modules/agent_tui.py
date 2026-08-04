@@ -340,8 +340,15 @@ class LocalAITUI(App):
         if not os.path.exists(db_path): self.db_turns = self.tpm_count = 0; return
         try:
             with closing(sqlite3.connect(db_path, timeout=2)) as conn:
-                row = conn.cursor().execute("SELECT COUNT(*) FROM turns WHERE workspace = ?", (self.safe_name,)).fetchone()
-                self.db_turns = row[0] if row else 0
+                cur = conn.cursor()
+                try:
+                    row = cur.execute("SELECT COUNT(*) FROM turns WHERE workspace = ?", (self.safe_name,)).fetchone()
+                    self.db_turns = row[0] if row else 0
+                except Exception: pass
+                try:
+                    trow = cur.execute("SELECT COUNT(*) FROM tpm_memories").fetchone()
+                    self.tpm_count = trow[0] if trow else 0
+                except Exception: pass
         except Exception: pass
 
     def ensure_system_context(self) -> None:
@@ -884,7 +891,8 @@ class LocalAITUI(App):
             for child in self.chat_area.children:
                 if isinstance(child, Message): child.refresh(layout=True)
             self.chat_area.refresh(layout=True)
-        self.notify(f"Layout mode: {{0: 'Normal', 1: 'Compact', 2: 'Minimal (No Spaces)'}}[self.compact_mode].", sys_prefix=False)
+        mode_labels = {0: "Normal", 1: "Compact", 2: "Minimal (No Spaces)"}
+        self.notify(f"Layout mode: {mode_labels[self.compact_mode]}", sys_prefix=False)
 
     def action_cycle_theme(self) -> None:
         try:

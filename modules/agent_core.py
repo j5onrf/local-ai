@@ -96,13 +96,14 @@ def background_tpm_update(user_msg: str, assistant_msg: str, workspace: str, wor
     if len(clean) < 8 or clean in {"hello", "hi", "hey", "exit", "quit", "q", "/clear", "/reset", "/stats", "/tok", "/m", "/r"}: return
     try:
         ex_facts = run_mod("ai-agent-memories", "tpm-get", workspace)
-        sys_p = "You are an async memory compiler. Extract persistent user facts, roles, or preferences. Output ONLY a flat JSON object of key-value pairs (e.g. {\"role\": \"python dev\"}). Output {} if none exist."
+        sys_p = "You are an async memory compiler. Extract ONLY persistent facts, roles, or preferences about the HUMAN USER (e.g. {\"user_role\": \"python dev\", \"preferred_style\": \"concise\"}). Do NOT extract project code descriptions, file listings, or software features. Output ONLY a flat JSON object or {} if no user facts exist."
         payload = {"messages": [{"role": "system", "content": sys_p}, {"role": "user", "content": f"### Profile:\n{ex_facts or 'None'}\n\n### Turn:\nUser: {user_msg}\nAssistant: {assistant_msg}\n\nJSON:"}], "stream": False}
         req = urlreq.Request("http://localhost:8080/v1/chat/completions", data=json.dumps(payload).encode(), headers={"Content-Type": "application/json"}, method="POST")
         with urlreq.urlopen(req, timeout=10) as resp:
             out = json.loads(resp.read().decode())["choices"][0]["message"].get("content", "")
+        blacklist = {"files", "file", "file_list", "project", "code", "description", "features", "dependencies", "project_type", "directory", "folder", "workspace"}
         if m := re.search(r"\{[\s\S]*\}", out):
-            if parsed := {str(k).strip().lower(): str(v).strip() for k, v in json.loads(m.group(0)).items() if k and v is not None}:
+            if parsed := {str(k).strip().lower(): str(v).strip() for k, v in json.loads(m.group(0)).items() if k and v is not None and str(k).strip().lower() not in blacklist}:
                 run_mod("ai-agent-memories", "tpm-reconcile", workspace, input_data=json.dumps(parsed))
                 if res := run_mod("ai-agent-memories", "tpm-get", workspace):
                     md_dir = os.path.join(workspace_path, ".agent")
