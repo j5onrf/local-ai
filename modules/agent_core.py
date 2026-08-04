@@ -1,19 +1,10 @@
 #!/usr/bin/env python3
 """
-Local-AI Agent Core Module
-Handles streaming SSE payloads, function execution, tool gates, shared state, and Rich rendering.
+Local-AI Agent Core Module 
+Handles SSE streaming, tool gates, AST/JSON verification, shared state, and Rich rendering.
 """
 
-import os
-import sys
-import json
-import ast
-import re
-import shutil
-import subprocess
-import difflib
-import urllib.parse
-import urllib.request as urlreq
+import os, sys, json, ast, re, shutil, subprocess, difflib, urllib.parse, urllib.request as urlreq
 from typing import List, Dict, Any, Optional, Tuple
 
 import requests
@@ -30,9 +21,7 @@ import agent_cloud
 CFG_DIR: str = os.path.expanduser("~/.config/local-ai")
 STATE_FILE: str = os.path.join(CFG_DIR, ".state.json")
 
-_console = Console()
-_console_err = Console(stderr=True)
-_session = requests.Session()
+_console, _console_err, _session = Console(), Console(stderr=True), requests.Session()
 
 ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*m')
 RE_THINKING_TITLE = re.compile(r'^\s*Thinking Process:\s*', re.IGNORECASE)
@@ -44,109 +33,90 @@ BINARY_EXTENSIONS = {
     ".exe", ".png", ".jpg", ".jpeg", ".gif", ".zip", ".tar", ".gz", 
     ".7z", ".pdf", ".docx", ".xlsx", ".db-wal", ".db-shm"
 }
+
 EDIT_TOOLS: List[Dict[str, Any]] = [
-    {"type": "function", "function": {"name": "read_file", "description": "Read a text file from the project.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}},
-    {"type": "function", "function": {"name": "write_file", "description": "Create or overwrite a file in the project.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"]}}},
-    {"type": "function", "function": {"name": "list_dir", "description": "List directory contents in the project.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": []}}},
-    {"type": "function", "function": {"name": "run_command", "description": "Run a shell command in project root.", "parameters": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}}},
+    {"type": "function", "function": {"name": n, "description": d, "parameters": {"type": "object", "properties": p, "required": r}}}
+    for n, d, p, r in [
+        ("read_file", "Read a text file from the project.", {"path": {"type": "string"}}, ["path"]),
+        ("write_file", "Create or overwrite a file in the project.", {"path": {"type": "string"}, "content": {"type": "string"}}, ["path", "content"]),
+        ("list_dir", "List directory contents in the project.", {"path": {"type": "string"}}, []),
+        ("run_command", "Run a shell command in project root.", {"command": {"type": "string"}}, ["command"]),
+    ]
 ]
 TOOL_VERBS = {"read_file": "checking", "write_file": "updating", "list_dir": "checking", "run_command": "executing"}
 
-try:
-    import agent_usage as usage_log
-except ImportError:
-    usage_log = None
+DEFAULTS = {
+    "spell_active": True, "show_stats": True, "memory_active": True, "box_style": 2, "yolo_mode": False,
+    "show_thinking": True, "reasoning_active": False, "reasoning_budget": 500, "render_markdown": True,
+    "compact_mode": 0, "sidebar_hidden": False, "footer_hidden": True, "tips_card_hidden": False, "tui_theme": "code"
+}
 
-try:
-    import speed_test
-except ImportError:
-    speed_test = None
+try: import agent_usage as usage_log
+except ImportError: usage_log = None
+
+try: import speed_test
+except ImportError: speed_test = None
 
 
 def get_state(key: str = "", default: Any = None) -> Any:
-    """Centralized state JSON getter."""
-    defs = {
-        "spell_active": True, "show_stats": True, "memory_active": True,
-        "box_style": 2, "yolo_mode": False, "show_thinking": True,
-        "reasoning_active": False, "reasoning_budget": 500, "render_markdown": True,
-        "compact_mode": 0, "sidebar_hidden": False, "footer_hidden": True,
-        "tips_card_hidden": False, "tui_theme": "code"
-    }
+    st = dict(DEFAULTS)
     if os.path.exists(STATE_FILE):
         try:
-            with open(STATE_FILE, "r", encoding="utf-8") as f:
-                defs.update(json.load(f))
+            with open(STATE_FILE, "r", encoding="utf-8") as f: st.update(json.load(f))
         except Exception: pass
-    return defs.get(key, default) if key else defs
+    return st.get(key, default) if key else st
 
 
 def save_state(key: str, value: Any) -> None:
-    """Centralized state JSON setter."""
     st = get_state()
     st[key] = value
     try:
         os.makedirs(CFG_DIR, exist_ok=True)
-        with open(STATE_FILE, "w", encoding="utf-8") as f:
-            json.dump(st, f, indent=2)
+        tmp = f"{STATE_FILE}.tmp"
+        with open(tmp, "w", encoding="utf-8") as f: json.dump(st, f, indent=2)
+        os.replace(tmp, STATE_FILE)
     except Exception: pass
 
 
 def workspace_safe_name(workspace_path: str, home_dir: str = "") -> str:
-    """Sanitizes workspace directory path to safe database string key."""
-    home = home_dir or os.path.expanduser("~")
-    abs_ws, abs_home = os.path.abspath(workspace_path), os.path.abspath(home)
-    if abs_ws == abs_home: return "home"
-    clean = abs_ws.replace("/", "-").strip("-.")
-    return clean or "home"
+    home, ws = os.path.realpath(home_dir or os.path.expanduser("~")), os.path.realpath(workspace_path)
+    return "home" if ws == home else (ws.replace("/", "-").strip("-.") or "home")
 
 
 def run_mod(module_name: str, *args: str, input_data: Optional[str] = None) -> str:
-    """Compact subprocess executor for Local-AI modules."""
-    mod_path = os.path.join(CFG_DIR, "modules", module_name)
-    if not os.path.exists(mod_path):
-        mod_path = os.path.join(CFG_DIR, module_name)
-    try:
-        cmd = [sys.executable, mod_path] + list(args)
-        res = subprocess.run(cmd, input=input_data, capture_output=True, text=True, timeout=15)
-        return res.stdout.strip() if res.returncode == 0 else ""
-    except Exception: return ""
+    for sub in ("modules", ""):
+        path = os.path.join(CFG_DIR, sub, module_name)
+        if os.path.exists(path):
+            try:
+                res = subprocess.run([sys.executable, path, *args], input=input_data, capture_output=True, text=True, timeout=15)
+                return res.stdout.strip() if res.returncode == 0 else ""
+            except Exception: return ""
+    return ""
 
 
 def background_tpm_update(user_msg: str, assistant_msg: str, workspace: str, workspace_path: str) -> None:
-    """Streamlined asynchronous background TPM memory compiler."""
-    cleaned = user_msg.lower().strip()
-    if len(cleaned) < 8 or cleaned in ("hello", "hi", "hey", "exit", "quit", "q", "/clear", "/reset", "/stats", "/tok", "/m", "/r"):
-        return
+    clean = user_msg.lower().strip()
+    if len(clean) < 8 or clean in {"hello", "hi", "hey", "exit", "quit", "q", "/clear", "/reset", "/stats", "/tok", "/m", "/r"}: return
     try:
         ex_facts = run_mod("ai-agent-memories", "tpm-get", workspace)
         sys_p = "You are an async memory compiler. Extract persistent user facts, roles, or preferences. Output ONLY a flat JSON object of key-value pairs (e.g. {\"role\": \"python dev\"}). Output {} if none exist."
-        usr_p = f"### Profile:\n{ex_facts or 'None'}\n\n### Turn:\nUser: {user_msg}\nAssistant: {assistant_msg}\n\nJSON:"
-        
-        payload = {
-            "messages": [{"role": "system", "content": sys_p}, {"role": "user", "content": usr_p}],
-            "stream": False
-        }
-        req = urlreq.Request("http://localhost:8080/v1/chat/completions", data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"}, method="POST")
+        payload = {"messages": [{"role": "system", "content": sys_p}, {"role": "user", "content": f"### Profile:\n{ex_facts or 'None'}\n\n### Turn:\nUser: {user_msg}\nAssistant: {assistant_msg}\n\nJSON:"}], "stream": False}
+        req = urlreq.Request("http://localhost:8080/v1/chat/completions", data=json.dumps(payload).encode(), headers={"Content-Type": "application/json"}, method="POST")
         with urlreq.urlopen(req, timeout=10) as resp:
-            out = json.loads(resp.read().decode("utf-8"))["choices"][0]["message"].get("content", "")
-
+            out = json.loads(resp.read().decode())["choices"][0]["message"].get("content", "")
         if m := re.search(r"\{[\s\S]*\}", out):
-            if parsed := json.loads(m.group(0)):
-                clean = {str(k).strip().lower(): str(v).strip() for k, v in parsed.items() if k and v is not None}
-                if clean:
-                    run_mod("ai-agent-memories", "tpm-reconcile", workspace, input_data=json.dumps(clean))
-                    if res := run_mod("ai-agent-memories", "tpm-get", workspace):
-                        md_dir = os.path.join(workspace_path, ".agent")
-                        os.makedirs(md_dir, exist_ok=True)
-                        with open(os.path.join(md_dir, "tpm.md"), "w", encoding="utf-8") as f: f.write(res + "\n")
+            if parsed := {str(k).strip().lower(): str(v).strip() for k, v in json.loads(m.group(0)).items() if k and v is not None}:
+                run_mod("ai-agent-memories", "tpm-reconcile", workspace, input_data=json.dumps(parsed))
+                if res := run_mod("ai-agent-memories", "tpm-get", workspace):
+                    md_dir = os.path.join(workspace_path, ".agent")
+                    os.makedirs(md_dir, exist_ok=True)
+                    with open(os.path.join(md_dir, "tpm.md"), "w", encoding="utf-8") as f: f.write(res + "\n")
     except Exception: pass
 
 
 def _clear_lines(stream_err: bool, text: str, extra_top: int = 0) -> None:
-    """Helper to erase exact number of terminal rows written during streaming."""
     cols = shutil.get_terminal_size((80, 24)).columns or 80
-    lines = text.split("\n")
-    rows = extra_top + sum(max(1, (len(ANSI_ESCAPE.sub('', l.replace('\t', '    '))) + cols - 1) // cols) for l in lines)
+    rows = extra_top + sum(max(1, (len(ANSI_ESCAPE.sub('', l.replace('\t', '    '))) + cols - 1) // cols) for l in text.split("\n"))
     up = max(0, rows - 1)
     target = sys.stderr if stream_err else sys.stdout
     try:
@@ -156,36 +126,22 @@ def _clear_lines(stream_err: bool, text: str, extra_top: int = 0) -> None:
 
 
 def _render_compact_markdown_think(raw_think: str) -> None:
-    """Renders formatted Markdown lines back-to-back preserving natural LLM indentation with zero blank lines."""
-    cleaned = RE_THINKING_TITLE.sub('', raw_think).strip()
-    lines = [line.rstrip() for line in cleaned.splitlines() if line.strip()]
-    
+    lines = [l.rstrip() for l in RE_THINKING_TITLE.sub('', raw_think).strip().splitlines() if l.strip()]
+    rules = [
+        (r'\*\*(.*?)\*\*', r'[bold]\1[/bold]'), (r'\*(.*?)\*', r'[italic]\1[/italic]'),
+        (r'`(.*?)`', r'[cyan]\1[/cyan]'), (r'^(\s*\d+\.)', r'[bold green]\1[/bold green]'),
+        (r'^(\s*)[-•*]', r'\1[bold cyan]•[/bold cyan]')
+    ]
     for line in lines:
-        formatted = line
-        formatted = re.sub(r'\*\*(.*?)\*\*', r'[bold]\1[/bold]', formatted)
-        formatted = re.sub(r'\*(.*?)\*', r'[italic]\1[/italic]', formatted)
-        formatted = re.sub(r'`(.*?)`', r'[cyan]\1[/cyan]', formatted)
-        formatted = re.sub(r'^(\s*\d+\.)', r'[bold green]\1[/bold green]', formatted)
-        formatted = re.sub(r'^(\s*)[-•*]', r'\1[bold cyan]•[/bold cyan]', formatted)
-        
-        try:
-            _console_err.print(Text.from_markup(formatted))
-        except Exception:
-            _console_err.print(formatted)
+        for pattern, replacement in rules: line = re.sub(pattern, replacement, line)
+        try: _console_err.print(Text.from_markup(line))
+        except Exception: _console_err.print(line)
 
 
 class RichStreamer:
-    """Fast streaming output engine with compact final-pass Rich Markdown rendering."""
-
     def __init__(self, prefix: str = "", active: bool = True, spinner: Any = None) -> None:
-        self.prefix: str = prefix
-        self.active: bool = active and sys.stdout.isatty()
-        self.spinner: Any = spinner
-        self.acc_think: str = ""
-        self.acc_ans: str = ""
-        self.phase: str = "INIT"
-        self.think_hdr_printed: bool = False
-        self.ans_started: bool = False
+        self.prefix, self.active, self.spinner = prefix, active and sys.stdout.isatty(), spinner
+        self.acc_think, self.acc_ans, self.phase, self.think_hdr_printed, self.ans_started = "", "", "INIT", False, False
 
     def _stop_spinner(self) -> None:
         if self.spinner:
@@ -194,24 +150,19 @@ class RichStreamer:
 
     def start(self) -> None:
         if self.active:
-            try:
-                sys.stdout.write("\033[?25h")
-                sys.stdout.flush()
+            try: sys.stdout.write("\033[?25h"); sys.stdout.flush()
             except (IOError, OSError): pass
 
     def update(self, token: str) -> None:
         if not self.active:
-            if "<think>" in token and self.phase != "THINKING": self.phase = "THINKING"; token = token.replace("<think>", "")
-            if "</think>" in token: self.phase = "ANSWER"; token = token.split("</think>", 1)[1] if "</think>" in token else ""
+            if "<think>" in token and self.phase != "THINKING": self.phase, token = "THINKING", token.replace("<think>", "")
+            if "</think>" in token: self.phase, token = "ANSWER", token.split("</think>", 1)[1] if "</think>" in token else ""
             if self.phase != "THINKING" and token:
-                try:
-                    sys.stdout.write(token)
-                    sys.stdout.flush()
+                try: sys.stdout.write(token); sys.stdout.flush()
                 except (IOError, OSError): pass
             return
 
-        show_think = os.environ.get("AI_SHOW_THINKING", "1") == "1"
-        render_md = os.environ.get("AI_RENDER_MARKDOWN", "1") == "1"
+        show_think, render_md = os.environ.get("AI_SHOW_THINKING", "1") == "1", os.environ.get("AI_RENDER_MARKDOWN", "1") == "1"
 
         if "<think>" in token and self.phase != "THINKING":
             self.phase, token = "THINKING", token.replace("<think>", "")
@@ -220,27 +171,20 @@ class RichStreamer:
         if "</think>" in token:
             parts = token.split("</think>", 1)
             if parts[0]: self.update(parts[0])
-
             if show_think and self.think_hdr_printed and self.acc_think.strip():
                 if render_md:
                     _clear_lines(True, self.acc_think, extra_top=1)
                     _console_err.print("[dim]╭─ ⚙ ────────────────────────────────────────────────────[/dim]")
                     _render_compact_markdown_think(self.acc_think)
-                    _console_err.print("[dim]╰────────────────────────────────────────────────────────[/dim]")
-                else:
-                    _console_err.print("[dim]╰────────────────────────────────────────────────────────[/dim]")
-
+                _console_err.print("[dim]╰────────────────────────────────────────────────────────[/dim]")
             self.phase = "ANSWER"
             if self.spinner: self.spinner.update("Working...")
             if len(parts) > 1 and parts[1]: self.update(parts[1])
             return
 
         if self.phase == "THINKING":
-            tok = RE_THINKING_TITLE.sub('', token.replace("\\n", "\n"))
-            tok = RE_MULTIPLE_NEWLINES.sub('\n', tok)
-            if self.acc_think.endswith("\n") and tok.startswith("\n"):
-                tok = tok.lstrip("\r\n")
-
+            tok = RE_MULTIPLE_NEWLINES.sub('\n', RE_THINKING_TITLE.sub('', token.replace("\\n", "\n")))
+            if self.acc_think.endswith("\n") and tok.startswith("\n"): tok = tok.lstrip("\r\n")
             self.acc_think += tok
             if show_think and tok:
                 if not self.think_hdr_printed and tok.strip():
@@ -249,43 +193,33 @@ class RichStreamer:
                     _console_err.print("[dim]╭─ ⚙ ────────────────────────────────────────────────────[/dim]")
                     tok = tok.lstrip("\r\n")
                 if tok:
-                    try:
-                        sys.stderr.write(tok)
-                        sys.stderr.flush()
+                    try: sys.stderr.write(tok); sys.stderr.flush()
                     except (IOError, OSError): pass
         else:
             if not self.ans_started:
                 self._stop_spinner()
-                self.ans_started = True
-                p_clean = self.prefix.strip() if self.prefix else ""
+                self.ans_started, p_clean = True, self.prefix.strip()
                 p_str = f"{p_clean} " if p_clean else ""
                 p_style = "\033[1;32m" if "Agent" in p_clean else "\033[1;36m"
                 if p_str:
-                    try:
-                        sys.stdout.write(f"{p_style}{p_str}\033[0m")
-                        sys.stdout.flush()
+                    try: sys.stdout.write(f"{p_style}{p_str}\033[0m"); sys.stdout.flush()
                     except (IOError, OSError): pass
                 self.acc_ans += p_str
 
             tok = RE_FINAL_ANSWER.sub('', token.replace("\\n", "\n"))
             self.acc_ans += tok
             if tok:
-                try:
-                    sys.stdout.write(tok)
-                    sys.stdout.flush()
+                try: sys.stdout.write(tok); sys.stdout.flush()
                 except (IOError, OSError): pass
 
     def stop(self, interrupted: bool = False) -> None:
         self._stop_spinner()
         if interrupted:
-            try:
-                sys.stdout.write("\033[?25h\n")
-                sys.stdout.flush()
+            try: sys.stdout.write("\033[?25h\n"); sys.stdout.flush()
             except (IOError, OSError): pass
             return
 
-        show_think = os.environ.get("AI_SHOW_THINKING", "1") == "1"
-        render_md = os.environ.get("AI_RENDER_MARKDOWN", "1") == "1"
+        show_think, render_md = os.environ.get("AI_SHOW_THINKING", "1") == "1", os.environ.get("AI_RENDER_MARKDOWN", "1") == "1"
 
         if self.phase == "THINKING" and show_think and self.think_hdr_printed and self.acc_think.strip():
             if render_md:
@@ -296,28 +230,21 @@ class RichStreamer:
             self.phase = "ANSWER"
 
         if self.ans_started and self.acc_ans.strip():
-            p_clean = self.prefix.strip() if self.prefix else ""
+            p_clean = self.prefix.strip()
             p_str = f"{p_clean} " if p_clean else ""
             raw_body = self.acc_ans[len(p_str):] if self.acc_ans.startswith(p_str) else self.acc_ans
-            
-            clean_ans = RE_FINAL_ANSWER.sub('', raw_body).strip()
-            clean_ans = RE_MULTIPLE_NEWLINES.sub('\n\n', clean_ans).strip()
+            clean_ans = RE_MULTIPLE_NEWLINES.sub('\n\n', RE_FINAL_ANSWER.sub('', raw_body)).strip()
 
             if render_md and clean_ans and sys.stdout.isatty():
                 try:
                     _clear_lines(False, self.acc_ans)
-                    p_col = "bold green" if "Agent" in p_clean else "bold cyan"
-                    if p_clean: _console.print(Text(p_clean, style=p_col))
+                    if p_clean: _console.print(Text(p_clean, style="bold green" if "Agent" in p_clean else "bold cyan"))
                     _console.print(Markdown(clean_ans, code_theme="ansi_dark"))
                 except Exception:
-                    try:
-                        sys.stdout.write("\n")
-                        sys.stdout.flush()
+                    try: sys.stdout.write("\n"); sys.stdout.flush()
                     except (IOError, OSError): pass
             else:
-                try:
-                    sys.stdout.write("\n")
-                    sys.stdout.flush()
+                try: sys.stdout.write("\n"); sys.stdout.flush()
                 except (IOError, OSError): pass
 
 
@@ -329,20 +256,15 @@ def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float, show_sta
         if show_stats and sys.stdout.isatty():
             ctx_max = int(os.environ.get("AI_MAX_TOKENS", 8192)) if ctx_used is not None else None
             print(usage_log.turn_line(in_tok, out_tok, cost, ctx_used, ctx_max))
-            print("")  # Space after stats line, before next prompt (❯)
+            print("")
     except Exception: pass
 
 
 def _process_stream_chunk(content: str, reasoning: str, in_think_block: bool) -> Tuple[str, bool, bool]:
-    """Reasonix Harness Stream Interceptor: Routes reasoning tokens vs response text."""
-    if content and "Final Answer:" in content:
-        content = RE_FINAL_ANSWER.sub('', content).lstrip()
-
-    if reasoning:
-        return (f"<think>{reasoning}", True, True) if not in_think_block else (reasoning, True, True)
+    if content and "Final Answer:" in content: content = RE_FINAL_ANSWER.sub('', content).lstrip()
+    if reasoning: return (f"<think>{reasoning}", True, True) if not in_think_block else (reasoning, True, True)
     if content:
-        if in_think_block and "</think>" not in content:
-            return f"</think>{content}", False, False
+        if in_think_block and "</think>" not in content: return f"</think>{content}", False, False
         in_think = True if "<think>" in content else (False if "</think>" in content else in_think_block)
         return content, in_think, in_think
     return "", False, in_think_block
@@ -372,40 +294,35 @@ def _confirm_gate(reason: str, spinner: Any) -> bool:
     return sys.stdout.isatty() and ui.confirm_tool(reason)
 
 
+def _print_tool_output(spinner: Any, text: str) -> None:
+    if sys.stdout.isatty() and text.strip():
+        if spinner: spinner.stop()
+        _console_err.print()
+        if os.environ.get("AI_RENDER_MARKDOWN", "1") == "1" and any(k in text for k in ("#", "|", "```")):
+            _console_err.print(Markdown(text, code_theme="ansi_dark"))
+        else: _console_err.print(text)
+        _console_err.print()
+
+
 def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any = None) -> str:
     gates_active = os.environ.get("AI_CONFIRM_GATES", "1") == "1"
-    denial_msg = "[denied] User declined tool execution."
+    denial = "[denied] User declined tool execution."
+    raw_path = args.get("path", "")
+    full = _safe_path(workspace, raw_path) if raw_path else ""
 
     if name == "read_file":
-        raw_path = args.get("path", "")
-        full = _safe_path(workspace, raw_path)
-        ext = os.path.splitext(full)[1].lower()
-        if ext in BINARY_EXTENSIONS or os.path.isdir(full):
+        if os.path.splitext(full)[1].lower() in BINARY_EXTENSIONS or os.path.isdir(full):
             return f"[error] Refused to read binary file or directory '{raw_path}'."
-
-        outside = _is_outside_workspace(workspace, full)
-        if outside and not _confirm_gate(f"OUT-OF-BOUNDS READ: {full}", spinner): return denial_msg
-        if gates_active and not _confirm_gate(f"read file {raw_path}", spinner): return denial_msg
-
+        if _is_outside_workspace(workspace, full) and not _confirm_gate(f"OUT-OF-BOUNDS READ: {full}", spinner): return denial
+        if gates_active and not _confirm_gate(f"read file {raw_path}", spinner): return denial
         try:
             with open(full, "r", encoding="utf-8", errors="replace") as f: content = f.read(60000)
-            if sys.stdout.isatty() and content.strip():
-                if spinner: spinner.stop()
-                _console_err.print()
-                if os.environ.get("AI_RENDER_MARKDOWN", "1") == "1" and ("#" in content or "|" in content):
-                    _console_err.print(Markdown(content, code_theme="ansi_dark"))
-                else: _console_err.print(content)
-                _console_err.print()
+            _print_tool_output(spinner, content)
             return content
         except Exception as e: return f"[error] failed to read file: {e}"
 
     if name == "write_file":
-        raw_path = args.get("path", "")
-        full = _safe_path(workspace, raw_path)
         content = args.get("content", "")
-        outside = _is_outside_workspace(workspace, full)
-        exists = os.path.exists(full)
-
         if full.endswith(".py"):
             try: ast.parse(content)
             except SyntaxError as e: return f"[error] Write blocked. Python syntax error: {e} on line {getattr(e, 'lineno', '?')}."
@@ -413,18 +330,15 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
             try: json.loads(content)
             except Exception as e: return f"[error] Write blocked. JSON syntax error: {e}."
 
-        if sys.stdout.isatty() and exists:
+        if sys.stdout.isatty() and os.path.exists(full):
             try:
                 with open(full, "r", encoding="utf-8", errors="replace") as f: old = f.read()
-                diff_text = "\n".join(difflib.unified_diff(old.splitlines(), content.splitlines(), fromfile=f"a/{raw_path}", tofile=f"b/{raw_path}", lineterm=""))
-                if diff_text:
-                    _console_err.print()
-                    _console_err.print(Syntax(diff_text, "diff", theme="ansi_dark", background_color="default"))
-                    _console_err.print()
+                if diff := "\n".join(difflib.unified_diff(old.splitlines(), content.splitlines(), fromfile=f"a/{raw_path}", tofile=f"b/{raw_path}", lineterm="")):
+                    _console_err.print("\n", Syntax(diff, "diff", theme="ansi_dark", background_color="default"), "\n")
             except Exception: pass
 
-        if outside and not _confirm_gate(f"OUT-OF-BOUNDS WRITE: {full}", spinner): return denial_msg
-        if gates_active and not _confirm_gate(f"{'overwrite' if exists else 'create'} {raw_path}", spinner): return denial_msg
+        if _is_outside_workspace(workspace, full) and not _confirm_gate(f"OUT-OF-BOUNDS WRITE: {full}", spinner): return denial
+        if gates_active and not _confirm_gate(f"{'overwrite' if os.path.exists(full) else 'create'} {raw_path}", spinner): return denial
 
         try:
             os.makedirs(os.path.dirname(full) or workspace, exist_ok=True)
@@ -433,13 +347,8 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
         except Exception as e: return f"[error] failed to write file: {e}"
 
     if name == "list_dir":
-        raw_path = args.get("path", "")
-        full = _safe_path(workspace, raw_path)
-        outside = _is_outside_workspace(workspace, full)
-
-        if outside and not _confirm_gate(f"OUT-OF-BOUNDS LIST DIR: {full}", spinner): return denial_msg
-        if gates_active and not _confirm_gate(f"list directory {raw_path or '.'}", spinner): return denial_msg
-
+        if _is_outside_workspace(workspace, full) and not _confirm_gate(f"OUT-OF-BOUNDS LIST DIR: {full}", spinner): return denial
+        if gates_active and not _confirm_gate(f"list directory {raw_path or '.'}", spinner): return denial
         try:
             entries = sorted(os.listdir(full))
             res_str = "\n".join((e + "/" if os.path.isdir(os.path.join(full, e)) else e) for e in entries) or "(empty)"
@@ -451,19 +360,14 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
 
     if name == "run_command":
         cmd = args.get("command", "")
-        expanded_cmd = cmd.replace("~", os.path.expanduser("~"))
-        abs_paths = re.findall(r'/(?:[a-zA-Z0-9_\-\.]+/)*[a-zA-Z0-9_\-\.]*', expanded_cmd)
-        has_dotdot = ".." in cmd
-        outside_cmd = has_dotdot or any(_is_outside_workspace(workspace, p) for p in abs_paths if os.path.exists(p) or os.path.isabs(p))
+        expanded = cmd.replace("~", os.path.expanduser("~"))
+        abs_paths = re.findall(r'/(?:[a-zA-Z0-9_\-\.]+/)*[a-zA-Z0-9_\-\.]*', expanded)
+        if (".." in cmd or any(_is_outside_workspace(workspace, p) for p in abs_paths if os.path.exists(p) or os.path.isabs(p))) and not _confirm_gate(f"OUT-OF-BOUNDS EXECUTION: $ {cmd}", spinner):
+            return denial
 
-        if outside_cmd:
-            if spinner: spinner.stop()
-            if not ui.confirm_tool(f"OUT-OF-BOUNDS EXECUTION: $ {cmd}"): return denial_msg
-
-        if gates_active and not sys.stdout.isatty(): return "[denied] no terminal available to approve command execution"
         if gates_active:
-            if spinner: spinner.stop()
-            if not ui.confirm_tool(f"execute: $ {cmd}"): return denial_msg
+            if not sys.stdout.isatty(): return "[denied] no terminal available to approve command execution"
+            if not _confirm_gate(f"execute: $ {cmd}", spinner): return denial
         else:
             _console_err.print(f"[dim]  Executing command autonomously: $ {cmd}[/dim]")
 
@@ -475,15 +379,7 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
         try:
             res = subprocess.run([shell, "-lc", cmd], cwd=workspace, capture_output=True, text=True, timeout=300)
             out = ((res.stdout or "") + (("\n" + res.stderr) if res.stderr else "")).strip()[:10000]
-
-            if sys.stdout.isatty() and out.strip():
-                if spinner: spinner.stop()
-                _console_err.print()
-                if os.environ.get("AI_RENDER_MARKDOWN", "1") == "1" and ("#" in out or "|" in out or "```" in out):
-                    _console_err.print(Markdown(out, code_theme="ansi_dark"))
-                else: _console_err.print(out)
-                _console_err.print()
-
+            _print_tool_output(spinner, out)
             return f"(exit {res.returncode})\n{out}" if res.returncode != 0 else (out or "(exit 0, no output)")
         except subprocess.TimeoutExpired:
             return "[error] command timed out after 300 seconds"
@@ -500,8 +396,7 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
     if is_agent and messages and messages[0]["role"] == "system" and "### EDIT MODE" not in messages[0]["content"]:
         messages[0]["content"] += f"\n\n### EDIT MODE:\nYou are an active coding agent at {workspace}.\n\n### WORKING TOOLS:\nCapabilities: read_file, write_file, list_dir, run_command. Root: {workspace}."
 
-    resolved_model = None
-    streamer = None
+    resolved_model, streamer = None, None
 
     for _round in range(10):
         body_tools = {**body, "messages": messages, "stream": True}
@@ -532,11 +427,8 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
 
                     content, reasoning = delta.get("content", "") or "", delta.get("reasoning_content", "") or delta.get("thinking", "") or ""
 
-                    if reasoning and spinner:
-                        try: spinner.update("Thinking...")
-                        except Exception: pass
-                    elif content and spinner and not reasoning and not in_think_block:
-                        try: spinner.update("Working...")
+                    if spinner:
+                        try: spinner.update("Thinking..." if reasoning else "Working...")
                         except Exception: pass
 
                     chunk_to_stream, is_thinking, in_think_block = _process_stream_chunk(content, reasoning, in_think_block)
@@ -555,10 +447,9 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
 
                     for tc in delta.get("tool_calls", []):
                         idx = tc.get("index", 0)
-                        if idx not in tool_calls_map:
-                            tool_calls_map[idx] = {"id": tc.get("id", ""), "type": "function", "function": {"name": tc.get("function", {}).get("name", ""), "arguments": ""}}
-                        if tc.get("function", {}).get("name"): tool_calls_map[idx]["function"]["name"] = tc["function"]["name"]
-                        tool_calls_map[idx]["function"]["arguments"] += tc.get("function", {}).get("arguments", "")
+                        tc_entry = tool_calls_map.setdefault(idx, {"id": tc.get("id", ""), "type": "function", "function": {"name": tc.get("function", {}).get("name", ""), "arguments": ""}})
+                        if tc.get("function", {}).get("name"): tc_entry["function"]["name"] = tc["function"]["name"]
+                        tc_entry["function"]["arguments"] += tc.get("function", {}).get("arguments", "")
                 except Exception: pass
 
             if streamer: streamer.stop()
@@ -589,19 +480,12 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
                     except Exception: pass
                     spinner.start("Working...")
 
-                try:
-                    result = _run_edit_tool(fname, args, workspace, spinner)
-                except Exception as e:
-                    result = f"[tool error] {e}"
+                try: result = _run_edit_tool(fname, args, workspace, spinner)
+                except Exception as e: result = f"[tool error] {e}"
                 finally:
                     if spinner: spinner.stop()
 
-                # Reasonix Harness: Deterministic Tool Result Pruning for Prefix Cache Stability
-                if len(result) > 1500:
-                    pruned_result = result[:1200] + f"\n... [Reasonix Harness: Snipped {len(result) - 1200} chars for context stability]"
-                else:
-                    pruned_result = result
-
+                pruned_result = result if len(result) <= 1500 else result[:1200] + f"\n... [Reasonix Harness: Snipped {len(result) - 1200} chars for context stability]"
                 messages.append({"role": "tool", "tool_call_id": tc.get("id", ""), "name": fname, "content": pruned_result})
 
         except KeyboardInterrupt:
@@ -621,29 +505,28 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
     return None
 
 
+def _is_local_server_alive(url: str, timeout: float = 0.3) -> bool:
+    if "localhost" not in url and "127.0.0.1" not in url: return True
+    try:
+        req = urlreq.Request("http://localhost:8080/v1/models", method="GET")
+        with urlreq.urlopen(req, timeout=timeout) as r: return r.status == 200
+    except Exception: return False
+
+
 def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_dir: str = "", show_stats: bool = False, thinking_budget: int = 0, is_agent: bool = False) -> Optional[str]:
     spinner = ui.InlineSpinner()
     try:
-        configs = agent_cloud.get_active_configs(messages)
+        configs = [c for c in agent_cloud.get_active_configs(messages) if _is_local_server_alive(c[0])]
         enable_think = thinking_budget > 0
         budget_val = thinking_budget if enable_think else 0
+        think_kwargs = {"thinking_budget_tokens": budget_val, "reasoning_budget": budget_val, "chat_template_kwargs": {"enable_thinking": True}} if enable_think else {}
 
-        local_body = {"messages": messages, "stream": True}
-        if enable_think:
-            local_body["thinking_budget_tokens"] = budget_val
-            local_body["reasoning_budget"] = budget_val
-            local_body["chat_template_kwargs"] = {"enable_thinking": True}
+        local_body = {"messages": messages, "stream": True, **think_kwargs}
+        seen_urls, unique_configs = set(), []
 
-        seen_urls = set()
-        unique_configs = []
         for url, headers, body, timeout in configs:
             norm_url = "http://localhost:8080/v1/chat/completions" if ":8080" in url else url.replace("127.0.0.1", "localhost")
-            if "localhost" in norm_url or "127.0.0.1" in norm_url:
-                if enable_think:
-                    body["thinking_budget_tokens"] = budget_val
-                    body["reasoning_budget"] = budget_val
-                    body["chat_template_kwargs"] = {"enable_thinking": True}
-
+            if "localhost" in norm_url: body.update(think_kwargs)
             if norm_url not in seen_urls:
                 seen_urls.add(norm_url)
                 unique_configs.append(("http://localhost:8080/v1/chat/completions" if ":8080" in url else url, headers, body, timeout))
@@ -652,9 +535,8 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
             unique_configs.append(("http://localhost:8080/v1/chat/completions", {}, local_body, 180))
 
         for url, headers, body, timeout in unique_configs:
-            ans = agentic_turn(messages, url, headers, body, timeout, spinner, show_stats, is_agent=is_agent)
-            if ans is not None: return ans
-
+            if (ans := agentic_turn(messages, url, headers, body, timeout, spinner, show_stats, is_agent=is_agent)) is not None:
+                return ans
         return None
     except KeyboardInterrupt:
         if spinner:
@@ -665,17 +547,13 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
 
 
 def get_accurate_token_count(text: Any, server_url: str = "http://localhost:8080") -> int:
-    """Fast non-allocating token estimation (3.6 chars/token average)."""
-    if not text: return 0
-    length = len(text) if isinstance(text, str) else len(str(text))
-    return max(1, (length * 10) // 36)
+    return max(1, (len(text if isinstance(text, str) else str(text)) * 10) // 36) if text else 0
 
 
 def show_memory_status(messages: List[Dict[str, Any]], max_context: int = 8192, server_url: str = "http://localhost:8080") -> None:
     total_toks = sum(get_accurate_token_count(m.get("content") or "", server_url) for m in messages)
     pct = (total_toks / max_context) * 100
-    filled = int((total_toks / max_context) * 20)
-    bar = "█" * filled + "░" * (20 - filled)
+    bar = "█" * int(pct / 5) + "░" * (20 - int(pct / 5))
     color = "green" if pct < 70 else "yellow" if pct < 90 else "red"
 
     _console.print(Panel(
@@ -688,16 +566,13 @@ def show_memory_status(messages: List[Dict[str, Any]], max_context: int = 8192, 
 
 
 def prune_history(history: List[Dict[str, Any]], max_tokens: Optional[int] = None) -> List[Dict[str, Any]]:
-    """Prune conversation history while preserving system prompt and maintaining Reasonix cache stability."""
     if len(history) <= 1: return history
     limit = max_tokens or int(os.environ.get("AI_MAX_TOKENS", 8192))
-    
-    # Reasonix Harness: Strip stale tool interactions during context compaction
     history = [m for m in history if m.get("role") != "tool"]
-
+    
     sys_prompt = history[0]
     curr = get_accurate_token_count(sys_prompt.get("content", ""))
-    selected: List[Dict[str, Any]] = []
+    selected = []
 
     for msg in reversed(history[1:]):
         toks = get_accurate_token_count(msg.get("content", ""))
@@ -705,5 +580,4 @@ def prune_history(history: List[Dict[str, Any]], max_tokens: Optional[int] = Non
         selected.append(msg)
         curr += toks
 
-    selected.reverse()
-    return [sys_prompt] + selected
+    return [sys_prompt] + list(reversed(selected))

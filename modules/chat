@@ -1,210 +1,119 @@
 #!/usr/bin/env python3
 # chat - Unified Agentic Brainstorm, Thinking & Follow-up Engine
 
-import sys
-import os
-import json
-import re
-import urllib.request as urlreq
+import sys, os, json, re, urllib.request as urlreq
 
-try:
-    import agent_ui as ui
-except ImportError:
-    ui = None
+try: import agent_ui as ui
+except ImportError: ui = None
 
 CFG_DIR = os.path.expanduser("~/.config/local-ai")
 
-try:
-    history = json.loads(sys.stdin.read())
+try: history = json.loads(sys.stdin.read())
 except Exception:
-    sys.stderr.write("Error: No valid chat history passed to brainstorm tool.\n")
-    sys.exit(1)
+    sys.stderr.write("Error: No valid chat history passed to brainstorm tool.\n"); sys.exit(1)
 
-query_string = " ".join(sys.argv[1:]).lower().strip()
-cmd_match = re.match(r'^/?([ftba])(?:\s+(\d+))?$', query_string)
+q_str = " ".join(sys.argv[1:]).lower().strip()
+m = re.match(r'^/?([ftba])(?:\s+(\d+))?$', q_str)
+cmd, count = m.group(1) if m else "f", int(m.group(2)) if (m and m.group(2) and 1 <= int(m.group(2)) <= 10) else 3
 
-cmd_char = cmd_match.group(1) if cmd_match else "f"
-option_count = int(cmd_match.group(2)) if (cmd_match and cmd_match.group(2) and 1 <= int(cmd_match.group(2)) <= 10) else 3
+META_MAP = {
+    "b": ("brainstorm.md", "Brainstorm", "brainstorm"),
+    "t": ("thinking.md", "Thinking", "think"),
+    "a": ("all", "Follow-up", "all"),
+    "f": ("follow-up.md", "Follow-up", "follow-up")
+}
+file_name, output_hdr, fallback_term = META_MAP.get(cmd, META_MAP["f"])
 
-is_brain_cmd, is_think_cmd, is_all_cmd = (cmd_char == "b"), (cmd_char == "t"), (cmd_char == "a")
-
-if is_brain_cmd:
-    skill_file, output_header, fallback_term = "brainstorm.md", "Brainstorm", "brainstorm"
-elif is_think_cmd:
-    skill_file, output_header, fallback_term = "thinking.md", "Thinking", "think"
-elif is_all_cmd:
-    skill_file, output_header, fallback_term = "all", "Follow-up", "all"
-else:
-    skill_file, output_header, fallback_term = "follow-up.md", "Follow-up", "follow-up"
-
-THINK_FILE = f"{CFG_DIR}/skills/meta/{skill_file}"
-
-prompt = ""
-if is_all_cmd:
+if cmd == "a":
     prompts = {}
-    for f_name, header in [("follow-up.md", "Follow-up"), ("thinking.md", "Thinking"), ("brainstorm.md", "Brainstorm")]:
-        path = f"{CFG_DIR}/skills/meta/{f_name}"
-        if os.path.exists(path):
+    for fn, hdr in [("follow-up.md", "Follow-up"), ("thinking.md", "Thinking"), ("brainstorm.md", "Brainstorm")]:
+        p = os.path.join(CFG_DIR, "skills", "meta", fn)
+        if os.path.exists(p):
             try:
-                content = open(path, "r", encoding="utf-8").read().strip()
-                prompts[header] = content.split("Template:")[0].strip() if "Template:" in content else content
-            except Exception:
-                pass
-
-    if prompts:
-        prompt = (
-            "Analyze the preceding conversation history and output exactly three sections: Follow-up, Thinking, and Brainstorm.\n"
-            "You must output ONLY these three sections, with no conversational introductions or explanations.\n\n"
-            "Template (Ensure headers are exact, flush left, with no empty lines between options):\n"
-            "Follow-up\n[Option 1]\n[Option 2]\n[Option 3]\n"
-            "Thinking\n[Option 1]\n[Option 2]\n[Option 3]\n"
-            "Brainstorm\n[Option 1]\n[Option 2]\n[Option 3]\n\n"
-            "Strictly adhere to the specific guidelines for each section detailed below:\n"
-            f"<FOLLOW_UP_RULES>\n{prompts.get('Follow-up', '')}\n</FOLLOW_UP_RULES>\n\n"
-            f"<THINKING_RULES>\n{prompts.get('Thinking', '')}\n</THINKING_RULES>\n\n"
-            f"<BRAINSTORM_RULES>\n{prompts.get('Brainstorm', '')}\n</BRAINSTORM_RULES>"
-        )
-elif os.path.exists(THINK_FILE):
-    try:
-        prompt = open(THINK_FILE, "r", encoding="utf-8").read().strip()
-    except Exception:
-        pass
-
-if not prompt:
-    if is_all_cmd:
-        prompt = (
-            "Analyze history and output exactly three sections: Follow-up, Thinking, and Brainstorm.\n"
-            "Each section must have exactly 3 options, each strictly 6 to 10 words long.\n"
-            "No conversational filler. Output exactly this format:\n\n"
-            "Follow-up\n[Option 1]\n[Option 2]\n[Option 3]\n"
-            "Thinking\n[Option 1]\n[Option 2]\n[Option 3]\n"
-            "Brainstorm\n[Option 1]\n[Option 2]\n[Option 3]"
-        )
-    else:
-        prompt = (
-            f"Analyze history and output exactly 3 next-step {fallback_term} items.\n"
-            "Each option must be strictly 6 to 10 words long.\n"
-            "No conversational filler. Output exactly this format:\n\n"
-            f"{output_header}\n[Option 1]\n[Option 2]\n[Option 3]"
-        )
+                txt = open(p, "r", encoding="utf-8").read().strip()
+                prompts[hdr] = txt.split("Template:")[0].strip() if "Template:" in txt else txt
+            except Exception: pass
+    prompt = (
+        "Analyze the preceding conversation history and output exactly three sections: Follow-up, Thinking, and Brainstorm.\n"
+        "You must output ONLY these three sections, with no conversational introductions or explanations.\n\n"
+        "Template (Ensure headers are exact, flush left, with no empty lines between options):\n"
+        "Follow-up\n[Option 1]\n[Option 2]\n[Option 3]\nThinking\n[Option 1]\n[Option 2]\n[Option 3]\nBrainstorm\n[Option 1]\n[Option 2]\n[Option 3]\n\n"
+        f"<FOLLOW_UP_RULES>\n{prompts.get('Follow-up', '')}\n</FOLLOW_UP_RULES>\n\n"
+        f"<THINKING_RULES>\n{prompts.get('Thinking', '')}\n</THINKING_RULES>\n\n"
+        f"<BRAINSTORM_RULES>\n{prompts.get('Brainstorm', '')}\n</BRAINSTORM_RULES>"
+    ) if prompts else (
+        "Analyze history and output exactly three sections: Follow-up, Thinking, and Brainstorm.\n"
+        "Each section must have exactly 3 options, each strictly 6 to 10 words long.\n"
+        "No conversational filler. Output exactly this format:\n\nFollow-up\n[Option 1]\n[Option 2]\n[Option 3]\nThinking\n[Option 1]\n[Option 2]\n[Option 3]\nBrainstorm\n[Option 1]\n[Option 2]\n[Option 3]"
+    )
 else:
-    prompt = prompt.replace("exactly 3", f"exactly {option_count}")
+    meta_path = os.path.join(CFG_DIR, "skills", "meta", file_name)
+    if os.path.exists(meta_path):
+        try: prompt = open(meta_path, "r", encoding="utf-8").read().strip().replace("exactly 3", f"exactly {count}")
+        except Exception: prompt = ""
+    else: prompt = ""
+    if not prompt:
+        prompt = f"Analyze history and output exactly {count} next-step {fallback_term} items.\nEach option must be strictly 6 to 10 words long.\nNo conversational filler. Output exactly this format:\n\n{output_hdr}\n[Option 1]\n[Option 2]\n[Option 3]"
 
-instruction_block = (
-    "[COMMAND: Do not continue the conversation. Do not reply to the last message. "
-    "Instead, execute this specific analytical directive based on our preceding chat history immediately. "
-    "Do not include any chatty conversational introductions or preambles.]\n\n"
-    f"{prompt}"
-)
-history.append({"role": "user", "content": instruction_block})
+history.append({"role": "user", "content": f"[COMMAND: Do not continue the conversation. Do not reply to the last message. Execute this analytical directive immediately without preambles.]\n\n{prompt}"})
 
 configs = []
-gkey, okey = os.environ.get("GEMINI_API_KEY"), os.environ.get("OPENROUTER_API_KEY")
-
-if gkey:
-    configs.append((
-        "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-        {"Authorization": f"Bearer {gkey}"},
-        os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"),
-        {}, 10
-    ))
-if okey:
-    configs.append((
-        "https://openrouter.ai/api/v1/chat/completions",
-        {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"},
-        os.environ.get("OPENROUTER_MODEL", "openrouter/free"),
-        {}, 10
-    ))
-
+if gkey := os.environ.get("GEMINI_API_KEY"):
+    configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Authorization": f"Bearer {gkey}"}, os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"), {}, 10))
+if okey := os.environ.get("OPENROUTER_API_KEY"):
+    configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"}, os.environ.get("OPENROUTER_MODEL", "openrouter/free"), {}, 10))
 configs.append(("http://localhost:8080/v1/chat/completions", {}, None, {"chat_template_kwargs": {"enable_thinking": False}}, 180))
 
 for url, headers, model, extra, timeout in configs:
     body = {"messages": history, "stream": True, **extra}
-    if model:
-        body["model"] = model
-    req = urlreq.Request(url, data=json.dumps(body).encode("utf-8"), headers={"Content-Type": "application/json", **headers}, method="POST")
-    spinner = None
+    if model: body["model"] = model
+    req = urlreq.Request(url, data=json.dumps(body).encode(), headers={"Content-Type": "application/json", **headers}, method="POST")
+    spinner = ui.InlineSpinner() if (ui and sys.stdout.isatty()) else None
+    if spinner: spinner.start()
     try:
-        if ui and sys.stdout.isatty():
-            spinner = ui.InlineSpinner()
-            spinner.start()
+        with urlreq.urlopen(req, timeout=timeout) as resp:
+            first, chunks = True, []
+            for line in resp:
+                if (dec := line.decode("utf-8", errors="ignore").strip()) and dec != "[DONE]":
+                    if dec.startswith("data:"): dec = dec[5:].strip()
+                    try:
+                        data = json.loads(dec)
+                        content = data.get("choices", [{}])[0].get("delta", {}).get("content", "") if "choices" in data else data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                        if content:
+                            if first:
+                                if spinner: spinner.stop(); spinner = None
+                                if not (content := content.lstrip()): continue
+                                first = False
+                            chunks.append(content)
+                    except Exception: pass
+            if spinner: spinner.stop(); spinner = None
 
-        with urlreq.urlopen(req, timeout=timeout) as response:
-            first_token, chunks = True, []
-            for line in response:
-                dec = line.decode("utf-8", errors="ignore").strip()
-                if not dec or dec == "[DONE]":
-                    continue
-                if dec.startswith("data:"):
-                    dec = dec[5:].strip()
-                try:
-                    data = json.loads(dec)
-                    content = ""
-                    if "choices" in data and data["choices"]:
-                        content = data["choices"][0].get("delta", {}).get("content", "")
-                    elif "candidates" in data and data["candidates"]:
-                        content = data["candidates"][0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                    if content:
-                        if first_token:
-                            if spinner:
-                                spinner.stop()
-                                spinner = None
-                            content = content.lstrip()
-                            if not content:
-                                continue
-                            first_token = False
-                        chunks.append(content)
-                except Exception:
-                    pass
-            
-            if spinner:
-                spinner.stop()
-                spinner = None
+            if lines := [l.strip() for l in "".join(chunks).strip().splitlines() if l.strip()]:
+                hdr_map = {k: v for keys, v in [
+                    (("follow-up", "follow-ups", "followup", "followups"), "Follow-up"),
+                    (("thinking", "think", "thought", "thoughts"), "Thinking"),
+                    (("brainstorm", "brainstorming", "brainstorms"), "Brainstorm")
+                ] for k in keys}
 
-            full_text = "".join(chunks).strip()
-            lines = [l.strip() for l in full_text.splitlines() if l.strip()]
-            if lines:
-                headers_map = {
-                    "follow-up": "Follow-up", "follow-ups": "Follow-up", "followup": "Follow-up", "followups": "Follow-up",
-                    "thinking": "Thinking", "think": "Thinking", "thought": "Thinking", "thoughts": "Thinking",
-                    "brainstorm": "Brainstorm", "brainstorming": "Brainstorm", "brainstorms": "Brainstorm"
-                }
-                
                 sys.stdout.write("\n")
-                
-                start_index = 0
-                first_clean = lines[0].strip("*#: \t").lower().rstrip('s:')
-                
-                if first_clean not in headers_map:
-                    for idx, line in enumerate(lines):
-                        clean_check = line.strip("*#: \t").lower().rstrip('s:')
-                        if clean_check in headers_map:
-                            start_index = idx
-                            break
+                start_idx = 0
+                if lines[0].strip("*#: \t").lower().rstrip('s:') not in hdr_map:
+                    start_idx = next((i for i, l in enumerate(lines) if l.strip("*#: \t").lower().rstrip('s:') in hdr_map), 0)
+                    if start_idx == 0 and lines[0].strip("*#: \t").lower().rstrip('s:') not in hdr_map:
+                        sys.stdout.write(f"\033[1;32mAI:\033[0m {output_hdr}\n")
+
+                for l in lines[start_idx:]:
+                    clean = l.strip("*#: \t").lower().rstrip('s:')
+                    if clean in hdr_map: sys.stdout.write(f"\033[1;32mAI:\033[0m {hdr_map[clean]}\n")
                     else:
-                        sys.stdout.write(f"\033[1;32mAI:\033[0m {output_header}\n")
-                
-                for line in lines[start_index:]:
-                    clean_line = line.strip("*#: \t").lower().rstrip('s:')
-                    if clean_line in headers_map:
-                        sys.stdout.write(f"\033[1;32mAI:\033[0m {headers_map[clean_line]}\n")
-                    else:
-                        # Split inline questions onto separate lines
-                        sub_questions = [q.strip() for q in re.split(r'(?<=\?)\s+', line) if q.strip()]
-                        for q in sub_questions:
-                            sys.stdout.write(f"{q}\n")
+                        for q in [x.strip() for x in re.split(r'(?<=\?)\s+', l) if x.strip()]: sys.stdout.write(f"{q}\n")
                 sys.stdout.flush()
-            sys.exit(0)
+                sys.exit(0)
     except KeyboardInterrupt:
-        if spinner:
-            spinner.stop()
-        sys.stderr.write("\n\033[90m[sys] Interrupted.\033[0m\n")
-        sys.exit(130)
+        if spinner: spinner.stop()
+        sys.stderr.write("\n\033[90m[sys] Interrupted.\033[0m\n"); sys.exit(130)
     except Exception:
-        if spinner:
-            spinner.stop()
-            spinner = None
-        pass
+        if spinner: spinner.stop()
 
 sys.stderr.write("Error: All brainstorm service fallbacks are offline.\n")
 sys.exit(1)

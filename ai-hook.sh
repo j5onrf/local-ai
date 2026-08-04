@@ -1,17 +1,15 @@
 #!/usr/bin/env bash
-# Production Local-AI Shell Hook v0.9.7.28
+# Production Local-AI Shell Hook v0.9.7.72
 
-[[ $- != *i* || ! -f "$HOME/.config/local-ai/ai-agent.py" ]] && return
+[[ $- == *i* && -f "$HOME/.config/local-ai/ai-agent.py" ]] || return
 _AI_DIR="$HOME/.config/local-ai"
 _AI_PY=$(command -v python3 || command -v python)
 
 _ai_teleport() {
-    local f="$_AI_DIR/.active_cd.$$" old_f pid
+    local f="$_AI_DIR/.active_cd.$$"
     [[ -f "$f" ]] && { cd "$(<"$f")" 2>/dev/null; rm -f "$f"; }
-    for old_f in "$_AI_DIR"/.active_cd.*; do
-        [[ -f "$old_f" ]] || continue
-        pid="${old_f##*.active_cd.}"
-        kill -0 "$pid" 2>/dev/null || rm -f "$old_f"
+    for old in "$_AI_DIR"/.active_cd.*; do
+        [[ -f "$old" ]] && { kill -0 "${old##*.active_cd.}" 2>/dev/null || rm -f "$old"; }
     done
 }
 
@@ -22,10 +20,9 @@ elif [[ "$PROMPT_COMMAND" != *_ai_teleport* ]]; then
 fi
 
 ai_handle_missing() {
-    [[ -z "$*" ]] && return 127
-    local cmd=$("$_AI_PY" "$_AI_DIR/ai-agent.py" --interactive "$*")
-    [[ -z "$cmd" ]] && return 127
-    local exp="${cmd/#\~/$HOME}"
+    [[ -n "$*" ]] && cmd=$("$_AI_PY" "$_AI_DIR/ai-agent.py" --interactive "$*") || return 127
+    [[ -n "$cmd" ]] || return 127
+    exp="${cmd/#\~/$HOME}"
     [[ -d "$exp" ]] && ai init "$exp" || eval "$cmd"
 }
 command_not_found_handle() { [[ "$1" != --* ]] && ai_handle_missing "$*"; }
@@ -35,20 +32,17 @@ ai() {
     if [[ "$1" == "init" ]]; then
         local path=$(pwd) skills=() name map db
         [[ -n "${2:-}" && "${2:-}" != -* ]] && { path="$2"; skills=("${@:3}"); } || skills=("${@:2}")
-        mkdir -p "$path" || return 1
-        path=$(CDPATH= cd "$path" && pwd -P) || return 1
-        
+        mkdir -p "$path" && path=$(CDPATH= cd "$path" && pwd -P) || return 1
         echo "$path" > "$_AI_DIR/.active_cd.$$"
         name=$(basename "$path")
-        
+
         map="$path/.agent/index-map-$name.txt"; [[ -f "$map" ]] || map="$path/index-map-$name.txt"
         db="$path/.agent/index-map-memory-$name.db"; [[ -f "$db" ]] || db="$path/index-map-memory-$name.db"
-        
-        { [[ ! -f "$map" || ! -f "$db" || "$path" -nt "$map" ]] || \
-          [[ -n "$(find "$path" -mindepth 1 -not -path '*/.git/*' -not -path '*/.agent/*' -not -name '*.md' -newer "$map" -print -quit 2>/dev/null)" ]]; } && {
+
+        if [[ ! -f "$map" || ! -f "$db" || "$path" -nt "$map" ]] || [[ -n "$(find "$path" -mindepth 1 -not -path '*/.git/*' -not -path '*/.agent/*' -not -name '*.md' -newer "$map" -print -quit 2>/dev/null)" ]]; then
             "$_AI_PY" "$_AI_DIR/tools/map/index-map" "$path" || { rm -f "$_AI_DIR/.active_cd.$$"; return 1; }
             map="$path/.agent/index-map-$name.txt"; [[ -f "$map" ]] || map="$path/index-map-$name.txt"
-        }
+        fi
         [[ -f "$map" ]] && AI_ACTIVE_SKILL="${skills[*]}" AI_WORKSPACE_PATH="$path" "$_AI_PY" "$_AI_DIR/ai-agent.py" --talk-chat "$(<"$map")"
         _ai_teleport
     else

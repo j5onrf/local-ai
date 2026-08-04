@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # File: ~/.config/local-ai/modules/agent_tui.py
-"""Production Minimal Textual TUI for Local-AI Agent Engine."""
+"""Production Minimal Textual TUI for Local-AI Agent Engine"""
 
 import base64, json, os, re, sqlite3, subprocess, sys, threading, time, urllib.request as urlreq
 from contextlib import closing
@@ -34,8 +34,6 @@ LEFT_BAR = Box("▌   \n" * 8)
 
 TOKEN_RE, STOP_WORDS = re.compile(r"[^\w\s]"), {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"}
 CSI_U_REGEX, ANSI_CLEAN_REGEX, QUESTION_SPLIT_REGEX = re.compile(r'(?:\x1b\[<|\x1b\[|\[<)?\d+;\d+;\d+[mM]|\x1b\[[0-9;]*[a-zA-Z~]|\x1b[\[\(\=][0-9;]*[a-zA-Z~]?'), re.compile(r'\x1b\[[0-9;]*m'), re.compile(r'(?<=\?)\s+')
-
-# Single-pass Reasonix structural step matcher
 REASONIX_STEP_RE = re.compile(r'^(?:\d+\.\s*|Step \d+:?\s*|Phase \d+:?\s*|\#{1,3}\s*)\*\*?([^\n\*:]+)\*\*?:?', re.IGNORECASE)
 
 BASE_PROMPT = "Read-only local shell assistant.\nIf <context> is provided, answer directly using only its facts. Otherwise, answer normally.\n\n"
@@ -49,12 +47,14 @@ def format_dir_path(path: str) -> str:
     p = path.replace(os.path.expanduser("~"), "~")
     return p if len(p) <= 20 else f".../{os.path.basename(p.rstrip('/'))}"
 
+
 def format_model_name(name: str, max_len: int = 18) -> str:
     if not name: return "Unknown"
     clean = name.strip()
     if len(clean) <= max_len: return clean
     base = clean.rsplit("/", 1)[-1]
     return f".../{base}" if len(base) <= max_len else f"{base[:(max_len-3)//2]}...{base[-(max_len-3)//2:]}"
+
 
 def copy_to_clipboard(text: str) -> bool:
     global _CACHED_CLIPBOARD_TOOL
@@ -74,32 +74,22 @@ def copy_to_clipboard(text: str) -> bool:
         except Exception: continue
     return True
 
+
 def _format_tui_reasonix_text(text: str, theme: str = "code") -> Text:
     """Fast single-pass Reasonix cognitive step formatter for Rich Text."""
-    res = Text()
-    badge_style = {"code": "bold #cba6f7", "dark": "bold cyan", "mono": "bold white"}.get(theme, "bold yellow")
-    last_was_empty = False
-    
+    res, badge_style, last_was_empty = Text(), {"code": "bold #cba6f7", "dark": "bold cyan", "mono": "bold white"}.get(theme, "bold yellow"), False
     for line in text.splitlines():
-        clean_strip = line.strip()
-        if not clean_strip:
-            if not last_was_empty:
-                res.append("\n")
-                last_was_empty = True
+        if not (clean_strip := line.strip()):
+            if not last_was_empty: res.append("\n"); last_was_empty = True
             continue
-            
         last_was_empty = False
-        m = REASONIX_STEP_RE.match(clean_strip)
-        if m:
-            res.append(f"{m.group(0).strip()}\n", style=badge_style)
-        else:
-            res.append(f"{line}\n", style="italic dim")
-            
+        if m := REASONIX_STEP_RE.match(clean_strip): res.append(f"{m.group(0).strip()}\n", style=badge_style)
+        else: res.append(f"{line}\n", style="italic dim")
     res.rstrip()
     return res
 
-tokenize = lambda text: [w for w in TOKEN_RE.sub(" ", text.lower()).split() if len(w) > 1 and w not in STOP_WORDS] if text else []
 
+tokenize = lambda text: [w for w in TOKEN_RE.sub(" ", text.lower()).split() if len(w) > 1 and w not in STOP_WORDS] if text else []
 
 code_theme = Theme(name="code", primary="#cba6f7", secondary="#a6adc8", accent="#cba6f7", background="#11121d", surface="#161726", panel="#1b1c2b")
 mono_theme = Theme(name="mono", primary="#444444", secondary="#888888", accent="#ffffff", background="#000000", surface="#0d0d0d", panel="#121212")
@@ -118,25 +108,21 @@ class CloseCardButton(Static):
     def on_click(self) -> None:
         if hasattr(self.app, "action_close_tips_card"): self.app.action_close_tips_card()
 
+
 class Message(Static):
     def __init__(self, sender: str, content: Any) -> None:
         super().__init__()
-        self.sender, self.content = sender, content
-        self._cached_render: Optional[Any] = None
-        self._cached_theme: Optional[str] = None
+        self.sender, self.content, self._cached_render, self._cached_theme = sender, content, None, None
 
     def update_content(self, new_content: Any) -> None:
-        self.content = new_content
-        self._cached_render = None
+        self.content, self._cached_render = new_content, None
         self.refresh()
 
     def render(self) -> Any:
         app_theme = getattr(self.app, "theme", "code")
-        if self._cached_render is not None and self._cached_theme == app_theme:
-            return self._cached_render
+        if self._cached_render is not None and self._cached_theme == app_theme: return self._cached_render
 
-        compact_state = getattr(self.app, "compact_mode", 0)
-        is_dark = getattr(self.app, "is_dark_theme", True)
+        compact_state, is_dark = getattr(self.app, "compact_mode", 0), getattr(self.app, "is_dark_theme", True)
         self.styles.color = "#c8d3f5" if app_theme == "code" else None
         u_style = "bold #888888" if app_theme in ("mono", "grok") else ("bold #89b4fa" if app_theme == "code" else ("bold #0265dc" if not is_dark else "bold cyan"))
         code_fmt = "ansi_dark" if is_dark else "ansi_light"
@@ -151,26 +137,23 @@ class Message(Static):
             text = str(self.content or "")
             if "<think>" in text:
                 before, after = text.split("<think>", 1)
-                border_col = getattr(self.app, "border_accent", "bright_black")
-                items = []
+                border_col, items = getattr(self.app, "border_accent", "bright_black"), []
                 if before.strip(): items.append(Markdown(before.strip(), code_theme=code_fmt))
 
                 if "</think>" in after:
                     think, rest = after.split("</think>", 1)
                     items.append(Panel(_format_tui_reasonix_text(think.strip(), app_theme), title="⚙ Thinking Process", title_align="left", border_style=border_col, box=ROUNDED, expand=True))
                     if rest.strip():
-                        clean_rest = re.sub(r'```\n\s*\n+', '```\n', re.sub(r'\n{3,}', '\n\n', rest.strip()))
-                        items.append(Markdown(clean_rest, code_theme=code_fmt))
-                    res = Group(*items)
+                        items.append(Markdown(re.sub(r'```\n\s*\n+', '```\n', re.sub(r'\n{3,}', '\n\n', rest.strip())), code_theme=code_fmt))
                 else:
                     items.append(Panel(_format_tui_reasonix_text(after.strip(), app_theme), title="⚙ Thinking Process...", title_align="left", border_style=border_col, box=ROUNDED, expand=True))
-                    res = Group(*items)
+                res = Group(*items)
             else:
-                clean_text = re.sub(r'```\n\s*\n+', '```\n', re.sub(r'\n{3,}', '\n\n', text.strip()))
-                res = Markdown(clean_text, code_theme=code_fmt)
+                res = Markdown(re.sub(r'```\n\s*\n+', '```\n', re.sub(r'\n{3,}', '\n\n', text.strip())), code_theme=code_fmt)
 
         self._cached_render, self._cached_theme = res, app_theme
         return res
+
 
 class AgentCommandProvider(Provider):
     async def search(self, query: str) -> Iterator[Hit]:
@@ -187,6 +170,7 @@ class AgentCommandProvider(Provider):
         for title, action, desc in cmds:
             if (score := m.match(title)) > 0:
                 yield Hit(score, Text(title), lambda act=action: self.app.run_action(act), help=desc)
+
 
 class LocalAITUI(App):
     ENABLE_COMMAND_PALETTE = True
@@ -268,16 +252,13 @@ class LocalAITUI(App):
         super().__init__()
         self.workspace_path, self.model_name = workspace_path, model_name
         self.safe_name = core.workspace_safe_name(workspace_path)
-
-        agent_dir = os.path.join(workspace_path, ".agent")
-        cfg_file = os.path.join(agent_dir, "config.json")
+        agent_dir, cfg_file = os.path.join(workspace_path, ".agent"), os.path.join(workspace_path, ".agent", "config.json")
 
         if is_agent is not None: self.is_agent = is_agent
         elif "AI_IS_AGENT" in os.environ: self.is_agent = os.environ["AI_IS_AGENT"].lower() in ("1", "true", "yes")
         else: self.is_agent = (os.path.abspath(workspace_path) != os.path.abspath(os.path.expanduser("~"))) and (os.path.exists(agent_dir) or "/projects/" in workspace_path)
 
-        if not self.is_agent:
-            self.agent_mode, self.gates_enabled = "Disabled", True
+        if not self.is_agent: self.agent_mode, self.gates_enabled = "Disabled", True
         else:
             env_gates = os.environ.get("AI_CONFIRM_GATES")
             is_yolo = (env_gates == "0") if env_gates is not None else core.get_state("yolo_mode", False)
@@ -294,8 +275,7 @@ class LocalAITUI(App):
             if os.path.exists(cfg_file):
                 try:
                     with open(cfg_file, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                        inherited_skill = data.get("profile") or data.get("skill")
+                        inherited_skill = json.load(f).get("profile") or json.load(f).get("skill")
                 except Exception: pass
         if not inherited_skill or inherited_skill.lower() in ("default", "none", ""):
             inherited_skill = "default" if self.is_agent else "chat"
@@ -305,24 +285,19 @@ class LocalAITUI(App):
         self.on_demand_skill = skills_split[1] if len(skills_split) > 1 else None
         self.active_skill = f"{self.base_skill} {self.on_demand_skill}".strip() if self.on_demand_skill else self.base_skill
 
-        self.memory_active = core.get_state("memory_active", True)
-        self.db_turns = self.tpm_count = 0
+        self.memory_active, self.db_turns, self.tpm_count = core.get_state("memory_active", True), 0, 0
         self.refresh_db_counts()
 
         raw_c = core.get_state("compact_mode", 0)
         self.compact_mode = int(raw_c) if isinstance(raw_c, (int, bool)) else 0
-        self.reasoning_active = core.get_state("reasoning_active", False)
-        self.reasoning_budget = core.get_state("reasoning_budget", 500)
-        self.entering_reasoning_budget = False
+        self.reasoning_active, self.reasoning_budget, self.entering_reasoning_budget = core.get_state("reasoning_active", False), core.get_state("reasoning_budget", 500), False
 
         cli_hist = os.environ.get("AI_SESSION_HISTORY")
         try: self.history: List[Dict[str, Any]] = json.loads(cli_hist) if cli_hist else []
         except Exception: self.history = []
 
         self.generation_cancelled, self.active_response, self.stats_turns = False, None, 0
-        self.footer_hidden = core.get_state("footer_hidden", True)
-        self.sidebar_hidden = core.get_state("sidebar_hidden", False)
-        self.tips_card_hidden = core.get_state("tips_card_hidden", False)
+        self.footer_hidden, self.sidebar_hidden, self.tips_card_hidden = core.get_state("footer_hidden", True), core.get_state("sidebar_hidden", False), core.get_state("tips_card_hidden", False)
 
     def on_unmount(self) -> None:
         self.gate_auth_result = False
@@ -350,28 +325,20 @@ class LocalAITUI(App):
 
     def action_prompt_image_url(self) -> None:
         if getattr(self, "entering_image_url", False):
-            self.entering_image_url = False
-            self.pending_image_url = ""
-            self.chat_input.placeholder = "Ask your agent anything..."
+            self.entering_image_url, self.pending_image_url, self.chat_input.placeholder = False, "", "Ask your agent anything..."
             self.notify("[dim]Image input cancelled.[/dim]", sys_prefix=False)
-            self.chat_input.focus()
         else:
-            self.entering_image_url = True
-            self.pending_image_url = ""
-            self.chat_input.placeholder = "Enter Image URL (e.g. https://.../photo.png):"
-            self.chat_input.focus()
+            self.entering_image_url, self.pending_image_url, self.chat_input.placeholder = True, "", "Enter Image URL (e.g. https://.../photo.png):"
+        self.chat_input.focus()
 
     def on_key(self, event) -> None:
         if event.key == "tab":
             self.action_toggle_plan_build()
-            event.prevent_default()
-            event.stop()
+            event.prevent_default(); event.stop()
 
     def refresh_db_counts(self) -> None:
         db_path = os.path.join(SESSIONS_DIR, f"{self.safe_name}.db")
-        if not os.path.exists(db_path):
-            self.db_turns = self.tpm_count = 0
-            return
+        if not os.path.exists(db_path): self.db_turns = self.tpm_count = 0; return
         try:
             with closing(sqlite3.connect(db_path, timeout=2)) as conn:
                 row = conn.cursor().execute("SELECT COUNT(*) FROM turns WHERE workspace = ?", (self.safe_name,)).fetchone()
@@ -384,14 +351,12 @@ class LocalAITUI(App):
             s_content = skills.load_skill_content(" ".join(s_list), SKILLS_DIR, CFG_DIR) if s_list else ""
 
             if self.is_agent:
-                sys_p = s_content or BASE_PROMPT_AGENT
-                sys_p += f"\n\n### ACTIVE PROJECT WORKSPACE:\nYour active project root directory is: {self.workspace_path}\n"
+                sys_p = (s_content or BASE_PROMPT_AGENT) + f"\n\n### ACTIVE PROJECT WORKSPACE:\nYour active project root directory is: {self.workspace_path}\n"
                 if hasattr(core, "EDIT_SYSTEM_ADD") and "### EDIT MODE" not in sys_p:
                     sys_p += core.EDIT_SYSTEM_ADD.format(ws=self.workspace_path) + core.TOOLS_SYSTEM_ADD.format(names="read_file, write_file, list_dir, run_command", ws=self.workspace_path)
                 try:
                     if os.path.exists(self.workspace_path):
-                        map_files = [f for f in os.listdir(self.workspace_path) if f.startswith("index-map-") and f.endswith(".txt")]
-                        if map_files:
+                        if map_files := [f for f in os.listdir(self.workspace_path) if f.startswith("index-map-") and f.endswith(".txt")]:
                             with open(os.path.join(self.workspace_path, map_files[0]), "r", encoding="utf-8", errors="ignore") as mf:
                                 if cmap := mf.read().strip(): sys_p += f"\n\n### CODESPACE MAP:\n{cmap}\n"
                 except Exception: pass
@@ -399,8 +364,7 @@ class LocalAITUI(App):
                 sys_p = (s_content if "### Conversational Guidelines" in s_content else BASE_PROMPT_CHAT + f"\n\n### Active Skill/Role Instructions:\n{s_content}\n") if s_content else BASE_PROMPT_CHAT
 
             self.history.insert(0, {"role": "system", "content": sys_p})
-            if self.is_agent and len(self.history) == 1:
-                self.history.append({"role": "assistant", "content": "Agent: Workspace loaded. Awaiting instructions."})
+            if self.is_agent and len(self.history) == 1: self.history.append({"role": "assistant", "content": "Agent: Workspace loaded. Awaiting instructions."})
 
     def get_db_status_string(self) -> str:
         return "stateless" if not self.is_agent else (f"active • {self.tpm_count} facts" if self.memory_active else "disabled")
@@ -409,8 +373,7 @@ class LocalAITUI(App):
         try:
             t = Table(show_header=False, box=None, padding=(0, 2), expand=False)
             cmd_style = "bold #89b4fa" if self.theme == "code" else ("bold #0265dc" if not self.is_dark_theme else "bold cyan")
-            t.add_column("Key", style=cmd_style, justify="left")
-            t.add_column("Action", style="default")
+            t.add_column("Key", style=cmd_style, justify="left"); t.add_column("Action", style="default")
             for k, a in [("Tab", "Plan / Build Mode"), ("Ctrl+B", "Toggle Sidebar Panel"), ("Ctrl+T", "Cycle Themes"), ("Ctrl+O", "Copy Latest Response"), ("▲ Show", "Toggle Bottom Shortcut Bar"), ("/help", "View All Commands")]:
                 t.add_row(k, a)
             self.query_one("#welcome-banner", Static).update(Panel(t, title=" ❖ Local-AI Agent ", title_align="left", border_style=self.border_accent, box=ROUNDED, expand=False))
@@ -463,8 +426,7 @@ class LocalAITUI(App):
                 try: self.register_theme(t)
                 except Exception: pass
 
-        saved_theme = core.get_state("tui_theme", "code")
-        try: self.theme = "mono" if saved_theme == "grok" else saved_theme
+        try: self.theme = "mono" if core.get_state("tui_theme", "code") == "grok" else core.get_state("tui_theme", "code")
         except Exception: pass
 
         self.chat_area = self.query_one("#chat-area", Vertical)
@@ -475,13 +437,10 @@ class LocalAITUI(App):
         self.lbl_reasoning, self.lbl_database, self.lbl_stats = self.query_one("#lbl-reasoning", Static), self.query_one("#lbl-database", Static), self.query_one("#lbl-stats", Static)
         self.lbl_image = self.query_one("#lbl-image", Static)
 
-        self.set_skill(self.active_skill)
-        self.set_mode(self.agent_mode)
+        self.set_skill(self.active_skill); self.set_mode(self.agent_mode)
         self.set_reasoning(f"{self.reasoning_budget} tokens" if self.reasoning_active else "Disabled")
-        self.update_welcome_banner()
-        self.chat_input.cursor_blink = True
-        self.update_footer_visibility()
-        self.update_sidebar_visibility()
+        self.update_welcome_banner(); self.chat_input.cursor_blink = True
+        self.update_footer_visibility(); self.update_sidebar_visibility()
 
         if self.tips_card_hidden:
             try: self.query_one("#card-tips", Vertical).display = False
@@ -508,12 +467,10 @@ class LocalAITUI(App):
         self.set_mode(self.agent_mode)
 
     def on_input_changed(self, event: Input.Changed) -> None:
-        if (clean := CSI_U_REGEX.sub('', event.value)) != event.value:
-            event.input.value = clean
+        if (clean := CSI_U_REGEX.sub('', event.value)) != event.value: event.input.value = clean
 
     def update_stats_ui(self, turns: int, tps: float, elapsed: float) -> None:
-        if hasattr(self, "lbl_stats"):
-            self.lbl_stats.update(f"[dim]Turns[/dim]     {turns} @ {f'{tps:.1f} t/s' if tps > 0 else '-- t/s'}")
+        if hasattr(self, "lbl_stats"): self.lbl_stats.update(f"[dim]Turns[/dim]     {turns} @ {f'{tps:.1f} t/s' if tps > 0 else '-- t/s'}")
 
     def action_scroll_page_up(self) -> None: self.chat_area.scroll_page_up(animate=False)
     def action_scroll_page_down(self) -> None: self.chat_area.scroll_page_down(animate=False)
@@ -527,9 +484,8 @@ class LocalAITUI(App):
         else: self.notify("No response available to copy yet.")
 
     def action_copy_entire_chat(self) -> None:
-        transcript = [f"❯ USER: {m['content']}" if m.get("role") == "user" else f"AGENT:\n{re.sub(r'<think>.*?</think>', '', m['content'], flags=re.DOTALL).strip()}" for m in self.history if m.get("content") and m.get("role") != "system"]
-        if full_text := "\n\n".join(transcript):
-            copy_to_clipboard(full_text)
+        if transcript := [f"❯ USER: {m['content']}" if m.get("role") == "user" else f"AGENT:\n{re.sub(r'<think>.*?</think>', '', m['content'], flags=re.DOTALL).strip()}" for m in self.history if m.get("content") and m.get("role") != "system"]:
+            copy_to_clipboard("\n\n".join(transcript))
             self.notify("Copied entire session transcript to clipboard.")
         else: self.notify("No transcript available to copy yet.")
 
@@ -550,9 +506,7 @@ class LocalAITUI(App):
 
         self.ensure_system_context()
         c_raw = cmd_root.lstrip("/").lower()
-        sub_arg = "/t" if c_raw in ("tk", "thinking") else f"/{c_raw}"
-        hdr_map = {"f": "Follow-up", "b": "Brainstorm", "t": "Thinking", "tk": "Thinking", "a": "All"}
-        output_hdr = hdr_map.get(c_raw, "Follow-up")
+        sub_arg, output_hdr = "/t" if c_raw in ("tk", "thinking") else f"/{c_raw}", {"f": "Follow-up", "b": "Brainstorm", "t": "Thinking", "tk": "Thinking", "a": "All"}.get(c_raw, "Follow-up")
 
         await self.chat_area.mount(Message("User", f"/{c_raw} {args}".strip()))
         if args: self.history.append({"role": "user", "content": args})
@@ -565,8 +519,7 @@ class LocalAITUI(App):
             if os.path.exists(think_bin):
                 try:
                     res = subprocess.run([sys.executable, think_bin, sub_arg], input=json.dumps(self.history), capture_output=True, text=True, timeout=30)
-                    out = (res.stdout or res.stderr or "").strip()
-                    if out:
+                    if out := (res.stdout or res.stderr or "").strip():
                         clean_out = ANSI_CLEAN_REGEX.sub('', out)
                         if clean_out.startswith("AI:"): clean_out = clean_out[3:].strip()
                         lines = [l.strip() for l in clean_out.splitlines() if l.strip()]
@@ -589,8 +542,7 @@ class LocalAITUI(App):
         if root in ("/help", "/h"):
             t = Table(show_header=False, box=None, padding=(0, 1), expand=False)
             cmd_style = "bold #89b4fa" if self.theme == "code" else ("bold #0265dc" if not self.is_dark_theme else "bold cyan")
-            t.add_column("Command", style=cmd_style)
-            t.add_column("Description", style="default")
+            t.add_column("Command", style=cmd_style); t.add_column("Description", style="default")
             for c, d in [("/help, /h", "Help"), ("Tab", "Plan/Build"), ("/copy", "Copy page"), ("/m", "Memory"), ("/clear", "Chat & history"), ("/tok", "Tokens"), ("/sync", "Sync index"), ("/s <q>", "Skill"), ("/t <toks>", "Reasoning"), ("/f, /tk, /b, /a", "Presets"), ("file <path>", "Load File"), ("exit, quit, q", "Exit")]:
                 t.add_row(c, d)
             await self.chat_area.mount(Static(Group(Text(""), Panel(t, title="⚙ Agent TUI Commands", title_align="left", border_style=self.border_accent, box=ROUNDED, expand=False))))
@@ -609,8 +561,7 @@ class LocalAITUI(App):
                     self.action_toggle_plan_build()
                 self.notify(f"Mode set to [bold]{self.agent_mode}[/bold].")
         elif root in ("/clear", "/reset"):
-            self.history.clear()
-            self.stats_turns = 0
+            self.history.clear(); self.stats_turns = 0
             self.update_stats_ui(0, 0.0, 0.0)
             if hasattr(self, "lbl_image"): self.lbl_image.update("[dim]Image[/dim]   None")
             for child in list(self.chat_area.children): child.remove()
@@ -639,8 +590,7 @@ class LocalAITUI(App):
         else: self.notify(f"Unknown command '{root}'. Type [bold]/help[/bold] for commands.")
 
     def prompt_tui_confirm(self, prompt_text: str) -> bool:
-        self.gate_auth_event.clear()
-        self.gate_auth_result = False
+        self.gate_auth_event.clear(); self.gate_auth_result = False
 
         def _show():
             self.entering_gate_authorization, self.current_gate_prompt = True, prompt_text
@@ -680,10 +630,8 @@ class LocalAITUI(App):
             if sys_ctx == "__ABORT_TURN__": sys_ctx = ""
 
             combined = "\n\n".join(filter(None, [tpm_ctx, past_mem, sys_ctx]))
-            if isinstance(query, list):
-                self.history.append({"role": "user", "content": query})
-            else:
-                self.history.append({"role": "user", "content": f"<context>\n{combined}\n</context>\n\nUser Question: {query}" if combined else f"User Question: {query}"})
+            if isinstance(query, list): self.history.append({"role": "user", "content": query})
+            else: self.history.append({"role": "user", "content": f"<context>\n{combined}\n</context>\n\nUser Question: {query}" if combined else f"User Question: {query}"})
 
             self.call_from_thread(self.disable_input)
             self.generation_cancelled, self.active_response = False, None
@@ -694,11 +642,7 @@ class LocalAITUI(App):
             for _round in range(10):
                 accumulated, in_thinking, tool_calls_map = "", False, {}
                 configs = agent_cloud.get_active_configs(self.history) if agent_cloud else []
-                local_extra = {
-                    "thinking_budget_tokens": thinking_budget,
-                    "reasoning_budget": thinking_budget,
-                    "chat_template_kwargs": {"enable_thinking": True}
-                } if thinking_budget > 0 else {}
+                local_extra = {"thinking_budget_tokens": thinking_budget, "reasoning_budget": thinking_budget, "chat_template_kwargs": {"enable_thinking": True}} if thinking_budget > 0 else {}
 
                 if not configs:
                     configs = [("http://localhost:8080/v1/chat/completions", {}, {"messages": self.history, "stream": True, "model": "local-model", **local_extra}, 180)]
@@ -710,27 +654,20 @@ class LocalAITUI(App):
                     req = urlreq.Request(url, data=json.dumps(body).encode("utf-8"), headers={"Content-Type": "application/json", **headers}, method="POST")
                     try:
                         resp = urlreq.urlopen(req, timeout=timeout)
-                        if resp.status == 200:
-                            response = resp
-                            break
+                        if resp.status == 200: response = resp; break
                     except Exception: continue
 
-                if not response:
-                    raise Exception("Failed to establish streaming response connection to AI engine or cloud backups.")
+                if not response: raise Exception("Failed to establish streaming response connection to AI engine or cloud backups.")
 
                 with response:
                     self.active_response = response
-
                     for line in response:
                         if self.generation_cancelled: break
-                        dec = line.decode("utf-8", errors="ignore").strip()
-                        if not dec.startswith("data:"): continue
-                        dec = dec[5:].strip()
-                        if dec == "[DONE]": break
+                        if not (dec := line.decode("utf-8", errors="ignore").strip()).startswith("data:"): continue
+                        if (dec := dec[5:].strip()) == "[DONE]": break
 
                         try:
-                            choices = json.loads(dec).get("choices", [{}])
-                            if not choices: continue
+                            if not (choices := json.loads(dec).get("choices", [{}])): continue
                             delta = choices[0].get("delta", {})
                             text_chunk, thinking_chunk = delta.get("content") or "", delta.get("reasoning_content") or delta.get("thinking") or ""
                             if text_chunk and "Final Answer:" in text_chunk:
@@ -738,24 +675,19 @@ class LocalAITUI(App):
 
                             for tc in delta.get("tool_calls", []):
                                 idx = tc.get("index", 0)
-                                if idx not in tool_calls_map:
-                                    tool_calls_map[idx] = {"id": tc.get("id", ""), "type": "function", "function": {"name": tc.get("function", {}).get("name", ""), "arguments": ""}}
-                                if tc.get("function", {}).get("name"): tool_calls_map[idx]["function"]["name"] = tc["function"]["name"]
-                                tool_calls_map[idx]["function"]["arguments"] += tc.get("function", {}).get("arguments", "")
+                                tc_entry = tool_calls_map.setdefault(idx, {"id": tc.get("id", ""), "type": "function", "function": {"name": tc.get("function", {}).get("name", ""), "arguments": ""}})
+                                if tc.get("function", {}).get("name"): tc_entry["function"]["name"] = tc["function"]["name"]
+                                tc_entry["function"]["arguments"] += tc.get("function", {}).get("arguments", "")
 
                             if text_chunk or thinking_chunk:
                                 if first_token_time is None: first_token_time = time.perf_counter()
                                 token_count += 1
 
                             if thinking_chunk:
-                                if not in_thinking:
-                                    accumulated += "<think>"
-                                    in_thinking = True
+                                if not in_thinking: accumulated += "<think>"; in_thinking = True
                                 accumulated += thinking_chunk
                             elif text_chunk:
-                                if in_thinking:
-                                    accumulated += "</think>"
-                                    in_thinking = False
+                                if in_thinking: accumulated += "</think>"; in_thinking = False
                                 accumulated += text_chunk
 
                             now = time.perf_counter()
@@ -794,19 +726,13 @@ class LocalAITUI(App):
                             try:
                                 os.environ["AI_CONFIRM_GATES"] = "0"
                                 result = core._run_edit_tool(fname, args, self.workspace_path)
-                            except Exception as te:
-                                result = f"[tool error] {te}"
+                            except Exception as te: result = f"[tool error] {te}"
                             finally:
                                 if old_g is not None: os.environ["AI_CONFIRM_GATES"] = old_g
                                 else: os.environ.pop("AI_CONFIRM_GATES", None)
                             if "[denied]" in result: user_aborted = True
 
-                    # Reasonix Harness: Deterministic Tool Result Pruning for Prefix Cache Stability
-                    if len(result) > 1500:
-                        pruned_result = result[:1200] + f"\n... [Reasonix Harness: Snipped {len(result) - 1200} chars for context stability]"
-                    else:
-                        pruned_result = result
-
+                    pruned_result = result if len(result) <= 1500 else result[:1200] + f"\n... [Reasonix Harness: Snipped {len(result) - 1200} chars for context stability]"
                     self.history.append({"role": "tool", "tool_call_id": tc.get("id", ""), "name": fname, "content": pruned_result})
 
                 if user_aborted:
@@ -829,7 +755,6 @@ class LocalAITUI(App):
                     core.run_mod("ai-agent-sessions", "log-turn", self.safe_name, user_text, accumulated)
                     self.refresh_db_counts()
                     if hasattr(self, "lbl_database"): self.call_from_thread(self.lbl_database.update, f"[dim]DB State[/dim]  {self.get_db_status_string()}")
-
                     if self.is_agent and self.memory_active:
                         threading.Thread(target=core.background_tpm_update, args=(user_text, accumulated, self.safe_name, self.workspace_path), daemon=True).start()
                 except Exception: pass
@@ -859,16 +784,10 @@ class LocalAITUI(App):
                 self.chat_input.focus()
                 return
             else:
-                img_url = self.pending_image_url
-                prompt_text = query or "Describe this image in detail."
-                self.entering_image_url = False
-                self.pending_image_url = ""
-                self.chat_input.placeholder = "Ask your agent anything..."
+                img_url, prompt_text = self.pending_image_url, query or "Describe this image in detail."
+                self.entering_image_url, self.pending_image_url, self.chat_input.placeholder = False, "", "Ask your agent anything..."
 
-                multimodal_payload = [
-                    {"type": "text", "text": prompt_text},
-                    {"type": "image_url", "image_url": {"url": img_url}}
-                ]
+                multimodal_payload = [{"type": "text", "text": prompt_text}, {"type": "image_url", "image_url": {"url": img_url}}]
                 img_name = os.path.basename(img_url.split("?")[0]) or "Attached"
                 if len(img_name) > 12: img_name = f"{img_name[:9]}..."
                 if hasattr(self, "lbl_image"): self.lbl_image.update(f"[dim]Image[/dim]   {img_name}")
@@ -882,25 +801,21 @@ class LocalAITUI(App):
             is_yes = query.lower() in ("y", "yes", "")
             self.gate_auth_result = is_yes
             self.gate_auth_event.set()
-            status = "Authorized" if is_yes else "Denied"
-            self.notify(f"[dim]Gate: {status}[/dim]", sys_prefix=False)
+            self.notify(f"[dim]Gate: {'Authorized' if is_yes else 'Denied'}[/dim]", sys_prefix=False)
             return
 
         if self.entering_reasoning_budget:
-            self.entering_reasoning_budget = False
-            self.chat_input.placeholder = "Ask your agent anything..."
+            self.entering_reasoning_budget, self.chat_input.placeholder = False, "Ask your agent anything..."
             if not query:
                 self.reasoning_budget, self.reasoning_active = 500, True
-                core.save_state("reasoning_active", True)
-                core.save_state("reasoning_budget", 500)
+                core.save_state("reasoning_active", True); core.save_state("reasoning_budget", 500)
                 self.set_reasoning("500 tokens")
                 self.notify("Deep reasoning enabled (default 500 tokens).")
             else:
                 try:
                     if (val := int(query)) > 0:
                         self.reasoning_budget, self.reasoning_active = val, True
-                        core.save_state("reasoning_active", True)
-                        core.save_state("reasoning_budget", val)
+                        core.save_state("reasoning_active", True); core.save_state("reasoning_budget", val)
                         self.set_reasoning(f"{val} tokens")
                         self.notify(f"Deep reasoning enabled ({val} tokens).")
                     else: raise ValueError
@@ -920,9 +835,7 @@ class LocalAITUI(App):
             query, self.pending_skill_prefix = f"{self.pending_skill_prefix} {query}", None
             self.chat_input.placeholder = "Ask your agent anything..."
 
-        if query.lower() in ("exit", "quit", "q"):
-            self.exit()
-            return
+        if query.lower() in ("exit", "quit", "q"): self.exit(); return
         if query.lower().startswith("file "):
             parts = query.split(maxsplit=1)
             if len(parts) > 1: await self.handle_view_file(parts[1].strip())
@@ -934,8 +847,7 @@ class LocalAITUI(App):
         if not getattr(self, "entering_gate_authorization", False): self.chat_input.disabled = True
 
     def enable_input(self) -> None:
-        self.chat_input.disabled = False
-        self.chat_input.focus()
+        self.chat_input.disabled, _ = False, self.chat_input.focus()
 
     def action_stop_generation(self) -> None:
         if self.chat_input.disabled:
@@ -973,8 +885,7 @@ class LocalAITUI(App):
             for child in self.chat_area.children:
                 if isinstance(child, Message): child.refresh(layout=True)
             self.chat_area.refresh(layout=True)
-        mode_labels = {0: "Normal", 1: "Compact", 2: "Minimal (No Spaces)"}
-        self.notify(f"Layout mode: {mode_labels[self.compact_mode]}.", sys_prefix=False)
+        self.notify(f"Layout mode: {{0: 'Normal', 1: 'Compact', 2: 'Minimal (No Spaces)'}}[self.compact_mode].", sys_prefix=False)
 
     def action_cycle_theme(self) -> None:
         try:
@@ -985,8 +896,7 @@ class LocalAITUI(App):
 
     def action_toggle_reasoning(self) -> None:
         if self.entering_reasoning_budget:
-            self.entering_reasoning_budget = False
-            self.chat_input.placeholder = "Ask your agent anything..."
+            self.entering_reasoning_budget, self.chat_input.placeholder = False, "Ask your agent anything..."
         elif self.reasoning_active:
             self.reasoning_active = False
             core.save_state("reasoning_active", False)

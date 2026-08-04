@@ -1,15 +1,7 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.9.7.72]
+# Local-Ai Agent [j5onrf] [v0.9.7.82]
 
-import json
-import os
-import re
-import sqlite3
-import subprocess
-import sys
-import threading
-import time
-import urllib.request as urlreq
+import json, os, re, sqlite3, subprocess, sys, threading, time, urllib.request as urlreq
 from typing import List, Optional, Tuple, Dict, Any
 from contextlib import closing
 
@@ -21,7 +13,8 @@ SESSIONS_DIR: str = os.path.join(CFG_DIR, "projects", "database")
 BASE_PROMPT: str = "Read-only local shell assistant.\nIf <context> is provided, answer directly using only its facts. Otherwise, answer normally.\n\n"
 BASE_PROMPT_CHAT: str = BASE_PROMPT + "### Conversational Guidelines:\n- Role: Active, natural, and highly articulate conversational assistant.\n- Tone: Professional, warm, objective, and intellectually engaging.\n\n"
 BASE_PROMPT_AGENT: str = "Active local project workspace developer agent.\nIf <context> is provided, answer directly using only its facts. Otherwise, answer normally.\n\n"
-STOP_WORDS = {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"}
+try: from agent_context import STOP_WORDS
+except ImportError: STOP_WORDS = {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"}
 
 
 def load_env_file(path: str) -> None:
@@ -29,12 +22,10 @@ def load_env_file(path: str) -> None:
         try:
             with open(path, "r", encoding="utf-8") as f:
                 for line in f:
-                    line = line.strip()
-                    if line and not line.startswith("#") and "=" in line:
-                        k, v = line.replace("export ", "", 1).split("=", 1)
-                        k, v = k.strip(), v.split(" #")[0].strip().strip('"').strip("'")
-                        if k and k not in os.environ:
-                            os.environ[k] = v
+                    if (l := line.strip()) and not l.startswith("#") and "=" in l:
+                        k, v = l.replace("export ", "", 1).split("=", 1)
+                        if (k := k.strip()) and k not in os.environ:
+                            os.environ[k] = v.split(" #")[0].strip().strip('"').strip("'")
         except OSError: pass
 
 
@@ -48,11 +39,7 @@ try:
 except ImportError: pass
 
 try:
-    import agent_context as context
-    import agent_core as core
-    import agent_skills as skills
-    import agent_spell as spell
-    import agent_ui as ui
+    import agent_context as context, agent_core as core, agent_skills as skills, agent_spell as spell, agent_ui as ui
 except ImportError as e:
     sys.stderr.write(f"\033[1;31m[CRITICAL]: Failed to load modules: {e}\033[0m\n")
     sys.exit(1)
@@ -66,13 +53,9 @@ def workspace_db_counts(safe_name: str) -> Tuple[int, int]:
         try:
             with closing(sqlite3.connect(db_path, timeout=2.0)) as conn:
                 cur = conn.cursor()
-                try:
-                    cur.execute("SELECT COUNT(*) FROM turns WHERE workspace = ?", (safe_name,))
-                    turns = cur.fetchone()[0]
+                try: turns = cur.execute("SELECT COUNT(*) FROM turns WHERE workspace = ?", (safe_name,)).fetchone()[0]
                 except sqlite3.OperationalError: pass
-                try:
-                    cur.execute("SELECT COUNT(*) FROM tpm_memories")
-                    facts = cur.fetchone()[0]
+                try: facts = cur.execute("SELECT COUNT(*) FROM tpm_memories").fetchone()[0]
                 except sqlite3.OperationalError: pass
         except sqlite3.Error: pass
     return turns, facts
@@ -80,16 +63,13 @@ def workspace_db_counts(safe_name: str) -> Tuple[int, int]:
 
 def ensure_clean_agent_dir(workspace_path: str) -> None:
     """Relocates auto-created agent files into project/.agent/ to keep workspace clean."""
+    if not (ws_name := os.path.basename(workspace_path)): return
     agent_dir = os.path.join(workspace_path, ".agent")
-    ws_name = os.path.basename(workspace_path)
-    if not ws_name: return
-    targets = (f"index-map-{ws_name}.txt", f"index-map-memory-{ws_name}.db", "history.md", "tpm.md")
-    for fname in targets:
+    for fname in (f"index-map-{ws_name}.txt", f"index-map-memory-{ws_name}.db", "history.md", "tpm.md"):
         src = os.path.join(workspace_path, fname)
         if os.path.exists(src):
             os.makedirs(agent_dir, exist_ok=True)
-            dst = os.path.join(agent_dir, fname)
-            try: os.replace(src, dst)
+            try: os.replace(src, os.path.join(agent_dir, fname))
             except OSError: pass
 
 
@@ -97,11 +77,9 @@ def sync_md_to_sqlite(workspace: str, workspace_path: str) -> None:
     md_path = os.path.join(workspace_path, ".agent", "tpm.md")
     if os.path.exists(md_path):
         try:
-            with open(md_path, "r", encoding="utf-8") as f:
-                matches = re.findall(r"\*\s+\*\*([^*]+)\*\*:\s*(.*)", f.read())
+            with open(md_path, "r", encoding="utf-8") as f: matches = re.findall(r"\*\s+\*\*([^*]+)\*\*:\s*(.*)", f.read())
             if matches:
-                reconciled = {k.strip().lower(): v.strip() for k, v in matches}
-                core.run_mod("ai-agent-memories", "tpm-reconcile", workspace, input_data=json.dumps(reconciled))
+                core.run_mod("ai-agent-memories", "tpm-reconcile", workspace, input_data=json.dumps({k.strip().lower(): v.strip() for k, v in matches}))
         except (OSError, json.JSONDecodeError): pass
 
 
@@ -121,8 +99,7 @@ def run_interactive_chat(args: List[str]) -> None:
 
     ensure_clean_agent_dir(workspace_path)
     cfg_file = os.path.join(workspace_path, ".agent", "config.json")
-    selected_profile = "default"
-    is_yolo = False
+    selected_profile, is_yolo = "default", False
 
     if is_agent:
         if not os.path.exists(cfg_file):
@@ -136,8 +113,7 @@ def run_interactive_chat(args: List[str]) -> None:
             try:
                 with open(cfg_file, "r", encoding="utf-8") as cf:
                     cfg_data = json.load(cf)
-                    selected_profile = cfg_data.get("profile", "default")
-                    is_yolo = cfg_data.get("yolo", False)
+                    selected_profile, is_yolo = cfg_data.get("profile", "default"), cfg_data.get("yolo", False)
             except (OSError, json.JSONDecodeError): pass
 
     for arg in args:
@@ -145,36 +121,26 @@ def run_interactive_chat(args: List[str]) -> None:
             selected_profile = arg.lstrip("-").lower()
 
     if is_agent:
-        if selected_profile in ("default", "init"):
-            skill_content = skills.load_skill_content("init", SKILLS_DIR, CFG_DIR)
-            active_system_prompt = BASE_PROMPT_AGENT + (f"\n\n### Active Skill/Role Instructions:\n{skill_content}\n" if skill_content else "")
-            clean_name = "init"
-        else:
-            profile_content = skills.load_skill_content(selected_profile, SKILLS_DIR, CFG_DIR)
-            active_system_prompt = profile_content if profile_content else BASE_PROMPT_AGENT
-            clean_name = selected_profile
+        clean_name = selected_profile if selected_profile not in ("default", "init") else "init"
+        profile_content = skills.load_skill_content(clean_name, SKILLS_DIR, CFG_DIR)
+        active_system_prompt = (BASE_PROMPT_AGENT + f"\n\n### Active Skill/Role Instructions:\n{profile_content}\n") if (clean_name == "init" and profile_content) else (profile_content or BASE_PROMPT_AGENT)
     else:
-        target_skill = selected_profile if (selected_profile and selected_profile != "default") else "chat"
-        skill_content = skills.load_skill_content(target_skill, SKILLS_DIR, CFG_DIR)
-        active_system_prompt = skill_content if skill_content else BASE_PROMPT_CHAT
-        clean_name = target_skill
+        clean_name = selected_profile if (selected_profile and selected_profile != "default") else "chat"
+        skill_content = skills.load_skill_content(clean_name, SKILLS_DIR, CFG_DIR)
+        active_system_prompt = skill_content or BASE_PROMPT_CHAT
 
     chat_history = [{"role": "system", "content": active_system_prompt}]
     pending_query = " ".join(args[1:]) if len(args) > 1 else None
 
     st = core.get_state()
     spell_active, show_stats, memory_active = st["spell_active"], st["show_stats"], st["memory_active"]
-    reasoning_active = st.get("reasoning_active", False)
-    reasoning_budget = st.get("reasoning_budget", 500)
+    reasoning_active, reasoning_budget = st.get("reasoning_active", False), st.get("reasoning_budget", 500)
 
     os.environ["AI_RENDER_MARKDOWN"] = "1" if st.get("render_markdown", True) else "0"
     os.environ["AI_REASONIX_ACTIVE"] = "1" if st.get("reasonix_active", True) else "0"
+    if is_yolo or st.get("yolo_mode", False): os.environ["AI_CONFIRM_GATES"] = "0"
 
-    if is_yolo or st.get("yolo_mode", False):
-        os.environ["AI_CONFIRM_GATES"] = "0"
-
-    if is_agent:
-        sync_md_to_sqlite(safe_name, workspace_path)
+    if is_agent: sync_md_to_sqlite(safe_name, workspace_path)
 
     db_turns, tpm_count = workspace_db_counts(safe_name) if is_agent else (0, 0)
     sub_id = None
@@ -184,39 +150,31 @@ def run_interactive_chat(args: List[str]) -> None:
             if sub_str.isdigit() and int(sub_str) > 0: sub_id = int(sub_str)
         except Exception: pass
 
-    box_style = st.get("box_style", 2)
-    ui.draw_session_box(workspace_path, home_dir, is_agent, db_turns, tpm_count, memory_active, active_system_prompt, clean_name, sub_id=sub_id, box_style=box_style)
+    ui.draw_session_box(workspace_path, home_dir, is_agent, db_turns, tpm_count, memory_active, active_system_prompt, clean_name, sub_id=sub_id, box_style=st.get("box_style", 2))
+
     try:
         while True:
             if pending_query:
                 query, pending_query = pending_query, None
             else:
-                try:
-                    prompt_str = "\001\033[1;30m\002❯\001\033[0m\002 "
-                    query = input(prompt_str).strip()
+                try: query = input("\001\033[1;30m\002❯\001\033[0m\002 ").strip()
                 except EOFError: break
                 finally:
                     try: readline.set_startup_hook(None)
                     except Exception: pass
-                if not query: continue
-                if query.lower() in ("exit", "quit", "q"):
-                    clean_exit(safe_name if is_agent else None)
 
-                if query.lower() in ("/help", "/h"):
-                    ui.show_help()
-                    continue
+                if not query: continue
+                q_lower = query.lower()
+                if q_lower in ("exit", "quit", "q"): clean_exit(safe_name if is_agent else None)
+                if q_lower in ("/help", "/h"): ui.show_help(); continue
 
                 if query == "/tui":
                     ui._console.print("[dim yellow][sys] Suspending chat. Launching TUI...[/dim yellow]")
                     time.sleep(0.5)
                     try:
-                        tui_env = os.environ.copy()
-                        tui_env["AI_IS_AGENT"] = "1" if is_agent else "0"
-                        tui_env["AI_WORKSPACE_PATH"] = workspace_path
-                        tui_env["AI_ACTIVE_SKILL"] = clean_name or "default"
+                        tui_env = {**os.environ, "AI_IS_AGENT": "1" if is_agent else "0", "AI_WORKSPACE_PATH": workspace_path, "AI_ACTIVE_SKILL": clean_name or "default"}
                         subprocess.run([sys.executable, f"{CFG_DIR}/modules/agent_tui.py"], env=tui_env)
-                    except Exception as e:
-                        ui._console.print(f"[red][sys] Failed TUI: {e}[/red]\n")
+                    except Exception as e: ui._console.print(f"[red][sys] Failed TUI: {e}[/red]\n")
                     continue
 
                 if query in ("/spell", "/sp"):
@@ -227,19 +185,9 @@ def run_interactive_chat(args: List[str]) -> None:
 
                 parts = query.split()
                 if parts and parts[0] in ("/box", "/box-style", "/boxstyle"):
-                    curr_style = st.get("box_style", 2)
-                    if len(parts) > 1:
-                        try:
-                            val = int(parts[1])
-                            if 1 <= val <= 5:
-                                core.save_state("box_style", val)
-                                ui._console.print(f"[green][sys] Session box style updated to #{val}.[/green]\n")
-                            else: ui._console.print("[red][sys] Usage: /box [1-5][/red]\n")
-                        except ValueError: ui._console.print("[red][sys] Usage: /box [1-5][/red]\n")
-                    else:
-                        next_style = (curr_style % 5) + 1
-                        core.save_state("box_style", next_style)
-                        ui._console.print(f"[green][sys] Switched box style to #{next_style}.[/green]\n")
+                    val = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() and 1 <= int(parts[1]) <= 5 else (st.get("box_style", 2) % 5) + 1
+                    core.save_state("box_style", val)
+                    ui._console.print(f"[green][sys] Switched box style to #{val}.[/green]\n")
                     continue
 
                 if query == "/m":
@@ -249,52 +197,37 @@ def run_interactive_chat(args: List[str]) -> None:
                     continue
 
                 if query in ("/md", "/markdown"):
-                    curr_md = os.environ.get("AI_RENDER_MARKDOWN", "1") == "1"
-                    new_md = not curr_md
+                    new_md = not (os.environ.get("AI_RENDER_MARKDOWN", "1") == "1")
                     os.environ["AI_RENDER_MARKDOWN"] = "1" if new_md else "0"
                     core.save_state("render_markdown", new_md)
                     ui._console.print(f"[green][sys] Markdown rendering {'enabled' if new_md else 'disabled'}.[/green]\n")
                     continue
 
                 if query in ("/g", "/yolo"):
-                    yolo_active = os.environ.get("AI_CONFIRM_GATES", "1") == "0"
-                    new_yolo = not yolo_active
+                    new_yolo = os.environ.get("AI_CONFIRM_GATES", "1") == "1"
                     os.environ["AI_CONFIRM_GATES"] = "0" if new_yolo else "1"
                     core.save_state("yolo_mode", new_yolo)
-                    msg = "disabled (Autonomous / YOLO mode active)" if new_yolo else "enabled (y/n confirmation required per action)"
-                    ui._console.print(f"[yellow][sys] Confirmation gates {msg}.[/yellow]\n")
+                    ui._console.print(f"[yellow][sys] Confirmation gates {'disabled (Autonomous / YOLO mode active)' if new_yolo else 'enabled (y/n confirmation required per action)'}.[/yellow]\n")
                     continue
 
-                parts = query.split()
                 if parts and parts[0] in ("/t", "/thinking"):
                     if len(parts) > 1:
                         sub = parts[1].lower()
                         if sub in ("hide", "off", "mute", "quiet"):
-                            os.environ["AI_SHOW_THINKING"] = "0"
-                            core.save_state("show_thinking", False)
+                            os.environ["AI_SHOW_THINKING"] = "0"; core.save_state("show_thinking", False)
                             ui._console.print("[yellow][sys] Thinking display hidden (thinking mode remains active).[/yellow]\n")
-                            continue
                         elif sub in ("show", "on", "visible"):
-                            os.environ["AI_SHOW_THINKING"] = "1"
-                            core.save_state("show_thinking", True)
+                            os.environ["AI_SHOW_THINKING"] = "1"; core.save_state("show_thinking", True)
                             ui._console.print("[yellow][sys] Thinking display enabled.[/yellow]\n")
-                            continue
                         elif sub in ("toggle", "t"):
-                            curr = os.environ.get("AI_SHOW_THINKING", "1") == "1"
-                            new_val = not curr
-                            os.environ["AI_SHOW_THINKING"] = "1" if new_val else "0"
-                            core.save_state("show_thinking", new_val)
+                            new_val = not (os.environ.get("AI_SHOW_THINKING", "1") == "1")
+                            os.environ["AI_SHOW_THINKING"] = "1" if new_val else "0"; core.save_state("show_thinking", new_val)
                             ui._console.print(f"[yellow][sys] Thinking display {'enabled' if new_val else 'hidden'}.[/yellow]\n")
-                            continue
-                        else:
-                            try:
-                                val = int(parts[1])
-                                reasoning_active, reasoning_budget = val > 0, max(0, val)
-                                core.save_state("reasoning_active", reasoning_active)
-                                core.save_state("reasoning_budget", reasoning_budget)
-                                ui._console.print(f"[yellow][sys] Deep reasoning {'enabled' if reasoning_active else 'disabled'} (budget: {reasoning_budget} tokens).[/yellow]\n")
-                            except ValueError: ui._console.print("[red][sys] Usage: /t [number|show|hide|toggle][/red]\n")
-                            continue
+                        elif parts[1].isdigit():
+                            reasoning_budget = max(0, int(parts[1]))
+                            reasoning_active = reasoning_budget > 0
+                            core.save_state("reasoning_active", reasoning_active); core.save_state("reasoning_budget", reasoning_budget)
+                            ui._console.print(f"[yellow][sys] Deep reasoning {'enabled' if reasoning_active else 'disabled'} (budget: {reasoning_budget} tokens).[/yellow]\n")
                     else:
                         reasoning_active = not reasoning_active
                         core.save_state("reasoning_active", reasoning_active)
@@ -303,21 +236,16 @@ def run_interactive_chat(args: List[str]) -> None:
 
                 if query == "/stats":
                     show_stats = not show_stats
-                    core.save_state("show_stats", show_stats)  
+                    core.save_state("show_stats", show_stats)
                     ui._console.print(f"[green][sys] Stats {'enabled' if show_stats else 'disabled'}.[/green]\n")
                     continue
 
                 if query in ("/sync", "/re"):
-                    sys.stdout.write("\033[2m[sys] Syncing codespace map...\033[0m\r")
-                    sys.stdout.flush()
+                    sys.stdout.write("\033[2m[sys] Syncing codespace map...\033[0m\r"); sys.stdout.flush()
                     subprocess.run([sys.executable, f"{CFG_DIR}/tools/map/index-map", "--agent", workspace_path])
-                    
                     agent_dir = os.path.join(workspace_path, ".agent")
-                    txt_path = os.path.join(agent_dir, f"index-map-{os.path.basename(workspace_path)}.txt")
-                    if not os.path.exists(txt_path):
-                        txt_path = os.path.join(workspace_path, f"index-map-{os.path.basename(workspace_path)}.txt")
-                    
-                    if os.path.exists(txt_path):
+                    txt_path = next((p for p in (os.path.join(agent_dir, f"index-map-{os.path.basename(workspace_path)}.txt"), os.path.join(workspace_path, f"index-map-{os.path.basename(workspace_path)}.txt")) if os.path.exists(p)), None)
+                    if txt_path:
                         try:
                             with open(txt_path, "r", encoding="utf-8") as mf: new_map = mf.read().strip()
                             updated = False
@@ -330,19 +258,14 @@ def run_interactive_chat(args: List[str]) -> None:
                         except Exception as e: ui._console.print(f"\r\x1b[2K[red][sys] Sync failed: {e}[/red]\n")
                     continue
 
-                if query.lower() in ("/clear", "/reset"):
+                if q_lower in ("/clear", "/reset"):
                     chat_history = [{"role": "system", "content": active_system_prompt}, {"role": "assistant", "content": "Agent: Workspace loaded. Awaiting instructions."}]
                     ws_base = os.path.basename(workspace_path)
-                    
                     for p in (
-                        os.path.join(workspace_path, ".agent", "session.json"),
-                        os.path.join(workspace_path, ".agent", "tpm.md"),
-                        os.path.join(workspace_path, ".agent", "history.md"),
-                        os.path.join(workspace_path, "history.md"),
-                        os.path.join(workspace_path, ".agent", f"index-map-{ws_base}.txt"),
-                        os.path.join(workspace_path, f"index-map-{ws_base}.txt"),
-                        os.path.join(workspace_path, ".agent", f"index-map-memory-{ws_base}.db"),
-                        os.path.join(workspace_path, f"index-map-memory-{ws_base}.db")
+                        os.path.join(workspace_path, ".agent", "session.json"), os.path.join(workspace_path, ".agent", "tpm.md"),
+                        os.path.join(workspace_path, ".agent", "history.md"), os.path.join(workspace_path, "history.md"),
+                        os.path.join(workspace_path, ".agent", f"index-map-{ws_base}.txt"), os.path.join(workspace_path, f"index-map-{ws_base}.txt"),
+                        os.path.join(workspace_path, ".agent", f"index-map-memory-{ws_base}.db"), os.path.join(workspace_path, f"index-map-memory-{ws_base}.db")
                     ):
                         if os.path.exists(p):
                             try: os.remove(p)
@@ -364,7 +287,7 @@ def run_interactive_chat(args: List[str]) -> None:
                         continue
                     elif action == "DISABLE": spell_active = False
 
-            if query.startswith(("/", "-")) and (query.startswith(("/skill", "/s")) or query.startswith(("/skill ", "/s "))):
+            if query.startswith(("/", "-")) and query.split()[0] in ("/skill", "/s"):
                 res = subprocess.run([sys.executable, f"{CFG_DIR}/modules/agent_skills.py", safe_name, query], input=json.dumps(chat_history), stdout=subprocess.PIPE, text=True)
                 if res.stdout.strip():
                     try: chat_history = json.loads(res.stdout.strip())
@@ -390,12 +313,8 @@ def run_interactive_chat(args: List[str]) -> None:
             if is_agent and memory_active and not is_init_map:
                 try:
                     res = subprocess.run([sys.executable, f"{CFG_DIR}/modules/ai-agent-memories", "get-context", safe_name, query], stdout=subprocess.PIPE, text=True)
-                    if res.returncode == 2:
-                        pending_query = None
-                        continue
-                    if res.returncode == 3:
-                        memory_active = False
-                        core.save_state("memory_active", False)
+                    if res.returncode == 2: pending_query = None; continue
+                    if res.returncode == 3: memory_active = False; core.save_state("memory_active", False)
                     past_memory = res.stdout.strip()
                 except Exception: pass
                 tpm_context = core.run_mod("ai-agent-memories", "tpm-get", safe_name)
@@ -406,8 +325,7 @@ def run_interactive_chat(args: List[str]) -> None:
                     try:
                         subprocess.run([sys.executable, think_bin, query], input=json.dumps(chat_history), text=True)
                         continue
-                    except Exception as e:
-                        sys.stderr.write(f"\033[1;31m[Warning] chat failed: {e}\033[0m\n")
+                    except Exception as e: sys.stderr.write(f"\033[1;31m[Warning] chat failed: {e}\033[0m\n")
                 continue
 
             if is_init_map:
@@ -423,13 +341,11 @@ def run_interactive_chat(args: List[str]) -> None:
                 try: readline.add_history(query)
                 except Exception: pass
 
-            ans = core.stream_response(chat_history, prefix="Agent:" if is_agent else "AI:", show_stats=show_stats, thinking_budget=reasoning_budget if reasoning_active else 0, is_agent=is_agent)
-            if ans:
+            if ans := core.stream_response(chat_history, prefix="Agent:" if is_agent else "AI:", show_stats=show_stats, thinking_budget=reasoning_budget if reasoning_active else 0, is_agent=is_agent):
                 chat_history.append({"role": "assistant", "content": ans})
                 if is_agent:
                     core.run_mod("ai-agent-sessions", "log-turn", safe_name, query, ans)
-                    match = re.search(r"Run:\s*((?:trace symbol|blast radius|read function|find symbol)\s+\S+|architecture overview)", ans)
-                    if match:
+                    if match := re.search(r"Run:\s*((?:trace symbol|blast radius|read function|find symbol)\s+\S+|architecture overview)", ans):
                         try: readline.set_startup_hook(lambda: readline.insert_text(match.group(1).strip()))
                         except Exception: pass
 
@@ -457,12 +373,12 @@ def run_direct_query(args: List[str]) -> None:
         skill_content = skills.load_skill_content(query_parts[-1].lstrip("-").lower(), SKILLS_DIR, CFG_DIR)
         query_parts = query_parts[:-1]
 
-    active_p = BASE_PROMPT + (f"### Active Skill/Role Instructions:\n{skill_content}\n" if skill_content else "")
     query = " ".join(query_parts)
     sys_ctx = skills.get_system_context(query, CONTEXT_FILE, STOP_WORDS, SKILLS_DIR, CFG_DIR)
     if sys_ctx == "__ABORT_TURN__": sys_ctx = ""
 
-    messages = [{"role": "system", "content": active_p}, {"role": "user", "content": (f"<context>\n{sys_ctx}\n</context>\n\n" if sys_ctx else "") + f"User Question: {query}"}]
+    active_p = BASE_PROMPT + (f"### Active Skill/Role Instructions:\n{skill_content}\n" if skill_content else "")
+    messages = [{"role": "system", "content": active_p}, {"role": "user", "content": f"<context>\n{sys_ctx}\n</context>\n\nUser Question: {query}" if sys_ctx else f"User Question: {query}"}]
     core.stream_response(messages, prefix="AI:", show_stats=False)
     sys.exit(0)
 
@@ -470,46 +386,37 @@ def run_direct_query(args: List[str]) -> None:
 def run_matching_search(args: List[str]) -> None:
     user_input = re.sub(r"[`$]", "", " ".join(args)).strip()
     if not user_input or args[0].startswith("--"): sys.exit(0)
-
-    if user_input.lower() in ("/help", "/h"):
-        ui.show_help()
-        sys.exit(0)
+    if user_input.lower() in ("/help", "/h"): ui.show_help(); sys.exit(0)
 
     shell_name = os.path.basename(os.environ.get("SHELL", "/bin/bash"))
-    err_msg = f"zsh: command not found: {user_input}\n" if "zsh" in shell_name else f"bash: {user_input}: command not found\n"
+    err_msg = f"{'zsh' if 'zsh' in shell_name else 'bash'}: {f'command not found: {user_input}' if 'zsh' in shell_name else f'{user_input}: command not found'}\n"
     if re.search(r"[\[\]{}()='\",;|#<>]", user_input):
-        sys.stderr.write(err_msg)
-        sys.exit(127)
-    matched = context.jaccard_search(user_input, CONTEXT_FILE, STOP_WORDS)
-    if matched:
-        print("\n".join(f"{line.split('|||', 1)[0]}|||{context.clean_tool_prefix(line.split('|||', 1)[1])}" for line in matched.split("\n")))
+        sys.stderr.write(err_msg); sys.exit(127)
+
+    if matched := context.jaccard_search(user_input, CONTEXT_FILE, STOP_WORDS):
+        print("\n".join(f"{l.split('|||', 1)[0]}|||{context.clean_tool_prefix(l.split('|||', 1)[1])}" for l in matched.split("\n")))
         sys.exit(0)
-    sys.stderr.write(err_msg)
-    sys.exit(127)
+    sys.stderr.write(err_msg); sys.exit(127)
 
 
 def main() -> None:
     try:
         args = sys.argv[1:]
-        if args:
-            if args[0] == "--interactive" and len(args) >= 2:
-                ui.run_interactive_selection(
-                    " ".join(args[1:]),
-                    lambda q: context.jaccard_search(q, CONTEXT_FILE, STOP_WORDS),
-                    context.clean_tool_prefix,
-                    lambda n: sys.stderr.write(f"zsh: command not found: {n}\n" if "zsh" in os.path.basename(os.environ.get("SHELL", "")) else f"bash: {n}: command not found\n"),
-                    lambda: skills.ensure_mysys_exists(SKILLS_DIR, CFG_DIR),
-                )
-                sys.exit(0)
-            if args[0] in ("--talk", "--talk-chat"):
-                if args[0] == "--talk-chat" or len(args) == 1:
-                    run_interactive_chat(args)
-                else:
-                    run_direct_query(args)
-                sys.exit(0)
-            run_matching_search(args)
-        else:
-            run_direct_query(["--talk"])
+        if not args: run_direct_query(["--talk"])
+        elif args[0] == "--interactive" and len(args) >= 2:
+            shell_name = os.path.basename(os.environ.get("SHELL", ""))
+            ui.run_interactive_selection(
+                " ".join(args[1:]),
+                lambda q: context.jaccard_search(q, CONTEXT_FILE, STOP_WORDS),
+                context.clean_tool_prefix,
+                lambda n: sys.stderr.write(f"zsh: command not found: {n}\n" if "zsh" in shell_name else f"bash: {n}: command not found\n"),
+                lambda: skills.ensure_mysys_exists(SKILLS_DIR, CFG_DIR)
+            )
+            sys.exit(0)
+        elif args[0] in ("--talk", "--talk-chat"):
+            run_interactive_chat(args) if (args[0] == "--talk-chat" or len(args) == 1) else run_direct_query(args)
+            sys.exit(0)
+        else: run_matching_search(args)
     except KeyboardInterrupt:
         sys.stderr.write("\nCancelled.\n")
         sys.exit(130)
