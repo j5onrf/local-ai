@@ -238,8 +238,8 @@ The codebase intelligence engine features **dual-mode output routing**:
 
 Self-directed iterative `while` execution loop that runs tools and verifies results until the task is complete.
 
-- **Inline Command:** `❯ /task "Fix syntax errors in broken_syntax.py and run pytest"`
-- **Spec File Mode:** Create `TASK.md` in project root and run `❯ /task`
+- **Inline Command:** `/task "Fix syntax errors in broken_syntax.py and run pytest"`
+- **Spec File Mode:** Create `TASK.md` in project root and run `/task`
 - **Auto-Completion:** Loops automatically until the model outputs `TASK COMPLETE` or turn limit finishes.
 
 ---

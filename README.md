@@ -59,8 +59,6 @@ Lightweight Python orchestration (rich + requests + sqlite-vec) controlling a C+
 > Customize box themes with `/box [1-5]`. For detailed multi-agent workflows, read the [**Workspace Manual**](https://github.com/j5onrf/local-ai/blob/main/projects/Readme.md).
 
 #### 1. Interactive Multi-Turn Chat (`ai`)
-
-<kbd>
     
 ```console
 ~ ❯ ai
@@ -73,11 +71,8 @@ Lightweight Python orchestration (rich + requests + sqlite-vec) controlling a C+
  Startup context: 103 tokens
 ❯ 
 ```
-</kbd>
 
 #### 2. Workspace & Sub-Agent (`ai init <path>`)
-
-<kbd>
 
 ```console
 ~ ❯ sess
@@ -98,15 +93,13 @@ Agent: Workspace loaded. Awaiting instructions.
 ❯ 
 ```
 
-</kbd>
-
 ---
 
 ## Interactive Textual TUI
 
 <div align="center">
   <kbd>
-    <img width="645" alt="20260731_113218b" src="https://github.com/user-attachments/assets/c1469fa4-a3ad-4379-93dd-44daff8668f4" />
+    <img width="800" alt="20260731_113218b" src="https://github.com/user-attachments/assets/c1469fa4-a3ad-4379-93dd-44daff8668f4" />
   </kbd>
 </div>
 
