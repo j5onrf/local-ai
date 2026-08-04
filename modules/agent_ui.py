@@ -220,6 +220,8 @@ def run_interactive_selection(
                 sys.exit(0)
             elif key in ('\x1b[A', '\x1b[B'):
                 current_idx = (current_idx + (1 if key == '\x1b[B' else -1) + num_opts) % num_opts
+                sys.stderr.write("\x1b[1A\r\x1b[K")
+                sys.stderr.flush()
     except KeyboardInterrupt:
         sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
         sys.stderr.flush()
