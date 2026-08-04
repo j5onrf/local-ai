@@ -254,7 +254,6 @@ def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float, show_sta
         if show_stats and sys.stdout.isatty():
             ctx_max = int(os.environ.get("AI_MAX_TOKENS", 8192)) if ctx_used is not None else None
             print(usage_log.turn_line(in_tok, out_tok, cost, ctx_used, ctx_max))
-            print("")
     except Exception: pass
 
 
@@ -295,11 +294,9 @@ def _confirm_gate(reason: str, spinner: Any) -> bool:
 def _print_tool_output(spinner: Any, text: str) -> None:
     if sys.stdout.isatty() and text.strip():
         if spinner: spinner.stop()
-        _console_err.print()
         if os.environ.get("AI_RENDER_MARKDOWN", "1") == "1" and any(k in text for k in ("#", "|", "```")):
             _console_err.print(Markdown(text, code_theme="ansi_dark"))
         else: _console_err.print(text)
-        _console_err.print()
 
 
 def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any = None) -> str:

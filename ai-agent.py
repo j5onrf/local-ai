@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.9.7.92]
+# Local-Ai Agent [j5onrf] [v0.9.8.2]
 
 import json, os, re, sqlite3, subprocess, sys, threading, time, urllib.request as urlreq
 from typing import List, Optional, Tuple, Dict, Any
@@ -166,7 +166,15 @@ def run_interactive_chat(args: List[str]) -> None:
                 if not query: continue
                 q_lower = query.lower()
                 if q_lower in ("exit", "quit", "q"): clean_exit(safe_name if is_agent else None)
-                if q_lower in ("/help", "/h"): ui.show_help(); continue
+                parts = query.split()
+                if parts and parts[0] in ("/task", "/loop", "/ralph"):
+                    task_text = query.split(maxsplit=1)[1] if len(parts) > 1 else ""
+                    subprocess.run([sys.executable, f"{CFG_DIR}/tools/loop/ralph.py", task_text])
+                    continue
+
+                if query.lower() in ("/help", "/h"):
+                    ui.show_help()
+                    continue
 
                 if query == "/tui":
                     ui._console.print("[dim yellow][sys] Suspending chat. Launching TUI...[/dim yellow]")
@@ -275,6 +283,11 @@ def run_interactive_chat(args: List[str]) -> None:
                     ui._console.print("[green][sys] Session and memory cleared.[/green]\n")
                     continue
 
+                if parts and parts[0] in ("/task", "/loop", "/ralph"):
+                    task_text = query.split(maxsplit=1)[1] if len(parts) > 1 else ""
+                    subprocess.run([sys.executable, f"{CFG_DIR}/tools/loop/ralph.py", task_text])
+                    continue
+
                 if query == "/tok":
                     subprocess.run([sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "show-tok"], input=json.dumps(chat_history), text=True)
                     continue
@@ -309,14 +322,15 @@ def run_interactive_chat(args: List[str]) -> None:
                 continue
 
             past_memory, tpm_context = "", ""
-            is_init_map = query.startswith(("#", "[", "{")) or "\n" in query or "last_interaction_id" in query or "index-map" in query
-            if is_agent and memory_active and not is_init_map:
-                try:
-                    res = subprocess.run([sys.executable, f"{CFG_DIR}/modules/ai-agent-memories", "get-context", safe_name, query], stdout=subprocess.PIPE, text=True)
-                    if res.returncode == 2: pending_query = None; continue
-                    if res.returncode == 3: memory_active = False; core.save_state("memory_active", False)
-                    past_memory = res.stdout.strip()
-                except Exception: pass
+            is_first_turn = len(chat_history) <= 2
+            if is_agent and memory_active:
+                if not is_first_turn and len(query) > 5:
+                    try:
+                        res = subprocess.run([sys.executable, f"{CFG_DIR}/modules/ai-agent-memories", "get-context", safe_name, query], stdout=subprocess.PIPE, text=True)
+                        if res.returncode == 2: pending_query = None; continue
+                        if res.returncode == 3: memory_active = False; core.save_state("memory_active", False)
+                        past_memory = res.stdout.strip()
+                    except Exception: pass
                 tpm_context = core.run_mod("ai-agent-memories", "tpm-get", safe_name)
 
             if re.match(r"^/?([ftba])(?:\s+(\d+))?$", query.lower()):

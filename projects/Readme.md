@@ -161,6 +161,7 @@ Running `ai init <path>` sets default workspace agent profile:
 │   Available commands:                                               │
 │  /h                          - Help menu                            │
 │  /box [1-5]                  - Box style preset                     │
+│  /task [goal]                - Autonomous task loop                 │
 │  /t [N|show|hide]            - Set reasoning budget or show/hide    │
 │  /g, /yolo                   - Toggle confirmation gates (YOLO)     │
 │  /m                          - Toggle database memory               │
@@ -233,7 +234,17 @@ The codebase intelligence engine features **dual-mode output routing**:
 
 ---
 
-## 10. Context Limits
+## 10. Autonomous Task Loops (Ralph Engine)
+
+Self-directed iterative `while` execution loop that runs tools and verifies results until the task is complete.
+
+- **Inline Command:** `❯ /task "Fix syntax errors in broken_syntax.py and run pytest"`
+- **Spec File Mode:** Create `TASK.md` in project root and run `❯ /task`
+- **Auto-Completion:** Loops automatically until the model outputs `TASK COMPLETE` or turn limit finishes.
+
+---
+
+## 11. Context Limits
 
 Override max context token limits:
 ```bash

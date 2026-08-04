@@ -416,7 +416,7 @@ class LocalAITUI(App):
                     with Horizontal(id="card-tips-header"):
                         yield Static("Quick Tips", id="lbl-tips-title")
                         yield CloseCardButton("×", id="btn-close-tips")
-                    yield Static("Tab: Switch Mode\nCtrl+B: Sidebar\nCtrl+G: Compact Layout\nCtrl+T: Cycle Themes\nShift+Drag: Highlight Copy\n/help: Commands List", id="lbl-tips-body")
+                    yield Static("Tab: Switch Mode\nCtrl+B: Sidebar\nCtrl+G: Compact Layout\nCtrl+T: Cycle Themes\n/task [goal]: [Goal] Loop\n/help: Commands List", id="lbl-tips-body")
 
         with Horizontal(id="footer-bar"): yield Footer(id="footer-keys")
 
@@ -505,6 +505,37 @@ class LocalAITUI(App):
             except Exception as e: self.notify(f"[bold red]Error reading file: {e}[/bold red]", sys_prefix=False)
         else: self.notify(f"[bold red]File not found: {file_path}[/bold red]", sys_prefix=False)
 
+    async def handle_task_command(self, task_args: str = "") -> None:
+        try: self.query_one("#welcome-banner").remove()
+        except Exception: pass
+
+        self.ensure_system_context()
+        goal = task_args.strip('"\': ') or "TASK.md spec"
+        display_cmd = f"/task \"{goal}\""
+        await self.chat_area.mount(Message("User", display_cmd))
+
+        assistant_msg = Message("Agent", f"[task] Executing Ralph loop: [italic]{goal}[/italic]...")
+        await self.chat_area.mount(assistant_msg)
+        self.chat_area.scroll_end(animate=False)
+
+        def _run_task_sub():
+            ralph_bin = os.path.join(CFG_DIR, "tools", "loop", "ralph.py")
+            if os.path.exists(ralph_bin):
+                try:
+                    env = {**os.environ, "AI_WORKSPACE_PATH": self.workspace_path}
+                    res = subprocess.run([sys.executable, ralph_bin, task_args], cwd=self.workspace_path, capture_output=True, text=True, timeout=300, env=env)
+                    out = (res.stdout or res.stderr or "").strip()
+                    clean_out = ANSI_CLEAN_REGEX.sub('', out)
+                    formatted = f"### [task] Autonomous Task Output\n\n{clean_out or '[ok] Task completed successfully.'}"
+                    self.call_from_thread(assistant_msg.update_content, formatted)
+                    self.history.append({"role": "user", "content": display_cmd})
+                    self.history.append({"role": "assistant", "content": clean_out or "Task complete."})
+                    self.refresh_db_counts()
+                except Exception as e: self.call_from_thread(assistant_msg.update_content, f"[red][sys] Task loop error: {e}[/red]")
+            else: self.call_from_thread(assistant_msg.update_content, "[red][sys] tools/loop/ralph.py script not found.[/red]")
+
+        self.run_worker(_run_task_sub, thread=True)
+
     async def handle_meta_chat_command(self, cmd_root: str, args: str = "") -> None:
         think_bin = os.path.join(CFG_DIR, "modules", "chat")
         try: self.query_one("#welcome-banner").remove()
@@ -549,10 +580,13 @@ class LocalAITUI(App):
             t = Table(show_header=False, box=None, padding=(0, 1), expand=False)
             cmd_style = "bold #89b4fa" if self.theme == "code" else ("bold #0265dc" if not self.is_dark_theme else "bold cyan")
             t.add_column("Command", style=cmd_style); t.add_column("Description", style="default")
-            for c, d in [("/help, /h", "Help"), ("Tab", "Plan/Build"), ("/copy", "Copy page"), ("/m", "Memory"), ("/clear", "Chat & history"), ("/tok", "Tokens"), ("/sync", "Sync index"), ("/s <q>", "Skill"), ("/t <toks>", "Reasoning"), ("/f, /tk, /b, /a", "Presets"), ("file <path>", "Load File"), ("exit, quit, q", "Exit")]:
+            for c, d in [("/help, /h", "Help"), ("Tab", "Plan/Build"), ("/task [goal]", "Ralph Task Loop"), ("/copy", "Copy page"), ("/m", "Memory"), ("/clear", "Chat & history"), ("/tok", "Tokens"), ("/sync", "Sync index"), ("/s <q>", "Skill"), ("/t <toks>", "Reasoning"), ("/f, /tk, /b, /a", "Presets"), ("file <path>", "Load File"), ("exit, quit, q", "Exit")]:
                 t.add_row(c, d)
-            await self.chat_area.mount(Static(Group(Text(""), Panel(t, title="⚙ Agent TUI Commands", title_align="left", border_style=self.border_accent, box=ROUNDED, expand=False))))
+            border_col = "bright_white" if self.theme in ("mono", "grok") else self.border_accent
+            await self.chat_area.mount(Static(Group(Text(""), Panel(t, title="Commands", title_align="left", border_style=border_col, box=ROUNDED, expand=False))))
+            self.chat_area.scroll_end(animate=False)
 
+        elif root in ("/task", "/loop", "/ralph"): await self.handle_task_command(args)
         elif root in ("exit", "quit", "q"): self.exit()
         elif root in ("/copy", "/copy-all", "/copyall"): self.action_copy_entire_chat()
         elif root == "/m":
@@ -573,7 +607,23 @@ class LocalAITUI(App):
             for child in list(self.chat_area.children): child.remove()
             self.notify("Session history and chat window cleared.")
         elif root == "/tok":
-            self.notify(f"History: ~{sum(len(str(m.get('content', ''))) // 4 for m in self.history):,} tokens ({len(self.history)} messages)")
+            limit = int(os.environ.get("AI_MAX_TOKENS", 8192))
+            total_toks = sum(core.get_accurate_token_count(m.get("content") or "") for m in self.history)
+            pct = min(100.0, (total_toks / limit) * 100)
+            filled = int((pct / 100.0) * 20)
+            bar = "█" * filled + "░" * (20 - filled)
+            status_col = "green" if pct < 70 else ("yellow" if pct < 90 else "red")
+            border_col = "bright_white" if self.theme in ("mono", "grok") else self.border_accent
+
+            panel = Panel(
+                Group(
+                    Text.assemble(("Context Window: ", "dim"), (f"{total_toks:,}", f"bold {status_col}"), (f"/{limit:,} tokens ", "dim"), (f"({pct:.1f}%)", f"bold {status_col}")),
+                    Text(f"[{bar}]", style=status_col)
+                ),
+                title="Context Status", title_align="left", border_style=border_col, box=ROUNDED, expand=False
+            )
+            await self.chat_area.mount(Static(Group(Text(""), panel)))
+            self.chat_area.scroll_end(animate=False)
         elif root in ("/sync", "/re"):
             self.notify("Triggered background AST codebase sync.")
             try: subprocess.Popen(["index-map", self.workspace_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
