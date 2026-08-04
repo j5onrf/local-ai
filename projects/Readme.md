@@ -13,28 +13,19 @@ High-speed local developer agent, episodic memory, SQLite checkpoints, and codeb
 Enable Autonomous YOLO mode? [y/N]: y
 ✓ Profile set to: Pi Lite (Autonomous YOLO)
 
-╭─  >_ Local-AI Agent  ──────────────────────────────────╮
+╭─  >_ Local-AI Agent [sub-agent #1]  ───────────────────╮
 │     model:  Qwen3.5-2B.gguf                            │
 │ directory:  ~/.config/local-ai/projects/session-test   │
-│     skill:  pi/lite                                    │
-│  database:  active (0 facts, 0 turns)                  │
+│     skill:  hermes/lite                                │
+│  database:  active (0 facts, 1 turns)                  │
 ╰─────────────────────────────────────── Ctrl+C to exit ─╯
- Startup context: 327 tokens
+ Startup context: 309 tokens
 
-╭─ ⚙ ────────────────────────────────────────────────────
-The user has provided me with a system prompt that defines my role as Pi Lite, an efficient local software
-developer assistant. I need to follow specific instructions for
-startup and operational behavior.
-Key points from the instructions:
-1. DO NOT call tools (read_file, list_dir, run_command) at startup
-2. Use CODESPACE MAP to understand codebase structure
-3. Reply with ONE brief sentence acknowledging the project when starting up
-I should acknowledge the project without making any tool calls since this is just initialization/setup
-phase. The user hasn't assigned a task yet, so I'm in standby mode waiting
-for their instruction.
-╰────────────────────────────────────────────────────────
 Agent:
-Acknowledged. Ready to assist you with your session-test project.
+I am Hermes Lite, an action-oriented workspace agent ready to assist you with your project at 
+~/.config/local-ai/projects/session-test. I have noted the codebase structure and active modules 
+including simulation.py, average.py, broken_syntax.py, and others listed in the map. Please provide 
+a task or instruction for me to execute. 
  [ think: 179 | ans: 20 | 199 tokens | 3.5s @ 46.5 t/s ]
  [ 1154 in | 199 out | ctx: 16.5% ]
 
