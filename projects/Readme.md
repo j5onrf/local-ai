@@ -23,7 +23,7 @@ Enable Autonomous YOLO mode? [y/N]: y
 
 ╭─ ⚙ ────────────────────────────────────────────────────
 The user has provided me with a system prompt that defines my role as Pi Lite, an efficient local software
-developer assistant. I need to follow specific instructions for 
+developer assistant. I need to follow specific instructions for
 startup and operational behavior.
 Key points from the instructions:
 1. DO NOT call tools (read_file, list_dir, run_command) at startup
@@ -34,7 +34,7 @@ phase. The user hasn't assigned a task yet, so I'm in standby mode waiting
 for their instruction.
 ╰────────────────────────────────────────────────────────
 Agent:
-Acknowledged. Ready to assist you with your session-test project.                                                                                                                
+Acknowledged. Ready to assist you with your session-test project.
  [ think: 179 | ans: 20 | 199 tokens | 3.5s @ 46.5 t/s ]
  [ 1154 in | 199 out | ctx: 16.5% ]
 
@@ -218,16 +218,19 @@ The codebase intelligence engine features **dual-mode output routing**:
 
 ## 7. Temporal Personality Memory (TPM)
 
-- **Async Fact Extraction:** Auto-extracts persistent facts, environment details, and user preferences in a background thread after each turn.
-- **Context Injection:** Facts are automatically compiled and injected into model `<context>` blocks on every turn.
-- **Human-Editable Sync:** Reconciles manual edits in `.agent/tpm.md` into the SQLite database on startup.
+- **Async Fact Extraction:** Auto-extracts user preferences in background thread after each turn.
+- **Strict Fact Filtering:** Key blacklisting prevents project files/code from contaminating user memory.
+- **Context Injection:** Compiles and injects facts into model `<context>` blocks every turn.
+- **Human-Editable Sync:** Reconciles manual edits in `.agent/tpm.md` into SQLite on startup.
 
 ---
 
 ## 8. Sub-Agents & Concurrency
 
 - **Process Badges:** Assigns sequence IDs (`[sub-agent #1]`, `[sub-agent #2]`) for parallel terminals.
-- **SQLite WAL:** Prevents write-lock contention across concurrent instances.
+- **Self-Healing Registry:** Auto-purges stale PID lockfiles (`.active_sessions/`) on exit or crash.
+- **SQLite Lock Protection:** `PRAGMA busy_timeout = 5000` + `WAL` mode eliminates multi-agent database locks.
+- **Unix Socket IPC:** Async socket hub (`/tmp/local-ai-<workspace>.sock`) for cross-terminal status messaging.
 
 ---
 
