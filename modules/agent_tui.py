@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# File: ~/.config/local-ai/modules/agent_tui.py
 """Production Minimal Textual TUI for Local-AI Agent Engine"""
 
 import base64, json, os, re, sqlite3, subprocess, sys, threading, time, urllib.request as urlreq

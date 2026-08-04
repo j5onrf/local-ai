@@ -1,8 +1,5 @@
-# File: ~/.config/local-ai/modules/agent_ui.py
-"""
-Local-AI Agent UI Module
-Provides thread-safe spinners, session box rendering, interactive menus, and help displays.
-"""
+#!/usr/bin/env python3
+"""Local-AI Agent UI Module - Spinners, session boxes, and interactive menus."""
 
 import os, sys, threading, time, select, re, json, urllib.request as urlreq
 from typing import Optional, Callable, Tuple

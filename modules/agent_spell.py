@@ -1,5 +1,5 @@
-# File: ~/.config/local-ai/modules/agent_spell.py
-"""Offline/Online Spellchecker Module for Local-AI Agent"""
+#!/usr/bin/env python3
+"""Offline/Online Spellchecker Module - LanguageTool API & phonetic edit-distance."""
 
 import os, sys, re, json, shutil, difflib, urllib.parse as urlparse, urllib.request as urlreq
 from typing import Set, Dict, Tuple, List, Callable, Any, Optional

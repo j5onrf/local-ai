@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-# File: ~/.config/local-ai/modules/agent_skills.py
-# Description: Unified library & executable for static, dynamic, and on-demand skills
+"""Unified library & executable for static, dynamic, and on-demand skills"""
 
 import os, sys, re, subprocess, json
 from typing import List, Dict, Any, Optional, Set

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-# model-select.py - Fully Dynamic TUI Model Selector driven by OpenRouter Rankings
-# Path: ~/.config/local-ai/modules/model-select.py
+"""Fully Dynamic TUI Model Selector driven by OpenRouter Rankings"""
 
 import asyncio, json, os, re, select, shutil, subprocess, sys, termios, tty, atexit
 import urllib.request as urlreq

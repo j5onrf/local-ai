@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""
-Local-AI Agent Core Module 
-Handles SSE streaming, tool gates, AST/JSON verification, shared state, and Rich rendering.
-"""
+"""Local-AI Agent Core Module - Handles SSE streaming, tool gates, and Rich rendering."""
 
 import os, sys, json, ast, re, shutil, subprocess, difflib, urllib.parse, urllib.request as urlreq
 from typing import List, Dict, Any, Optional, Tuple
@@ -394,7 +391,8 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
     is_local = "localhost" in url or "127.0.0.1" in url or body.get("model") == "local-model"
 
     if is_agent and messages and messages[0]["role"] == "system" and "### EDIT MODE" not in messages[0]["content"]:
-        messages[0]["content"] += f"\n\n### EDIT MODE:\nYou are an active coding agent at {workspace}.\n\n### WORKING TOOLS:\nCapabilities: read_file, write_file, list_dir, run_command. Root: {workspace}."
+        tools_header = f"### EDIT MODE:\nYou are an active coding agent at {workspace}.\n\n### WORKING TOOLS:\nCapabilities: read_file, write_file, list_dir, run_command. Root: {workspace}.\n\n"
+        messages[0]["content"] = tools_header + messages[0]["content"]
 
     resolved_model, streamer = None, None
 

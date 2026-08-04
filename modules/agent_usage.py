@@ -1,5 +1,5 @@
-# File: ~/.config/local-ai/modules/agent_usage.py
-"""Local-AI Agent Token Usage & Spend Ledger Manager"""
+#!/usr/bin/env python3
+"""Token Usage & Spend Ledger Manager - Token & pricing logging."""
 
 import os, json, time
 from typing import Optional

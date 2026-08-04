@@ -1,4 +1,4 @@
-# ~/.config/local-ai/modules/speed_test.py
+#!/usr/bin/env python3
 """Precise token generation & TPS speed test statistics tracker"""
 
 import sys, time

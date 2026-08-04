@@ -1,4 +1,4 @@
-# File: ~/.config/local-ai/modules/agent_tui_async.py
+#!/usr/bin/env python3
 """Asynchronous uvloop background services for Local-AI Agent TUI"""
 
 import asyncio, json, os

@@ -1,5 +1,5 @@
-# File: ~/.config/local-ai/modules/agent_context.py
-"""Local-AI Agent Context Search & Indexing Engine"""
+#!/usr/bin/env python3
+"""Context Search & Indexing Engine - Jaccard intent matching."""
 
 import os, re, sys
 from typing import List, Set, Dict, Any, Optional, Tuple
