@@ -14,7 +14,8 @@ High-speed local developer agent, episodic memory, SQLite checkpoints, and codeb
 ╰─────────────────────────────────────── Ctrl+C to exit ─╯
  Startup context: 845 tokens
 ╭─ ⚙ ────────────────────────────────────────────────────
-The user has sent a notification that workspace is initialized and they're standing by for instructions. According to the system prompt, we should reply only with: "Workspace 
+The user has sent a notification that workspace is initialized and they're standing by for instructions.
+According to the system prompt, we should reply only with: "Workspace 
 loaded. Awaiting instructions." No additional commentary. So I will respond accordingly.
 ╰────────────────────────────────────────────────────────
 Agent:
