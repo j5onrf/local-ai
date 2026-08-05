@@ -1,34 +1,27 @@
 #!/usr/bin/env bash
-# ai-commit - Automate Git Commits with AI Context
+# ai-commit - Automate Git Commits with AI Context (Sub-Second Fast Edition)
 
 set -euo pipefail
 
-# Gracefully handle Ctrl+C (SIGINT)
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
     trap 'echo -e "\n\n👋 Commit aborted."; return 130 2>/dev/null || exit 130' INT
 else
     trap 'echo -e "\n\n👋 Commit aborted."; exit 130' INT
 fi
 
-# 1. Ensure we are inside a Git repository
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     echo "❌ Error: Not inside a git repository." >&2
     exit 1
 fi
 
-# 2. Check for staged changes; exit early if nothing is staged
 stats=$(git diff --cached --name-status | head -n 8 || true)
 if [[ -z "$stats" ]]; then
     echo "⚠️  No staged changes found. Run 'git add' on your files first." >&2
     exit 0
 fi
 
-# Define paths
-_AI_SCRIPT_PATH="$HOME/.config/local-ai/ai-agent.py"
 _AI_PYTHON_BIN=$(command -v python3 2>/dev/null || type -p python3 2>/dev/null || echo "python3")
 
-# 3. Extract modified/added lines with ZERO surrounding context (-U0)
-# Single-pass awk filters out lock/image files, comments, and blank lines
 changes=$(git diff --cached -U0 -- \
     ':(exclude)*lock*' ':(exclude)*.svg' ':(exclude)*.png' ':(exclude)*.jpg' ':(exclude)*.gif' \
     | awk '
@@ -38,29 +31,64 @@ changes=$(git diff --cached -U0 -- \
         if (val != "" && val !~ /^(#|\/\/|\/\*|\*)/) {
             print $0
             count++
-            if (count >= 15) { exit }  # Exit early to minimize token usage
+            if (count >= 10) { exit }
         }
     }' || true)
 
-# 4. Strict prompt with 1-shot example for local models
-PROMPT="Summarize these staged git changes as a commit title.
-
-Rules:
-- STRICT LENGTH: Between 3 and 7 words long.
-- Start with an action verb (Add, Fix, Refactor, Update).
-- Output ONLY the title text. No quotes, no semicolons, no period at the end.
-
-Example: Update model reference and fix token streamer logic
-
-Files:
+PROMPT="Files:
 $stats
 
 Diff:
 $changes"
 
-# 5. Query Python AI Gateway with active terminal spinner
 tmp_out=$(mktemp)
-"$_AI_PYTHON_BIN" "$_AI_SCRIPT_PATH" --talk "$PROMPT" > "$tmp_out" 2>/dev/null &
+
+"$_AI_PYTHON_BIN" - "$PROMPT" > "$tmp_out" 2>/dev/null << 'EOF' &
+import sys, json, os, urllib.request as urlreq
+
+prompt = sys.argv[1]
+payload = {
+    "messages": [
+        {"role": "system", "content": "Generate a git commit title. STRICT LENGTH: 3 to 6 words. Start with an action verb (Add, Fix, Refactor, Update). Output ONLY the title text. No quotes, no period, no thinking."},
+        {"role": "user", "content": prompt}
+    ],
+    "max_tokens": 20,
+    "temperature": 0.1,
+    "chat_template_kwargs": {"enable_thinking": False},
+    "stream": False
+}
+
+env_path = os.path.expanduser("~/.config/local-ai/.env")
+if os.path.exists(env_path):
+    try:
+        with open(env_path, "r", encoding="utf-8") as f:
+            for l in f:
+                if (s := l.strip()) and not s.startswith("#") and "=" in s:
+                    k, v = s.replace("export ", "", 1).split("=", 1)
+                    os.environ[k.strip()] = v.split(" #")[0].strip().strip('"').strip("'")
+    except Exception: pass
+
+url, headers = "http://localhost:8080/v1/chat/completions", {"Content-Type": "application/json"}
+if gkey := os.environ.get("GEMINI_API_KEY"):
+    url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+    headers["Authorization"] = f"Bearer {gkey}"
+    payload["model"] = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
+elif okey := os.environ.get("OPENROUTER_API_KEY"):
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    headers["Authorization"] = f"Bearer {okey}"
+    headers["HTTP-Referer"] = "https://github.com/j5onrf/local-ai"
+    payload["model"] = os.environ.get("OPENROUTER_MODEL", "openrouter/free")
+
+try:
+    req = urlreq.Request(url, data=json.dumps(payload).encode(), headers=headers, method="POST")
+    with urlreq.urlopen(req, timeout=3) as resp:
+        data = json.loads(resp.read().decode())
+        text = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        print(text.strip().splitlines()[0] if text else "Update staged files")
+except Exception:
+    print("Update staged files")
+EOF
+
 pid=$!
 
 spin='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
@@ -68,7 +96,7 @@ i=0
 while kill -0 "$pid" 2>/dev/null; do
     i=$(( (i + 1) % 10 ))
     printf "\r\033[1;32m%s\033[0m \033[36mGenerating commit message...\033[0m " "${spin:$i:1}" >&2
-    sleep 0.08
+    sleep 0.05
 done
 wait "$pid" 2>/dev/null || true
 printf "\r\033[2K" >&2
@@ -76,34 +104,28 @@ printf "\r\033[2K" >&2
 raw_message=$(cat "$tmp_out" 2>/dev/null || echo "")
 rm -f "$tmp_out"
 
-# 6. Safe string cleaning (Replaces xargs to handle single quotes/apostrophes cleanly)
 message=$(echo "$raw_message" | sed -E \
-    -e 's/<\/?think>//g' \
+    -e 's/<\/?think>.*//g' \
     -e 's/^[Cc]ommit [Mm]essage:?\s*//' \
     -e 's/^[`"'\''\s]+//' \
     -e 's/[`"'\''\s\.]+$//' \
     -e 's/^[[:space:]]+//; s/[[:space:]]+$//' \
     | grep -v '^$' | head -n 1)
 
-# Fallback if LLM output was empty or failed
 if [[ -z "$message" ]]; then
     message="Update staged files"
 else
-    # Capitalize the first letter
     first_char=$(echo "${message:0:1}" | tr '[:lower:]' '[:upper:]')
     message="${first_char}${message:1}"
 fi
 
 echo -e "\nAI-Commit (Edit inline with arrows/backspace, then press Enter):"
 
-# Pre-fill the terminal prompt for direct user editing
 read -e -i "$message" -p "Commit message: " user_message
 
-# Abort if the user completely cleared out the message
 if [[ -z "$user_message" ]]; then
     echo "❌ Error: Commit message cannot be empty. Aborting." >&2
     exit 1
 fi
 
-# Execute git commit
 git commit -m "$user_message"
