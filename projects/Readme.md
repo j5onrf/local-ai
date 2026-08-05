@@ -6,26 +6,21 @@ High-speed local developer agent, episodic memory, SQLite checkpoints, and codeb
 ~ ❯ sess
 [01/03] ❯ [session test] ai init ~/session-test --init
 :: ↵ run  Esc: 
-[ok] Mapping complete! [session-test index-map updated]
 ╭─  >_ Local-AI Agent [sub-agent #1]  ───────────────────╮
-│     model:  Herm3.6-35B-A3B.gguf                       │
+│     model:  LFM2.5-8B-A1B.gguf                         │
 │ directory:  ~/.config/local-ai/projects/session-test   │
 │     skill:  hermes/pro                                 │
-│  database:  active (0 facts, 2 turns)                  │
+│  database:  active (0 facts, 25 turns)                 │
 ╰─────────────────────────────────────── Ctrl+C to exit ─╯
- Startup context: 813 tokens
-
+ Startup context: 845 tokens
 ╭─ ⚙ ────────────────────────────────────────────────────
-The user has provided a notification that the workspace is initialized and I should stand by for
-instructions. According to the Execution Protocol, I should acknowledge this in
-1 brief sentence and wait for instructions. I should not make any tool calls during startup.
-I will keep it simple and direct.
+The user has sent a notification that workspace is initialized and they're standing by for instructions. According to the system prompt, we should reply only with: "Workspace 
+loaded. Awaiting instructions." No additional commentary. So I will respond accordingly.
 ╰────────────────────────────────────────────────────────
 Agent:
-Workspace initialized and ready. Please provide your instructions.
- [ think: 86 | ans: 21 | 107 tokens | 4.3s @ 27.0 t/s ]
- [ 991 in | 107 out | ctx: 13.4% ]
-❯ 
+Workspace loaded. Awaiting instructions.                                     
+ [ think: 75 | ans: 14 | 89 tokens | 1.4s @ 61.8 t/s ]
+ [ 1027 in | 89 out | ctx: 13.6% ]
 ```
 
 ---

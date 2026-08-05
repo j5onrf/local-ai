@@ -1,5 +1,1 @@
-{
-    "name": "test",
-    "value": 42,
-    "status": "ok"
-}
+{"name": "test", "value": 42, "status": "ok"}

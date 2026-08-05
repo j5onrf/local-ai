@@ -2,7 +2,7 @@
     <img alt="Local-AI Agent" src="logo.png" width="800" />
 </div>
 
-<h1 align="center">Local-AI Agent <kbd>v0.9.8.3-beta</kbd></h1>
+<h1 align="center">Local-AI Agent <kbd>v0.9.8.4-beta</kbd></h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
@@ -18,7 +18,8 @@
 
 ## Overview & Execution Modes
 
-Lightweight Python orchestration (rich + requests + sqlite-vec) controlling a C++ backend (llama-server). Built with zero context-stuffing for extreme efficiency on quantized local engines (`Qwen-3.5-2B+`, `Qwen3.6-35B-A3B+`) and frontier cloud provider cascades.
+Lightweight Python orchestration (rich + requests + sqlite-vec) controlling a C++ backend (llama-server).
+Built with zero context-stuffing for extreme efficiency on quantized local engines (`Qwen-3.5-2B+`, `LFM2.5-8B-A1B+`, `Qwen3.6-35B-A3B+`) and cloud provider cascades.
 
 - **Direct Shell Jaccard (`<shortcut>`):** Sub-millisecond keyword routing to local shell scripts via [`ai-context.md`](ai-context.md).
 - **Single-Turn Query (`ai <query>`):** Instant response piped straight back to your active shell prompt.

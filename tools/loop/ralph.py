@@ -31,8 +31,10 @@ def run_loop(task: str, max_turns: int = 10) -> None:
         sys.stderr.write(f"\033[1;33m[loop turn {turn}/{max_turns}]\033[0m\n")
         ans = core.stream_response(history, prefix="Agent:", show_stats=True, is_agent=True)
         if not ans: break
-        if "TASK COMPLETE" in ans:
+        ans_upper = ans.upper()
+        if any(k in ans_upper for k in ("TASK COMPLETE", "TASK COMPLETED", "ALL TASKS COMPLETED", "TASK FINISHED", "ALL TASKS HAVE BEEN COMPLETED")):
             sys.stderr.write("\033[1;32m[ok] Task complete!\033[0m\n")
+            break!\033[0m\n")
             break
 
 if __name__ == "__main__":

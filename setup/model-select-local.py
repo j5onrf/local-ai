@@ -23,6 +23,11 @@ LOCAL_MODELS = [
         "script": "q2b.sh"
     },
     {
+        "name": "LFM2.5-8B-A1B-APEX-I-Compact",
+        "file": "LFM2.5-8B-A1B.gguf",
+        "script": "lfm2.sh"
+    },
+    {
         "name": "Hermes3.6-35B-A3B-Uncensored-Genesis-V6-APEX",
         "file": "Herm3.6-35B-A3B.gguf",
         "script": "q35b.sh"
