@@ -23,3 +23,4 @@ def calculate_acceleration(v_start, v_end, time):
     if time == 0:
         raise ValueError("Time cannot be zero")
     return (v_end - v_start) / time
+def calculate_acceleration(v1, v2, t): return (v2 - v1) / t
