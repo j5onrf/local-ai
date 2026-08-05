@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.9.8.4]
+# Local-Ai Agent [j5onrf] [v0.9.8.5]
 
 import json, os, re, sqlite3, subprocess, sys, threading, time, urllib.request as urlreq
 from typing import List, Optional, Tuple, Dict, Any
@@ -142,6 +142,7 @@ def run_interactive_chat(args: List[str]) -> None:
 
     os.environ["AI_RENDER_MARKDOWN"] = "1" if st.get("render_markdown", True) else "0"
     os.environ["AI_REASONIX_ACTIVE"] = "1" if st.get("reasonix_active", True) else "0"
+    os.environ["AI_SHOW_THINKING"] = "1" if st.get("show_thinking", True) else "0"
     if is_yolo or st.get("yolo_mode", False): os.environ["AI_CONFIRM_GATES"] = "0"
 
     if is_agent: sync_md_to_sqlite(safe_name, workspace_path)

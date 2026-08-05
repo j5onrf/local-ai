@@ -526,7 +526,7 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
         configs = [c for c in agent_cloud.get_active_configs(messages) if _is_local_server_alive(c[0])]
         enable_think = thinking_budget > 0
         budget_val = thinking_budget if enable_think else 0
-        think_kwargs = {"thinking_budget_tokens": budget_val, "reasoning_budget": budget_val, "chat_template_kwargs": {"enable_thinking": True}} if enable_think else {}
+        think_kwargs = {"thinking_budget_tokens": budget_val, "reasoning_budget": budget_val, "chat_template_kwargs": {"enable_thinking": enable_think}}
 
         local_body = {"messages": messages, "stream": True, **think_kwargs}
         seen_urls, unique_configs = set(), []
