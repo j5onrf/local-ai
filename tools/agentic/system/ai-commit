@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ai-commit - Automate Git Commits with AI Context (Sub-Second Fast Edition)
+# ai-commit - Automate Git Commits with AI Context
 
 set -euo pipefail
 
@@ -20,6 +20,7 @@ if [[ -z "$stats" ]]; then
     exit 0
 fi
 
+_AI_SCRIPT_PATH="$HOME/.config/local-ai/ai-agent.py"
 _AI_PYTHON_BIN=$(command -v python3 2>/dev/null || type -p python3 2>/dev/null || echo "python3")
 
 changes=$(git diff --cached -U0 -- \
@@ -31,66 +32,28 @@ changes=$(git diff --cached -U0 -- \
         if (val != "" && val !~ /^(#|\/\/|\/\*|\*)/) {
             print $0
             count++
-            if (count >= 10) { exit }
+            if (count >= 15) { exit }
         }
     }' || true)
 
-PROMPT="Files:
+PROMPT="Summarize ONLY the primary staged change as a short commit title.
+
+Rules:
+- STRICT LENGTH: Between 3 and 6 words long.
+- Summarize ONLY the main primary change. Do NOT list multiple items or use semicolons.
+- Start with an action verb (Add, Fix, Refactor, Update).
+- Output ONLY the title text. No quotes, no period at the end.
+
+Example: Update model reference and fix token streamer
+
+Files:
 $stats
 
 Diff:
 $changes"
 
 tmp_out=$(mktemp)
-
-"$_AI_PYTHON_BIN" - "$PROMPT" > "$tmp_out" 2>/dev/null << 'EOF' &
-import sys, json, os, urllib.request as urlreq
-
-prompt = sys.argv[1]
-payload = {
-    "model": "local-model",
-    "messages": [
-        {"role": "system", "content": "Generate a git commit title. STRICT LENGTH: 3 to 6 words. Start with an action verb (Add, Fix, Refactor, Update). Output ONLY the title text. No quotes, no period, no thinking."},
-        {"role": "user", "content": prompt}
-    ],
-    "max_tokens": 20,
-    "temperature": 0.1,
-    "stream": False
-}
-
-env_path = os.path.expanduser("~/.config/local-ai/.env")
-if os.path.exists(env_path):
-    try:
-        with open(env_path, "r", encoding="utf-8") as f:
-            for l in f:
-                if (s := l.strip()) and not s.startswith("#") and "=" in s:
-                    k, v = s.replace("export ", "", 1).split("=", 1)
-                    os.environ[k.strip()] = v.split(" #")[0].strip().strip('"').strip("'")
-    except Exception: pass
-
-url, headers = "http://localhost:8080/v1/chat/completions", {"Content-Type": "application/json"}
-if gkey := os.environ.get("GEMINI_API_KEY"):
-    url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
-    headers["Authorization"] = f"Bearer {gkey}"
-    payload["model"] = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
-elif okey := os.environ.get("OPENROUTER_API_KEY"):
-    url = "https://openrouter.ai/api/v1/chat/completions"
-    headers["Authorization"] = f"Bearer {okey}"
-    headers["HTTP-Referer"] = "https://github.com/j5onrf/local-ai"
-    payload["model"] = os.environ.get("OPENROUTER_MODEL", "openrouter/free")
-else:
-    payload["chat_template_kwargs"] = {"enable_thinking": False}
-
-try:
-    req = urlreq.Request(url, data=json.dumps(payload).encode(), headers=headers, method="POST")
-    with urlreq.urlopen(req, timeout=5) as resp:
-        data = json.loads(resp.read().decode())
-        text = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-        print(text.strip().splitlines()[0] if text else "Update staged files")
-except Exception:
-    print("Update staged files")
-EOF
-
+"$_AI_PYTHON_BIN" "$_AI_SCRIPT_PATH" --talk "$PROMPT" > "$tmp_out" 2>/dev/null &
 pid=$!
 
 spin='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
@@ -98,7 +61,7 @@ i=0
 while kill -0 "$pid" 2>/dev/null; do
     i=$(( (i + 1) % 10 ))
     printf "\r\033[1;32m%s\033[0m \033[36mGenerating commit message...\033[0m " "${spin:$i:1}" >&2
-    sleep 0.05
+    sleep 0.08
 done
 wait "$pid" 2>/dev/null || true
 printf "\r\033[2K" >&2
@@ -109,10 +72,18 @@ rm -f "$tmp_out"
 message=$(echo "$raw_message" | sed -E \
     -e 's/<\/?think>.*//g' \
     -e 's/^[Cc]ommit [Mm]essage:?\s*//' \
+    -e 's/;.*//' \
     -e 's/^[`"'\''\s]+//' \
     -e 's/[`"'\''\s\.]+$//' \
     -e 's/^[[:space:]]+//; s/[[:space:]]+$//' \
     | grep -v '^$' | head -n 1)
+
+if [[ -n "$message" ]]; then
+    word_count=$(echo "$message" | wc -w)
+    if [[ $word_count -gt 7 ]]; then
+        message=$(echo "$message" | cut -d' ' -f1-7)
+    fi
+fi
 
 if [[ -z "$message" ]]; then
     message="Update staged files"
