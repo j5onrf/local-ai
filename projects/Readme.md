@@ -23,7 +23,6 @@ I will keep it simple and direct.
 ╰────────────────────────────────────────────────────────
 Agent:
 Workspace initialized and ready. Please provide your instructions.
-
  [ think: 86 | ans: 21 | 107 tokens | 4.3s @ 27.0 t/s ]
  [ 991 in | 107 out | ctx: 13.4% ]
 ❯ 
@@ -182,15 +181,15 @@ Running `ai init <path>` sets default workspace agent profile:
 
 ## 4. Checkpoints & Save States
 
-- **Save:** `❯ -save <tag>` — Snapshot session state to SQLite.
-- **Load:** `❯ -load` — Restore or clone session checkpoint across workspaces.
+- **Save:** `-save <tag>` — Snapshot session state to SQLite.
+- **Load:** `-load` — Restore or clone session checkpoint across workspaces.
 
 ---
 
 ## 5. Local RAG & Context Injection
 
-- **Whole File:** `❯ view file <path>` — Append entire file into context.
-- **Targeted Symbol:** `❯ read function <symbol>` — Inject specific AST function/class block (saves 95% tokens).
+- **Whole File:** `view file <path>` — Append entire file into context.
+- **Targeted Symbol:** `read function <symbol>` — Inject specific AST function/class block (saves 95% tokens).
 
 ---
 
@@ -238,6 +237,7 @@ Self-directed iterative `while` execution loop that runs tools and verifies resu
 - **Inline Command:** `/task "Fix syntax errors in broken_syntax.py and run pytest"`
 - **Spec File Mode:** Create `TASK.md` in project root and run `/task`
 - **Auto-Completion:** Loops automatically until the model outputs `TASK COMPLETE` or turn limit finishes.
+- **Customize:** Ralph loop script `.py` file in `~/.config/local-ai/tools/loop/ralph.py`.
 
 ---
 
