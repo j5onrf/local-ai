@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# chat - Unified Agentic Brainstorm, Thinking & Follow-up Engine
+"""chat - Unified Agentic Brainstorm, Thinking & Follow-up Engine"""
 
 import sys, os, json, re, urllib.request as urlreq
 

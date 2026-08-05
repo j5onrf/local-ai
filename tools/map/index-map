@@ -334,8 +334,11 @@ def compile_flat_shorthand(skeleton):
 
 
 def run_indexing(target_dir, force=False, is_agent=False, no_db=False):
+    if os.path.basename(target_dir) == ".agent":
+        target_dir = os.path.dirname(target_dir)
     proj_name = os.path.basename(target_dir)
-    if not is_agent:
+
+    if not is_agent and not os.path.isdir(os.path.join(target_dir, ".agent")):
         out_dir = target_dir
         no_db = True
     else:

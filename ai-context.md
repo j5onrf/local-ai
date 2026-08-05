@@ -120,7 +120,7 @@ ai init ~/.config/local-ai/projects/session-test-3 --init ---> session test 3, p
 ~/.config/local-ai/tools/subsec/notes/notes.sh ---> add notes, open notes
 
 # --- Local Window Manager (Hyprland) State Controllers ---
-~/.config/local-ai/tools/subsec/hyprstate/work ---> hyprstate work, work
+~/.config/local-ai/tools/subsec/hyprstate/work ---> hyprstate work, hyprwork
 ~/.config/local-ai/tools/subsec/hyprstate/gitcom ---> hyprstate gitcom, gitcom
 ~/.config/local-ai/tools/subsec/hyprstate/gitcom2 ---> hyprstate gitcom 2, gitcom
 ```

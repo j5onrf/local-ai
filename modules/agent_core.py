@@ -34,13 +34,14 @@ BINARY_EXTENSIONS = {
 EDIT_TOOLS: List[Dict[str, Any]] = [
     {"type": "function", "function": {"name": n, "description": d, "parameters": {"type": "object", "properties": p, "required": r}}}
     for n, d, p, r in [
+        ("read_symbol", "Extract the precise source code snippet for a function or class symbol from the index graph without reading the whole file.", {"symbol": {"type": "string"}}, ["symbol"]),
         ("read_file", "Read a text file from the project.", {"path": {"type": "string"}}, ["path"]),
         ("write_file", "Create or overwrite a file in the project.", {"path": {"type": "string"}, "content": {"type": "string"}}, ["path", "content"]),
         ("list_dir", "List directory contents in the project.", {"path": {"type": "string"}}, []),
         ("run_command", "Run a shell command in project root.", {"command": {"type": "string"}}, ["command"]),
     ]
 ]
-TOOL_VERBS = {"read_file": "checking", "write_file": "updating", "list_dir": "checking", "run_command": "executing"}
+TOOL_VERBS = {"read_symbol": "tracing symbol", "read_file": "checking", "write_file": "updating", "list_dir": "checking", "run_command": "executing"}
 
 DEFAULTS = {
     "spell_active": True, "show_stats": True, "memory_active": True, "box_style": 2, "yolo_mode": False,
@@ -304,6 +305,16 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
     denial = "[denied] User declined tool execution."
     raw_path = args.get("path", "")
     full = _safe_path(workspace, raw_path) if raw_path else ""
+
+    if name == "read_symbol":
+        sym = args.get("symbol", "").strip()
+        try:
+            mod_path = os.path.join(CFG_DIR, "tools", "map", "index-map")
+            res = subprocess.run([sys.executable, mod_path, "snippet", sym], cwd=workspace, capture_output=True, text=True, timeout=10)
+            out = (res.stdout or res.stderr or "").strip()
+            _print_tool_output(spinner, out)
+            return out or f"[error] Symbol '{sym}' not found in index graph."
+        except Exception as e: return f"[error] failed to extract symbol: {e}"
 
     if name == "read_file":
         if os.path.splitext(full)[1].lower() in BINARY_EXTENSIONS or os.path.isdir(full):

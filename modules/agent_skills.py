@@ -73,7 +73,7 @@ def get_system_context(query: str, context_file: str, stop_words: Set[str], skil
         if any(q_tokens[i:i + len(ent_tokens)] == ent_tokens for i in range(len(q_tokens) - len(ent_tokens) + 1)):
             tool = entry.get("cmd", "").replace("[TOOL]", "").strip()
             if any(k in tool for k in ("read -p", "less", "fzf")): return run_interactive_tool(tool)
-            if " --s" not in tool and not ui.confirm_tool(tool): return "__ABORT_TURN__"
+            if " --s" not in tool and not ui.confirm_tool(tool): continue
             if "system" in tool.lower(): ensure_mysys_exists(skills_dir, cfg_dir)
 
             tool = tool.replace(" --s", "").strip()
