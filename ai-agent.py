@@ -129,8 +129,12 @@ def run_interactive_chat(args: List[str]) -> None:
         skill_content = skills.load_skill_content(clean_name, SKILLS_DIR, CFG_DIR)
         active_system_prompt = skill_content or BASE_PROMPT_CHAT
 
-    chat_history = [{"role": "system", "content": active_system_prompt}]
     pending_query = " ".join(args[1:]) if len(args) > 1 else None
+    if pending_query and ("CODEBASE INDEX MAP" in pending_query or "index-map" in pending_query):
+        active_system_prompt += f"\n\n### CODESPACE MAP:\n{pending_query}"
+        pending_query = None
+
+    chat_history = [{"role": "system", "content": active_system_prompt}]
 
     st = core.get_state()
     spell_active, show_stats, memory_active = st["spell_active"], st["show_stats"], st["memory_active"]
@@ -283,11 +287,6 @@ def run_interactive_chat(args: List[str]) -> None:
                     ui._console.print("[green][sys] Session and memory cleared.[/green]\n")
                     continue
 
-                if parts and parts[0] in ("/task", "/loop", "/ralph"):
-                    task_text = query.split(maxsplit=1)[1] if len(parts) > 1 else ""
-                    subprocess.run([sys.executable, f"{CFG_DIR}/tools/loop/ralph.py", task_text])
-                    continue
-
                 if query == "/tok":
                     subprocess.run([sys.executable, f"{CFG_DIR}/modules/ai-agent-sessions", "show-tok"], input=json.dumps(chat_history), text=True)
                     continue
@@ -342,18 +341,14 @@ def run_interactive_chat(args: List[str]) -> None:
                     except Exception as e: sys.stderr.write(f"\033[1;31m[Warning] chat failed: {e}\033[0m\n")
                 continue
 
-            if is_init_map:
-                prompt = f"### SYSTEM INSTRUCTIONS (CRITICAL OVERRIDE):\n{active_system_prompt}\n\n### CODESPACE MAP:\n{query}"
-            else:
-                sys_ctx = "" if query.startswith("init") and "--init" in query else skills.get_system_context(query, CONTEXT_FILE, STOP_WORDS, SKILLS_DIR, CFG_DIR)
-                if sys_ctx == "__ABORT_TURN__": sys_ctx = ""
-                comb_ctx = "\n\n".join(filter(None, [tpm_context, past_memory, sys_ctx]))
-                prompt = f"<context>\n{comb_ctx}\n</context>\n\nUser Question: {query}" if comb_ctx else f"User Question: {query}"
+            sys_ctx = "" if query.startswith("init") and "--init" in query else skills.get_system_context(query, CONTEXT_FILE, STOP_WORDS, SKILLS_DIR, CFG_DIR)
+            if sys_ctx == "__ABORT_TURN__": sys_ctx = ""
+            comb_ctx = "\n\n".join(filter(None, [tpm_context, past_memory, sys_ctx]))
+            prompt = f"<context>\n{comb_ctx}\n</context>\n\nUser Question: {query}" if comb_ctx else f"User Question: {query}"
 
             chat_history.append({"role": "user", "content": prompt})
-            if not is_init_map:
-                try: readline.add_history(query)
-                except Exception: pass
+            try: readline.add_history(query)
+            except Exception: pass
 
             if ans := core.stream_response(chat_history, prefix="Agent:" if is_agent else "AI:", show_stats=show_stats, thinking_budget=reasoning_budget if reasoning_active else 0, is_agent=is_agent):
                 chat_history.append({"role": "assistant", "content": ans})
@@ -363,19 +358,18 @@ def run_interactive_chat(args: List[str]) -> None:
                         try: readline.set_startup_hook(lambda: readline.insert_text(match.group(1).strip()))
                         except Exception: pass
 
-                    if memory_active and not is_init_map:
+                    if memory_active:
                         threading.Thread(target=core.background_tpm_update, args=(query, ans, safe_name, workspace_path), daemon=True).start()
 
-                    if not is_init_map:
-                        agent_dir = os.path.join(workspace_path, ".agent")
-                        os.makedirs(agent_dir, exist_ok=True)
-                        hist_file = os.path.join(agent_dir, "history.md")
-                        try:
-                            mode = "a" if os.path.exists(hist_file) else "w"
-                            with open(hist_file, mode, encoding="utf-8") as hf:
-                                if mode == "w": hf.write(f"# Workspace History: {os.path.basename(workspace_path)}\n\n")
-                                hf.write(f"## [{time.strftime('%Y-%m-%d %H:%M')}] User:\n{query}\n\n### Agent:\n{ans}\n\n---\n\n")
-                        except OSError: pass
+                    agent_dir = os.path.join(workspace_path, ".agent")
+                    os.makedirs(agent_dir, exist_ok=True)
+                    hist_file = os.path.join(agent_dir, "history.md")
+                    try:
+                        mode = "a" if os.path.exists(hist_file) else "w"
+                        with open(hist_file, mode, encoding="utf-8") as hf:
+                            if mode == "w": hf.write(f"# Workspace History: {os.path.basename(workspace_path)}\n\n")
+                            hf.write(f"## [{time.strftime('%Y-%m-%d %H:%M')}] User:\n{query}\n\n### Agent:\n{ans}\n\n---\n\n")
+                    except OSError: pass
     except KeyboardInterrupt:
         clean_exit(safe_name if is_agent else None)
 

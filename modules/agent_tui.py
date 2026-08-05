@@ -514,7 +514,7 @@ class LocalAITUI(App):
         display_cmd = f"/task \"{goal}\""
         await self.chat_area.mount(Message("User", display_cmd))
 
-        assistant_msg = Message("Agent", f"[task] Executing Ralph loop: [italic]{goal}[/italic]...")
+        assistant_msg = Message("Agent", f"[task] Executing loop: [italic]{goal}[/italic]...")
         await self.chat_area.mount(assistant_msg)
         self.chat_area.scroll_end(animate=False)
 
@@ -580,13 +580,13 @@ class LocalAITUI(App):
             t = Table(show_header=False, box=None, padding=(0, 1), expand=False)
             cmd_style = "bold #89b4fa" if self.theme == "code" else ("bold #0265dc" if not self.is_dark_theme else "bold cyan")
             t.add_column("Command", style=cmd_style); t.add_column("Description", style="default")
-            for c, d in [("/help, /h", "Help"), ("Tab", "Plan/Build"), ("/task [goal]", "Ralph Task Loop"), ("/copy", "Copy page"), ("/m", "Memory"), ("/clear", "Chat & history"), ("/tok", "Tokens"), ("/sync", "Sync index"), ("/s <q>", "Skill"), ("/t <toks>", "Reasoning"), ("/f, /tk, /b, /a", "Presets"), ("file <path>", "Load File"), ("exit, quit, q", "Exit")]:
+            for c, d in [("/help, /h", "Help"), ("Tab", "Plan/Build"), ("/task [goal]", "Task Loop"), ("/copy", "Copy page"), ("/m", "Memory"), ("/clear", "Chat & history"), ("/tok", "Tokens"), ("/sync", "Sync index"), ("/s <q>", "Skill"), ("/t <toks>", "Reasoning"), ("/f, /tk, /b, /a", "Presets"), ("file <path>", "Load File"), ("exit, quit, q", "Exit")]:
                 t.add_row(c, d)
             border_col = "bright_white" if self.theme in ("mono", "grok") else self.border_accent
             await self.chat_area.mount(Static(Group(Text(""), Panel(t, title="Commands", title_align="left", border_style=border_col, box=ROUNDED, expand=False))))
             self.chat_area.scroll_end(animate=False)
 
-        elif root in ("/task", "/loop", "/ralph"): await self.handle_task_command(args)
+        elif root in ("/task", "/loop"): await self.handle_task_command(args)
         elif root in ("exit", "quit", "q"): self.exit()
         elif root in ("/copy", "/copy-all", "/copyall"): self.action_copy_entire_chat()
         elif root == "/m":
