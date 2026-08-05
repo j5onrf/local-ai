@@ -7,28 +7,25 @@ High-speed local developer agent, episodic memory, SQLite checkpoints, and codeb
 [01/03] ❯ [session test] ai init ~/session-test --init
 :: ↵ run  Esc: 
 [ok] Mapping complete! [session-test index-map updated]
-
-[ai init] Select default Agent Profile for workspace session-test:
-
-Enable Autonomous YOLO mode? [y/N]: y
-✓ Profile set to: Pi Lite (Autonomous YOLO)
-
 ╭─  >_ Local-AI Agent [sub-agent #1]  ───────────────────╮
-│     model:  Qwen3.5-2B.gguf                            │
+│     model:  Herm3.6-35B-A3B.gguf                       │
 │ directory:  ~/.config/local-ai/projects/session-test   │
-│     skill:  hermes/lite                                │
-│  database:  active (0 facts, 1 turns)                  │
+│     skill:  hermes/pro                                 │
+│  database:  active (0 facts, 2 turns)                  │
 ╰─────────────────────────────────────── Ctrl+C to exit ─╯
- Startup context: 309 tokens
+ Startup context: 813 tokens
 
+╭─ ⚙ ────────────────────────────────────────────────────
+The user has provided a notification that the workspace is initialized and I should stand by for
+instructions. According to the Execution Protocol, I should acknowledge this in
+1 brief sentence and wait for instructions. I should not make any tool calls during startup.
+I will keep it simple and direct.
+╰────────────────────────────────────────────────────────
 Agent:
-I am Hermes Lite, an action-oriented workspace agent ready to assist you with your project at 
-~/.config/local-ai/projects/session-test. I have noted the codebase structure and active modules 
-including simulation.py, average.py, broken_syntax.py, and others listed in the map. Please provide 
-a task or instruction for me to execute. 
- [ think: 179 | ans: 20 | 199 tokens | 3.5s @ 46.5 t/s ]
- [ 1154 in | 199 out | ctx: 16.5% ]
+Workspace initialized and ready. Please provide your instructions.
 
+ [ think: 86 | ans: 21 | 107 tokens | 4.3s @ 27.0 t/s ]
+ [ 991 in | 107 out | ctx: 13.4% ]
 ❯ 
 ```
 

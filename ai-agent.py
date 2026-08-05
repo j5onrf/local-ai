@@ -132,7 +132,7 @@ def run_interactive_chat(args: List[str]) -> None:
     pending_query = " ".join(args[1:]) if len(args) > 1 else None
     if pending_query and ("CODEBASE INDEX MAP" in pending_query or "index-map" in pending_query):
         active_system_prompt += f"\n\n### CODESPACE MAP:\n{pending_query}"
-        pending_query = "init"
+        pending_query = "[NOTIFICATION]: Workspace initialized. Standby for user instructions."
 
     chat_history = [{"role": "system", "content": active_system_prompt}]
 
