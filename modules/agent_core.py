@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local-AI Agent Core Module - Handles SSE streaming, tool gates, and Rich rendering."""
+"""Core Module - Handles streaming SSE, tool gates, and Rich rendering"""
 
 import os, sys, json, ast, re, shutil, subprocess, difflib, urllib.parse, urllib.request as urlreq
 from typing import List, Dict, Any, Optional, Tuple
@@ -24,12 +24,21 @@ ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*m')
 RE_THINKING_TITLE = re.compile(r'^\s*Thinking Process:\s*', re.IGNORECASE)
 RE_FINAL_ANSWER = re.compile(r'^\s*Final Answer:\s*', re.IGNORECASE)
 RE_MULTIPLE_NEWLINES = re.compile(r'\n{2,}')
+RE_JSON_OBJECT = re.compile(r"\{[\s\S]*\}")
+RE_ABS_PATH = re.compile(r'/(?:[a-zA-Z0-9_\-\.]+/)*[a-zA-Z0-9_\-\.]*')
 
-BINARY_EXTENSIONS = {
-    ".db", ".sqlite", ".sqlite3", ".bin", ".pyc", ".so", ".dll", 
-    ".exe", ".png", ".jpg", ".jpeg", ".gif", ".zip", ".tar", ".gz", 
-    ".7z", ".pdf", ".docx", ".xlsx", ".db-wal", ".db-shm"
-}
+_MD_COMPACT_RULES = (
+    (re.compile(r'\*\*(.*?)\*\*'), r'[bold]\1[/bold]'),
+    (re.compile(r'\*(.*?)\*'), r'[italic]\1[/italic]'),
+    (re.compile(r'`(.*?)`'), r'[cyan]\1[/cyan]'),
+    (re.compile(r'^(\s*\d+\.)'), r'[bold green]\1[/bold green]'),
+    (re.compile(r'^(\s*)[-•*]'), r'\1[bold cyan]•[/bold cyan]'),
+)
+
+BINARY_EXTENSIONS = {".db", ".sqlite", ".sqlite3", ".bin", ".pyc", ".so", ".dll", ".exe", ".png", ".jpg", ".jpeg", ".gif", ".zip", ".tar", ".gz", ".7z", ".pdf", ".docx", ".xlsx", ".db-wal", ".db-shm"}
+
+_TPM_SKIP_QUERIES = frozenset({"hello", "hi", "hey", "exit", "quit", "q", "/clear", "/reset", "/stats", "/tok", "/m", "/r"})
+_TPM_BLACKLIST = frozenset({"files", "file", "file_list", "project", "code", "description", "features", "dependencies", "project_type", "directory", "folder", "workspace"})
 
 EDIT_TOOLS: List[Dict[str, Any]] = [
     {"type": "function", "function": {"name": n, "description": d, "parameters": {"type": "object", "properties": p, "required": r}}}
@@ -61,19 +70,22 @@ def get_state(key: str = "", default: Any = None) -> Any:
     if os.path.exists(STATE_FILE):
         try:
             with open(STATE_FILE, "r", encoding="utf-8") as f: st.update(json.load(f))
-        except Exception: pass
+        except (OSError, json.JSONDecodeError): pass
     return st.get(key, default) if key else st
 
 
 def save_state(key: str, value: Any) -> None:
     st = get_state()
     st[key] = value
+    tmp = f"{STATE_FILE}.tmp"
     try:
         os.makedirs(CFG_DIR, exist_ok=True)
-        tmp = f"{STATE_FILE}.tmp"
         with open(tmp, "w", encoding="utf-8") as f: json.dump(st, f, indent=2)
         os.replace(tmp, STATE_FILE)
-    except Exception: pass
+    except OSError:
+        try:
+            if os.path.exists(tmp): os.remove(tmp)
+        except OSError: pass
 
 
 def workspace_safe_name(workspace_path: str, home_dir: str = "") -> str:
@@ -88,13 +100,13 @@ def run_mod(module_name: str, *args: str, input_data: Optional[str] = None) -> s
             try:
                 res = subprocess.run([sys.executable, path, *args], input=input_data, capture_output=True, text=True, timeout=15)
                 return res.stdout.strip() if res.returncode == 0 else ""
-            except Exception: return ""
+            except (OSError, subprocess.SubprocessError, TimeoutError): return ""
     return ""
 
 
 def background_tpm_update(user_msg: str, assistant_msg: str, workspace: str, workspace_path: str) -> None:
     clean = user_msg.lower().strip()
-    if len(clean) < 8 or clean in {"hello", "hi", "hey", "exit", "quit", "q", "/clear", "/reset", "/stats", "/tok", "/m", "/r"}: return
+    if len(clean) < 8 or clean in _TPM_SKIP_QUERIES: return
     try:
         ex_facts = run_mod("ai-agent-memories", "tpm-get", workspace)
         sys_p = "You are an async memory compiler. Extract ONLY persistent facts, roles, or preferences about the HUMAN USER (e.g. {\"user_role\": \"python dev\", \"preferred_style\": \"concise\"}). Do NOT extract project code descriptions, file listings, or software features. Output ONLY a flat JSON object or {} if no user facts exist."
@@ -102,15 +114,14 @@ def background_tpm_update(user_msg: str, assistant_msg: str, workspace: str, wor
         req = urlreq.Request("http://localhost:8080/v1/chat/completions", data=json.dumps(payload).encode(), headers={"Content-Type": "application/json"}, method="POST")
         with urlreq.urlopen(req, timeout=10) as resp:
             out = json.loads(resp.read().decode())["choices"][0]["message"].get("content", "")
-        blacklist = {"files", "file", "file_list", "project", "code", "description", "features", "dependencies", "project_type", "directory", "folder", "workspace"}
-        if m := re.search(r"\{[\s\S]*\}", out):
-            if parsed := {str(k).strip().lower(): str(v).strip() for k, v in json.loads(m.group(0)).items() if k and v is not None and str(k).strip().lower() not in blacklist}:
+        if m := RE_JSON_OBJECT.search(out):
+            if parsed := {str(k).strip().lower(): str(v).strip() for k, v in json.loads(m.group(0)).items() if k and v is not None and str(k).strip().lower() not in _TPM_BLACKLIST}:
                 run_mod("ai-agent-memories", "tpm-reconcile", workspace, input_data=json.dumps(parsed))
                 if res := run_mod("ai-agent-memories", "tpm-get", workspace):
                     md_dir = os.path.join(workspace_path, ".agent")
                     os.makedirs(md_dir, exist_ok=True)
                     with open(os.path.join(md_dir, "tpm.md"), "w", encoding="utf-8") as f: f.write(res + "\n")
-    except Exception: pass
+    except (OSError, urlreq.URLError, TimeoutError, json.JSONDecodeError): pass
 
 
 def _clear_lines(stream_err: bool, text: str, extra_top: int = 0) -> None:
@@ -126,15 +137,10 @@ def _clear_lines(stream_err: bool, text: str, extra_top: int = 0) -> None:
 
 def _render_compact_markdown_think(raw_think: str) -> None:
     lines = [l.rstrip() for l in RE_THINKING_TITLE.sub('', raw_think).strip().splitlines() if l.strip()]
-    rules = [
-        (r'\*\*(.*?)\*\*', r'[bold]\1[/bold]'), (r'\*(.*?)\*', r'[italic]\1[/italic]'),
-        (r'`(.*?)`', r'[cyan]\1[/cyan]'), (r'^(\s*\d+\.)', r'[bold green]\1[/bold green]'),
-        (r'^(\s*)[-•*]', r'\1[bold cyan]•[/bold cyan]')
-    ]
     for line in lines:
-        for pattern, replacement in rules: line = re.sub(pattern, replacement, line)
+        for pattern, replacement in _MD_COMPACT_RULES: line = pattern.sub(replacement, line)
         try: _console_err.print(Text.from_markup(line))
-        except Exception: _console_err.print(line)
+        except (ValueError, KeyError, TypeError): _console_err.print(line)
 
 
 class RichStreamer:
@@ -145,7 +151,7 @@ class RichStreamer:
     def _stop_spinner(self) -> None:
         if self.spinner:
             try: self.spinner.stop()
-            except Exception: pass
+            except (AttributeError, RuntimeError, OSError): pass
 
     def start(self) -> None:
         if self.active:
@@ -239,7 +245,7 @@ class RichStreamer:
                     _clear_lines(False, self.acc_ans)
                     if p_clean: _console.print(Text(p_clean, style="bold green" if "Agent" in p_clean else "bold cyan"))
                     _console.print(Markdown(clean_ans, code_theme="ansi_dark"))
-                except Exception:
+                except (OSError, ValueError, TypeError):
                     try: sys.stdout.write("\n"); sys.stdout.flush()
                     except (IOError, OSError): pass
             else:
@@ -255,11 +261,15 @@ def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float, show_sta
         if show_stats and sys.stdout.isatty():
             ctx_max = int(os.environ.get("AI_MAX_TOKENS", 8192)) if ctx_used is not None else None
             print(usage_log.turn_line(in_tok, out_tok, cost, ctx_used, ctx_max))
-    except Exception: pass
+    except (OSError, TypeError, ValueError, KeyError): pass
 
 
 def _process_stream_chunk(content: str, reasoning: str, in_think_block: bool) -> Tuple[str, bool, bool]:
-    if content and "Final Answer:" in content: content = RE_FINAL_ANSWER.sub('', content).lstrip()
+    if content:
+        if "Final Answer:" in content: content = RE_FINAL_ANSWER.sub('', content).lstrip()
+        if "<|tool_call" in content:
+            content = re.sub(r'<\|tool_call_start\|>.*?<\|tool_call_end\|>', '', content, flags=re.DOTALL)
+            content = content.replace("<|tool_call_start|>", "").replace("<|tool_call_end|>", "")
     if reasoning: return (f"<think>{reasoning}", True, True) if not in_think_block else (reasoning, True, True)
     if content:
         if in_think_block and "</think>" not in content: return f"</think>{content}", False, False
@@ -314,7 +324,7 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
             out = (res.stdout or res.stderr or "").strip()
             _print_tool_output(spinner, out)
             return out or f"[error] Symbol '{sym}' not found in index graph."
-        except Exception as e: return f"[error] failed to extract symbol: {e}"
+        except (OSError, subprocess.SubprocessError, TimeoutError) as e: return f"[error] failed to extract symbol: {e}"
 
     if name == "read_file":
         if os.path.splitext(full)[1].lower() in BINARY_EXTENSIONS or os.path.isdir(full):
@@ -325,7 +335,7 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
             with open(full, "r", encoding="utf-8", errors="replace") as f: content = f.read(60000)
             _print_tool_output(spinner, content)
             return content
-        except Exception as e: return f"[error] failed to read file: {e}"
+        except OSError as e: return f"[error] failed to read file: {e}"
 
     if name == "write_file":
         content = args.get("content", "")
@@ -334,14 +344,14 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
             except SyntaxError as e: return f"[error] Write blocked. Python syntax error: {e} on line {getattr(e, 'lineno', '?')}."
         if full.endswith(".json"):
             try: json.loads(content)
-            except Exception as e: return f"[error] Write blocked. JSON syntax error: {e}."
+            except (json.JSONDecodeError, TypeError, ValueError) as e: return f"[error] Write blocked. JSON syntax error: {e}."
 
         if sys.stdout.isatty() and os.path.exists(full):
             try:
                 with open(full, "r", encoding="utf-8", errors="replace") as f: old = f.read()
                 if diff := "\n".join(difflib.unified_diff(old.splitlines(), content.splitlines(), fromfile=f"a/{raw_path}", tofile=f"b/{raw_path}", lineterm="")):
                     _console_err.print("\n", Syntax(diff, "diff", theme="ansi_dark", background_color="default"), "\n")
-            except Exception: pass
+            except OSError: pass
 
         if _is_outside_workspace(workspace, full) and not _confirm_gate(f"OUT-OF-BOUNDS WRITE: {full}", spinner): return denial
         if gates_active and not _confirm_gate(f"{'overwrite' if os.path.exists(full) else 'create'} {raw_path}", spinner): return denial
@@ -350,7 +360,7 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
             os.makedirs(os.path.dirname(full) or workspace, exist_ok=True)
             with open(full, "w", encoding="utf-8") as f: f.write(content)
             return f"wrote {len(content)} chars to {raw_path}"
-        except Exception as e: return f"[error] failed to write file: {e}"
+        except OSError as e: return f"[error] failed to write file: {e}"
 
     if name == "list_dir":
         if _is_outside_workspace(workspace, full) and not _confirm_gate(f"OUT-OF-BOUNDS LIST DIR: {full}", spinner): return denial
@@ -362,13 +372,15 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
                 if spinner: spinner.stop()
                 _console_err.print(f"[dim]{res_str}[/dim]")
             return res_str
-        except Exception as e: return f"[error] failed to list files: {e}"
+        except OSError as e: return f"[error] failed to list files: {e}"
 
     if name == "run_command":
         cmd = args.get("command", "")
         expanded = cmd.replace("~", os.path.expanduser("~"))
-        abs_paths = re.findall(r'/(?:[a-zA-Z0-9_\-\.]+/)*[a-zA-Z0-9_\-\.]*', expanded)
-        if (".." in cmd or any(_is_outside_workspace(workspace, p) for p in abs_paths if os.path.exists(p) or os.path.isabs(p))) and not _confirm_gate(f"OUT-OF-BOUNDS EXECUTION: $ {cmd}", spinner):
+        abs_paths = RE_ABS_PATH.findall(expanded)
+        sys_prefixes = ("/bin/", "/usr/bin/", "/usr/local/bin/", "/sbin/", "/usr/sbin/")
+        target_paths = [p for p in abs_paths if not any(p.startswith(sp) for sp in sys_prefixes)]
+        if (".." in cmd or any(_is_outside_workspace(workspace, p) for p in target_paths if os.path.exists(p) or os.path.isabs(p))) and not _confirm_gate(f"OUT-OF-BOUNDS EXECUTION: $ {cmd}", spinner):
             return denial
 
         if gates_active:
@@ -380,15 +392,15 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
         shell = os.environ.get("SHELL") or "/bin/sh"
         if spinner:
             try: spinner.update("Working...")
-            except Exception: pass
+            except (AttributeError, RuntimeError): pass
             spinner.start("Working...")
         try:
             res = subprocess.run([shell, "-lc", cmd], cwd=workspace, capture_output=True, text=True, timeout=300)
             out = ((res.stdout or "") + (("\n" + res.stderr) if res.stderr else "")).strip()[:10000]
             _print_tool_output(spinner, out)
             return f"(exit {res.returncode})\n{out}" if res.returncode != 0 else (out or "(exit 0, no output)")
-        except subprocess.TimeoutExpired:
-            return "[error] command timed out after 300 seconds"
+        except subprocess.TimeoutExpired: return "[error] command timed out after 300 seconds"
+        except OSError as e: return f"[error] failed to run command: {e}"
         finally:
             if spinner: spinner.stop()
 
@@ -400,10 +412,10 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
     is_local = "localhost" in url or "127.0.0.1" in url or body.get("model") == "local-model"
 
     if is_agent and messages and messages[0]["role"] == "system" and "### EDIT MODE" not in messages[0]["content"]:
-        tools_header = f"### EDIT MODE:\nYou are an active coding agent at {workspace}.\n\n### WORKING TOOLS:\nCapabilities: read_file, write_file, list_dir, run_command. Root: {workspace}.\n\n"
+        tools_header = f"### EDIT MODE:\nYou are an active coding agent at {workspace}.\n\n### WORKING TOOLS:\nCapabilities: read_symbol, read_file, write_file, list_dir, run_command. Root: {workspace}.\n\n"
         messages[0]["content"] = tools_header + messages[0]["content"]
 
-    resolved_model, streamer = None, None
+    resolved_model, streamer, res = None, None, None
 
     for _round in range(10):
         body_tools = {**body, "messages": messages, "stream": True}
@@ -411,7 +423,7 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
 
         if spinner:
             try: spinner.update("Working...")
-            except Exception: pass
+            except (AttributeError, RuntimeError): pass
             spinner.start("Working...")
         try:
             res = _session.post(url, json=body_tools, headers={"Content-Type": "application/json", **headers}, timeout=timeout, stream=True)
@@ -436,7 +448,7 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
 
                     if spinner:
                         try: spinner.update("Thinking..." if reasoning else "Working...")
-                        except Exception: pass
+                        except (AttributeError, RuntimeError): pass
 
                     chunk_to_stream, is_thinking, in_think_block = _process_stream_chunk(content, reasoning, in_think_block)
 
@@ -457,7 +469,7 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
                         tc_entry = tool_calls_map.setdefault(idx, {"id": tc.get("id", ""), "type": "function", "function": {"name": tc.get("function", {}).get("name", ""), "arguments": ""}})
                         if tc.get("function", {}).get("name"): tc_entry["function"]["name"] = tc["function"]["name"]
                         tc_entry["function"]["arguments"] += tc.get("function", {}).get("arguments", "")
-                except Exception: pass
+                except (json.JSONDecodeError, KeyError, IndexError, TypeError, ValueError): pass
 
             if streamer: streamer.stop()
             elif not first_chunk: print("")
@@ -477,18 +489,21 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
 
             for tc in calls:
                 fname = tc.get("function", {}).get("name", "")
-                args = json.loads(tc.get("function", {}).get("arguments") or "{}") if tc.get("function", {}).get("arguments") else {}
-                brief = str(args.get("path") or args.get("command") or "")[:100]
+                try:
+                    raw_args = tc.get("function", {}).get("arguments") or ""
+                    args = json.loads(raw_args) if raw_args else {}
+                except (json.JSONDecodeError, TypeError, ValueError): args = {}
+                brief = str(args.get("symbol") or args.get("path") or args.get("command") or "")[:100]
                 verb = TOOL_VERBS.get(fname, "working")
 
                 _console_err.print(f"[dim]∗ {verb} • [cyan]{fname}[/cyan] [italic]{brief}[/italic][/dim]")
                 if spinner:
                     try: spinner.update("Working...")
-                    except Exception: pass
+                    except (AttributeError, RuntimeError): pass
                     spinner.start("Working...")
 
                 try: result = _run_edit_tool(fname, args, workspace, spinner)
-                except Exception as e: result = f"[tool error] {e}"
+                except (OSError, subprocess.SubprocessError, ValueError, TypeError, KeyError) as e: result = f"[tool error] {e}"
                 finally:
                     if spinner: spinner.stop()
 
@@ -498,15 +513,18 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
         except KeyboardInterrupt:
             if streamer:
                 try: streamer.stop(interrupted=True)
-                except Exception: pass
+                except (AttributeError, RuntimeError, OSError): pass
             if spinner:
                 try: spinner.stop()
-                except Exception: pass
+                except (AttributeError, RuntimeError, OSError): pass
             raise
-        except Exception as e:
+        except (requests.RequestException, OSError, TimeoutError, ValueError, TypeError) as e:
             sys.stderr.write(f"\033[90m[sys] API response error: {e}\033[0m\n")
             return None
         finally:
+            if res is not None:
+                try: res.close()
+                except Exception: pass
             if spinner: spinner.stop()
 
     return None
@@ -517,7 +535,7 @@ def _is_local_server_alive(url: str, timeout: float = 0.3) -> bool:
     try:
         req = urlreq.Request("http://localhost:8080/v1/models", method="GET")
         with urlreq.urlopen(req, timeout=timeout) as r: return r.status == 200
-    except Exception: return False
+    except (OSError, urlreq.URLError, TimeoutError): return False
 
 
 def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_dir: str = "", show_stats: bool = False, thinking_budget: int = 0, is_agent: bool = False) -> Optional[str]:
@@ -548,7 +566,7 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
     except KeyboardInterrupt:
         if spinner:
             try: spinner.stop()
-            except Exception: pass
+            except (AttributeError, RuntimeError, OSError): pass
         sys.stderr.write("\r\x1b[2K\033[90m[sys] Interrupted.\033[0m\033[0m\n")
         return None
 
@@ -576,7 +594,7 @@ def prune_history(history: List[Dict[str, Any]], max_tokens: Optional[int] = Non
     if len(history) <= 1: return history
     limit = max_tokens or int(os.environ.get("AI_MAX_TOKENS", 8192))
     history = [m for m in history if m.get("role") != "tool"]
-    
+
     sys_prompt = history[0]
     curr = get_accurate_token_count(sys_prompt.get("content", ""))
     selected = []

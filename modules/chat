@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""chat - Unified Agentic Brainstorm, Thinking & Follow-up Engine"""
+"""Unified Agentic Brainstorm, Thinking & Follow-up Recommendation Engine."""
 
 import sys, os, json, re, urllib.request as urlreq
 
@@ -9,7 +9,7 @@ except ImportError: ui = None
 CFG_DIR = os.path.expanduser("~/.config/local-ai")
 
 try: history = json.loads(sys.stdin.read())
-except Exception:
+except (OSError, json.JSONDecodeError):
     sys.stderr.write("Error: No valid chat history passed to brainstorm tool.\n"); sys.exit(1)
 
 q_str = " ".join(sys.argv[1:]).lower().strip()
@@ -32,7 +32,7 @@ if cmd == "a":
             try:
                 txt = open(p, "r", encoding="utf-8").read().strip()
                 prompts[hdr] = txt.split("Template:")[0].strip() if "Template:" in txt else txt
-            except Exception: pass
+            except (OSError, UnicodeDecodeError): pass
     prompt = (
         "Analyze the preceding conversation history and output exactly three sections: Follow-up, Thinking, and Brainstorm.\n"
         "You must output ONLY these three sections, with no conversational introductions or explanations.\n\n"
@@ -50,7 +50,7 @@ else:
     meta_path = os.path.join(CFG_DIR, "skills", "meta", file_name)
     if os.path.exists(meta_path):
         try: prompt = open(meta_path, "r", encoding="utf-8").read().strip().replace("exactly 3", f"exactly {count}")
-        except Exception: prompt = ""
+        except (OSError, UnicodeDecodeError): prompt = ""
     else: prompt = ""
     if not prompt:
         prompt = f"Analyze history and output exactly {count} next-step {fallback_term} items.\nEach option must be strictly 6 to 10 words long.\nNo conversational filler. Output exactly this format:\n\n{output_hdr}\n[Option 1]\n[Option 2]\n[Option 3]"
@@ -59,7 +59,7 @@ history.append({"role": "user", "content": f"[COMMAND: Do not continue the conve
 
 configs = []
 if gkey := os.environ.get("GEMINI_API_KEY"):
-    configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Authorization": f"Bearer {gkey}"}, os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite"), {}, 10))
+    configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Authorization": f"Bearer {gkey}"}, os.environ.get("CLOUD_MODEL", "gemini-3.5-flash-lite"), {}, 10))
 if okey := os.environ.get("OPENROUTER_API_KEY"):
     configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"}, os.environ.get("OPENROUTER_MODEL", "openrouter/free"), {}, 10))
 configs.append(("http://localhost:8080/v1/chat/completions", {}, None, {"chat_template_kwargs": {"enable_thinking": False}}, 180))
@@ -85,7 +85,7 @@ for url, headers, model, extra, timeout in configs:
                                 if not (content := content.lstrip()): continue
                                 first = False
                             chunks.append(content)
-                    except Exception: pass
+                    except (json.JSONDecodeError, KeyError, IndexError, TypeError, ValueError): pass
             if spinner: spinner.stop(); spinner = None
 
             if lines := [l.strip() for l in "".join(chunks).strip().splitlines() if l.strip()]:
@@ -112,7 +112,7 @@ for url, headers, model, extra, timeout in configs:
     except KeyboardInterrupt:
         if spinner: spinner.stop()
         sys.stderr.write("\n\033[90m[sys] Interrupted.\033[0m\n"); sys.exit(130)
-    except Exception:
+    except (urlreq.URLError, TimeoutError, OSError):
         if spinner: spinner.stop()
 
 sys.stderr.write("Error: All brainstorm service fallbacks are offline.\n")

@@ -12,7 +12,7 @@ ORIGINAL_TERMIOS = termios.tcgetattr(sys.stdin.fileno()) if sys.stdin.isatty() e
 def cleanup_terminal():
     if ORIGINAL_TERMIOS:
         try: termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, ORIGINAL_TERMIOS)
-        except Exception: pass
+        except (termios.error, OSError): pass
     sys.stdout.write("\033[?25h\033[0m"); sys.stdout.flush()
 
 
@@ -52,58 +52,68 @@ def classify_openrouter_models(raw_data):
 def load_env_vars():
     v = {"GEMINI_API_KEY": "", "OPENROUTER_API_KEY": "", "CLAUDE_API_KEY": "", "OPENAI_API_KEY": "", "XAI_API_KEY": "", "GEMINI_MODEL": "gemini-3.5-flash-lite", "OPENROUTER_MODEL": "openrouter/free", "CLAUDE_MODEL": "claude-fable-5", "OPENAI_MODEL": "gpt-5.5", "XAI_MODEL": "grok-4.5"}
     if os.path.exists(ENV_PATH):
-        with open(ENV_PATH, "r", encoding="utf-8") as f:
-            for l in f:
-                if m := re.match(r"^#?\s*([A-Z0-9_]+)\s*=\s*\"?([^\"]*)\"?$", l.strip()):
-                    k, val = m.groups()
-                    if not l.strip().startswith("#") or not v.get(k): v[k] = val
+        try:
+            with open(ENV_PATH, "r", encoding="utf-8") as f:
+                for l in f:
+                    if m := re.match(r"^#?\s*([A-Z0-9_]+)\s*=\s*\"?([^\"]*)\"?$", l.strip()):
+                        k, val = m.groups()
+                        if not l.strip().startswith("#") or not v.get(k): v[k] = val
+        except (OSError, UnicodeDecodeError): pass
     return v
 
 
 def update_env(key, value):
     if not os.path.exists(ENV_PATH): return
-    with open(ENV_PATH, "r", encoding="utf-8") as f: lines = f.readlines()
-    updated = False
-    for i, l in enumerate(lines):
-        if re.match(rf"^#?\s*{key}\s*=\s*.*$", l):
-            lines[i] = f"{'#' if l.strip().startswith('#') else ''}{key}=\"{value}\"\n"; updated = True; break
-    if not updated: lines.append(f'{key}="{value}"\n')
-    with open(ENV_PATH, "w", encoding="utf-8") as f: f.writelines(lines)
+    try:
+        with open(ENV_PATH, "r", encoding="utf-8") as f: lines = f.readlines()
+        updated = False
+        for i, l in enumerate(lines):
+            if re.match(rf"^#?\s*{key}\s*=\s*.*$", l):
+                lines[i] = f"{'#' if l.strip().startswith('#') else ''}{key}=\"{value}\"\n"; updated = True; break
+        if not updated: lines.append(f'{key}="{value}"\n')
+        with open(ENV_PATH, "w", encoding="utf-8") as f: f.writelines(lines)
+    except OSError: pass
 
 
 def is_key_active(key):
     if os.path.exists(ENV_PATH):
-        with open(ENV_PATH, "r", encoding="utf-8") as f:
-            for l in f:
-                if (s := l.strip()).startswith(f"{key}=") or s.startswith(f"{key} ="):
-                    val = s.split("=", 1)[1].strip().strip('"').strip("'")
-                    if val and not any(k in val.lower() for k in ("your", "here")): return True
+        try:
+            with open(ENV_PATH, "r", encoding="utf-8") as f:
+                for l in f:
+                    if (s := l.strip()).startswith(f"{key}=") or s.startswith(f"{key} ="):
+                        val = s.split("=", 1)[1].strip().strip('"').strip("'")
+                        if val and not any(k in val.lower() for k in ("your", "here")): return True
+        except (OSError, UnicodeDecodeError): pass
     return False
 
 
 def set_key_commented_state(key, should_comment):
     if not os.path.exists(ENV_PATH): return
-    with open(ENV_PATH, "r", encoding="utf-8") as f: lines = f.readlines()
-    updated = False
-    for i, l in enumerate(lines):
-        if f"{key}=" in l.strip() or f"{key} =" in l.strip():
-            lines[i] = f"{'#' if should_comment else ''}{l.strip().lstrip('#').strip()}\n"; updated = True; break
-    if not updated and not should_comment:
-        pm = {"GEMINI_API_KEY": "AIzaSyYourFullGeminiApiKeyHere", "OPENROUTER_API_KEY": "sk-or-v1-YourFullOpenRouterKeyHere", "CLAUDE_API_KEY": "your-claude-api-key-here", "OPENAI_API_KEY": "your-openai-api-key-here", "XAI_API_KEY": "xai-your-grok-api-key-here"}
-        lines.append(f'{key}="{pm.get(key, "your-key-here")}"\n')
-    with open(ENV_PATH, "w", encoding="utf-8") as f: f.writelines(lines)
+    try:
+        with open(ENV_PATH, "r", encoding="utf-8") as f: lines = f.readlines()
+        updated = False
+        for i, l in enumerate(lines):
+            if f"{key}=" in l.strip() or f"{key} =" in l.strip():
+                lines[i] = f"{'#' if should_comment else ''}{l.strip().lstrip('#').strip()}\n"; updated = True; break
+        if not updated and not should_comment:
+            pm = {"GEMINI_API_KEY": "AIzaSyYourFullGeminiApiKeyHere", "OPENROUTER_API_KEY": "sk-or-v1-YourFullOpenRouterKeyHere", "CLAUDE_API_KEY": "your-claude-api-key-here", "OPENAI_API_KEY": "your-openai-api-key-here", "XAI_API_KEY": "xai-your-grok-api-key-here"}
+            lines.append(f'{key}="{pm.get(key, "your-key-here")}"\n')
+        with open(ENV_PATH, "w", encoding="utf-8") as f: f.writelines(lines)
+    except OSError: pass
 
 
 def toggle_env_api_keys():
     if not os.path.exists(ENV_PATH): return False
-    with open(ENV_PATH, "r", encoding="utf-8") as f: lines = f.readlines()
-    t_keys = {"GEMINI_API_KEY", "OPENROUTER_API_KEY", "CLAUDE_API_KEY", "OPENAI_API_KEY", "XAI_API_KEY"}
-    is_commented = any(l.strip().startswith("#") for l in lines if any(k in l for k in t_keys))
-    lines = [f"{'#' if not is_commented else ''}{l.strip().lstrip('#').strip()}\n" if any(k in l for k in t_keys) else l for l in lines]
-    with open(ENV_PATH, "w", encoding="utf-8") as f: f.writelines(lines)
-    if shutil.which("notify-send"):
-        subprocess.run(["notify-send", "AI Environment Toggle", f"Switched to {'Cloud Mode (APIs Enabled)' if is_commented else 'Local / Offline Mode (APIs Disabled)'}", "-t", "2000"])
-    return is_commented
+    try:
+        with open(ENV_PATH, "r", encoding="utf-8") as f: lines = f.readlines()
+        t_keys = {"GEMINI_API_KEY", "OPENROUTER_API_KEY", "CLAUDE_API_KEY", "OPENAI_API_KEY", "XAI_API_KEY"}
+        is_commented = any(l.strip().startswith("#") for l in lines if any(k in l for k in t_keys))
+        lines = [f"{'#' if not is_commented else ''}{l.strip().lstrip('#').strip()}\n" if any(k in l for k in t_keys) else l for l in lines]
+        with open(ENV_PATH, "w", encoding="utf-8") as f: f.writelines(lines)
+        if shutil.which("notify-send"):
+            subprocess.run(["notify-send", "AI Environment Toggle", f"Switched to {'Cloud Mode (APIs Enabled)' if is_commented else 'Local / Offline Mode (APIs Disabled)'}", "-t", "2000"], check=False)
+        return is_commented
+    except (OSError, subprocess.SubprocessError): return False
 
 
 def load_cached_lists():
@@ -112,7 +122,7 @@ def load_cached_lists():
             with open(CACHE_PATH, "r", encoding="utf-8") as f:
                 d = json.load(f)
                 return (d.get("free", OR_FREE_DEFAULTS), d.get("paid", OR_PAID_DEFAULTS), d.get("gemini", GEMINI_CURATED), d.get("claude", CLAUDE_CURATED), d.get("openai", OPENAI_CURATED), d.get("grok", GROK_CURATED))
-        except Exception: pass
+        except (OSError, json.JSONDecodeError): pass
     return OR_FREE_DEFAULTS, OR_PAID_DEFAULTS, GEMINI_CURATED, CLAUDE_CURATED, OPENAI_CURATED, GROK_CURATED
 
 
@@ -122,7 +132,10 @@ def save_cached_lists(free_l, paid_l, gemini_l, claude_l, openai_l, grok_l):
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump({"free": free_l, "paid": paid_l, "gemini": gemini_l, "claude": claude_l, "openai": openai_l, "grok": grok_l}, f, indent=2)
         os.replace(tmp, CACHE_PATH)
-    except Exception: pass
+    except OSError:
+        try:
+            if os.path.exists(tmp): os.remove(tmp)
+        except OSError: pass
 
 
 async def async_fetch_openrouter_models(api_key):
@@ -131,7 +144,7 @@ async def async_fetch_openrouter_models(api_key):
             req = urlreq.Request("https://openrouter.ai/api/v1/models?sort=top-weekly", headers={"Authorization": f"Bearer {api_key}"} if api_key else {})
             with urlreq.urlopen(req, timeout=8) as res:
                 return json.loads(res.read().decode("utf-8")).get("data", []) if res.status == 200 else None
-        except Exception: return None
+        except (urlreq.URLError, TimeoutError, json.JSONDecodeError, OSError): return None
     return await asyncio.to_thread(_fetch)
 
 
@@ -152,7 +165,10 @@ async def async_get_key():
             elif ch in ('\x7f', '\x08'): return 'backspace'
             elif ch.lower() == 'q': return 'q'
             return ch
-        finally: termios.tcsetattr(fd, termios.TCSADRAIN, old)
+        except (OSError, termios.error): return None
+        finally:
+            try: termios.tcsetattr(fd, termios.TCSADRAIN, old)
+            except (termios.error, OSError): pass
     return await asyncio.to_thread(_read)
 
 

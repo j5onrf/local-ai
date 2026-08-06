@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Production Local-AI Shell Hook v0.9.7.92
+# Production Local-AI Shell Hook v0.9.8.5
 
 [[ $- == *i* && -f "$HOME/.config/local-ai/ai-agent.py" ]] || return
 _AI_DIR="$HOME/.config/local-ai"

@@ -102,27 +102,9 @@ ai init ~/.config/local-ai/projects/session-test-3 --init ---> session test 3, p
 # --- Email TUI Monitor & Inbox Browser ---
 [TOOL] ~/.config/local-ai/tools/email/email-agent ---> email agent
 
-# --- Custom Basepage & BaseTracker RSS TUI Applications ---
-~/.config/local-ai/tools/subsec/basepage-tui/basepage.py ---> basepage
-~/.config/local-ai/tools/subsec/basepage-tui/basetracker.py ---> basetracker
-
-# --- Media & Volume Controllers (Pure Reactive Winamp-TUI) ---
-~/.config/local-ai/tools/subsec/media/media.py ---> tuiamp
-
-# --- Article & YouTube Text-Snippet Summarizers ---
-~/.config/local-ai/tools/subsec/ai-summary/llmsum.py ---> llmsum
-
-# --- Local Stopwatch TUI Utility ---
-~/.config/local-ai/tools/subsec/stopwatch/stopwatch.py ---> stopwatch py, stopwatch
-~/.config/local-ai/tools/subsec/stopwatch/stopwatch.sh ---> stopwatch sh, stopwatch
-
-# --- Shell Notes Utility ---
-~/.config/local-ai/tools/subsec/notes/notes.sh ---> add notes, open notes
-
 # --- Local Window Manager (Hyprland) State Controllers ---
 ~/.config/local-ai/tools/subsec/hyprstate/work ---> hyprstate work, hyprwork
 ~/.config/local-ai/tools/subsec/hyprstate/gitcom ---> hyprstate gitcom, gitcom
-~/.config/local-ai/tools/subsec/hyprstate/gitcom2 ---> hyprstate gitcom 2, gitcom
 ```
 
 ## 6. Graphical Integration & Workspace Launchers
@@ -133,8 +115,4 @@ ai init ~/.config/local-ai/projects/session-test-3 --init ---> session test 3, p
 
 # --- AI-Generated Git Commits ---
 ~/.config/local-ai/tools/agentic/system/ai-commit ---> ai-commit, gc, git commit
-
-# --- Native Webapp Wrappers & Browsers ---
-omarchy-launch-webapp https://music.youtube.com/ ---> youtube music, yt, youtube
-nohup uwsm app -- brave-origin --user-data-dir="~/.config/BraveSoftware/brave-spotify-bunker" --app=https://open.spotify.com/ >/dev/null 2>&1 & ---> spotify music, spotify, music
 ```

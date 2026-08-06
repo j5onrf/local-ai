@@ -19,13 +19,13 @@ DEV_TERMS: Set[str] = {
 def load_system_dictionary() -> Set[str]:
     """Loads system word dictionary with development and TUI command word exceptions."""
     embedded: Set[str] = {
-        "the", "be", "to", "of", "and", "a", "in", "that", "have", "i", "it", "for", "not", "on", "with", "he", "as", "you", 
-        "do", "at", "this", "but", "his", "by", "from", "they", "we", "say", "her", "she", "or", "an", "will", "my", "one", 
-        "all", "would", "there", "their", "what", "so", "up", "out", "if", "about", "who", "get", "which", "go", "me", "when", 
-        "make", "can", "like", "time", "no", "just", "him", "know", "take", "people", "into", "year", "your", "good", "some", 
-        "could", "them", "see", "other", "than", "then", "now", "look", "only", "come", "its", "over", "think", "also", "back", 
-        "after", "use", "two", "how", "our", "work", "first", "well", "way", "even", "new", "want", "because", "any", "these", 
-        "give", "day", "most", "us", "lazy", "quick", "brown", "fox", "jumps", "dog", "cat", "mat", "sit", "sits", "book", 
+        "the", "be", "to", "of", "and", "a", "in", "that", "have", "i", "it", "for", "not", "on", "with", "he", "as", "you",
+        "do", "at", "this", "but", "his", "by", "from", "they", "we", "say", "her", "she", "or", "an", "will", "my", "one",
+        "all", "would", "there", "their", "what", "so", "up", "out", "if", "about", "who", "get", "which", "go", "me", "when",
+        "make", "can", "like", "time", "no", "just", "him", "know", "take", "people", "into", "year", "your", "good", "some",
+        "could", "them", "see", "other", "than", "then", "now", "look", "only", "come", "its", "over", "think", "also", "back",
+        "after", "use", "two", "how", "our", "work", "first", "well", "way", "even", "new", "want", "because", "any", "these",
+        "give", "day", "most", "us", "lazy", "quick", "brown", "fox", "jumps", "dog", "cat", "mat", "sit", "sits", "book",
         "read", "reads", "spelling", "grammar", "here", "there", "where", "why", "when", "how", "who", "what", "which", "whose",
         "am", "is", "are", "was", "were", "been", "being", "have", "has", "had", "having", "do", "does", "did", "doing",
         "write", "writes", "written", "writing", "code", "coder", "coding", "program", "programming", "python", "script",
@@ -36,7 +36,7 @@ def load_system_dictionary() -> Set[str]:
             try:
                 with open(path, "r", encoding="utf-8") as f:
                     return {w.strip().lower() for w in f if w.strip().isalpha()} | embedded
-            except Exception: pass
+            except (OSError, UnicodeDecodeError): pass
     return embedded
 
 
@@ -123,7 +123,7 @@ def check_query_spelling(query: str, get_key_fn: Callable[[], str]) -> Tuple[str
                 resp_data = json.loads(r.read().decode('utf-8'))
                 used_grammar = True
                 break
-        except Exception: pass
+        except (OSError, urlreq.URLError, TimeoutError, json.JSONDecodeError): pass
 
     if resp_data and "matches" in resp_data and (matches := resp_data["matches"]):
         matches.sort(key=lambda m: m.get("offset", 0), reverse=True)

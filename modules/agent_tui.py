@@ -60,7 +60,7 @@ def copy_to_clipboard(text: str) -> bool:
     try:
         sys.stdout.write(f"\x1b]52;c;{base64.b64encode(text.encode('utf-8')).decode('utf-8')}\x07")
         sys.stdout.flush()
-    except Exception: pass
+    except (IOError, OSError): pass
     tools = [_CACHED_CLIPBOARD_TOOL] if _CACHED_CLIPBOARD_TOOL else [["wl-copy"], ["xclip", "-selection", "clipboard"], ["xsel", "--clipboard", "--input"], ["pbcopy"], ["clip.exe"]]
     for tool in filter(None, tools):
         try:
@@ -69,7 +69,7 @@ def copy_to_clipboard(text: str) -> bool:
             if p.returncode == 0:
                 _CACHED_CLIPBOARD_TOOL = tool
                 return True
-        except Exception: continue
+        except (OSError, subprocess.SubprocessError): continue
     return True
 
 
@@ -273,8 +273,9 @@ class LocalAITUI(App):
             if os.path.exists(cfg_file):
                 try:
                     with open(cfg_file, "r", encoding="utf-8") as f:
-                        inherited_skill = json.load(f).get("profile") or json.load(f).get("skill")
-                except Exception: pass
+                        data = json.load(f)
+                        inherited_skill = data.get("profile") or data.get("skill")
+                except (OSError, json.JSONDecodeError): pass
         if not inherited_skill or inherited_skill.lower() in ("default", "none", ""):
             inherited_skill = "default" if self.is_agent else "chat"
 
@@ -292,7 +293,7 @@ class LocalAITUI(App):
 
         cli_hist = os.environ.get("AI_SESSION_HISTORY")
         try: self.history: List[Dict[str, Any]] = json.loads(cli_hist) if cli_hist else []
-        except Exception: self.history = []
+        except (json.JSONDecodeError, TypeError, ValueError): self.history = []
 
         self.generation_cancelled, self.active_response, self.stats_turns = False, None, 0
         self.footer_hidden, self.sidebar_hidden, self.tips_card_hidden = core.get_state("footer_hidden", True), core.get_state("sidebar_hidden", False), core.get_state("tips_card_hidden", False)
@@ -302,7 +303,7 @@ class LocalAITUI(App):
         self.gate_auth_event.set()
         if self.active_response:
             try: self.active_response.close()
-            except Exception: pass
+            except (AttributeError, OSError): pass
 
     def notify(self, text: str, sys_prefix: bool = True, css_class: str = "sys-notice") -> None:
         self.chat_area.mount(Static(f"[dim white][sys] {text}[/dim white]" if sys_prefix else text, classes=css_class))
@@ -343,12 +344,12 @@ class LocalAITUI(App):
                 try:
                     row = cur.execute("SELECT COUNT(*) FROM turns WHERE workspace = ?", (self.safe_name,)).fetchone()
                     self.db_turns = row[0] if row else 0
-                except Exception: pass
+                except sqlite3.Error: pass
                 try:
                     trow = cur.execute("SELECT COUNT(*) FROM tpm_memories").fetchone()
                     self.tpm_count = trow[0] if trow else 0
-                except Exception: pass
-        except Exception: pass
+                except sqlite3.Error: pass
+        except sqlite3.Error: pass
 
     def ensure_system_context(self) -> None:
         if not any(m.get("role") == "system" for m in self.history):
@@ -364,7 +365,7 @@ class LocalAITUI(App):
                         if map_files := [f for f in os.listdir(self.workspace_path) if f.startswith("index-map-") and f.endswith(".txt")]:
                             with open(os.path.join(self.workspace_path, map_files[0]), "r", encoding="utf-8", errors="ignore") as mf:
                                 if cmap := mf.read().strip(): sys_p += f"\n\n### CODESPACE MAP:\n{cmap}\n"
-                except Exception: pass
+                except (OSError, UnicodeDecodeError): pass
             else:
                 sys_p = (s_content if "### Conversational Guidelines" in s_content else BASE_PROMPT_CHAT + f"\n\n### Active Skill/Role Instructions:\n{s_content}\n") if s_content else BASE_PROMPT_CHAT
 
@@ -382,7 +383,7 @@ class LocalAITUI(App):
             for k, a in [("Tab", "Plan / Build Mode"), ("Ctrl+B", "Toggle Sidebar Panel"), ("Ctrl+T", "Cycle Themes"), ("Ctrl+O", "Copy Latest Response"), ("▲ Show", "Toggle Bottom Shortcut Bar"), ("/help", "View All Commands")]:
                 t.add_row(k, a)
             self.query_one("#welcome-banner", Static).update(Panel(t, title=" ❖ Local-AI Agent ", title_align="left", border_style=self.border_accent, box=ROUNDED, expand=False))
-        except Exception: pass
+        except (KeyError, AttributeError): pass
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="layout"):
@@ -415,7 +416,7 @@ class LocalAITUI(App):
                     with Horizontal(id="card-tips-header"):
                         yield Static("Quick Tips", id="lbl-tips-title")
                         yield CloseCardButton("×", id="btn-close-tips")
-                    yield Static("Tab    : Mode\nCtrl+B : Sidebar\nCtrl+G : Compact\nCtrl+T : Themes\n/task  : Goal\n/help  : Commands", id="lbl-tips-body")
+                    yield Static("Tab: Switch Mode\nCtrl+B: Sidebar\nCtrl+G: Compact\nCtrl+T: Themes\nShift+Drag: Copy\n/task: Goal\n/help: Commands", id="lbl-tips-body")
 
         with Horizontal(id="footer-bar"): yield Footer(id="footer-keys")
 
@@ -423,16 +424,16 @@ class LocalAITUI(App):
         self.tips_card_hidden = True
         core.save_state("tips_card_hidden", True)
         try: self.query_one("#card-tips", Vertical).display = False
-        except Exception: pass
+        except (KeyError, AttributeError): pass
 
     def on_mount(self) -> None:
         if hasattr(self, "register_theme"):
             for t in (code_theme, mono_theme, dark_theme):
                 try: self.register_theme(t)
-                except Exception: pass
+                except (ValueError, TypeError, KeyError): pass
 
         try: self.theme = "mono" if core.get_state("tui_theme", "code") == "grok" else core.get_state("tui_theme", "code")
-        except Exception: pass
+        except (KeyError, ValueError, TypeError): pass
 
         self.chat_area = self.query_one("#chat-area", Vertical)
         if self.compact_mode == 2: self.chat_area.add_class("zero-spacing")
@@ -449,11 +450,11 @@ class LocalAITUI(App):
 
         if self.tips_card_hidden:
             try: self.query_one("#card-tips", Vertical).display = False
-            except Exception: pass
+            except (KeyError, AttributeError): pass
 
         if len(self.history) > 1:
             try: self.query_one("#welcome-banner").remove()
-            except Exception: pass
+            except (KeyError, AttributeError): pass
             for msg in self.history:
                 r, c = msg.get("role"), msg.get("content")
                 if r == "user" and c: self.chat_area.mount(Message("User", c))
@@ -501,19 +502,19 @@ class LocalAITUI(App):
                 with open(full_p, "r", encoding="utf-8", errors="ignore") as f: content = f.read(12000)
                 self.history.append({"role": "user", "content": f"[FILE LOADED: {file_path}]\n```\n{content}\n```"})
                 self.notify(f"Loaded file content into active context: [bold]{file_path}[/bold]")
-            except Exception as e: self.notify(f"[bold red]Error reading file: {e}[/bold red]", sys_prefix=False)
+            except (OSError, UnicodeDecodeError) as e: self.notify(f"[bold red]Error reading file: {e}[/bold red]", sys_prefix=False)
         else: self.notify(f"[bold red]File not found: {file_path}[/bold red]", sys_prefix=False)
 
     async def handle_task_command(self, task_args: str = "") -> None:
         try: self.query_one("#welcome-banner").remove()
-        except Exception: pass
+        except (KeyError, AttributeError): pass
 
         self.ensure_system_context()
         goal = task_args.strip('"\': ') or "TASK.md spec"
         display_cmd = f"/task \"{goal}\""
         await self.chat_area.mount(Message("User", display_cmd))
 
-        assistant_msg = Message("Agent", f"[task] Executing loop: [italic]{goal}[/italic]...")
+        assistant_msg = Message("Agent", f"[task] Executing Goal loop: [italic]{goal}[/italic]...")
         await self.chat_area.mount(assistant_msg)
         self.chat_area.scroll_end(animate=False)
 
@@ -530,7 +531,7 @@ class LocalAITUI(App):
                     self.history.append({"role": "user", "content": display_cmd})
                     self.history.append({"role": "assistant", "content": clean_out or "Task complete."})
                     self.refresh_db_counts()
-                except Exception as e: self.call_from_thread(assistant_msg.update_content, f"[red][sys] Task loop error: {e}[/red]")
+                except (OSError, subprocess.SubprocessError, TimeoutError) as e: self.call_from_thread(assistant_msg.update_content, f"[red][sys] Task loop error: {e}[/red]")
             else: self.call_from_thread(assistant_msg.update_content, "[red][sys] tools/loop/ralph.py script not found.[/red]")
 
         self.run_worker(_run_task_sub, thread=True)
@@ -538,7 +539,7 @@ class LocalAITUI(App):
     async def handle_meta_chat_command(self, cmd_root: str, args: str = "") -> None:
         think_bin = os.path.join(CFG_DIR, "modules", "chat")
         try: self.query_one("#welcome-banner").remove()
-        except Exception: pass
+        except (KeyError, AttributeError): pass
 
         self.ensure_system_context()
         c_raw = cmd_root.lstrip("/").lower()
@@ -563,14 +564,14 @@ class LocalAITUI(App):
                         self.call_from_thread(assistant_msg.update_content, formatted)
                         self.history.append({"role": "assistant", "content": formatted})
                     else: self.call_from_thread(assistant_msg.update_content, "[red][sys] Chat returned no output.[/red]")
-                except Exception as e: self.call_from_thread(assistant_msg.update_content, f"[red][sys] Chat error: {e}[/red]")
+                except (OSError, subprocess.SubprocessError, TimeoutError, json.JSONDecodeError) as e: self.call_from_thread(assistant_msg.update_content, f"[red][sys] Chat error: {e}[/red]")
             else: self.call_from_thread(assistant_msg.update_content, "[red][sys] modules/chat script not found.[/red]")
 
         self.run_worker(_run_chat_sub, thread=True)
 
     async def handle_slash_command(self, cmd: str) -> None:
         try: self.query_one("#welcome-banner").remove()
-        except Exception: pass
+        except (KeyError, AttributeError): pass
 
         parts = cmd.split(maxsplit=1)
         root, args = parts[0].lower(), parts[1] if len(parts) > 1 else ""
@@ -585,7 +586,7 @@ class LocalAITUI(App):
             await self.chat_area.mount(Static(Group(Text(""), Panel(t, title="Commands", title_align="left", border_style=border_col, box=ROUNDED, expand=False))))
             self.chat_area.scroll_end(animate=False)
 
-        elif root in ("/task", "/loop"): await self.handle_task_command(args)
+        elif root in ("/task", "/loop", "/goal"): await self.handle_task_command(args)
         elif root in ("exit", "quit", "q"): self.exit()
         elif root in ("/copy", "/copy-all", "/copyall"): self.action_copy_entire_chat()
         elif root == "/m":
@@ -626,7 +627,7 @@ class LocalAITUI(App):
         elif root in ("/sync", "/re"):
             self.notify("Triggered background AST codebase sync.")
             try: subprocess.Popen(["index-map", self.workspace_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            except Exception: pass
+            except (OSError, subprocess.SubprocessError): pass
         elif root in ("/skill", "/s"):
             if args:
                 if content := skills.load_skill_content(args, SKILLS_DIR, CFG_DIR):
@@ -659,10 +660,10 @@ class LocalAITUI(App):
 
     def process_query_worker(self, query: Any) -> None:
         try: self.call_from_thread(self.query_one("#welcome-banner").remove)
-        except Exception: pass
+        except (KeyError, AttributeError): pass
         for notice in self.chat_area.query(".sys-notice, .theme-notice"):
             try: self.call_from_thread(notice.remove)
-            except Exception: pass
+            except (KeyError, AttributeError): pass
 
         self.ensure_system_context()
         self.call_from_thread(self.chat_area.mount, Message("User", query))
@@ -674,14 +675,14 @@ class LocalAITUI(App):
             user_text = query if isinstance(query, str) else next((i["text"] for i in query if isinstance(i, dict) and i.get("type") == "text"), "Multimodal Query")
             if self.is_agent and self.memory_active and isinstance(query, str):
                 try: tpm_ctx = core.run_mod("ai-agent-memories", "tpm-get", self.safe_name)
-                except Exception: pass
+                except (OSError, subprocess.SubprocessError): pass
 
             assistant_msg = Message("Agent", "Thinking...")
             self.call_from_thread(self.chat_area.mount, assistant_msg)
             self.call_from_thread(self.chat_area.scroll_end, animate=False)
 
             try: sys_ctx = skills.get_system_context(user_text, CONTEXT_FILE, STOP_WORDS, SKILLS_DIR, CFG_DIR) if (isinstance(query, str) and hasattr(skills, "get_system_context")) else ""
-            except Exception: sys_ctx = ""
+            except (OSError, ValueError, TypeError, KeyError): sys_ctx = ""
             if sys_ctx == "__ABORT_TURN__": sys_ctx = ""
 
             combined = "\n\n".join(filter(None, [tpm_ctx, past_mem, sys_ctx]))
@@ -710,7 +711,7 @@ class LocalAITUI(App):
                     try:
                         resp = urlreq.urlopen(req, timeout=timeout)
                         if resp.status == 200: response = resp; break
-                    except Exception: continue
+                    except (urlreq.URLError, TimeoutError, OSError): continue
 
                 if not response: raise Exception("Failed to establish streaming response connection to AI engine or cloud backups.")
 
@@ -750,7 +751,7 @@ class LocalAITUI(App):
                                 last_ui_update = now
                                 self.call_from_thread(assistant_msg.update_content, accumulated)
                                 self.call_from_thread(self.chat_area.scroll_end, animate=False)
-                        except Exception: pass
+                        except (json.JSONDecodeError, KeyError, IndexError, TypeError, ValueError): pass
 
                 if in_thinking: accumulated += "</think>"
                 self.call_from_thread(assistant_msg.update_content, accumulated)
@@ -766,8 +767,9 @@ class LocalAITUI(App):
 
                 for tc in calls:
                     fname, raw_args = tc.get("function", {}).get("name", ""), tc.get("function", {}).get("arguments", "")
-                    args = json.loads(raw_args) if raw_args else {}
-                    brief = str(args.get("path") or args.get("command") or "")[:100]
+                    try: args = json.loads(raw_args) if raw_args else {}
+                    except (json.JSONDecodeError, TypeError, ValueError): args = {}
+                    brief = str(args.get("symbol") or args.get("path") or args.get("command") or "")[:100]
                     verb = getattr(core, "TOOL_VERBS", {}).get(fname, "working")
 
                     if user_aborted:
@@ -781,7 +783,7 @@ class LocalAITUI(App):
                             try:
                                 os.environ["AI_CONFIRM_GATES"] = "0"
                                 result = core._run_edit_tool(fname, args, self.workspace_path)
-                            except Exception as te: result = f"[tool error] {te}"
+                            except (OSError, subprocess.SubprocessError, ValueError, TypeError, KeyError) as te: result = f"[tool error] {te}"
                             finally:
                                 if old_g is not None: os.environ["AI_CONFIRM_GATES"] = old_g
                                 else: os.environ.pop("AI_CONFIRM_GATES", None)
@@ -813,7 +815,7 @@ class LocalAITUI(App):
                     if hasattr(self, "lbl_database"): self.call_from_thread(self.lbl_database.update, f"[dim]DB State[/dim]  {self.get_db_status_string()}")
                     if self.is_agent and self.memory_active:
                         threading.Thread(target=core.background_tpm_update, args=(user_text, accumulated, self.safe_name, self.workspace_path), daemon=True).start()
-                except Exception: pass
+                except (OSError, subprocess.SubprocessError): pass
 
         except Exception as e:
             if self.generation_cancelled: self.call_from_thread(assistant_msg.update_content, (accumulated or "") + " (stopped)")
@@ -910,12 +912,12 @@ class LocalAITUI(App):
             self.generation_cancelled = True
             if self.active_response:
                 try: self.active_response.close()
-                except Exception: pass
+                except (OSError, AttributeError): pass
             self.notify("(Generation stopped by user.)", sys_prefix=False)
 
     def update_sidebar_visibility(self) -> None:
         try: self.query_one("#sidebar", Vertical).display = not self.sidebar_hidden
-        except Exception: pass
+        except (KeyError, AttributeError): pass
 
     def action_toggle_sidebar(self) -> None:
         self.sidebar_hidden = not self.sidebar_hidden
@@ -926,7 +928,7 @@ class LocalAITUI(App):
         try:
             self.query_one("#footer-bar", Horizontal).display = not self.footer_hidden
             self.query_one("#input-toggle", FooterToggle).update("▲ Show" if self.footer_hidden else "▼ Hide")
-        except Exception: pass
+        except (KeyError, AttributeError): pass
 
     def action_toggle_footer(self) -> None:
         self.footer_hidden = not self.footer_hidden
@@ -949,7 +951,7 @@ class LocalAITUI(App):
             idx = self.THEMES.index(self.theme) if self.theme in self.THEMES else 0
             self.theme = self.THEMES[(idx + 1) % len(self.THEMES)]
             self.notify(f"Theme: {self.theme}", sys_prefix=False, css_class="theme-notice")
-        except Exception: pass
+        except (ValueError, KeyError, AttributeError): pass
 
     def action_toggle_reasoning(self) -> None:
         if self.entering_reasoning_budget:
@@ -970,7 +972,7 @@ if __name__ == "__main__":
     try:
         configs = agent_cloud.get_active_configs([]) if agent_cloud else []
         model = configs[0][2].get("model", "local-model") if configs else ui.get_local_model_name()
-    except Exception: model = ui.get_local_model_name()
+    except (ImportError, AttributeError, KeyError, IndexError, OSError): model = ui.get_local_model_name()
 
     try: LocalAITUI(workspace, model).run()
     finally:
@@ -978,4 +980,4 @@ if __name__ == "__main__":
             subprocess.run(["stty", "sane"], check=False)
             sys.stdout.write("\033[0m\033[?25h")
             sys.stdout.flush()
-        except Exception: pass
+        except (OSError, subprocess.SubprocessError): pass

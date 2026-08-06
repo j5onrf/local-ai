@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Dynamic Cloud Cascade Engine (Top-Down .env Priority)"""
+"""Dynamic Cloud Cascade Engine - Top-down .env provider API priority."""
 
 import os, re, json
 from typing import List, Dict, Any, Tuple, Optional
@@ -27,7 +27,7 @@ def get_active_configs(messages: List[Dict[str, str]]) -> List[Tuple[str, Dict[s
                         key_name, key_val = match.groups()
                         val_clean = key_val.strip()
                         if not val_clean or any(k in val_clean.lower() for k in ("your", "here", "api-key")): continue
-                        
+
                         provider = key_name.split("_")[0].lower()
 
                         if key_name == "CLAUDE_API_KEY":
@@ -42,11 +42,11 @@ def get_active_configs(messages: List[Dict[str, str]]) -> List[Tuple[str, Dict[s
                             model_var = "OPENROUTER_MODEL" if provider == "openrouter" else f"{provider.upper()}_MODEL"
                             body = {"model": os.environ.get(model_var) or fallback, "messages": messages, "stream": True}
                             headers = {"Authorization": f"Bearer {val_clean}"}
-                            
+
                             if provider == "openrouter":
                                 body["usage"] = {"include": True}
                                 headers["HTTP-Referer"] = "https://github.com/j5onrf/local-ai"
 
                             configs.append((url, headers, body, 180 if provider == "openrouter" else 30))
-    except Exception: pass
+    except (OSError, UnicodeDecodeError, KeyError, IndexError, ValueError): pass
     return configs

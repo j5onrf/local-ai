@@ -38,7 +38,8 @@ def load_skill_content(skills_str: str, skills_dir: str, cfg_dir: str) -> str:
             if "system" in skill: ensure_mysys_exists(skills_dir, cfg_dir)
             try:
                 with open(sf, "r", encoding="utf-8") as f: contents.append(f.read().strip())
-            except Exception as e: sys.stderr.write(f"\033[1;31mError loading skill '{skill}': {e}\033[0m\n")
+            except (OSError, UnicodeDecodeError) as e:
+                sys.stderr.write(f"\033[1;31mError loading skill '{skill}': {e}\033[0m\n")
     return "\n\n".join(contents)
 
 
@@ -56,7 +57,7 @@ def _exec_tool_cmd(cmd: str, interactive: bool = False) -> str:
     except subprocess.CalledProcessError:
         sys.stderr.write("\033[1;31m[sys] Tool execution failed or was cancelled.\033[0m\n"); sys.stderr.flush()
         return "__ABORT_TURN__"
-    except Exception as e:
+    except (OSError, subprocess.SubprocessError, TimeoutError) as e:
         sys.stderr.write(f"\033[1;31m[sys] Error running tool: {e}\033[0m\n"); sys.stderr.flush()
         return "__ABORT_TURN__"
 
@@ -73,9 +74,9 @@ def get_system_context(query: str, context_file: str, stop_words: Set[str], skil
         if any(q_tokens[i:i + len(ent_tokens)] == ent_tokens for i in range(len(q_tokens) - len(ent_tokens) + 1)):
             tool = entry.get("cmd", "").replace("[TOOL]", "").strip()
             if any(k in tool for k in ("read -p", "less", "fzf")): return run_interactive_tool(tool)
-            if " --s" not in tool and not ui.confirm_tool(tool): continue
-            if "system" in tool.lower(): ensure_mysys_exists(skills_dir, cfg_dir)
+            if " --s" not in tool and not ui.confirm_tool(tool): return ""
 
+            if "system" in tool.lower(): ensure_mysys_exists(skills_dir, cfg_dir)
             tool = tool.replace(" --s", "").strip()
             for flag in (" --leaf", " --glow", " --cat", " --mdcat", " --view"): tool = tool.replace(flag, "")
             intent_tokens = set(context.tokenize(entry.get("intent", ""), stop_words))
@@ -100,7 +101,7 @@ def load_skill_blueprints(dept_skills_dir: str, stop_words: Set[str]) -> List[Di
                         with open(path, "r", encoding="utf-8") as sf: lines = [l.strip() for l in sf.readlines() if l.strip()]
                         if not lines: continue
                         desc_line = next((l for l in lines if not l.startswith(("#", "---", ">", "*", "-", "import ")) and not re.match(r'^\w+:\s', l)), "")
-                        
+
                         if lines[0].startswith("# [SKILL]") and "--->" in lines[0]:
                             header, intents = lines[0].split("--->", 1)
                             skill_name, intent_list = header.replace("# [SKILL]", "").strip(), [i.strip() for i in intents.split(",") if i.strip()]
@@ -113,7 +114,7 @@ def load_skill_blueprints(dept_skills_dir: str, stop_words: Set[str]) -> List[Di
                             "name": skill_name.lower(), "path": path, "rel_path": os.path.relpath(path, dept_skills_dir),
                             "desc": desc_line or "No description provided.", "intents": intent_list, "tokens": context.tokenize(" ".join(intent_list), stop_words)
                         })
-                    except Exception: pass
+                    except (OSError, UnicodeDecodeError, KeyError, IndexError, ValueError): pass
     return blueprints
 
 
@@ -162,7 +163,8 @@ def run_skill_selector(workspace: str, raw_cmd: str, dept_skills_dir: str, stop_
                         chat_history[0]["content"] += f"\n\n### Loaded On-Demand Skill: {sel['name']}\n{body}\n"
                         sys.stderr.write(f"\r\x1b[K\x1b[1A\r\x1b[K\033[2;32m[sys] Skill '{sel['name']}' successfully loaded.\033[0m\n")
                         print(json.dumps(chat_history))
-                    except Exception as e: sys.stderr.write(f"\r\x1b[K\x1b[1A\r\x1b[K\033[1;31m[sys] Failed to load skill: {e}\033[0m\n")
+                    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as e:
+                        sys.stderr.write(f"\r\x1b[K\x1b[1A\r\x1b[K\033[1;31m[sys] Failed to load skill: {e}\033[0m\n")
                 else: sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[KNo skill selected.\n")
                 break
             elif key in ('\x1b[A', '\x1b[B'):

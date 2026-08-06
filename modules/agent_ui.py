@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Local-AI Agent UI Module - Spinners, session boxes, and interactive menus."""
+"""UI Module - Spinners, session boxes, and interactive menus"""
 
 import os, sys, threading, time, select, re, json, urllib.request as urlreq
-from typing import Optional, Callable, Tuple
+from typing import Optional, Callable, Tuple, Any
 
 from rich.console import Console, Group
 from rich.panel import Panel
@@ -29,7 +29,7 @@ class InlineSpinner:
             try:
                 char, elapsed = self.chars[idx % char_len], time.time() - self.start_time
                 with self._lock: msg = self.message
-                sys.stderr.write(f"\r\033[1;32m{char}\033[0m \033[36m{msg}\033[0m \033[2m{elapsed:.1f}s\033[0m ")
+                sys.stderr.write(f"\r\x1b[K\033[1;32m{char}\033[0m \033[36m{msg}\033[0m \033[2m{elapsed:.1f}s\033[0m")
                 sys.stderr.flush()
             except (IOError, OSError): pass
             idx += 1
@@ -156,7 +156,7 @@ def confirm_tool(tool: str) -> bool:
     try: char = get_key()
     except Exception: char = ""
     is_yes = char.lower() == 'y' or char in ('\r', '\n', '')
-    sys.stderr.write("y\n" if char in ('\r', '\n', '') else ("n\n" if char.startswith('\x1b') or char == '\x03' else f"{char}\n"))
+    sys.stderr.write("y\n" if is_yes else "n\n")
     sys.stderr.flush()
     return is_yes
 
@@ -193,10 +193,12 @@ def run_interactive_selection(
             sys.stderr.flush()
 
             key = get_key()
-            if key in ('\x03', '\x1b', 'n', 'N') or (not is_danger and key not in ('\r', '', '\x1b[A', '\x1b[B')):
-                sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
+
+            if key in ('\x1b[A', '\x1b[B'):
+                current_idx = (current_idx + (1 if key == '\x1b[B' else -1) + num_opts) % num_opts
+                sys.stderr.write("\x1b[1A\r\x1b[K")
                 sys.stderr.flush()
-                sys.exit(127)
+                continue
 
             if is_danger:
                 sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K\x1b[1A\r\x1b[K")
@@ -208,21 +210,17 @@ def run_interactive_selection(
                     sys.exit(0)
                 sys.exit(127)
 
-            if key in ('\r', ''):
+            if key in ('\r', '', 'y', 'Y'):
                 sys.stderr.write("\n")
                 sys.stderr.flush()
                 if "system" in cmd_to_show: ensure_mysys_exists_fn()
                 sys.stdout.write(cmd_to_show)
                 sys.stdout.flush()
                 sys.exit(0)
-            elif key in ('\x1b[A', '\x1b[B'):
-                current_idx = (current_idx + (1 if key == '\x1b[B' else -1) + num_opts) % num_opts
-                sys.stderr.write("\x1b[1A\r\x1b[K")
-                sys.stderr.flush()
-    except KeyboardInterrupt:
-        sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
-        sys.stderr.flush()
-        sys.exit(127)
+
+            sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
+            sys.stderr.flush()
+            sys.exit(127)
     finally:
         sys.stderr.write("\033[?25h")
         sys.stderr.flush()
@@ -252,7 +250,7 @@ def show_help() -> None:
 
     _console.print("\n", Panel(
         Group(header, Text(""), Text("  Commands:", style="bold yellow"), cmd_table),
-        title=" ⚙ Help & Commands ", title_align="left", border_style="bright_blue", box=ROUNDED, expand=False
+        title=" Help & Commands ", title_align="left", border_style="bright_blue", box=ROUNDED, expand=False
     ), "\n")
 
 

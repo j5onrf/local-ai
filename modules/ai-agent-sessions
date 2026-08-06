@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""SQLite-backed session, checkpoint, and turn logger with Global Handoff and sub-agent registry"""
+"""SQLite-backed session, checkpoint, and turn logger with sub-agent registry."""
 
 import sys, os, json, sqlite3, time, re, glob
 from contextlib import closing
@@ -9,16 +9,15 @@ CFG_DIR: str = os.path.expanduser("~/.config/local-ai")
 SESSIONS_DIR: str = os.path.join(CFG_DIR, "projects", "database")
 os.makedirs(SESSIONS_DIR, exist_ok=True)
 
+sys.path.append(os.path.join(CFG_DIR, "modules"))
 try:
     from agent_context import tokenize, STOP_WORDS
 except ImportError:
-    TOKEN_RE = re.compile(r"[^\w\s]")
+    TOKEN_RE: re.Pattern = re.compile(r"[^\w\s]")
     STOP_WORDS = {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"}
     def tokenize(text: str) -> List[str]:
         return [w for w in TOKEN_RE.sub(" ", text.lower()).split() if len(w) > 1 and w not in STOP_WORDS] if text else []
 
-
-sys.path.append(os.path.join(CFG_DIR, "modules"))
 try:
     import agent_ui as ui
     get_key = ui.get_key
@@ -27,13 +26,13 @@ except ImportError:
         import tty, termios, select
         fd = sys.stdin.fileno()
         try: old = termios.tcgetattr(fd)
-        except Exception: return sys.stdin.read(1)
+        except (OSError, termios.error): return sys.stdin.read(1)
         try:
             tty.setraw(fd)
             b = os.read(fd, 1)
             if b == b'\x1b' and select.select([fd], [], [], 0.05)[0]: b += os.read(fd, 2)
             return b.decode("utf-8", errors="ignore")
-        except Exception: return ""
+        except (OSError, termios.error): return ""
         finally: termios.tcsetattr(fd, termios.TCSADRAIN, old)
 
 
@@ -97,7 +96,7 @@ def print_session_box(workspace: str) -> None:
     disp = ws_path.replace(home, "~", 1) if ws_path.startswith(home) else ws_path
     disp_str = "..." + disp[-25:] if len(disp) > 28 else disp
 
-    model = os.environ.get("CLOUD_MODEL", "gemini-3.1-flash-lite") if os.environ.get("GEMINI_API_KEY") else os.environ.get("OPENROUTER_MODEL", "openrouter/free") if os.environ.get("OPENROUTER_API_KEY") else "local-model"
+    model = os.environ.get("CLOUD_MODEL", "gemini-3.5-flash-lite") if os.environ.get("GEMINI_API_KEY") else os.environ.get("OPENROUTER_MODEL", "openrouter/free") if os.environ.get("OPENROUTER_API_KEY") else "local-model"
     skill = " ".join(s.lstrip("-") for s in os.environ.get("AI_ACTIVE_SKILL", "").split()) or "default"
     agent_num = get_sub_agent_id(workspace, os.getppid())
     box_w = 46
@@ -180,7 +179,7 @@ def rollback_checkpoint(workspace: str) -> None:
                 sys.stderr.write("\033[?25h\033[1;30mSelect Index: \033[0m"); sys.stderr.flush()
                 try:
                     with open("/dev/tty", "r+", encoding="utf-8") as tty_in: key = tty_in.readline().strip()
-                except (KeyboardInterrupt, Exception): key = '\x1b'
+                except (KeyboardInterrupt, OSError): key = '\x1b'
 
             if key in ('\x03', '\x1b', 'q', 'Q', ''):
                 sys.stderr.write("\r\x1b[KCancelled.\n"); sys.exit(0)
@@ -239,7 +238,7 @@ if __name__ == "__main__":
         try:
             import agent_core as context
             context.show_memory_status(json.loads(sys.stdin.read().strip()), max_context=int(os.environ.get("AI_MAX_TOKENS", 8192)), server_url="http://localhost:8080")
-        except Exception as e: sys.stderr.write(f"[session-mgr] Error rendering memory: {e}\n")
+        except (OSError, json.JSONDecodeError, ValueError, TypeError) as e: sys.stderr.write(f"[session-mgr] Error rendering memory: {e}\n")
         sys.exit(0)
 
     if len(args) < 2: sys.exit(1)

@@ -10,7 +10,7 @@ async def run_async_cmd(cmd: list[str], cwd: str) -> str:
         proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, cwd=cwd)
         out, err = await proc.communicate()
         return (out or err).decode("utf-8", errors="ignore").strip()
-    except Exception as e: return f"Async command error: {e}"
+    except (OSError, asyncio.SubprocessError) as e: return f"Async command error: {e}"
 
 
 async def watch_workspace_changes(app) -> None:
@@ -27,7 +27,7 @@ async def watch_workspace_changes(app) -> None:
                     app.refresh_db_counts()
                     if hasattr(app, "lbl_database"): app.lbl_database.update(f"[dim]DB State[/dim]  {app.get_db_status_string()}")
                     app.notify("[dim]Memory facts updated from disk.[/dim]", sys_prefix=False)
-            except Exception: pass
+            except OSError: pass
 
 
 async def start_subagent_ipc_hub(app) -> None:
@@ -35,18 +35,20 @@ async def start_subagent_ipc_hub(app) -> None:
     sock_path = f"/tmp/local-ai-{app.safe_name}.sock"
     if os.path.exists(sock_path):
         try: os.remove(sock_path)
-        except Exception: pass
+        except OSError: pass
 
     async def handle_subagent_msg(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         try:
             if data := await reader.read(1024):
                 p = json.loads(data.decode("utf-8"))
                 app.notify(f"[dim]⚡ [bold cyan]{p.get('sub_id', 'Sub-agent')}[/bold cyan]: {p.get('status', 'Active')}[/dim]", sys_prefix=False)
-        except Exception: pass
+        except (OSError, json.JSONDecodeError): pass
         finally:
-            writer.close(); await writer.wait_closed()
+            writer.close()
+            try: await writer.wait_closed()
+            except (OSError, asyncio.CancelledError): pass
 
     try:
         server = await asyncio.start_unix_server(handle_subagent_msg, path=sock_path)
         async with server: await server.serve_forever()
-    except Exception: pass
+    except (OSError, asyncio.CancelledError): pass

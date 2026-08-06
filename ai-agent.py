@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Local-Ai Agent [j5onrf] [v0.9.8.5]
+"""Local-Ai Agent [j5onrf] [v0.9.8.6]"""
 
 import json, os, re, sqlite3, subprocess, sys, threading, time, urllib.request as urlreq
 from typing import List, Optional, Tuple, Dict, Any
@@ -13,6 +13,7 @@ SESSIONS_DIR: str = os.path.join(CFG_DIR, "projects", "database")
 BASE_PROMPT: str = "Read-only local shell assistant.\nIf <context> is provided, answer directly using only its facts. Otherwise, answer normally.\n\n"
 BASE_PROMPT_CHAT: str = BASE_PROMPT + "### Conversational Guidelines:\n- Role: Active, natural, and highly articulate conversational assistant.\n- Tone: Professional, warm, objective, and intellectually engaging.\n\n"
 BASE_PROMPT_AGENT: str = "Active local project workspace developer agent.\nIf <context> is provided, answer directly using only its facts. Otherwise, answer normally.\n\n"
+
 try: from agent_context import STOP_WORDS
 except ImportError: STOP_WORDS = {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"}
 
@@ -132,7 +133,7 @@ def run_interactive_chat(args: List[str]) -> None:
     pending_query = " ".join(args[1:]) if len(args) > 1 else None
     if pending_query and ("CODEBASE INDEX MAP" in pending_query or "index-map" in pending_query):
         active_system_prompt += f"\n\n### CODESPACE MAP:\n{pending_query}"
-        pending_query = "[NOTIFICATION]: Workspace initialized. Standby for user instructions."
+        pending_query = "init"
 
     chat_history = [{"role": "system", "content": active_system_prompt}]
 
@@ -388,7 +389,7 @@ def run_direct_query(args: List[str]) -> None:
 
     active_p = BASE_PROMPT + (f"### Active Skill/Role Instructions:\n{skill_content}\n" if skill_content else "")
     messages = [{"role": "system", "content": active_p}, {"role": "user", "content": f"<context>\n{sys_ctx}\n</context>\n\nUser Question: {query}" if sys_ctx else f"User Question: {query}"}]
-    core.stream_response(messages, prefix="AI:", show_stats=False)
+    core.stream_response(messages, prefix="AI:", show_stats=False, thinking_budget=0)
     sys.exit(0)
 
 

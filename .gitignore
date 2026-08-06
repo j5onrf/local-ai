@@ -5,6 +5,7 @@ tools/subsec/voice/server.pem
 ai-history
 tools/agentic/fusion/logs
 index-map-local-ai.txt
+modules/index-map-modules.txt
 .openrouter_cache_v2.json
 .active_cd*
 .request_log
@@ -14,6 +15,7 @@ index-map-local-ai.txt
 tools/email/.email
 .active_sessions
 projects/database/home.db
+.active_sessions
 
 # Ignore Python cache directories and bytecode
 __pycache__/

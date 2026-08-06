@@ -1,21 +1,20 @@
-# CODEBASE INDEX MAP | Generated: 2026-08-04 20:51 | Workspace: modules | Path: ~/.config/local-ai/modules
+# CODEBASE INDEX MAP | Generated: 2026-08-06 12:03 | Workspace: modules | Path: ~/.config/local-ai/modules
 # Active symbols and structural connections mapped in the local index.
 # -----------------------------------------------------------------------------------------
 # Codebase Modules & Active Architecture:
 #   ├── modules/Readme.md        - Spellchecker Privacy Disclosure
-#   ├── modules/agent_cloud.py   - Dynamic Cloud Cascade Engine (Top-Down .env Priority)
+#   ├── modules/agent_cloud.py   - Dynamic Cloud Cascade Engine - Top-down .env provider API priority.
 #   ├── modules/agent_context.py - Context Search & Indexing Engine - Jaccard intent matching.
-#   ├── modules/agent_core.py    - Local-AI Agent Core Module - Handles SSE streaming, tool gates, and Rich rendering.
+#   ├── modules/agent_core.py    - Core Module - Handles streaming SSE, tool gates, and Rich rendering
 #   ├── modules/agent_skills.py  - Unified library & executable for static, dynamic, and on-demand skills
 #   ├── modules/agent_spell.py   - Offline/Online Spellchecker Module - LanguageTool API & phonetic edit-distance.
 #   ├── modules/agent_tui.py     - Production Minimal Textual TUI for Local-AI Agent Engine
 #   ├── modules/agent_tui_async.py - Asynchronous uvloop background services for Local-AI Agent TUI
-#   ├── modules/agent_ui.py      - Local-AI Agent UI Module - Spinners, session boxes, and interactive menus.
-#   ├── modules/agent_usage.py   - Token Usage & Spend Ledger Manager - Token & pricing logging.
-#   ├── modules/ai-agent-memories - Description: SQLite-backed semantic recall and Temporal Personality Memory (TPM) manager
-#   ├── modules/ai-agent-sessions - SQLite-backed session, checkpoint, and turn logger with Global Handoff and sub-agent registry
-#   ├── modules/chat             - chat - Unified Agentic Brainstorm, Thinking & Follow-up Engine
-#   ├── modules/index-map-memory-modules.db
+#   ├── modules/agent_ui.py      - UI Module - Spinners, session boxes, and interactive menus
+#   ├── modules/agent_usage.py   - Token Usage & Spend Ledger Manager
+#   ├── modules/ai-agent-memories - SQLite-backed semantic recall and Temporal Personality Memory (TPM) manager.
+#   ├── modules/ai-agent-sessions - SQLite-backed session, checkpoint, and turn logger with sub-agent registry.
+#   ├── modules/chat             - Unified Agentic Brainstorm, Thinking & Follow-up Recommendation Engine.
 #   ├── modules/model-select.py  - Fully Dynamic TUI Model Selector driven by OpenRouter Rankings
 #   └── modules/speed_test.py    - Precise token generation & TPS speed test statistics tracker
 # -----------------------------------------------------------------------------------------
@@ -29,8 +28,8 @@
 [python:agent_tui_async.py] imp:asyncio,json,os | fn:run_async_cmd,watch_workspace_changes,start_subagent_ipc_hub,handle_subagent_msg
 [python:agent_ui.py] imp:agent_cloud,json,os,re,rich,select,sys,termios,threading,time,tty,typing,urllib | cls:InlineSpinner | fn:__init__,_spin,update,start,stop,_read_fd,get_key,get_local_model_name,draw_session_box,confirm_tool,run_interactive_selection,show_help,select_workspace_profile
 [python:agent_usage.py] imp:json,os,time,typing | fn:record,refresh_balance_async,turn_line
-[file:ai-agent-memories] sum:Description: SQLite-backed semantic recall and Temporal Personality Memory (TPM) manager
-[file:ai-agent-sessions] sum:SQLite-backed session, checkpoint, and turn logger with Global Handoff and sub-agent registry
-[file:chat] sum:chat - Unified Agentic Brainstorm, Thinking & Follow-up Engine
+[file:ai-agent-memories] sum:SQLite-backed semantic recall and Temporal Personality Memory (TPM) manager.
+[file:ai-agent-sessions] sum:SQLite-backed session, checkpoint, and turn logger with sub-agent registry.
+[file:chat] sum:Unified Agentic Brainstorm, Thinking & Follow-up Recommendation Engine.
 [python:model-select.py] imp:asyncio,atexit,json,os,re,select,shutil,subprocess,sys,termios,tty,urllib | fn:cleanup_terminal,classify_openrouter_models,load_env_vars,update_env,is_key_active,set_key_commented_state,toggle_env_api_keys,load_cached_lists,save_cached_lists,async_fetch_openrouter_models,_fetch,async_get_key,_read,draw_main_menu,run_selector,get_opts,async_main
 [python:speed_test.py] imp:sys,time | fn:start,count_token,end

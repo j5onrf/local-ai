@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Token Usage & Spend Ledger Manager - Token & pricing logging."""
+"""Token Usage & Spend Ledger Manager"""
 
 import os, json, time
 from typing import Optional
@@ -25,7 +25,7 @@ def record(model: str, in_tok: int, out_tok: int, cost: float = 0.0) -> None:
         try:
             with open(LEDGER_PATH, "r", encoding="utf-8") as f:
                 if (temp := json.load(f)).get("date") == today: data = temp
-        except Exception: pass
+        except (OSError, json.JSONDecodeError): pass
 
     m_data = data["models"].setdefault(model, {"in": 0, "out": 0, "cost": 0.0})
     m_data["in"] += in_tok; m_data["out"] += out_tok; m_data["cost"] += cost
@@ -36,7 +36,10 @@ def record(model: str, in_tok: int, out_tok: int, cost: float = 0.0) -> None:
         tmp = f"{LEDGER_PATH}.tmp"
         with open(tmp, "w", encoding="utf-8") as f: json.dump(data, f, indent=2)
         os.replace(tmp, LEDGER_PATH)
-    except Exception: pass
+    except OSError:
+        try:
+            if os.path.exists(tmp): os.remove(tmp)
+        except OSError: pass
 
 
 def refresh_balance_async(min_age: int = 10) -> None:
@@ -51,7 +54,7 @@ def turn_line(in_tok: int, out_tok: int, cost: float, ctx_used: int, ctx_max: Op
         try:
             with open(LEDGER_PATH, "r", encoding="utf-8") as f:
                 today_cost = json.load(f).get("total_cost", 0.0)
-        except Exception: pass
+        except (OSError, json.JSONDecodeError): pass
 
     ctx_pct = (ctx_used / (ctx_max or 8192)) * 100
     cost_part = f"cost: \033[32m${cost:.5f}\033[90m | " if cost > 0.0 else ""

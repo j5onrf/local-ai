@@ -17,14 +17,17 @@ if command -v lsof >/dev/null 2>&1; then
     fi
 fi
 
-# Launch wrapped in UWSM
+# Launch wrapped in UWSM (CPU-Optimized)
 exec uwsm app -- "$LLAMA_SERVER_BIN" \
   -m "$MODEL_PATH" \
   -c 8192 \
   -np 1 \
   -t 6 \
-  -b 512 \
-  -ub 128 \
+  -b 2048 \
+  -ub 512 \
+  --cache-type-k q8_0 \
+  --cache-type-v q8_0 \
+  --warmup \
   --jinja \
   --temp 0.1 \
   --top-p 0.90 \

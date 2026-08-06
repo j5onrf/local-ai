@@ -15,7 +15,7 @@ def tokenize(text: str, stop_words: Set[str] = STOP_WORDS) -> List[str]:
     return [w for w in TOKEN_RE.sub(" ", text.lower()).split() if len(w) > 1 and w not in stop_words] if text else []
 
 
-def load_context_entries(context_file: str, stop_words: Set[str]) -> List[Dict[str, Any]]:
+def load_context_entries(context_file: str, stop_words: Set[str] = STOP_WORDS) -> List[Dict[str, Any]]:
     """Reads context blueprint and parses intent mappings with strict mtime caching."""
     global _CACHED_ENTRIES, _LAST_M_TIME
     if not os.path.exists(context_file): return []
@@ -36,12 +36,12 @@ def load_context_entries(context_file: str, stop_words: Set[str]) -> List[Dict[s
 
         _CACHED_ENTRIES, _LAST_M_TIME = parsed, current_mtime
         return _CACHED_ENTRIES
-    except Exception as e:
+    except (OSError, UnicodeDecodeError, ValueError) as e:
         sys.stderr.write(f"\033[1;31m[sys] Error parsing context metadata: {e}\033[0m\n")
         return []
 
 
-def jaccard_search(query: str, context_file: str, stop_words: Set[str], threshold: float = 0.45) -> Optional[str]:
+def jaccard_search(query: str, context_file: str, stop_words: Set[str] = STOP_WORDS, threshold: float = 0.45) -> Optional[str]:
     """Computes Jaccard index intersections to locate and rank mapped intents."""
     q_clean, q_tokens = query.strip().lower(), set(tokenize(query, stop_words))
     if not q_tokens or not (entries := load_context_entries(context_file, stop_words)): return None
