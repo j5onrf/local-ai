@@ -92,9 +92,8 @@ All auto-created agent metadata files are strictly isolated inside `project/.age
 | :--- | :--- |
 | `~/.config/local-ai/projects/database/*.db` | Global SQLite turn history and fact memory database. |
 | `~/.config/local-ai/.active_sessions/` | Sub-agent PID lockfiles for process tracking. |
-| `~/.config/local-ai/.spend_ledger.json` | Token usage ledger and spend tracking. |
+| `~/.config/local-ai/.spend_ledger.json` | Global cloud API token usage and daily spend ledger. |
 | `~/<workspace>/.agent/config.json` | Default workspace agent profile and YOLO settings. |
-| `~/<workspace>/.agent/session.json` | Cloud API interaction tracking. |
 | `~/<workspace>/.agent/tpm.md` | Human-editable Markdown fact memory store. |
 | `~/<workspace>/.agent/history.md` | Chronological session history log. |
 | `~/<workspace>/.agent/index-map-<project>.txt` | Shorthand codebase index map (Agent mode). |

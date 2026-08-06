@@ -415,7 +415,7 @@ class LocalAITUI(App):
                     with Horizontal(id="card-tips-header"):
                         yield Static("Quick Tips", id="lbl-tips-title")
                         yield CloseCardButton("×", id="btn-close-tips")
-                    yield Static("Tab: Switch Mode\nCtrl+B: Sidebar\nCtrl+G: Compact Layout\nCtrl+T: Cycle Themes\n/task [goal]: [Goal] Loop\n/help: Commands List", id="lbl-tips-body")
+                    yield Static("Tab    : Mode\nCtrl+B : Sidebar\nCtrl+G : Compact\nCtrl+T : Themes\n/task  : Goal\n/help  : Commands", id="lbl-tips-body")
 
         with Horizontal(id="footer-bar"): yield Footer(id="footer-keys")
 
@@ -800,7 +800,8 @@ class LocalAITUI(App):
             end_time = time.perf_counter()
             total_elapsed = max(0.01, end_time - start_time)
             gen_dur = max(0.001, end_time - first_token_time) if first_token_time else total_elapsed
-            tps = (token_count / gen_dur) if first_token_time and token_count > 0 else (len(accumulated) // 4) / total_elapsed
+            out_toks = core.get_accurate_token_count(accumulated)
+            tps = (out_toks / gen_dur) if first_token_time and out_toks > 0 else out_toks / total_elapsed
 
             self.stats_turns += 1
             self.call_from_thread(self.update_stats_ui, self.stats_turns, tps, total_elapsed)
