@@ -122,6 +122,7 @@ class Message(Static):
 
         compact_state, is_dark = getattr(self.app, "compact_mode", 0), getattr(self.app, "is_dark_theme", True)
         self.styles.color = "#c8d3f5" if app_theme == "code" else None
+        self.styles.margin = (1, 2, 0, 0) if compact_state == 0 else (0, 2, 0, 0)
         u_style = "bold #888888" if app_theme in ("mono", "grok") else ("bold #89b4fa" if app_theme == "code" else ("bold #0265dc" if not is_dark else "bold cyan"))
         code_fmt = "ansi_dark" if is_dark else "ansi_light"
 
@@ -133,6 +134,7 @@ class Message(Static):
             else: res = Text(text, style=u_style)
         else:
             text = str(self.content or "")
+            show_think = os.environ.get("AI_SHOW_THINKING", "1") == "1"
             if "<think>" in text:
                 before, after = text.split("<think>", 1)
                 border_col, items = getattr(self.app, "border_accent", "bright_black"), []
@@ -140,12 +142,18 @@ class Message(Static):
 
                 if "</think>" in after:
                     think, rest = after.split("</think>", 1)
-                    items.append(Panel(_format_tui_reasonix_text(think.strip(), app_theme), title="⚙ Thinking Process", title_align="left", border_style=border_col, box=ROUNDED, expand=True))
+                    if show_think and think.strip():
+                        items.append(Panel(_format_tui_reasonix_text(think.strip(), app_theme), title="⚙ Thinking Process", title_align="left", border_style=border_col, box=ROUNDED, expand=True))
                     if rest.strip():
                         items.append(Markdown(re.sub(r'```\n\s*\n+', '```\n', re.sub(r'\n{3,}', '\n\n', rest.strip())), code_theme=code_fmt))
+                    res = Group(*items) if items else Text("Thinking...", style="italic dim")
                 else:
-                    items.append(Panel(_format_tui_reasonix_text(after.strip(), app_theme), title="⚙ Thinking Process...", title_align="left", border_style=border_col, box=ROUNDED, expand=True))
-                res = Group(*items)
+                    think = after.strip()
+                    if show_think and think:
+                        items.append(Panel(_format_tui_reasonix_text(think, app_theme), title="⚙ Thinking Process...", title_align="left", border_style=border_col, box=ROUNDED, expand=True))
+                    else:
+                        items.append(Text("Thinking...", style="italic dim"))
+                    res = Group(*items)
             else:
                 res = Markdown(re.sub(r'```\n\s*\n+', '```\n', re.sub(r'\n{3,}', '\n\n', text.strip())), code_theme=code_fmt)
 
@@ -305,6 +313,12 @@ class LocalAITUI(App):
             try: self.active_response.close()
             except (AttributeError, OSError): pass
 
+    def _safe_remove_banner(self) -> None:
+        try:
+            if self.query("#welcome-banner"):
+                self.query_one("#welcome-banner").remove()
+        except Exception: pass
+
     def notify(self, text: str, sys_prefix: bool = True, css_class: str = "sys-notice") -> None:
         self.chat_area.mount(Static(f"[dim white][sys] {text}[/dim white]" if sys_prefix else text, classes=css_class))
         self.chat_area.scroll_end(animate=False)
@@ -377,13 +391,14 @@ class LocalAITUI(App):
 
     def update_welcome_banner(self) -> None:
         try:
-            t = Table(show_header=False, box=None, padding=(0, 2), expand=False)
-            cmd_style = "bold #89b4fa" if self.theme == "code" else ("bold #0265dc" if not self.is_dark_theme else "bold cyan")
-            t.add_column("Key", style=cmd_style, justify="left"); t.add_column("Action", style="default")
-            for k, a in [("Tab", "Plan / Build Mode"), ("Ctrl+B", "Toggle Sidebar Panel"), ("Ctrl+T", "Cycle Themes"), ("Ctrl+O", "Copy Latest Response"), ("▲ Show", "Toggle Bottom Shortcut Bar"), ("/help", "View All Commands")]:
-                t.add_row(k, a)
-            self.query_one("#welcome-banner", Static).update(Panel(t, title=" ❖ Local-AI Agent ", title_align="left", border_style=self.border_accent, box=ROUNDED, expand=False))
-        except (KeyError, AttributeError): pass
+            if self.query("#welcome-banner"):
+                t = Table(show_header=False, box=None, padding=(0, 2), expand=False)
+                cmd_style = "bold #89b4fa" if self.theme == "code" else ("bold #0265dc" if not self.is_dark_theme else "bold cyan")
+                t.add_column("Key", style=cmd_style, justify="left"); t.add_column("Action", style="default")
+                for k, a in [("Tab", "Plan / Build Mode"), ("Ctrl+B", "Toggle Sidebar Panel"), ("Ctrl+T", "Cycle Themes"), ("Ctrl+O", "Copy Latest Response"), ("▲ Show", "Toggle Bottom Shortcut Bar"), ("/help", "View All Commands")]:
+                    t.add_row(k, a)
+                self.query_one("#welcome-banner", Static).update(Panel(t, title=" ❖ Local-AI Agent ", title_align="left", border_style=self.border_accent, box=ROUNDED, expand=False))
+        except Exception: pass
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="layout"):
@@ -443,6 +458,7 @@ class LocalAITUI(App):
         self.lbl_reasoning, self.lbl_database, self.lbl_stats = self.query_one("#lbl-reasoning", Static), self.query_one("#lbl-database", Static), self.query_one("#lbl-stats", Static)
         self.lbl_image = self.query_one("#lbl-image", Static)
 
+        os.environ["AI_SHOW_THINKING"] = "1" if core.get_state("show_thinking", True) else "0"
         self.set_skill(self.active_skill); self.set_mode(self.agent_mode)
         self.set_reasoning(f"{self.reasoning_budget} tokens" if self.reasoning_active else "Disabled")
         self.update_welcome_banner(); self.chat_input.cursor_blink = True
@@ -506,8 +522,7 @@ class LocalAITUI(App):
         else: self.notify(f"[bold red]File not found: {file_path}[/bold red]", sys_prefix=False)
 
     async def handle_task_command(self, task_args: str = "") -> None:
-        try: self.query_one("#welcome-banner").remove()
-        except (KeyError, AttributeError): pass
+        self._safe_remove_banner()
 
         self.ensure_system_context()
         goal = task_args.strip('"\': ') or "TASK.md spec"
@@ -538,8 +553,7 @@ class LocalAITUI(App):
 
     async def handle_meta_chat_command(self, cmd_root: str, args: str = "") -> None:
         think_bin = os.path.join(CFG_DIR, "modules", "chat")
-        try: self.query_one("#welcome-banner").remove()
-        except (KeyError, AttributeError): pass
+        self._safe_remove_banner()
 
         self.ensure_system_context()
         c_raw = cmd_root.lstrip("/").lower()
@@ -570,8 +584,7 @@ class LocalAITUI(App):
         self.run_worker(_run_chat_sub, thread=True)
 
     async def handle_slash_command(self, cmd: str) -> None:
-        try: self.query_one("#welcome-banner").remove()
-        except (KeyError, AttributeError): pass
+        self._safe_remove_banner()
 
         parts = cmd.split(maxsplit=1)
         root, args = parts[0].lower(), parts[1] if len(parts) > 1 else ""
@@ -641,7 +654,30 @@ class LocalAITUI(App):
                 else: self.notify(f"No skill blueprint file found for '[bold]{args}[/bold]'.")
             else: self.notify("Usage: /skill <query> or /s <query>")
         elif root in ("/compact", "/c"): self.action_toggle_compact()
-        elif root in ("/t", "/thinking"): self.action_toggle_reasoning()
+        elif root in ("/t", "/thinking"):
+            if args:
+                sub = args.lower()
+                if sub in ("hide", "off", "mute", "quiet"):
+                    os.environ["AI_SHOW_THINKING"] = "0"; core.save_state("show_thinking", False)
+                    for child in self.chat_area.children:
+                        if isinstance(child, Message): child.refresh(layout=True)
+                    self.notify("Thinking display hidden (thinking mode remains active).")
+                elif sub in ("show", "on", "visible"):
+                    os.environ["AI_SHOW_THINKING"] = "1"; core.save_state("show_thinking", True)
+                    for child in self.chat_area.children:
+                        if isinstance(child, Message): child.refresh(layout=True)
+                    self.notify("Thinking display enabled.")
+                elif sub.isdigit():
+                    val = int(sub)
+                    self.reasoning_budget = max(0, val)
+                    self.reasoning_active = val > 0
+                    core.save_state("reasoning_active", self.reasoning_active)
+                    core.save_state("reasoning_budget", self.reasoning_budget)
+                    status = f"{self.reasoning_budget} tokens" if self.reasoning_active else "Disabled"
+                    self.set_reasoning(status)
+                    self.notify(f"Deep reasoning {'enabled' if self.reasoning_active else 'disabled'} ({status}).")
+                else: self.action_toggle_reasoning()
+            else: self.action_toggle_reasoning()
         elif root in ("/f", "/tk", "/b", "/a"): await self.handle_meta_chat_command(root, args)
         else: self.notify(f"Unknown command '{root}'. Type [bold]/help[/bold] for commands.")
 
@@ -659,11 +695,10 @@ class LocalAITUI(App):
         return self.gate_auth_result
 
     def process_query_worker(self, query: Any) -> None:
-        try: self.call_from_thread(self.query_one("#welcome-banner").remove)
-        except (KeyError, AttributeError): pass
+        self.call_from_thread(self._safe_remove_banner)
         for notice in self.chat_area.query(".sys-notice, .theme-notice"):
             try: self.call_from_thread(notice.remove)
-            except (KeyError, AttributeError): pass
+            except Exception: pass
 
         self.ensure_system_context()
         self.call_from_thread(self.chat_area.mount, Message("User", query))
@@ -695,17 +730,21 @@ class LocalAITUI(App):
             thinking_budget = self.reasoning_budget if self.reasoning_active else 0
             last_ui_update = 0.0
 
+            enable_think = self.reasoning_active and self.reasoning_budget > 0
+            budget_val = self.reasoning_budget if enable_think else 0
+            think_kwargs = {"thinking_budget_tokens": budget_val, "reasoning_budget": budget_val, "chat_template_kwargs": {"enable_thinking": enable_think}}
+
             for _round in range(10):
                 accumulated, in_thinking, tool_calls_map = "", False, {}
                 configs = agent_cloud.get_active_configs(self.history) if agent_cloud else []
-                local_extra = {"thinking_budget_tokens": thinking_budget, "reasoning_budget": thinking_budget, "chat_template_kwargs": {"enable_thinking": True}} if thinking_budget > 0 else {}
 
                 if not configs:
-                    configs = [("http://localhost:8080/v1/chat/completions", {}, {"messages": self.history, "stream": True, "model": "local-model", **local_extra}, 180)]
+                    configs = [("http://localhost:8080/v1/chat/completions", {}, {"messages": self.history, "stream": True, "model": "local-model", **think_kwargs}, 180)]
 
                 response = None
                 for url, headers, body, timeout in configs:
                     body["stream"], body["messages"] = True, self.history
+                    if "localhost" in url or "127.0.0.1" in url: body.update(think_kwargs)
                     if self.is_agent and hasattr(core, "EDIT_TOOLS"): body["tools"] = core.EDIT_TOOLS
                     req = urlreq.Request(url, data=json.dumps(body).encode("utf-8"), headers={"Content-Type": "application/json", **headers}, method="POST")
                     try:
@@ -954,17 +993,11 @@ class LocalAITUI(App):
         except (ValueError, KeyError, AttributeError): pass
 
     def action_toggle_reasoning(self) -> None:
-        if self.entering_reasoning_budget:
-            self.entering_reasoning_budget, self.chat_input.placeholder = False, "Ask your agent anything..."
-        elif self.reasoning_active:
-            self.reasoning_active = False
-            core.save_state("reasoning_active", False)
-            self.set_reasoning("Disabled")
-            self.notify("Deep reasoning disabled.")
-        else:
-            self.entering_reasoning_budget = True
-            self.chat_input.placeholder = "Enter Reasoning Budget (Press Enter for default 500):"
-            self.chat_input.focus()
+        self.reasoning_active = not self.reasoning_active
+        core.save_state("reasoning_active", self.reasoning_active)
+        status = f"{self.reasoning_budget} tokens" if self.reasoning_active else "Disabled"
+        self.set_reasoning(status)
+        self.notify(f"Deep reasoning {'enabled' if self.reasoning_active else 'disabled'} ({status}).")
 
 
 if __name__ == "__main__":
