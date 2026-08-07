@@ -160,9 +160,9 @@ AI_MAX_TOKENS="8192"
 - [x] **Thinking UI Controls:** Real-time thinking TPS metrics and `/t show|hide` panel toggles.
 - [x] **Modular Agent Personas & Tool Loop:** Interactive profile selector on `ai init` (`pi`, `claude`, `hermes`) with automated path-healing file editing & YOLO execution loops.
 - [x] **Textual Async TUI:** Sub-millisecond `uvloop` event loop integration, Unix socket sub-agent hub, and live workspace watchers.
-- [x] **Reasonix Cognitive Step Engine:** Real-time reasoning cognitive transition extraction, real-time thinking step formatting, and stream interception.
+- [x] **Reasonix Cognitive Step:** Real-time reasoning cognitive transition extraction, real-time thinking step formatting, and stream interception.
 - [x] **Ralph Autonomous Task Loop:** On-demand `while` loop engine (`/task`, `TASK.md`) with automated completion verification.
-- [x] **Voice to Text Engine:** Low-latency HTTPS tablet or phone voice bridge, Gemini cloud transcription, and non-blocking stdin injection loop (`/v [auto]`).
+- [x] **Voice to Text:** Low-latency HTTPS tablet or phone voice bridge, Gemini cloud transcription, and non-blocking stdin injection loop (`/v [auto]`).
 - [ ] **Context Stress Testing:** Continuous context-window pressure tests across quantized local engines.
 - [ ] **Automated File Containment Validation:** Zero-trust security verification on traversal boundaries.
 - [ ] **v1.0.0 Production Release Tag!**
