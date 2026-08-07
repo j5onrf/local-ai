@@ -238,7 +238,7 @@ def show_help() -> None:
     cmd_table.add_column("Description", style="white")
 
     cmds = [
-        ("/h", "Help menu"), ("/v [auto], /voice", "Voice to text"), ("/box [1-5]", "Box style preset"), ("/t [N|show|hide]", "Set reasoning budget or show/hide"),
+        ("/h", "Help menu"), ("/v [auto], /voice", "Voice to text"), ("/tts", "Text out loud"), ("/box [1-5]", "Box style preset"), ("/t [N|show|hide]", "Set reasoning budget or show/hide"),
         ("/g, /yolo", "Toggle confirmation gates (YOLO / autonomous mode)"), ("/m", "Toggle database memory"),
         ("/md", "Toggle markdown"), ("/stats", "Generation speed stats"), ("/tok", "Context token usage"),
         ("/sync", "Sync index"), ("/clear", "Chat & memory"), ("/sp", "Toggle spellchecker"),

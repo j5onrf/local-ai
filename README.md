@@ -35,6 +35,7 @@ Built with zero context-stuffing for extreme efficiency on quantized local engin
 | **Temporal Personality Memory (TPM)** | Reconciles personal identity & workspace habits using [Weaviate Engram](https://github.com/weaviate/engram-python-sdk) concepts + [Noema](https://github.com/Fail-Safe/Noema) Markdown files. | `.agent/tpm.md` |
 | **Codebase Graph & Relational Index** | Structural codebase maps ([Graphify](https://github.com/Graphify-Labs/graphify)) + relational queries ([codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)) + [sqlite-vec](https://github.com/asg017/sqlite-vec) vector RAG. | `index-map <dir>` |
 | **Ralph Autonomous Task Loop** | Self-directed iteration loop ([Ralph Wiggum](https://github.com/ghuntley/how-to-ralph-wiggum)) executing tasks against project specs (`TASK.md`) until verified complete. | `/task [goal]` |
+| **IPython RLM Kernel Harness** | Single-tool stateful Python kernel ([Prime Agent](https://github.com/PrimeIntellect-ai/prime-agent)) with AST safety pre-checker and context token conservation. | `/py` |
 | **Reasonix Cognitive Engine** | Real-time reasoning trace step extraction ([Reasonix](https://github.com/esengine/deepseek-reasonix)) + cognitive phase formatting inside thinking stream. | `/t [N\|show\|hide]` |
 | **System Admin & Diagnostics** | Live health monitoring, AUR/security audits, system optimization, status routing, and git commit hooks. | [`/tools/agentic/system/`](/tools/agentic/system) |
 | **Model Select TUI** | Real-time **[Cloud Connection](https://github.com/j5onrf/local-ai/blob/main/modules/Readme.md)** TUI, key toggles, and endpoint selector. | `model select` |
@@ -52,6 +53,8 @@ Built with zero context-stuffing for extreme efficiency on quantized local engin
 | **Safety** | **Zero-Trust Gates** | Mandatory approval prompts for commands and out-of-bounds file access. |
 | **Validation** | **Type-Safe & AST Guard** | [Pydantic AI](https://github.com/pydantic/pydantic-ai) schemas + [OpenAI Agents](https://github.com/openai/openai-agents-python)-style self-correcting `.py`/`.json` writes. |
 | **Optimization** | **Token-Slasher** | Custom [`tool`](https://github.com/j5onrf/fetch/tree/main/tools) and [`skill`](https://github.com/j5onrf/fetch/tree/main/skills) integration built for minimal token consumption. |
+| **Voice-to-Text** | **Tablet/Phone Bridge** | Zero-latency HTTPS voice bridge with Gemini cloud audio transcription (`/v [auto]`). |
+| **Text-to-Speech** | **Neural Kokoro TTS** | Local PipeWire audio reader (`/tts`) using `koko` with automatic code/thinking filtering. |
 
 ---
 
@@ -100,7 +103,7 @@ Agent: Workspace loaded. Awaiting instructions.
 
 <div align="center">
   <kbd>
-    <img width="800" alt="20260731_113218b" src="https://github.com/user-attachments/assets/c1469fa4-a3ad-4379-93dd-44daff8668f4" />
+    <img width="800" alt="20260731_113218b" src="https://github.com/user-attachments/assets/b1be841f-d2ae-49c9-8c81-303c160bbb31" />
   </kbd>
 </div>
 
@@ -163,6 +166,8 @@ AI_MAX_TOKENS="8192"
 - [x] **Reasonix Cognitive Step:** Real-time reasoning cognitive transition extraction, real-time thinking step formatting, and stream interception.
 - [x] **Ralph Autonomous Task Loop:** On-demand `while` loop engine (`/task`, `TASK.md`) with automated completion verification.
 - [x] **Voice to Text:** Low-latency HTTPS tablet or phone voice bridge, Gemini cloud transcription, and non-blocking stdin injection loop (`/v [auto]`).
+- [x] **Kokoro Neural Text-to-Speech:** Real-time local neural voice reader (`/tts`), PipeWire audio integration, and automatic thinking/code block filtering.
+- [x] **IPython RLM Kernel Harness:** Single-tool Python kernel execution engine (`/py`), AST safety gates, and stateful context token conservation.
 - [ ] **Context Stress Testing:** Continuous context-window pressure tests across quantized local engines.
 - [ ] **Automated File Containment Validation:** Zero-trust security verification on traversal boundaries.
 - [ ] **v1.0.0 Production Release Tag!**

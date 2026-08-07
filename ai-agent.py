@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local-Ai Agent [j5onrf] [v0.9.8.16]"""
+"""Local-Ai Agent [j5onrf] [v0.9.8.18]"""
 
 import json, os, re, sqlite3, subprocess, sys, threading, time, urllib.request as urlreq
 from typing import List, Optional, Tuple, Dict, Any
@@ -40,7 +40,7 @@ try:
 except ImportError: pass
 
 try:
-    import agent_context as context, agent_core as core, agent_skills as skills, agent_spell as spell, agent_ui as ui, agent_voice as voice
+    import agent_context as context, agent_core as core, agent_skills as skills, agent_spell as spell, agent_ui as ui, agent_voice as voice, agent_tts as tts, agent_ipython as ipython
 except ImportError as e:
     sys.stderr.write(f"\033[1;31m[CRITICAL]: Failed to load modules: {e}\033[0m\n")
     sys.exit(1)
@@ -179,6 +179,16 @@ def run_interactive_chat(args: List[str]) -> None:
                     active, auto_mode = voice.toggle_voice_bridge(auto_toggle=is_auto_cmd)
                     mode_str = "auto-submit" if auto_mode else "manual edit"
                     ui._console.print(f"[cyan][sys] Voice to text {'active (' + mode_str + ' mode, port 9999)' if active else 'disabled'}.[/cyan]\n")
+                    continue
+
+                if parts and parts[0] in ("/tts", "/talk", "/tol"):
+                    active = tts.toggle_tts()
+                    ui._console.print(f"[cyan][sys] Text to speech {'enabled' if active else 'disabled'}.[/cyan]\n")
+                    continue
+
+                if parts and parts[0] in ("/py", "/ipython"):
+                    active = ipython.toggle_ipython_mode()
+                    ui._console.print(f"[cyan][sys] IPython harness {'enabled (exec_python single tool mode)' if active else 'disabled (classic JSON tools)'}.[/cyan]\n")
                     continue
 
                 parts = query.split()
@@ -367,6 +377,7 @@ def run_interactive_chat(args: List[str]) -> None:
 
             if ans := core.stream_response(chat_history, prefix="Agent:" if is_agent else "AI:", show_stats=show_stats, thinking_budget=reasoning_budget if reasoning_active else 0, is_agent=is_agent):
                 chat_history.append({"role": "assistant", "content": ans})
+                tts.speak_response(ans)
                 if is_agent:
                     core.run_mod("ai-agent-sessions", "log-turn", safe_name, query, ans)
                     if match := re.search(r"Run:\s*((?:trace symbol|blast radius|read function|find symbol)\s+\S+|architecture overview)", ans):

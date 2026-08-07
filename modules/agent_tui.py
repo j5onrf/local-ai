@@ -25,7 +25,7 @@ from textual.widgets import Footer, Input, Static
 CFG_DIR = os.path.expanduser("~/.config/local-ai")
 sys.path.append(os.path.join(CFG_DIR, "modules"))
 
-import agent_cloud, agent_core as core, agent_skills as skills, agent_ui as ui, agent_tui_async as tui_async
+import agent_cloud, agent_core as core, agent_skills as skills, agent_ui as ui, agent_tui_async as tui_async, agent_voice as voice, agent_tts as tts, agent_ipython as ipython
 
 CONTEXT_FILE = os.path.join(CFG_DIR, "ai-context.md")
 SKILLS_DIR, SESSIONS_DIR = os.path.join(CFG_DIR, "skills"), os.path.join(CFG_DIR, "projects", "database")
@@ -429,11 +429,14 @@ class LocalAITUI(App):
                     yield Static(f"[dim]Dir[/dim]     {format_dir_path(self.workspace_path)}", id="lbl-dir", classes="sidebar-val")
                     yield Static(f"[dim]Skill[/dim]   {self.active_skill}", id="lbl-skill", classes="sidebar-val")
                     yield Static(f"[dim]Mode[/dim]    {self.agent_mode}", id="lbl-mode", classes="sidebar-val")
+                    yield Static("[dim]Harness[/dim] Legacy", id="lbl-harness", classes="sidebar-val")
                     yield Static("[dim]Image[/dim]   None", id="lbl-image", classes="sidebar-val")
 
                 with Vertical(classes="sidebar-section"):
                     yield Static("SETTINGS", classes="sidebar-label")
                     yield Static("[dim]Reasoning[/dim] Disabled", id="lbl-reasoning", classes="sidebar-val")
+                    yield Static("[dim]Voice[/dim]   Disabled", id="lbl-voice", classes="sidebar-val")
+                    yield Static("[dim]TTS[/dim]     Disabled", id="lbl-tts", classes="sidebar-val")
 
                 with Vertical(classes="sidebar-section"):
                     yield Static("CONTEXT & MEMORY", classes="sidebar-label")
@@ -444,7 +447,7 @@ class LocalAITUI(App):
                     with Horizontal(id="card-tips-header"):
                         yield Static("Quick Tips", id="lbl-tips-title")
                         yield CloseCardButton("×", id="btn-close-tips")
-                    yield Static("Tab: Switch Mode\nCtrl+B: Sidebar\nCtrl+G: Compact\nCtrl+T: Themes\nShift+Drag: Copy\n/tok: Context\n/task: Goal\n/help: Commands", id="lbl-tips-body")
+                    yield Static("Tab: Switch Mode\nCtrl+B: Sidebar\nCtrl+G: Compact\nCtrl+T: Themes\n/tok: Context\n/py: Harness\n/v: Voice To Text\n/tts: Text To Speech\n/task: Goal\n/help: Commands", id="lbl-tips-body")
 
         with Horizontal(id="footer-bar"): yield Footer(id="footer-keys")
 
@@ -468,8 +471,20 @@ class LocalAITUI(App):
 
         self.chat_input = self.query_one("#chat-input", Input)
         self.lbl_skill, self.lbl_mode = self.query_one("#lbl-skill", Static), self.query_one("#lbl-mode", Static)
-        self.lbl_reasoning, self.lbl_database, self.lbl_stats = self.query_one("#lbl-reasoning", Static), self.query_one("#lbl-database", Static), self.query_one("#lbl-stats", Static)
-        self.lbl_image = self.query_one("#lbl-image", Static)
+        self.lbl_harness, self.lbl_reasoning = self.query_one("#lbl-harness", Static), self.query_one("#lbl-reasoning", Static)
+        self.lbl_database, self.lbl_stats = self.query_one("#lbl-database", Static), self.query_one("#lbl-stats", Static)
+        self.lbl_voice, self.lbl_tts, self.lbl_image = self.query_one("#lbl-voice", Static), self.query_one("#lbl-tts", Static), self.query_one("#lbl-image", Static)
+
+        if hasattr(ipython, "is_ipython_enabled"):
+            self.lbl_harness.update(f"[dim]Harness[/dim] " + ("IPython" if ipython.is_ipython_enabled() else "Legacy"))
+
+        if hasattr(voice, "is_bridge_running"):
+            is_act = voice.is_bridge_running()
+            auto_st = core.get_state().get("voice_auto_submit", True)
+            self.lbl_voice.update(f"[dim]Voice[/dim]   {'Active (auto)' if (is_act and auto_st) else ('Active (edit)' if is_act else 'Disabled')}")
+
+        if hasattr(tts, "is_tts_enabled"):
+            self.lbl_tts.update(f"[dim]TTS[/dim]     {'Active' if tts.is_tts_enabled() else 'Disabled'}")
 
         os.environ["AI_SHOW_THINKING"] = "1" if core.get_state("show_thinking", True) else "0"
         self.set_skill(self.active_skill); self.set_mode(self.agent_mode)
@@ -603,7 +618,7 @@ class LocalAITUI(App):
             t = Table(show_header=False, box=None, padding=(0, 1), expand=False)
             cmd_style = "bold #89b4fa" if "code" in self.theme else ("bold #0265dc" if not self.is_dark_theme else "bold cyan")
             t.add_column("Command", style=cmd_style); t.add_column("Description", style="default")
-            for c, d in [("/help, /h", "Help"), ("Tab", "Plan/Build"), ("/task [goal]", "Task Loop"), ("/theme <name>", "Switch theme"), ("/copy", "Copy page"), ("/m", "Memory"), ("/clear", "Chat & history"), ("/tok", "Tokens"), ("/sync", "Sync index"), ("/s <q>", "Skill"), ("/t <toks>", "Reasoning"), ("/f, /tk, /b, /a", "Presets"), ("file <path>", "Load File"), ("exit, quit, q", "Exit")]:
+            for c, d in [("/help, /h", "Help"), ("/v", "Voice to text"), ("/tts", "Text to speech"), ("/py", "IPython"), ("Tab", "Plan/Build"), ("/task", "Task Loop"), ("/copy", "Copy page"), ("/m", "Memory"), ("/clear", "Chat & history"), ("/tok", "Tokens"), ("/sync", "Sync index"), ("/s <q>", "Skill"), ("/t <toks>", "Reasoning"), ("/f, /tk, /b, /a", "Presets"), ("file <path>", "Load File"), ("exit, quit, q", "Exit")]:
                 t.add_row(c, d)
             border_col = "bright_white" if self.theme in ("mono", "grok") else self.border_accent
             await self.chat_area.mount(Static(Group(Text(""), Panel(t, title="Commands", title_align="left", border_style=border_col, box=ROUNDED, expand=False))))
@@ -617,6 +632,24 @@ class LocalAITUI(App):
                     self.notify(f"Theme switched to [bold]{self.theme}[/bold].", css_class="theme-notice")
                 else: self.notify(f"Unknown theme '{t_arg}'. Options: {', '.join(self.THEMES)}")
             else: self.action_cycle_theme()
+
+        elif root in ("/py", "/ipython"):
+            active = ipython.toggle_ipython_mode()
+            if hasattr(self, "lbl_harness"): self.lbl_harness.update(f"[dim]Harness[/dim] " + ("IPython" if active else "Legacy"))
+            self.notify(f"IPython harness {'enabled (single tool mode)' if active else 'disabled (classic tools)'}.")
+
+        elif root in ("/v", "/voice"):
+            is_auto = (bool(args) and args.strip().lower() == "auto")
+            active, auto_mode = voice.toggle_voice_bridge(auto_toggle=is_auto)
+            mode_str = "auto-submit" if auto_mode else "manual edit"
+            val_str = f"Active ({'auto' if auto_mode else 'edit'})" if active else "Disabled"
+            if hasattr(self, "lbl_voice"): self.lbl_voice.update(f"[dim]Voice[/dim]   {val_str}")
+            self.notify(f"Voice to text {'active (' + mode_str + ' mode, port 9999)' if active else 'disabled'}.")
+
+        elif root in ("/tts", "/talk", "/tol"):
+            active = tts.toggle_tts()
+            if hasattr(self, "lbl_tts"): self.lbl_tts.update(f"[dim]TTS[/dim]     {'Active' if active else 'Disabled'}")
+            self.notify(f"Text to speech {'enabled' if active else 'disabled'}.")
 
         elif root in ("/task", "/loop", "/goal"): await self.handle_task_command(args)
         elif root in ("exit", "quit", "q"): self.exit()

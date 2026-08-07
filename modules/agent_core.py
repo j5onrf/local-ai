@@ -55,7 +55,8 @@ TOOL_VERBS = {"read_symbol": "tracing symbol", "read_file": "checking", "write_f
 DEFAULTS = {
     "spell_active": True, "show_stats": True, "memory_active": True, "box_style": 2, "yolo_mode": False,
     "show_thinking": True, "reasoning_active": False, "reasoning_budget": 500, "render_markdown": True,
-    "compact_mode": 0, "sidebar_hidden": False, "footer_hidden": True, "tips_card_hidden": False, "tui_theme": "code"
+    "compact_mode": 0, "sidebar_hidden": False, "footer_hidden": True, "tips_card_hidden": False, "tui_theme": "code",
+    "voice_auto_submit": True, "tts_enabled": False
 }
 
 try: import agent_usage as usage_log
@@ -136,11 +137,10 @@ def _clear_lines(stream_err: bool, text: str, extra_top: int = 0) -> None:
 
 
 def _render_compact_markdown_think(raw_think: str) -> None:
-    lines = [l.rstrip() for l in RE_THINKING_TITLE.sub('', raw_think).strip().splitlines() if l.strip()]
-    for line in lines:
-        for pattern, replacement in _MD_COMPACT_RULES: line = pattern.sub(replacement, line)
-        try: _console_err.print(Text.from_markup(line))
-        except (ValueError, KeyError, TypeError): _console_err.print(line)
+    clean = RE_THINKING_TITLE.sub('', raw_think).strip()
+    if clean:
+        try: _console_err.print(Markdown(clean, code_theme="ansi_dark"))
+        except (ValueError, KeyError, TypeError, OSError): _console_err.print(clean)
 
 
 class RichStreamer:
@@ -176,11 +176,10 @@ class RichStreamer:
         if "</think>" in token:
             parts = token.split("</think>", 1)
             if parts[0]: self.update(parts[0])
-            if show_think and self.think_hdr_printed and self.acc_think.strip():
-                if render_md:
-                    _clear_lines(True, self.acc_think, extra_top=0)
-                    _render_compact_markdown_think(self.acc_think)
-                _console_err.print("[dim]╰────────────────────────────────────────────────────────[/dim]")
+            if show_think and self.think_hdr_printed:
+                sep = "" if self.acc_think.endswith("\n") else "\n"
+                _console_err.print(f"{sep}[dim]╰────────────────────────────────────────────────────────[/dim]")
+                sys.stderr.flush()
             self.phase = "ANSWER"
             if len(parts) > 1 and parts[1]: self.update(parts[1])
             return
@@ -224,30 +223,14 @@ class RichStreamer:
 
         show_think, render_md = os.environ.get("AI_SHOW_THINKING", "1") == "1", os.environ.get("AI_RENDER_MARKDOWN", "1") == "1"
 
-        if self.phase == "THINKING" and show_think and self.think_hdr_printed and self.acc_think.strip():
-            if render_md:
-                _clear_lines(True, self.acc_think, extra_top=0)
-                _render_compact_markdown_think(self.acc_think)
-            _console_err.print("[dim]╰────────────────────────────────────────────────────────[/dim]")
+        if self.phase == "THINKING" and show_think and self.think_hdr_printed:
+            sep = "" if self.acc_think.endswith("\n") else "\n"
+            _console_err.print(f"{sep}[dim]╰────────────────────────────────────────────────────────[/dim]")
             self.phase = "ANSWER"
 
         if self.ans_started and self.acc_ans.strip():
-            p_clean = self.prefix.strip()
-            p_str = f"{p_clean} " if p_clean else ""
-            raw_body = self.acc_ans[len(p_str):] if self.acc_ans.startswith(p_str) else self.acc_ans
-            clean_ans = RE_MULTIPLE_NEWLINES.sub('\n\n', RE_FINAL_ANSWER.sub('', raw_body)).strip()
-
-            if render_md and clean_ans and sys.stdout.isatty():
-                try:
-                    _clear_lines(False, self.acc_ans)
-                    if p_clean: _console.print(Text(p_clean, style="bold green" if "Agent" in p_clean else "bold cyan"))
-                    _console.print(Markdown(clean_ans, code_theme="ansi_dark"))
-                except (OSError, ValueError, TypeError):
-                    try: sys.stdout.write("\n"); sys.stdout.flush()
-                    except (IOError, OSError): pass
-            else:
-                try: sys.stdout.write("\n"); sys.stdout.flush()
-                except (IOError, OSError): pass
+            try: sys.stdout.write("\n"); sys.stdout.flush()
+            except (IOError, OSError): pass
 
 
 def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float, show_stats: bool, ctx_used: Optional[int] = None) -> None:
@@ -312,6 +295,14 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
     denial = "[denied] User declined tool execution."
     raw_path = args.get("path", "")
     full = _safe_path(workspace, raw_path) if raw_path else ""
+
+    if name == "exec_python":
+        try:
+            import agent_ipython as ipython
+            out = ipython.run_cell(args.get("code", ""), workspace, lambda r: _confirm_gate(r, spinner))
+            _print_tool_output(spinner, out)
+            return out
+        except Exception as e: return f"[error] Python kernel execution failed: {e}"
 
     if name == "read_symbol":
         sym = args.get("symbol", "").strip()
@@ -414,9 +405,13 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
 
     resolved_model, streamer, res = None, None, None
 
+    try: import agent_ipython as ipython
+    except ImportError: ipython = None
+
     for _round in range(10):
         body_tools = {**body, "messages": messages, "stream": True}
-        if is_agent: body_tools["tools"] = EDIT_TOOLS
+        if is_agent:
+            body_tools["tools"] = ipython.get_active_tools() if ipython else EDIT_TOOLS
 
         if spinner:
             try: spinner.update("Working...")

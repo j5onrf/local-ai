@@ -1,121 +1,117 @@
-# Local-AI Agent Blueprint
+# Local-AI Blueprint
 
 > **Syntax**: `[command / execution] ──> [intent1], [intent2], [intent3]`  
 > **Delimiter**: `" ---> "` (Three-dash arrow with a trailing space)
 
 ---
 
-### Directional Syntax Guide
-1. `~/path`: Indexes workspace and launches a standard AI Workspace.
-2. `ai init --<skill>`: Indexes codebase workspace pre-primed with a chosen `--<skill>` (e.g., `--init` or `--coder`).
-3. `[TOOL] <command> [--s]`: Runs a background utility to inject dynamic Markdown context (append ` --s` to bypass confirmation).
-4. `<command>`: Launches a native terminal alias, interactive TUI, or document viewer (using `view`, `leaf`, or `glow`).
+### Syntax Guide
+1. `~/path`: Index workspace and launch session.
+2. `ai init --<skill>`: Index workspace with primed skill.
+3. `[TOOL] <command> [--s]`: Run background context tool.
+4. `<command>`: Launch terminal alias or viewer (`view`).
 
 ---
 
-## 1. Active Workspaces & Session Control
+## 0. Core Level
 
 ```properties
-# --- Active Project Workspace Initialization ---
+# --- IPython RLM Kernel Harness Toggle ---
+~/.config/local-ai/modules/agent_ipython.py ---> ipython, python harness, ipy, py harness
+```
+
+## 1. Voice & TTS
+
+```properties
+# --- Voice to Text ---
+~/.config/local-ai/modules/agent_voice.py ---> voice, voice query, voice bridge, voice to text, v2t
+# --- Text to Speech (TTS) ---
+pkill -9 -f "pw-play|koko" ---> stop speech, kill tts, quiet, stop talking, tts
+```
+
+## 2. Workspaces
+
+```properties
+# --- Workspaces ---
 ai init ~/.config/local-ai/projects/session-test --init ---> session test, projects session, projects
 ai init ~/.config/local-ai/projects/session-test-2 --init ---> session test 2, projects session, projects
 ai init ~/.config/local-ai/projects/session-test-3 --init ---> session test 3, projects session, projects
 ```
 
-## 2. Codebase Mapping & Relational Context
+## 3. Codebase Map
 
 ```properties
-# --- Index-Map (Graph-Enabled Code Intelligence Engine) ---
+# --- Index Map ---
 [TOOL] ~/.config/local-ai/tools/map/index-map --cat ---> index map, imap
-
-# --- Codebase Structural Tracing & Snippet Retrieval ---
+# --- Code Tracing ---
 [TOOL] ~/.config/local-ai/tools/map/index-map trace $1 --cat ---> trace symbol
 [TOOL] ~/.config/local-ai/tools/map/index-map blast-radius $1 --cat ---> blast radius
 [TOOL] ~/.config/local-ai/tools/map/index-map snippet $1 --cat ---> read function
 [TOOL] ~/.config/local-ai/tools/map/index-map architecture --cat ---> architecture overview
-
-# --- Hybrid Semantic Codebase Search (sqlite-vec Enabled) ---
+# --- Code Search ---
 [TOOL] ~/.config/local-ai/tools/map/index-map search $1 --cat ---> find symbol, semantic search, find concept, search code
 ```
 
-## 3. Core Retrieval, Scraping & Web Research
+## 4. Web & Files
 
 ```properties
-# --- Web-Reader (Web Scraper & YouTube Subtitle Extractor) ---
+# --- Web Reader ---
 [TOOL] ~/.config/local-ai/tools/agentic/web/web-reader web $1 ---> web reader, webr
 [TOOL] ~/.config/local-ai/tools/agentic/web/web-reader youtube $1 ---> web reader yt, webr
-
-# --- Dynamic File Reader ---
+# --- File Reader ---
 [TOOL] cat $1 ---> view file, read file, show file, vf
-
-# --- Active Workspace Memory Viewer & Searcher ---
+# --- Memories ---
 [TOOL] view .agent/tpm.md | less -R ---> show memories, mem
 [TOOL] read -p "Search Memories: " query && view .agent/tpm.md | grep --color=always -A 5 -B 2 -i "$query" ---> search memories, ms
-
-# --- Active Workspace History Viewer & Searcher ---
+# --- History ---
 [TOOL] view history.md | less -R ---> show history, hist, history
 [TOOL] read -p "Search Page: " query && view history.md | grep --color=always -A 15 -B 2 -i "$query" ---> search page, hs
 ```
 
-## 4. System Diagnostics & Performance Optimization
+## 5. System & Health
 
 ```properties
-# --- AI Status & Provider Diagnostics ---
+# --- AI Status ---
 [TOOL] ~/.config/local-ai/tools/agentic/system/ai-status ---> ai status, aistat, status, route
-
-# --- System Resources & Diagnosis (System Health) ---
+# --- System Health ---
 [TOOL] ~/.config/local-ai/tools/agentic/system/system-health ---> system health, sysh
-
-# --- System Logs & Diagnostics (Compressed Stream Triage) ---
+# --- Log Checker ---
 [TOOL] ~/.config/local-ai/tools/agentic/system/log-checker ---> log checker, ailog
-
-# --- Pre-Install Zero-Trust AUR Package & PKGBUILD Auditor ---
+# --- AUR Audit ---
 [TOOL] ~/.config/local-ai/tools/agentic/system/aur-audit ---> aur audit, audit package
-
-# --- Host Security Surface & Vulnerability Intelligence (SECAUD) ---
+# --- Security Audit ---
 [TOOL] ~/.config/local-ai/tools/agentic/system/security-audit ---> security audit, secaud, system audit
-
-# --- System Optimization (Improve System Performance) ---
+# --- System Optimizer ---
 [TOOL] ~/.config/local-ai/tools/agentic/system/system-optimizer ---> system optimizer, sysop
-
-# --- Dynamic Host Profiler & System Analytics ---
+# --- System Profile ---
 [TOOL] cat ~/.config/local-ai/skills/system/mysys.md ---> mysys
 [TOOL] ~/.config/local-ai/tools/generate-profile ---> generate profile, sync mysys
-
-# --- Pending System Updates ---
+# --- Update Inspector ---
 [TOOL] ~/.config/local-ai/tools/agentic/system/update-inspector ---> update inspector
-
-# --- Weather & Live Networking ---
+# --- Weather ---
 [TOOL] curl -s "wttr.in/?format=3" --cat ---> weather simple, wttr, weather
 [TOOL] curl -s wttr.in --cat ---> weather full, wttr, weather
-
-# --- System Time & Date (Real-time Clock Context) ---
+# --- Time & Date ---
 [TOOL] date "+TIME: %I:%M:%S %p %Z, %A, %B %d, %Y" ---> time, date, current time, what time is it
 ```
 
-## 5. Interactive TUI (Terminal User Interface) Programs
+## 6. TUI Apps
 
 ```properties
-# --- Dynamic Local-AI Model Select TUI ---
+# --- Model Select TUI ---
 ~/.config/local-ai/modules/model-select.py ---> model select, models select, mst
-
-# --- Email TUI Monitor & Inbox Browser ---
+# --- Email TUI ---
 [TOOL] ~/.config/local-ai/tools/email/email-agent ---> email agent
-
-# --- Local Window Manager (Hyprland) State Controllers ---
+# --- Hyprland State ---
 ~/.config/local-ai/tools/subsec/hyprstate/work ---> hyprstate work, hyprwork
 ~/.config/local-ai/tools/subsec/hyprstate/gitcom ---> hyprstate gitcom, gitcom
 ```
 
-## 6. Graphical Integration & Workspace Launchers
+## 7. Tools & Utilities
 
 ```properties
-# --- Local-Ai Tablet Voice Bridge ---
-~/.config/local-ai/tools/subsec/voice/voice-query ---> voice, voice query, voice bridge
-
-# --- Local-Ai Agent Blueprint (System CheatSheet Viewer) ---
+# --- Blueprint ---
 [TOOL] ~/.config/local-ai/tools/blueprint ---> cheatsheet, bp, cs, blueprint
-
-# --- AI-Generated Git Commits ---
+# --- AI Commit ---
 ~/.config/local-ai/tools/agentic/system/ai-commit ---> ai-commit, gc, git commit
 ```

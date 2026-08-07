@@ -16,39 +16,105 @@ except ImportError:
 HTML_CONTENT = """<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Voice to Text</title>
     <style>
-        body { background: #000; color: #c0caf5; font-family: monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; user-select: none; }
-        button { width: 220px; height: 220px; border-radius: 50%; border: 2px solid #7aa2f7; background: #000; color: #7aa2f7; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; outline: none; }
-        #status { margin-top: 35px; font-size: 12px; color: #565f89; text-transform: uppercase; letter-spacing: 2px; }
-        #result { margin-top: 15px; font-size: 18px; color: #9ece6a; text-align: center; max-width: 85%; min-height: 40px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #000; color: #c0caf5; font-family: monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; user-select: none; -webkit-user-select: none; touch-action: none; }
+        .mic-container { position: relative; display: flex; align-items: center; justify-content: center; width: 260px; height: 260px; }
+        .pulse-ring { position: absolute; width: 220px; height: 220px; border-radius: 50%; border: 2px solid #7aa2f7; opacity: 0; transition: transform 0.05s ease-out, opacity 0.2s ease; pointer-events: none; }
+        button { position: relative; width: 210px; height: 210px; border-radius: 50%; border: 3px solid #7aa2f7; background: #000; color: #7aa2f7; font-size: 17px; font-weight: bold; cursor: pointer; transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.1s; outline: none; touch-action: none; -webkit-touch-callout: none; z-index: 2; }
+        button.recording { background: #7aa2f7; color: #000; border-color: #7aa2f7; transform: scale(1.03); }
+        #status { margin-top: 35px; font-size: 13px; color: #565f89; text-transform: uppercase; letter-spacing: 2px; height: 20px; }
+        #result { margin-top: 15px; font-size: 18px; color: #9ece6a; text-align: center; max-width: 85%; min-height: 50px; line-height: 1.4; word-break: break-word; }
     </style>
 </head>
 <body>
-    <button id="mic-btn">HOLD TO SPEAK</button>
+    <div class="mic-container">
+        <div id="ring" class="pulse-ring"></div>
+        <button id="mic-btn">HOLD TO SPEAK</button>
+    </div>
     <div id="status">Ready</div>
     <div id="result"></div>
     <script>
-        const btn = document.getElementById('mic-btn'), status = document.getElementById('status'), result = document.getElementById('result');
-        let mediaRecorder, audioChunks = [];
-        navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-            mediaRecorder = new MediaRecorder(stream);
-            mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+        const btn = document.getElementById('mic-btn'), ring = document.getElementById('ring'), status = document.getElementById('status'), result = document.getElementById('result');
+        let mediaRecorder, audioChunks = [], audioCtx, analyser, dataArray, animId, activeMime = 'audio/webm';
+
+        const mimeTypes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+        for (const m of mimeTypes) {
+            if (MediaRecorder.isTypeSupported(m)) { activeMime = m; break; }
+        }
+
+        navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, sampleRate: 48000 }
+        }).then(stream => {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const source = audioCtx.createMediaStreamSource(stream);
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 64;
+            source.connect(analyser);
+            dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+            mediaRecorder = new MediaRecorder(stream, { mimeType: activeMime });
+            mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
             mediaRecorder.onstop = () => {
                 status.innerText = "Transcribing...";
-                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                const audioBlob = new Blob(audioChunks, { type: activeMime });
                 audioChunks = [];
-                fetch('/upload', { method: 'POST', body: audioBlob }).then(r => r.text()).then(text => {
-                    result.innerText = text ? `"${text}"` : "Silence detected.";
-                    status.innerText = "Executed.";
-                }).catch(() => { status.innerText = "Transmission failed."; });
+                fetch('/upload', { method: 'POST', headers: { 'Content-Type': activeMime }, body: audioBlob })
+                    .then(r => r.text())
+                    .then(text => {
+                        result.innerText = text ? `"${text}"` : "Silence detected.";
+                        status.innerText = "Executed.";
+                    }).catch(() => { status.innerText = "Transmission failed."; });
             };
         }).catch(() => { status.innerText = "Mic Permission Blocked"; btn.style.borderColor = "#f7768e"; });
-        btn.addEventListener('pointerdown', e => { e.preventDefault(); if (mediaRecorder?.state === "inactive") { mediaRecorder.start(); status.innerText = "Listening..."; btn.style.background = "#7aa2f7"; btn.style.color = "#000"; } });
-        const stopRec = e => { if (e) e.preventDefault(); if (mediaRecorder?.state === "recording") { mediaRecorder.stop(); btn.style.background = "#000"; btn.style.color = "#7aa2f7"; } };
-        btn.addEventListener('pointerup', stopRec); btn.addEventListener('pointercancel', stopRec); btn.addEventListener('mouseleave', stopRec);
-        btn.addEventListener('contextmenu', e => e.preventDefault());
+
+        function updateVisualizer() {
+            if (mediaRecorder?.state === "recording" && analyser) {
+                analyser.getByteFrequencyData(dataArray);
+                let sum = 0;
+                for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+                const avg = sum / dataArray.length;
+                const scale = 1 + Math.min(avg / 128, 0.45);
+                ring.style.transform = `scale(${scale})`;
+                ring.style.opacity = Math.min(avg / 64, 0.9);
+                animId = requestAnimationFrame(updateVisualizer);
+            } else {
+                ring.style.transform = 'scale(1)';
+                ring.style.opacity = '0';
+            }
+        }
+
+        const startRec = e => {
+            if (e) e.preventDefault();
+            if (navigator.vibrate) navigator.vibrate(30);
+            if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+            if (mediaRecorder && mediaRecorder.state === "inactive") {
+                audioChunks = [];
+                mediaRecorder.start(250);
+                status.innerText = "Listening...";
+                btn.classList.add('recording');
+                updateVisualizer();
+            }
+        };
+
+        const stopRec = e => {
+            if (e) e.preventDefault();
+            if (mediaRecorder && mediaRecorder.state === "recording") {
+                if (navigator.vibrate) navigator.vibrate(20);
+                mediaRecorder.stop();
+                btn.classList.remove('recording');
+                if (animId) cancelAnimationFrame(animId);
+                ring.style.transform = 'scale(1)';
+                ring.style.opacity = '0';
+            }
+        };
+
+        btn.addEventListener('pointerdown', startRec);
+        window.addEventListener('pointerup', stopRec);
+        window.addEventListener('pointercancel', stopRec);
+        btn.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); return false; });
     </script>
 </body>
 </html>
@@ -80,7 +146,7 @@ def load_voice_env() -> None:
         except OSError: pass
 
 
-def transcribe_gemini(audio_data: bytes) -> str:
+def transcribe_gemini(audio_data: bytes, mime_type: str = "audio/webm") -> str:
     load_voice_env()
     gkey = os.environ.get("GEM_VOICE") or os.environ.get("GEMINI_API_KEY")
     model = os.environ.get("GEM_MODEL") or os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
@@ -93,8 +159,8 @@ def transcribe_gemini(audio_data: bytes) -> str:
     payload = {
         "contents": [{
             "parts": [
-                {"inline_data": {"mime_type": "audio/webm", "data": encoded}},
-                {"text": "Transcribe this audio verbatim. Output ONLY plain text, no commentary or markdown formatting."}
+                {"inline_data": {"mime_type": mime_type, "data": encoded}},
+                {"text": "Transcribe this audio verbatim. If the audio is silent or contains background noise, output 'SILENCE'. Output ONLY plain text."}
             ]
         }]
     }
@@ -107,7 +173,11 @@ def transcribe_gemini(audio_data: bytes) -> str:
             except OSError: pass
             res_data = json.loads(resp.read().decode("utf-8"))
             raw = res_data["candidates"][0]["content"]["parts"][0]["text"].strip()
-            return re.sub(r'[^a-zA-Z0-9\s?.,!\'-]', '', raw).strip()
+            clean = re.sub(r'[^a-zA-Z0-9\s?.,!\'-]', '', raw).strip()
+            cl_lower = clean.lower()
+            if not clean or len(clean) < 2 or cl_lower in ("silence", "uh", "um", "mm", "thank you", "thank you."): return ""
+            if re.match(r'^\d{1,4}$', clean) and len(set(clean)) == 1: return ""
+            return clean
     except Exception as e:
         sys.stderr.write(f"[error] Transcription failed: {e}\n"); sys.stderr.flush()
         return ""
@@ -146,8 +216,9 @@ class VoiceHandler(http.server.SimpleHTTPRequestHandler):
         try:
             if self.path == "/upload":
                 length = int(self.headers.get("Content-Length", 0))
+                mime_type = self.headers.get("Content-Type", "audio/webm").split(";")[0]
                 audio_data = self.rfile.read(length)
-                query = transcribe_gemini(audio_data) if audio_data else ""
+                query = transcribe_gemini(audio_data, mime_type=mime_type) if audio_data else ""
                 if query:
                     sys.stderr.write(f"[sys] Transcribed: {query}\n"); sys.stderr.flush()
                     with open(PENDING_FILE, "w", encoding="utf-8") as f:

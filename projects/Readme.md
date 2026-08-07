@@ -151,6 +151,7 @@ Running `ai init <path>` sets default workspace agent profile:
 │                                                                     │
 │   Available commands:                                               │
 │  /h                          - Help menu                            │
+│  /py                         - Toggle IPython (exec_python)         │
 │  /box [1-5]                  - Box style preset                     │
 │  /task [goal]                - Autonomous task loop                 │
 │  /t [N|show|hide]            - Set reasoning budget or show/hide    │
@@ -236,7 +237,18 @@ Self-directed iterative `while` execution loop that runs tools and verifies resu
 
 ---
 
-## 11. Context Limits
+## 11. IPython Kernel Harness (`/py`)
+
+Replaces discrete JSON tools with a single live Python kernel. Loaded files and variables stay in kernel memory, saving up to 90% context tokens.
+
+- **Toggle On/Off:** Type `/py` (or `/ipython`).
+- **Usage:** The agent writes and executes Python code inside `exec_python(code)`.
+- **Built-in SDK:** `read_file()`, `write_file()`, `list_dir()`, `run_command()`, `read_symbol()`.
+- **Data Isolation:** Large files/datasets are inspected via Python scripts (`import re`, `import ast`, `import json`) in memory without bloating the LLM context window.
+
+---
+
+## 12. Context Limits
 
 Override max context token limits:
 ```bash
