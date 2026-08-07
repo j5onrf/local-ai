@@ -898,6 +898,8 @@ class LocalAITUI(App):
 
             self.stats_turns += 1
             self.call_from_thread(self.update_stats_ui, self.stats_turns, tps, total_elapsed)
+            if hasattr(tts, "speak_response"):
+                tts.speak_response(accumulated)
 
             if user_text:
                 try:

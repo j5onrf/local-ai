@@ -103,7 +103,7 @@ Agent: Workspace loaded. Awaiting instructions.
 
 <div align="center">
   <kbd>
-    <img width="800" alt="20260731_113218b" src="https://github.com/user-attachments/assets/b1be841f-d2ae-49c9-8c81-303c160bbb31" />
+    <img width="800" alt="20260731_113218b" src="https://github.com/user-attachments/assets/c1469fa4-a3ad-4379-93dd-44daff8668f4" />
   </kbd>
 </div>
 
