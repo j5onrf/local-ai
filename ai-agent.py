@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local-Ai Agent [j5onrf] [v0.9.8.8]"""
+"""Local-Ai Agent [j5onrf] [v0.9.8.16]"""
 
 import json, os, re, sqlite3, subprocess, sys, threading, time, urllib.request as urlreq
 from typing import List, Optional, Tuple, Dict, Any
@@ -40,7 +40,7 @@ try:
 except ImportError: pass
 
 try:
-    import agent_context as context, agent_core as core, agent_skills as skills, agent_spell as spell, agent_ui as ui
+    import agent_context as context, agent_core as core, agent_skills as skills, agent_spell as spell, agent_ui as ui, agent_voice as voice
 except ImportError as e:
     sys.stderr.write(f"\033[1;31m[CRITICAL]: Failed to load modules: {e}\033[0m\n")
     sys.exit(1)
@@ -163,7 +163,7 @@ def run_interactive_chat(args: List[str]) -> None:
             if pending_query:
                 query, pending_query = pending_query, None
             else:
-                try: query = input("\001\033[1;30m\002❯\001\033[0m\002 ").strip()
+                try: query = voice.get_prompt_input()
                 except EOFError: break
                 finally:
                     try: readline.set_startup_hook(None)
@@ -172,6 +172,15 @@ def run_interactive_chat(args: List[str]) -> None:
                 if not query: continue
                 q_lower = query.lower()
                 if q_lower in ("exit", "quit", "q"): clean_exit(safe_name if is_agent else None)
+
+                parts = query.split()
+                if parts and parts[0] in ("/v", "/voice"):
+                    is_auto_cmd = len(parts) > 1 and parts[1].lower() == "auto"
+                    active, auto_mode = voice.toggle_voice_bridge(auto_toggle=is_auto_cmd)
+                    mode_str = "auto-submit" if auto_mode else "manual edit"
+                    ui._console.print(f"[cyan][sys] Voice to text {'active (' + mode_str + ' mode, port 9999)' if active else 'disabled'}.[/cyan]\n")
+                    continue
+
                 parts = query.split()
                 if parts and parts[0] in ("/task", "/loop", "/ralph"):
                     task_text = query.split(maxsplit=1)[1] if len(parts) > 1 else ""

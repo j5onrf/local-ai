@@ -178,12 +178,10 @@ class RichStreamer:
             if parts[0]: self.update(parts[0])
             if show_think and self.think_hdr_printed and self.acc_think.strip():
                 if render_md:
-                    _clear_lines(True, self.acc_think, extra_top=1)
-                    _console_err.print("[dim]╭─ ⚙ ────────────────────────────────────────────────────[/dim]")
+                    _clear_lines(True, self.acc_think, extra_top=0)
                     _render_compact_markdown_think(self.acc_think)
                 _console_err.print("[dim]╰────────────────────────────────────────────────────────[/dim]")
             self.phase = "ANSWER"
-            if self.spinner: self.spinner.update("Working...")
             if len(parts) > 1 and parts[1]: self.update(parts[1])
             return
 
@@ -228,8 +226,7 @@ class RichStreamer:
 
         if self.phase == "THINKING" and show_think and self.think_hdr_printed and self.acc_think.strip():
             if render_md:
-                _clear_lines(True, self.acc_think, extra_top=1)
-                _console_err.print("[dim]╭─ ⚙ ────────────────────────────────────────────────────[/dim]")
+                _clear_lines(True, self.acc_think, extra_top=0)
                 _render_compact_markdown_think(self.acc_think)
             _console_err.print("[dim]╰────────────────────────────────────────────────────────[/dim]")
             self.phase = "ANSWER"

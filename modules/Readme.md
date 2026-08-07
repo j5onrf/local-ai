@@ -27,3 +27,17 @@
     <img alt="Ai-Commit Thumbnail" src="https://github.com/user-attachments/assets/d7bccb82-5b98-46fc-be65-928ee5ab7f32" width="250" />
   </a>
 </div>
+
+---
+
+# Voice to Text
+
+- **Toggle:** Type `/v` or `/voice` in session to start/stop server.
+- **Connect:** Open `https://[PC-IP]:9999` on tablet or phone.
+- **Speak:** Hold button to talk; speech auto-types directly into your terminal prompt.
+
+### Setup (`~/.config/local-ai/.env`)
+
+```env
+GEM_VOICE="AIzaSyYourGeminiKeyHere"
+GEM_MODEL="gemini-3.5-flash-lite"

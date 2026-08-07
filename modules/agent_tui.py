@@ -31,9 +31,16 @@ CONTEXT_FILE = os.path.join(CFG_DIR, "ai-context.md")
 SKILLS_DIR, SESSIONS_DIR = os.path.join(CFG_DIR, "skills"), os.path.join(CFG_DIR, "projects", "database")
 LEFT_BAR = Box("▌   \n" * 8)
 
+# PRE-COMPILED REGEXES FOR MAXIMUM STREAMING TPS
 TOKEN_RE, STOP_WORDS = re.compile(r"[^\w\s]"), {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"}
-CSI_U_REGEX, ANSI_CLEAN_REGEX, QUESTION_SPLIT_REGEX = re.compile(r'(?:\x1b\[<|\x1b\[|\[<)?\d+;\d+;\d+[mM]|\x1b\[[0-9;]*[a-zA-Z~]|\x1b[\[\(\=][0-9;]*[a-zA-Z~]?'), re.compile(r'\x1b\[[0-9;]*m'), re.compile(r'(?<=\?)\s+')
+CSI_U_REGEX = re.compile(r'(?:\x1b\[<|\x1b\[|\[<)?\d+;\d+;\d+[mM]|\x1b\[[0-9;]*[a-zA-Z~]|\x1b[\[\(\=][0-9;]*[a-zA-Z~]?')
+ANSI_CLEAN_REGEX = re.compile(r'\x1b\[[0-9;]*m')
+QUESTION_SPLIT_REGEX = re.compile(r'(?<=\?)\s+')
 REASONIX_STEP_RE = re.compile(r'^(?:\d+\.\s*|Step \d+:?\s*|Phase \d+:?\s*|\#{1,3}\s*)\*\*?([^\n\*:]+)\*\*?:?', re.IGNORECASE)
+CLEAN_CODE_BLOCKS_RE = re.compile(r'```\n\s*\n+')
+MULTI_NEWLINE_RE = re.compile(r'\n{3,}')
+FINAL_ANSWER_RE = re.compile(r'^\s*Final Answer:\s*', re.IGNORECASE)
+THINK_TAGS_RE = re.compile(r'<think>.*?</think>', re.DOTALL)
 
 BASE_PROMPT_CHAT = "### Conversational Guidelines:\n- Role: Active, natural, and highly articulate conversational assistant.\n- Tone: Professional, warm, objective, and intellectually engaging.\n\n"
 BASE_PROMPT_AGENT = "Active local project workspace developer agent.\nIf <context> is provided, answer directly using only its facts. Otherwise, answer normally.\n\n"
@@ -73,9 +80,9 @@ def copy_to_clipboard(text: str) -> bool:
     return True
 
 
-def _format_tui_reasonix_text(text: str, theme: str = "code") -> Text:
-    """Fast single-pass Reasonix cognitive step formatter for Rich Text."""
-    res, badge_style, last_was_empty = Text(), {"code": "bold #cba6f7", "dark": "bold cyan", "mono": "bold white"}.get(theme, "bold yellow"), False
+def _format_tui_reasonix_text(text: str, theme: str = "code1") -> Text:
+    badge_style = {"code1": "bold #89b4fa", "code2": "bold #ff9e64", "dark": "bold cyan", "mono": "bold white"}.get(theme, "bold cyan")
+    res, last_was_empty = Text(), False
     for line in text.splitlines():
         if not (clean_strip := line.strip()):
             if not last_was_empty: res.append("\n"); last_was_empty = True
@@ -89,8 +96,10 @@ def _format_tui_reasonix_text(text: str, theme: str = "code") -> Text:
 
 tokenize = lambda text: [w for w in TOKEN_RE.sub(" ", text.lower()).split() if len(w) > 1 and w not in STOP_WORDS] if text else []
 
-code_theme = Theme(name="code", primary="#cba6f7", secondary="#a6adc8", accent="#cba6f7", background="#11121d", surface="#161726", panel="#1b1c2b")
-mono_theme = Theme(name="mono", primary="#444444", secondary="#888888", accent="#ffffff", background="#000000", surface="#0d0d0d", panel="#121212")
+# RICH THEME DEFINITIONS (code1, code2, dark, mono)
+code1_theme = Theme(name="code1", primary="#89b4fa", secondary="#a6adc8", accent="#89b4fa", background="#11121d", surface="#161726", panel="#1b1c2b")
+code2_theme = Theme(name="code2", primary="#ff9e64", secondary="#e0af68", accent="#ff9e64", background="#11121d", surface="#161726", panel="#1b1c2b")
+mono_theme = Theme(name="mono", primary="#ffffff", secondary="#a0a0a0", accent="#ffffff", background="#000000", surface="#0d0d0d", panel="#121212")
 dark_theme = Theme(name="dark", primary="#555555", secondary="#b0b0b0", accent="#ffffff", background="#121212", surface="#1c1c1c", panel="#242424")
 
 
@@ -117,19 +126,21 @@ class Message(Static):
         self.refresh()
 
     def render(self) -> Any:
-        app_theme = getattr(self.app, "theme", "code")
+        app_theme = getattr(self.app, "theme", "code1")
         if self._cached_render is not None and self._cached_theme == app_theme: return self._cached_render
 
         compact_state, is_dark = getattr(self.app, "compact_mode", 0), getattr(self.app, "is_dark_theme", True)
-        self.styles.color = "#c8d3f5" if app_theme == "code" else None
+        self.styles.color = "#c8d3f5" if ("code" in app_theme and is_dark) else None
         self.styles.margin = (1, 2, 0, 0) if compact_state == 0 else (0, 2, 0, 0)
-        u_style = "bold #888888" if app_theme in ("mono", "grok") else ("bold #89b4fa" if app_theme == "code" else ("bold #0265dc" if not is_dark else "bold cyan"))
+        u_style = "bold #888888" if app_theme in ("mono", "grok") else ("bold #89b4fa" if "code" in app_theme else ("bold #0265dc" if not is_dark else "bold cyan"))
         code_fmt = "ansi_dark" if is_dark else "ansi_light"
 
         if self.sender == "User":
             text = self.content if isinstance(self.content, str) else next((i["text"] for i in self.content if isinstance(i, dict) and i.get("type") == "text"), "[Multimodal Payload]")
             if compact_state == 0:
-                bar_col, bg_col, user_txt_col = ("#555555", "#0d0d0d", "white") if app_theme in ("mono", "grok") else (("cyan", "#1a1a1a", "white") if app_theme == "dark" else (("#cba6f7", "#1b1c2b", "#c8d3f5") if app_theme == "code" else ("#555555", "#e8e8ec", "#111111")))
+                bar_col = getattr(self.app, "border_accent", "#89b4fa")
+                bg_col = "#0d0d0d" if app_theme in ("mono", "grok") else ("#1a1a1a" if app_theme == "dark" else ("#1b1c2b" if is_dark else "#f0f0f4"))
+                user_txt_col = "white" if app_theme in ("mono", "grok", "dark") else ("#303446" if not is_dark else "#c8d3f5")
                 res = Panel(Text(text, style=user_txt_col), box=LEFT_BAR, border_style=bar_col, style=f"on {bg_col}", padding=(0, 2))
             else: res = Text(text, style=u_style)
         else:
@@ -145,17 +156,18 @@ class Message(Static):
                     if show_think and think.strip():
                         items.append(Panel(_format_tui_reasonix_text(think.strip(), app_theme), title="⚙ Thinking Process", title_align="left", border_style=border_col, box=ROUNDED, expand=True))
                     if rest.strip():
-                        items.append(Markdown(re.sub(r'```\n\s*\n+', '```\n', re.sub(r'\n{3,}', '\n\n', rest.strip())), code_theme=code_fmt))
+                        clean_rest = MULTI_NEWLINE_RE.sub('\n\n', CLEAN_CODE_BLOCKS_RE.sub('```\n', rest.strip()))
+                        items.append(Markdown(clean_rest, code_theme=code_fmt))
                     res = Group(*items) if items else Text("Thinking...", style="italic dim")
                 else:
                     think = after.strip()
                     if show_think and think:
                         items.append(Panel(_format_tui_reasonix_text(think, app_theme), title="⚙ Thinking Process...", title_align="left", border_style=border_col, box=ROUNDED, expand=True))
-                    else:
-                        items.append(Text("Thinking...", style="italic dim"))
+                    else: items.append(Text("Thinking...", style="italic dim"))
                     res = Group(*items)
             else:
-                res = Markdown(re.sub(r'```\n\s*\n+', '```\n', re.sub(r'\n{3,}', '\n\n', text.strip())), code_theme=code_fmt)
+                clean_text = MULTI_NEWLINE_RE.sub('\n\n', CLEAN_CODE_BLOCKS_RE.sub('```\n', text.strip()))
+                res = Markdown(clean_text, code_theme=code_fmt)
 
         self._cached_render, self._cached_theme = res, app_theme
         return res
@@ -180,28 +192,29 @@ class AgentCommandProvider(Provider):
 
 class LocalAITUI(App):
     ENABLE_COMMAND_PALETTE = True
-    THEMES = ["code", "dark", "mono"]
+    THEMES = ["code1", "code2", "dark", "mono"]
 
     @property
     def command_sources(self) -> Set[Any]: return {AgentCommandProvider}
 
     @property
     def border_accent(self) -> str:
-        t = str(getattr(self, "theme", "code")).lower()
+        t = str(getattr(self, "theme", "code1")).lower()
         if "mono" in t or "grok" in t: return "bright_white"
         if "dark" in t: return "bright_blue"
-        return "#cba6f7" if "code" in t else ("blue" if not self.is_dark_theme else "cyan")
+        if "code2" in t: return "#ff9e64"
+        return "#89b4fa"
 
     @property
     def is_dark_theme(self) -> bool:
-        return not any(kw in str(getattr(self, "theme", "code")).lower() for kw in ["light", "latte", "day", "solarized-light", "dawn", "paper"])
+        return not any(kw in str(getattr(self, "theme", "code1")).lower() for kw in ["light", "latte", "day", "solarized-light", "dawn", "paper"])
 
     CSS = """
     Screen { background: $background; }
     #layout { height: 1fr; }
     #main-container { height: 100%; width: 1fr; background: transparent; }
-    #chat-area { height: 1fr; background: transparent; overflow-y: scroll; padding: 1 0 1 2; scrollbar-size-vertical: 1; scrollbar-color: $panel; scrollbar-color-hover: $primary; scrollbar-color-active: $accent; scrollbar-gutter: stable; }
-    #welcome-banner { margin-right: 2; }
+    #chat-area { height: 1fr; background: transparent; overflow-y: scroll; padding: 0 0 1 2; scrollbar-size-vertical: 1; scrollbar-color: $panel; scrollbar-color-hover: $primary; scrollbar-color-active: $accent; scrollbar-gutter: stable; }
+    #welcome-banner { margin-top: 1; margin-bottom: 1; margin-right: 2; }
     #input-pane { height: 3; border: none; background: $surface; padding: 0; margin: 0; align: left middle; }
     #input-bar { width: auto; height: 100%; color: $primary; padding: 0; margin: 0; }
     Input { width: 1fr; border: none; outline: none; background: transparent; height: 1; color: $text; padding: 0 2; margin-top: 1; }
@@ -223,7 +236,7 @@ class LocalAITUI(App):
     #lbl-tips-title { width: 1fr; color: $primary; text-style: bold; }
     #btn-close-tips { width: auto; color: $secondary; text-style: bold; }
     #btn-close-tips:hover { color: $error; text-style: bold; }
-    #lbl-tips-body { color: $secondary; margin-top: 1; }
+    #lbl-tips-body { color: $text; margin-top: 1; }
     #footer-bar { dock: bottom; height: 1; width: 100%; background: $surface; }
     #footer-keys { width: 100%; height: 1; }
     """
@@ -314,10 +327,9 @@ class LocalAITUI(App):
             except (AttributeError, OSError): pass
 
     def _safe_remove_banner(self) -> None:
-        try:
-            if self.query("#welcome-banner"):
-                self.query_one("#welcome-banner").remove()
-        except Exception: pass
+        for node in self.query("#welcome-banner"):
+            try: node.remove()
+            except Exception: pass
 
     def notify(self, text: str, sys_prefix: bool = True, css_class: str = "sys-notice") -> None:
         self.chat_area.mount(Static(f"[dim white][sys] {text}[/dim white]" if sys_prefix else text, classes=css_class))
@@ -325,8 +337,9 @@ class LocalAITUI(App):
 
     def set_skill(self, skill_name: str) -> None:
         self.active_skill = skill_name
-        t = getattr(self, "theme", "code")
-        bg, fg = ("#26273b", "#cba6f7") if t == "code" else (("#222222", "#ffffff") if t in ("mono", "grok") else (("#333333", "#e0e0e0") if t == "dark" else ("#dcdce2", "#111111")))
+        t = getattr(self, "theme", "code1")
+        styles = {"code1": ("#1b2b3b", "#89b4fa"), "code2": ("#3b2b1b", "#ff9e64"), "mono": ("#222222", "#ffffff"), "dark": ("#333333", "#e0e0e0")}
+        bg, fg = styles.get(t, ("#1b2b3b", "#89b4fa"))
         if hasattr(self, "lbl_skill"): self.lbl_skill.update(f"[dim]Skill[/dim]   [bold {fg} on {bg}] {skill_name} [/]")
 
     def set_mode(self, mode_name: str) -> None:
@@ -393,7 +406,7 @@ class LocalAITUI(App):
         try:
             if self.query("#welcome-banner"):
                 t = Table(show_header=False, box=None, padding=(0, 2), expand=False)
-                cmd_style = "bold #89b4fa" if self.theme == "code" else ("bold #0265dc" if not self.is_dark_theme else "bold cyan")
+                cmd_style = "bold #89b4fa" if "code" in self.theme else ("bold #0265dc" if not self.is_dark_theme else "bold cyan")
                 t.add_column("Key", style=cmd_style, justify="left"); t.add_column("Action", style="default")
                 for k, a in [("Tab", "Plan / Build Mode"), ("Ctrl+B", "Toggle Sidebar Panel"), ("Ctrl+T", "Cycle Themes"), ("Ctrl+O", "Copy Latest Response"), ("▲ Show", "Toggle Bottom Shortcut Bar"), ("/help", "View All Commands")]:
                     t.add_row(k, a)
@@ -431,7 +444,7 @@ class LocalAITUI(App):
                     with Horizontal(id="card-tips-header"):
                         yield Static("Quick Tips", id="lbl-tips-title")
                         yield CloseCardButton("×", id="btn-close-tips")
-                    yield Static("Tab: Switch Mode\nCtrl+B: Sidebar\nCtrl+G: Compact\nCtrl+T: Themes\nShift+Drag: Copy\n/task: Goal\n/help: Commands", id="lbl-tips-body")
+                    yield Static("Tab: Switch Mode\nCtrl+B: Sidebar\nCtrl+G: Compact\nCtrl+T: Themes\nShift+Drag: Copy\n/tok: Context\n/task: Goal\n/help: Commands", id="lbl-tips-body")
 
         with Horizontal(id="footer-bar"): yield Footer(id="footer-keys")
 
@@ -443,11 +456,11 @@ class LocalAITUI(App):
 
     def on_mount(self) -> None:
         if hasattr(self, "register_theme"):
-            for t in (code_theme, mono_theme, dark_theme):
+            for t in (code1_theme, code2_theme, mono_theme, dark_theme):
                 try: self.register_theme(t)
                 except (ValueError, TypeError, KeyError): pass
 
-        try: self.theme = "mono" if core.get_state("tui_theme", "code") == "grok" else core.get_state("tui_theme", "code")
+        try: self.theme = "mono" if core.get_state("tui_theme", "code1") == "grok" else core.get_state("tui_theme", "code1")
         except (KeyError, ValueError, TypeError): pass
 
         self.chat_area = self.query_one("#chat-area", Vertical)
@@ -469,8 +482,7 @@ class LocalAITUI(App):
             except (KeyError, AttributeError): pass
 
         if len(self.history) > 1:
-            try: self.query_one("#welcome-banner").remove()
-            except (KeyError, AttributeError): pass
+            self._safe_remove_banner()
             for msg in self.history:
                 r, c = msg.get("role"), msg.get("content")
                 if r == "user" and c: self.chat_area.mount(Message("User", c))
@@ -506,7 +518,7 @@ class LocalAITUI(App):
         else: self.notify("No response available to copy yet.")
 
     def action_copy_entire_chat(self) -> None:
-        if transcript := [f"❯ USER: {m['content']}" if m.get("role") == "user" else f"AGENT:\n{re.sub(r'<think>.*?</think>', '', m['content'], flags=re.DOTALL).strip()}" for m in self.history if m.get("content") and m.get("role") != "system"]:
+        if transcript := [f"❯ USER: {m['content']}" if m.get("role") == "user" else f"AGENT:\n{THINK_TAGS_RE.sub('', m['content']).strip()}" for m in self.history if m.get("content") and m.get("role") != "system"]:
             copy_to_clipboard("\n\n".join(transcript))
             self.notify("Copied entire session transcript to clipboard.")
         else: self.notify("No transcript available to copy yet.")
@@ -523,7 +535,6 @@ class LocalAITUI(App):
 
     async def handle_task_command(self, task_args: str = "") -> None:
         self._safe_remove_banner()
-
         self.ensure_system_context()
         goal = task_args.strip('"\': ') or "TASK.md spec"
         display_cmd = f"/task \"{goal}\""
@@ -554,7 +565,6 @@ class LocalAITUI(App):
     async def handle_meta_chat_command(self, cmd_root: str, args: str = "") -> None:
         think_bin = os.path.join(CFG_DIR, "modules", "chat")
         self._safe_remove_banner()
-
         self.ensure_system_context()
         c_raw = cmd_root.lstrip("/").lower()
         sub_arg, output_hdr = "/t" if c_raw in ("tk", "thinking") else f"/{c_raw}", {"f": "Follow-up", "b": "Brainstorm", "t": "Thinking", "tk": "Thinking", "a": "All"}.get(c_raw, "Follow-up")
@@ -591,13 +601,22 @@ class LocalAITUI(App):
 
         if root in ("/help", "/h"):
             t = Table(show_header=False, box=None, padding=(0, 1), expand=False)
-            cmd_style = "bold #89b4fa" if self.theme == "code" else ("bold #0265dc" if not self.is_dark_theme else "bold cyan")
+            cmd_style = "bold #89b4fa" if "code" in self.theme else ("bold #0265dc" if not self.is_dark_theme else "bold cyan")
             t.add_column("Command", style=cmd_style); t.add_column("Description", style="default")
-            for c, d in [("/help, /h", "Help"), ("Tab", "Plan/Build"), ("/task [goal]", "Task Loop"), ("/copy", "Copy page"), ("/m", "Memory"), ("/clear", "Chat & history"), ("/tok", "Tokens"), ("/sync", "Sync index"), ("/s <q>", "Skill"), ("/t <toks>", "Reasoning"), ("/f, /tk, /b, /a", "Presets"), ("file <path>", "Load File"), ("exit, quit, q", "Exit")]:
+            for c, d in [("/help, /h", "Help"), ("Tab", "Plan/Build"), ("/task [goal]", "Task Loop"), ("/theme <name>", "Switch theme"), ("/copy", "Copy page"), ("/m", "Memory"), ("/clear", "Chat & history"), ("/tok", "Tokens"), ("/sync", "Sync index"), ("/s <q>", "Skill"), ("/t <toks>", "Reasoning"), ("/f, /tk, /b, /a", "Presets"), ("file <path>", "Load File"), ("exit, quit, q", "Exit")]:
                 t.add_row(c, d)
             border_col = "bright_white" if self.theme in ("mono", "grok") else self.border_accent
             await self.chat_area.mount(Static(Group(Text(""), Panel(t, title="Commands", title_align="left", border_style=border_col, box=ROUNDED, expand=False))))
             self.chat_area.scroll_end(animate=False)
+
+        elif root == "/theme":
+            if args:
+                t_arg = args.strip().lower()
+                if t_arg in self.THEMES:
+                    self.theme = t_arg
+                    self.notify(f"Theme switched to [bold]{self.theme}[/bold].", css_class="theme-notice")
+                else: self.notify(f"Unknown theme '{t_arg}'. Options: {', '.join(self.THEMES)}")
+            else: self.action_cycle_theme()
 
         elif root in ("/task", "/loop", "/goal"): await self.handle_task_command(args)
         elif root in ("exit", "quit", "q"): self.exit()
@@ -766,7 +785,7 @@ class LocalAITUI(App):
                             delta = choices[0].get("delta", {})
                             text_chunk, thinking_chunk = delta.get("content") or "", delta.get("reasoning_content") or delta.get("thinking") or ""
                             if text_chunk and "Final Answer:" in text_chunk:
-                                text_chunk = re.sub(r'^\s*Final Answer:\s*', '', text_chunk, flags=re.IGNORECASE).lstrip()
+                                text_chunk = FINAL_ANSWER_RE.sub('', text_chunk).lstrip()
 
                             for tc in delta.get("tool_calls", []):
                                 idx = tc.get("index", 0)
@@ -968,6 +987,11 @@ class LocalAITUI(App):
             self.query_one("#footer-bar", Horizontal).display = not self.footer_hidden
             self.query_one("#input-toggle", FooterToggle).update("▲ Show" if self.footer_hidden else "▼ Hide")
         except (KeyError, AttributeError): pass
+
+    def action_toggle_toggle(self) -> None:
+        self.footer_hidden = not self.footer_hidden
+        core.save_state("footer_hidden", self.footer_hidden)
+        self.update_footer_visibility()
 
     def action_toggle_footer(self) -> None:
         self.footer_hidden = not self.footer_hidden

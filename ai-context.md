@@ -110,6 +110,9 @@ ai init ~/.config/local-ai/projects/session-test-3 --init ---> session test 3, p
 ## 6. Graphical Integration & Workspace Launchers
 
 ```properties
+# --- Local-Ai Tablet Voice Bridge ---
+~/.config/local-ai/tools/subsec/voice/voice-query ---> voice, voice query, voice bridge
+
 # --- Local-Ai Agent Blueprint (System CheatSheet Viewer) ---
 [TOOL] ~/.config/local-ai/tools/blueprint ---> cheatsheet, bp, cs, blueprint
 

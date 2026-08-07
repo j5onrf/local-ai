@@ -1,6 +1,6 @@
 # Ignore the API usage JSON file
 skills/system/mysys.md
-tools/subsec/voice/server.pem
+server.pem
 .auto-f
 ai-history
 tools/agentic/fusion/logs
