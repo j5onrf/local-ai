@@ -31,44 +31,85 @@ def toggle_ipython_mode(enable: Optional[bool] = None) -> bool:
     return new_st
 
 
-def _init_kernel_sdk(workspace: str) -> None:
-    global _shell_globals, _shell_instance
-    if workspace not in sys.path:
-        sys.path.insert(0, workspace)
+_orig_open = open
+_orig_listdir = os.listdir
+_orig_scandir = os.scandir
+_confirm_gate_fn = None
+
+def _init_kernel_sdk(workspace: str, confirm_gate_fn: Optional[Callable[[str], bool]] = None) -> None:
+    global _shell_globals, _shell_instance, _confirm_gate_fn
+    if confirm_gate_fn:
+        _confirm_gate_fn = confirm_gate_fn
+    ws_real = os.path.realpath(workspace)
+    
+    # 1. Force working directory to workspace
+    try: os.chdir(ws_real)
+    except OSError: pass
+
+    if ws_real not in sys.path:
+        sys.path.insert(0, ws_real)
 
     if _has_ipython and _shell_instance is None:
         _shell_instance = InteractiveShell.instance()
 
-    if "read_file" in _shell_globals: return
+    def _is_outside(path_str: str) -> bool:
+        full = os.path.realpath(path_str if os.path.isabs(path_str) else os.path.join(ws_real, path_str))
+        return full != ws_real and not full.startswith(ws_real + os.sep)
+
+    def _check_boundary(path_str: str, op_name: str) -> bool:
+        full = os.path.realpath(path_str if os.path.isabs(path_str) else os.path.join(ws_real, path_str))
+        if _is_outside(full):
+            if _confirm_gate_fn:
+                return _confirm_gate_fn(f"OUT-OF-BOUNDS KERNEL {op_name}: {full}")
+            import agent_core as core
+            return core._confirm_gate(f"OUT-OF-BOUNDS KERNEL {op_name}: {full}", None)
+        return True
+
+    # 2. Zero-Trust Overrides for raw Python built-ins inside REPL
+    def safe_open(file, mode='r', *args, **kwargs):
+        if isinstance(file, (str, bytes, os.PathLike)):
+            if not _check_boundary(str(file), "READ" if 'r' in mode else "WRITE"):
+                raise PermissionError(f"[denied] Out-of-bounds access blocked: {file}")
+        return _orig_open(file, mode, *args, **kwargs)
+
+    def safe_listdir(path='.'):
+        if not _check_boundary(str(path), "LIST DIR"):
+            raise PermissionError(f"[denied] Out-of-bounds list_dir blocked: {path}")
+        full = os.path.realpath(str(path) if os.path.isabs(str(path)) else os.path.join(ws_real, str(path)))
+        return _orig_listdir(full)
 
     def _read_file(path: str) -> str:
-        full = os.path.realpath(path if os.path.isabs(path) else os.path.join(workspace, path))
-        with open(full, "r", encoding="utf-8", errors="replace") as f: return f.read()
+        if not _check_boundary(path, "READ"): return "[denied] Out-of-bounds read blocked."
+        full = os.path.realpath(path if os.path.isabs(path) else os.path.join(ws_real, path))
+        with _orig_open(full, "r", encoding="utf-8", errors="replace") as f: return f.read()
 
     def _write_file(path: str, content: str) -> str:
-        full = os.path.realpath(path if os.path.isabs(path) else os.path.join(workspace, path))
-        os.makedirs(os.path.dirname(full) or workspace, exist_ok=True)
-        with open(full, "w", encoding="utf-8") as f: f.write(content)
+        if not _check_boundary(path, "WRITE"): return "[denied] Out-of-bounds write blocked."
+        full = os.path.realpath(path if os.path.isabs(path) else os.path.join(ws_real, path))
+        os.makedirs(os.path.dirname(full) or ws_real, exist_ok=True)
+        with _orig_open(full, "w", encoding="utf-8") as f: f.write(content)
         return f"wrote {len(content)} chars to {path}"
 
     def _list_dir(path: str = ".") -> List[str]:
-        full = os.path.realpath(path if os.path.isabs(path) else os.path.join(workspace, path))
-        return sorted(os.listdir(full))
+        if not _check_boundary(path, "LIST DIR"): return ["[denied] Out-of-bounds list_dir blocked."]
+        full = os.path.realpath(path if os.path.isabs(path) else os.path.join(ws_real, path))
+        return sorted(_orig_listdir(full))
 
     def _run_command(cmd: str) -> str:
-        res = subprocess.run(cmd, shell=True, cwd=workspace, capture_output=True, text=True, timeout=120)
+        res = subprocess.run(cmd, shell=True, cwd=ws_real, capture_output=True, text=True, timeout=120)
         return ((res.stdout or "") + ("\n" + res.stderr if res.stderr else "")).strip()
 
     def _read_symbol(sym: str) -> str:
         mod_path = os.path.join(CFG_DIR, "tools", "map", "index-map")
-        res = subprocess.run([sys.executable, mod_path, "snippet", sym], cwd=workspace, capture_output=True, text=True, timeout=10)
+        res = subprocess.run([sys.executable, mod_path, "snippet", sym], cwd=ws_real, capture_output=True, text=True, timeout=10)
         return (res.stdout or res.stderr or "").strip()
 
     sdk = {
-        "read_file": _read_file, "write_file": _write_file, "list_dir": _list_dir,
-        "run_command": _run_command, "read_symbol": _read_symbol, "workspace": workspace
+        "open": safe_open, "read_file": _read_file, "write_file": _write_file, "list_dir": _list_dir,
+        "run_command": _run_command, "read_symbol": _read_symbol, "workspace": ws_real
     }
     _shell_globals.update(sdk)
+    os.listdir = safe_listdir
     if _shell_instance:
         _shell_instance.user_ns.update(sdk)
 
@@ -89,7 +130,7 @@ def inspect_ast_safety(code: str, workspace: str, confirm_gate_fn: Optional[Call
 
 
 def run_cell(code: str, workspace: str, confirm_gate_fn: Optional[Callable[[str], bool]] = None) -> str:
-    _init_kernel_sdk(workspace)
+    _init_kernel_sdk(workspace, confirm_gate_fn)
     if denial := inspect_ast_safety(code, workspace, confirm_gate_fn):
         return denial
 
@@ -113,8 +154,11 @@ def run_cell(code: str, workspace: str, confirm_gate_fn: Optional[Callable[[str]
         if not out and eval_result is not None:
             out = str(eval_result).strip()
         return (out[:1200] + f"\n... [Snipped {len(out)-1200} chars]") if len(out) > 1500 else (out or "(Cell executed successfully with no output)")
+    except PermissionError as e:
+        return f"[denied] {e}"
     except Exception as e:
-        return f"[error] Cell execution failed: {e}\n{traceback.format_exc()}"
+        err_msg = str(e).strip().split("\n")[0]
+        return f"[error] Cell execution failed: {err_msg}"
 
 
 IPYTHON_TOOL = [{

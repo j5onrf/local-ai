@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local-Ai Agent [j5onrf] [v0.9.8.20]"""
+"""Local-Ai Agent [j5onrf] [v0.9.8.21]"""
 
 import json, os, re, sqlite3, subprocess, sys, threading, time, urllib.request as urlreq
 from typing import List, Optional, Tuple, Dict, Any
@@ -133,7 +133,7 @@ def run_interactive_chat(args: List[str]) -> None:
     pending_query = " ".join(args[1:]) if len(args) > 1 else None
     if pending_query and ("CODEBASE INDEX MAP" in pending_query or "index-map" in pending_query):
         active_system_prompt += f"\n\n### CODESPACE MAP:\n{pending_query}"
-        pending_query = "init"
+        pending_query = "[Workspace context loaded]"
 
     chat_history = [{"role": "system", "content": active_system_prompt}]
 

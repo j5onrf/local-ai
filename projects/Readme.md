@@ -4,24 +4,30 @@ High-speed local developer agent, episodic memory, SQLite checkpoints, and codeb
 
 ```console
 ~ ❯ sess
-[01/03] ❯ [session test] ai init ~/session-test --init
+[02/03] ❯ [session test 2] ai init ~/session-test-2
 :: ↵ run  Esc: 
-╭─  >_ Local-AI Agent [sub-agent #1]  ───────────────────╮
-│     model:  LFM2.5-8B-A1B.gguf                         │
-│ directory:  ~/.config/local-ai/projects/session-test   │
-│     skill:  hermes/pro                                 │
-│  database:  active (0 facts, 25 turns)                 │
-╰─────────────────────────────────────── Ctrl+C to exit ─╯
- Startup context: 845 tokens
+[ok] Mapping complete! [session-test-2 index-map & SQLite graph database updated]
+
+[ai init] Select default Agent Profile for workspace session-test-2:
+
+Enable Autonomous YOLO mode? [y/N]: y
+✓ Profile set to: Pi Py-Lite (Autonomous YOLO)
+
+╭─  >_ Local-AI Agent  ────────────────────────────────────╮
+│     model:  Qwen3.5-2B.gguf                              │
+│ directory:  ~/.config/local-ai/projects/session-test-2   │
+│     skill:  pi/py-lite                                   │
+│  database:  active (0 facts, 8 turns)                    │
+╰───────────────────────────────────────── Ctrl+C to exit ─╯
+ Startup context: 447 tokens
+
 ╭─ ⚙ ────────────────────────────────────────────────────
-The user has sent a notification that workspace is initialized and they're standing by for instructions.
-According to the system prompt, we should reply only with: "Workspace 
-loaded. Awaiting instructions." No additional commentary. So I will respond accordingly.
+The user has confirmed that their workspace is loaded. According to my instructions, I should only reply with "Workspace loaded. Awaiting instructions." and NOT call any tools at startup. This means I need to acknowledge this confirmation without taking any actions yet.
 ╰────────────────────────────────────────────────────────
-Agent:
-Workspace loaded. Awaiting instructions.                                     
- [ think: 75 | ans: 14 | 89 tokens | 1.4s @ 61.8 t/s ]
- [ 1027 in | 89 out | ctx: 13.6% ]
+Agent: Workspace loaded. Awaiting instructions.
+ [ think: 77 | ans: 13 | 90 tokens | 2.3s @ 36.9 t/s ]
+ [ 577 in | 90 out | ctx: 8.1% ]
+❯ 
 ```
 
 ---
@@ -106,27 +112,29 @@ All auto-created agent metadata files are strictly isolated inside `project/.age
 Running `ai init <path>` sets default workspace agent profile:
 
 ```console
-[ai init] Agent Profile: session-test
+[ai init] Select default Agent Profile for workspace session-test:
 
-  Standard
-     1. Default Assistant    ~120t
+  ─── Agents ────────────────────────
+  ❯  1. Default Assistant    (~120t)
 
-  Full Tier (Direct Action)
-     2. Pi Full              ~400t
-     3. Claude Full          ~440t
-     4. Hermes Full          ~380t
+     1. Pi Pro               (~280t)
+     2. Claude Pro           (~290t)
+     3. Hermes Pro           (~280t)
 
-  Pro Tier (Index-First)
-     5. Pi Pro               ~280t
-     6. Claude Pro           ~290t
-  ❯  7. Hermes Pro           ~280t
+     1. Pi Lite              (~220t)
+     2. Claude Lite          (~230t)
+     3. Hermes Lite          (~220t)
 
-  Lite Tier (1B+)
-     8. Pi Lite              ~220t
-     9. Claude Lite          ~230t
-    10. Hermes Lite          ~220t
+  ─── Py ────────────────────────────
+     1. Pi Py-Pro            (~300t)
+     2. Claude Py-Pro        (~310t)
+     3. Hermes Py-Pro        (~300t)
 
-  ↵ select  ↑/↓ navigate  Tab: YOLO [OFF]  Esc: default
+     1. Pi Py-Lite           (~220t)
+     2. Claude Py-Lite       (~250t)
+     3. Hermes Py-Lite       (~240t)
+
+  :: ↵ select  ↑/↓ navigate  Tab: YOLO [OFF]  Esc: default
 ```
 
 #### Profile Tiers

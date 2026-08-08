@@ -157,12 +157,14 @@ def draw_session_box(
 
 def confirm_tool(tool: str) -> bool:
     """Intercepts potentially out-of-bounds commands for visual user verification."""
-    _console_err.print(f"[bold yellow]▲ [sys] Authorize tool:[/bold yellow] [cyan]{tool}[/cyan] [bold yellow]? [Y/n]: [/bold yellow]", end="")
+    target = getattr(sys, "__stderr__", None) or sys.stderr
+    target.write(f"\r\x1b[K\033[1;33m▲ [sys] Authorize tool:\033[0m \033[36m{tool}\033[0m \033[1;33m? [Y/n]: \033[0m")
+    target.flush()
     try: char = get_key()
     except Exception: char = ""
     is_yes = char.lower() == 'y' or char in ('\r', '\n', '')
-    sys.stderr.write("y\n" if is_yes else "n\n")
-    sys.stderr.flush()
+    target.write("y\n" if is_yes else "n\n")
+    target.flush()
     return is_yes
 
 
@@ -262,53 +264,72 @@ def show_help() -> None:
 def select_workspace_profile(workspace_name: str) -> Tuple[str, bool]:
     """Renders the workspace profile selector menu with minimal confirmation for YOLO mode."""
     options = [
-        ("default",     "Default Assistant", "~120t", "Standard"),
-        ("pi/full",     "Pi Full",           "~400t", "Full Tier (Direct Action)"),
-        ("claude/full", "Claude Full",       "~440t", None),
-        ("hermes/full", "Hermes Full",      "~380t", None),
-        ("pi/pro",      "Pi Pro",            "~280t", "Pro Tier (Index-First)"),
-        ("claude/pro",  "Claude Pro",        "~290t", None),
-        ("hermes/pro",  "Hermes Pro",        "~280t", None),
-        ("pi/lite",     "Pi Lite",           "~220t", "Lite Tier (1B–3B)"),
-        ("claude/lite", "Claude Lite",       "~230t", None),
-        ("hermes/lite", "Hermes Lite",       "~220t", None),
+        ("default",        "Default Assistant", "~120t", "Agents"),
+
+        ("pi/pro",         "Pi Pro",         "~280t", None),
+        ("claude/pro",     "Claude Pro",     "~290t", None),
+        ("hermes/pro",     "Hermes Pro",     "~280t", None),
+        ("pi/lite",        "Pi Lite",        "~220t", None),
+        ("claude/lite",    "Claude Lite",    "~230t", None),
+        ("hermes/lite",    "Hermes Lite",    "~220t", None),
+
+        ("pi/py-pro",      "Pi Py-Pro",      "~300t", "Py"),
+        ("claude/py-pro",  "Claude Py-Pro",  "~310t", None),
+        ("hermes/py-pro",  "Hermes Py-Pro",  "~300t", None),
+        ("pi/py-lite",     "Pi Py-Lite",     "~220t", None),
+        ("claude/py-lite", "Claude Py-Lite", "~250t", None),
+        ("hermes/py-lite", "Hermes Py-Lite", "~240t", None),
     ]
 
     sys.stderr.write(f"\n\033[1;36m[ai init]\033[0m Select default Agent Profile for workspace \033[1;33m{workspace_name}\033[0m:\n\n\033[?25l")
     sys.stderr.flush()
 
     current_idx, is_yolo, num_opts = 0, False, len(options)
-    lines_to_clear = num_opts + (sum(1 for item in options if item[3] is not None) * 2 - 1) + 2
-    first_render = True
+    last_rendered_lines = 0
 
     try:
         while True:
-            if not first_render: sys.stderr.write(f"\x1b[{lines_to_clear}A\r")
-            first_render = False
+            if last_rendered_lines > 0:
+                sys.stderr.write(f"\033[{last_rendered_lines}A\r\033[J")
 
+            lines_count = 0
+            sub_idx = 1
             for idx, (k, lbl, d, cat) in enumerate(options):
+                if cat or k in ("pi/pro", "pi/lite", "pi/py-pro", "pi/py-lite"):
+                    sub_idx = 1
+
+                if idx > 0 and (cat or k in ("pi/pro", "pi/lite", "pi/py-lite")):
+                    sys.stderr.write("\r\x1b[K\n")
+                    lines_count += 1
+
                 if cat:
-                    if idx > 0: sys.stderr.write("\r\x1b[K\n")
-                    sys.stderr.write(f"\r\x1b[K\033[1;30m  ─── {cat} ───────────────────────────────────────────\033[0m\n")
+                    dashes = "─" * max(5, 30 - len(cat))
+                    sys.stderr.write(f"\r\x1b[K\033[1;36m  ─── {cat} {dashes}\033[0m\n")
+                    lines_count += 1
 
                 if idx == current_idx:
-                    sys.stderr.write(f"\r\x1b[K\033[1;32m  ❯ {idx + 1:2d}. {lbl:<20}\033[0m \033[1;36m({d})\033[0m\n")
+                    sys.stderr.write(f"\r\x1b[K\033[1;32m  ❯ {sub_idx:2d}. {lbl:<20}\033[0m \033[1;36m({d})\033[0m\n")
                 else:
-                    sys.stderr.write(f"\r\x1b[K\033[90m    {idx + 1:2d}. {lbl:<20} ({d})\033[0m\n")
+                    sys.stderr.write(f"\r\x1b[K\033[37m    {sub_idx:2d}. {lbl:<20}\033[0m \033[2m({d})\033[0m\n")
+                lines_count += 1
+                sub_idx += 1
 
             yolo_badge = "\033[1;33m[ON]\033[0m" if is_yolo else "\033[90m[OFF]\033[0m"
-            sys.stderr.write(f"\r\x1b[K\n\r\x1b[K\033[2m  :: ↵ select  ↑/↓ navigate  \033[1;36mTab\033[2m: YOLO {yolo_badge}\033[2m  Esc: default\033[0m\n")
+            sys.stderr.write(f"\r\x1b[K\n\r\x1b[K\033[2m  :: ↵ select  ↑/↓ navigate  Tab: YOLO {yolo_badge}\033[2m  Esc: default\033[0m")
+            lines_count += 1
             sys.stderr.flush()
+
+            last_rendered_lines = lines_count
 
             char = get_key()
             if char in ('\t', 'y', 'Y'): is_yolo = not is_yolo
             elif char in ('\x03', '\x1b'):
-                sys.stderr.write(f"\x1b[{lines_to_clear}A\r\x1b[J\033[1;32m✓ Profile set to: Default{' (Autonomous YOLO)' if is_yolo else ''}\033[0m\n\n")
+                sys.stderr.write(f"\x1b[{last_rendered_lines}A\r\x1b[J\033[1;32m✓ Profile set to: Default{' (Autonomous YOLO)' if is_yolo else ''}\033[0m\n\n")
                 sys.stderr.flush()
                 return "default", is_yolo
             elif char in ('\r', '\n', ''):
                 key, label = options[current_idx][0], options[current_idx][1]
-                sys.stderr.write(f"\x1b[{lines_to_clear}A\r\x1b[J")
+                sys.stderr.write(f"\x1b[{last_rendered_lines}A\r\x1b[J")
                 if not is_yolo:
                     sys.stderr.write("\033[1;36mEnable Autonomous YOLO mode? [y/N]: \033[0m")
                     sys.stderr.flush()

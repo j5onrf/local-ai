@@ -198,7 +198,10 @@ class RichStreamer:
                     try: sys.stderr.write(tok); sys.stderr.flush()
                     except (IOError, OSError): pass
         else:
+            tok = RE_FINAL_ANSWER.sub('', token.replace("\\n", "\n"))
             if not self.ans_started:
+                tok = tok.lstrip("\r\n\t ")
+                if not tok: return
                 self._stop_spinner()
                 self.ans_started, p_clean = True, self.prefix.strip()
                 p_str = f"{p_clean} " if p_clean else ""
@@ -208,7 +211,6 @@ class RichStreamer:
                     except (IOError, OSError): pass
                 self.acc_ans += p_str
 
-            tok = RE_FINAL_ANSWER.sub('', token.replace("\\n", "\n"))
             self.acc_ans += tok
             if tok:
                 try: sys.stdout.write(tok); sys.stdout.flush()
@@ -279,7 +281,8 @@ def _is_outside_workspace(workspace: str, full_path: str) -> bool:
 
 def _confirm_gate(reason: str, spinner: Any) -> bool:
     if spinner: spinner.stop()
-    return sys.stdout.isatty() and ui.confirm_tool(reason)
+    is_tty = (hasattr(sys, "__stdout__") and sys.__stdout__ and sys.__stdout__.isatty()) or sys.stdout.isatty()
+    return is_tty and ui.confirm_tool(reason)
 
 
 def _print_tool_output(spinner: Any, text: str) -> None:
