@@ -144,7 +144,6 @@ Running `ai init <path>` sets default workspace agent profile:
 | Tier | Profiles | Model Scale | Overhead | Behavior |
 | :--- | :--- | :--- | :--- | :--- |
 | **Standard** | `default` | Universal | `~120t` | General assistant without workspace tool loops. |
-| **Full** | `pi/full`, `claude/full`, `hermes/full` | Large Models | `~380t–440t` | Direct multi-file action and editing loops. |
 | **Pro** | `pi/pro`, `claude/pro`, `hermes/pro` | Medium Models | `~280t–290t` | Index-first codebase mapping. |
 | **Lite** | `pi/lite`, `claude/lite`, `hermes/lite` | Small Models | `~220t–230t` | Index-first standby preventing tool-eagerness loops. |
 
