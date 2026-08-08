@@ -22,7 +22,9 @@ Enable Autonomous YOLO mode? [y/N]: y
  Startup context: 447 tokens
 
 ╭─ ⚙ ────────────────────────────────────────────────────
-The user has confirmed that their workspace is loaded. According to my instructions, I should only reply with "Workspace loaded. Awaiting instructions." and NOT call any tools at startup. This means I need to acknowledge this confirmation without taking any actions yet.
+The user has confirmed that their workspace is loaded. According to my instructions, I should only reply
+with "Workspace loaded. Awaiting instructions." and NOT call any tools at startup. This means I need to
+acknowledge this confirmation without taking any actions yet.
 ╰────────────────────────────────────────────────────────
 Agent: Workspace loaded. Awaiting instructions.
  [ think: 77 | ans: 13 | 90 tokens | 2.3s @ 36.9 t/s ]
