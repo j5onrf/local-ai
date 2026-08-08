@@ -94,15 +94,24 @@ def run_cell(code: str, workspace: str, confirm_gate_fn: Optional[Callable[[str]
         return denial
 
     stdout_buf = io.StringIO()
+    eval_result = None
     try:
         with contextlib.redirect_stdout(stdout_buf), contextlib.redirect_stderr(stdout_buf):
             if _shell_instance:
                 res = _shell_instance.run_cell(code, store_history=True)
                 if res.error_in_exec:
                     traceback.print_exception(type(res.error_in_exec), res.error_in_exec, res.error_in_exec.__traceback__)
+                elif hasattr(res, "result") and res.result is not None:
+                    eval_result = res.result
             else:
-                exec(code, _shell_globals)
+                try:
+                    eval_result = eval(code, _shell_globals)
+                except SyntaxError:
+                    exec(code, _shell_globals)
+
         out = stdout_buf.getvalue().strip()
+        if not out and eval_result is not None:
+            out = str(eval_result).strip()
         return (out[:1200] + f"\n... [Snipped {len(out)-1200} chars]") if len(out) > 1500 else (out or "(Cell executed successfully with no output)")
     except Exception as e:
         return f"[error] Cell execution failed: {e}\n{traceback.format_exc()}"

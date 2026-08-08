@@ -50,13 +50,18 @@ class InlineSpinner:
             self.thread = threading.Thread(target=self._spin, daemon=True)
             self.thread.start()
 
-    def stop(self) -> None:
+    def stop(self, done_msg: Optional[str] = None, *args: Any, **kwargs: Any) -> None:
         if self.active:
             self.active = False
+            elapsed = time.time() - self.start_time if getattr(self, 'start_time', None) else 0.0
             if self.thread and self.thread.is_alive():
                 self.thread.join(timeout=0.2)
                 self.thread = None
             try:
+                if done_msg:
+                    sys.stderr.write(f"\r\x1b[K\033[1;32m✔\033[0m \033[1;36m{done_msg}\033[0m \033[2m({elapsed:.1f}s)\033[0m\n")
+                else:
+                    sys.stderr.write("\r\x1b[2K\r")
                 sys.stderr.write("\033[?25h")
                 sys.stderr.flush()
             except (IOError, OSError): pass

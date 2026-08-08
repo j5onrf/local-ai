@@ -148,9 +148,9 @@ class RichStreamer:
         self.prefix, self.active, self.spinner = prefix, active and sys.stdout.isatty(), spinner
         self.acc_think, self.acc_ans, self.phase, self.think_hdr_printed, self.ans_started = "", "", "INIT", False, False
 
-    def _stop_spinner(self) -> None:
+    def _stop_spinner(self, done_msg: Optional[str] = None) -> None:
         if self.spinner:
-            try: self.spinner.stop()
+            try: self.spinner.stop(done_msg=done_msg)
             except (AttributeError, RuntimeError, OSError): pass
 
     def start(self) -> None:
@@ -284,7 +284,7 @@ def _confirm_gate(reason: str, spinner: Any) -> bool:
 
 def _print_tool_output(spinner: Any, text: str) -> None:
     if sys.stdout.isatty() and text.strip():
-        if spinner: spinner.stop()
+        if spinner: spinner.stop("Done")
         if os.environ.get("AI_RENDER_MARKDOWN", "1") == "1" and any(k in text for k in ("#", "|", "```")):
             _console_err.print(Markdown(text, code_theme="ansi_dark"))
         else: _console_err.print(text)
@@ -474,7 +474,10 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
 
             calls = [val for _, val in sorted(tool_calls_map.items())] if tool_calls_map else None
             if not calls or not is_agent:
-                _log_turn_usage(resolved_model or body.get("model") or "local-model", in_tok, out_tok, 0.0, show_stats, in_tok + out_tok)
+                tool_toks = sum(get_accurate_token_count(m.get("content") or "") for m in messages if m.get("role") in ("assistant", "tool"))
+                final_out = max(out_tok, tool_toks)
+                if spinner: spinner.stop("Done" if ans_text and ans_text.strip() else None)
+                _log_turn_usage(resolved_model or body.get("model") or "local-model", in_tok, final_out, 0.0, show_stats, in_tok + final_out)
                 return ans_text
 
             messages.append({"role": "assistant", "content": ans_text or None, "tool_calls": calls})
@@ -497,7 +500,7 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
                 try: result = _run_edit_tool(fname, args, workspace, spinner)
                 except (OSError, subprocess.SubprocessError, ValueError, TypeError, KeyError) as e: result = f"[tool error] {e}"
                 finally:
-                    if spinner: spinner.stop()
+                    if spinner: spinner.stop(done_msg="Done")
 
                 pruned_result = result if len(result) <= 1500 else result[:1200] + f"\n... [Reasonix Harness: Snipped {len(result) - 1200} chars for context stability]"
                 messages.append({"role": "tool", "tool_call_id": tc.get("id", ""), "name": fname, "content": pruned_result})
@@ -553,7 +556,9 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
 
         for url, headers, body, timeout in unique_configs:
             if (ans := agentic_turn(messages, url, headers, body, timeout, spinner, show_stats, is_agent=is_agent)) is not None:
+                if spinner: spinner.stop("Done")
                 return ans
+        if spinner: spinner.stop("Done")
         return None
     except KeyboardInterrupt:
         if spinner:
