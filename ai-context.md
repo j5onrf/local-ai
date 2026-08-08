@@ -33,9 +33,9 @@ pkill -9 -f "pw-play|koko" ---> stop speech, kill tts, quiet, stop talking, tts
 
 ```properties
 # --- Workspaces ---
-ai init ~/.config/local-ai/projects/session-test --init ---> session test, projects session, projects
-ai init ~/.config/local-ai/projects/session-test-2 --init ---> session test 2, projects session, projects
-ai init ~/.config/local-ai/projects/session-test-3 --init ---> session test 3, projects session, projects
+ai init ~/.config/local-ai/projects/session-test ---> session test, projects session, projects
+ai init ~/.config/local-ai/projects/session-test-2 ---> session test 2, projects session, projects
+ai init ~/.config/local-ai/projects/session-test-3 ---> session test 3, projects session, projects
 ```
 
 ## 3. Codebase Map
