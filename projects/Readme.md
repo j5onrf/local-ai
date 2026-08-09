@@ -137,10 +137,10 @@ Running `ai init <path>` sets the default workspace agent profile:
 
 | Tier | Profiles | Model Scale | Overhead | Behavior |
 | :--- | :--- | :--- | :--- | :--- |
-| **Pro** | `pi/pro`, `claude/pro`, `hermes/pro` | Medium Models | `~280t–290t` | Index-first codebase mapping. |
+| **Pro** | `pi/pro`, `claude/pro`, `hermes/pro` | Medium/Large Models | `~280t–290t` | Index-first codebase mapping. |
 | **Lite** | `pi/lite`, `claude/lite`, `hermes/lite` | Small Models | `~220t–230t` | Index-first standby preventing tool-eagerness loops. |
-| **Py-Pro** | `pi/py-pro`, `claude/py-pro`, `hermes/py-pro` | Medium/Large Code Models | `~300t–310t` | Full IPython kernel harness (`exec_python`). |
-| **Py-Lite** | `pi/py-lite`, `claude/py-lite`, `hermes/py-lite` | Small Code Models | `~220t–250t` | Concise IPython kernel harness preventing tool-eagerness loops. |
+| **Py-Pro** | `pi/py-pro`, `claude/py-pro`, `hermes/py-pro` | Medium/Large Models | `~300t–310t` | Full IPython kernel harness (`exec_python`). |
+| **Py-Lite** | `pi/py-lite`, `claude/py-lite`, `hermes/py-lite` | Small Models | `~220t–250t` | Concise IPython kernel harness preventing tool-eagerness loops. |
 
 * **Reset Workspace Profile:** Delete `.agent/config.json` inside the project folder (`rm .agent/config.json`).
 * **Customize Skills:** Modify or create profile `.md` files in `~/.config/local-ai/skills/profiles/`.
