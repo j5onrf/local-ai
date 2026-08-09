@@ -187,9 +187,16 @@ def run_interactive_chat(args: List[str]) -> None:
                     continue
 
                 if parts and parts[0] in ("/py", "/ipython"):
-                    active = ipython.toggle_ipython_mode()
-                    ui._console.print(f"[cyan][sys] IPython harness {'enabled (exec_python single tool mode)' if active else 'disabled (classic JSON tools)'}.[/cyan]\n")
-                    continue
+                    if len(parts) > 1:
+                        cmd_payload = query.split(maxsplit=1)[1]
+                        if not ipython.is_ipython_enabled():
+                            ipython.toggle_ipython_mode(True)
+                            ui._console.print("[cyan][sys] IPython harness enabled (exec_python single tool mode).[/cyan]\n")
+                        query = cmd_payload
+                    else:
+                        active = ipython.toggle_ipython_mode()
+                        ui._console.print(f"[cyan][sys] IPython harness {'enabled (exec_python single tool mode)' if active else 'disabled (classic JSON tools)'}.[/cyan]\n")
+                        continue
 
                 parts = query.split()
                 if parts and parts[0] in ("/task", "/loop", "/ralph"):

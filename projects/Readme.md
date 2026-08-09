@@ -117,9 +117,7 @@ Running `ai init <path>` sets default workspace agent profile:
 [ai init] Select default Agent Profile for workspace session-test:
 
   ─── Agents ────────────────────────
-  ❯  1. Default Assistant    (~120t)
-
-     1. Pi Pro               (~280t)
+  ❯  1. Pi Pro               (~280t)
      2. Claude Pro           (~290t)
      3. Hermes Pro           (~280t)
 
@@ -143,7 +141,6 @@ Running `ai init <path>` sets default workspace agent profile:
 
 | Tier | Profiles | Model Scale | Overhead | Behavior |
 | :--- | :--- | :--- | :--- | :--- |
-| **Standard** | `default` | Universal | `~120t` | General assistant without workspace tool loops. |
 | **Pro** | `pi/pro`, `claude/pro`, `hermes/pro` | Medium Models | `~280t–290t` | Index-first codebase mapping. |
 | **Lite** | `pi/lite`, `claude/lite`, `hermes/lite` | Small Models | `~220t–230t` | Index-first standby preventing tool-eagerness loops. |
 

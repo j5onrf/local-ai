@@ -34,7 +34,7 @@ LEFT_BAR = Box("▌   \n" * 8)
 # PRE-COMPILED REGEXES FOR MAXIMUM STREAMING TPS
 TOKEN_RE, STOP_WORDS = re.compile(r"[^\w\s]"), {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"}
 CSI_U_REGEX = re.compile(r'(?:\x1b\[<|\x1b\[|\[<)?\d+;\d+;\d+[mM]|\x1b\[[0-9;]*[a-zA-Z~]|\x1b[\[\(\=][0-9;]*[a-zA-Z~]?')
-ANSI_CLEAN_REGEX = re.compile(r'\x1b\[[0-9;]*m')
+ANSI_CLEAN_REGEX = re.compile(r'\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
 QUESTION_SPLIT_REGEX = re.compile(r'(?<=\?)\s+')
 REASONIX_STEP_RE = re.compile(r'^(?:\d+\.\s*|Step \d+:?\s*|Phase \d+:?\s*|\#{1,3}\s*)\*\*?([^\n\*:]+)\*\*?:?', re.IGNORECASE)
 CLEAN_CODE_BLOCKS_RE = re.compile(r'```\n\s*\n+')
@@ -212,8 +212,8 @@ class LocalAITUI(App):
     CSS = """
     Screen { background: $background; }
     #layout { height: 1fr; }
-    #main-container { height: 100%; width: 1fr; background: transparent; }
-    #chat-area { height: 1fr; background: transparent; overflow-y: scroll; padding: 0 0 1 2; scrollbar-size-vertical: 1; scrollbar-color: $panel; scrollbar-color-hover: $primary; scrollbar-color-active: $accent; scrollbar-gutter: stable; }
+    #main-container { height: 100%; width: 1fr; background: transparent; overflow: hidden; }
+    #chat-area { height: 1fr; width: 100%; background: transparent; overflow-y: scroll; overflow-x: hidden; padding: 0 0 1 2; scrollbar-size-vertical: 1; scrollbar-color: $panel; scrollbar-color-hover: $primary; scrollbar-color-active: $accent; scrollbar-gutter: stable; }
     #welcome-banner { margin-top: 1; margin-bottom: 1; margin-right: 2; }
     #input-pane { height: 3; border: none; background: $surface; padding: 0; margin: 0; align: left middle; }
     #input-bar { width: auto; height: 100%; color: $primary; padding: 0; margin: 0; }
@@ -224,7 +224,7 @@ class LocalAITUI(App):
     #btn-image-url { width: auto; height: 1; color: $secondary; padding: 0 1; margin-top: 2; }
     #btn-image-url:hover { color: $primary; text-style: bold; }
     #sidebar { width: 30; height: 100%; background: $surface; border-left: solid $boost; padding: 1 1; align: left top; }
-    Message { margin-top: 1; margin-right: 2; height: auto; }
+    Message { margin-top: 1; margin-right: 2; height: auto; max-width: 100%; overflow-x: hidden; }
     Message:first-child { margin-top: 0; margin-right: 2; }
     #chat-area.zero-spacing Message { margin-top: 0; }
     .sidebar-section { height: auto; border-bottom: none; padding-bottom: 1; margin-bottom: 1; }
@@ -239,6 +239,8 @@ class LocalAITUI(App):
     #lbl-tips-body { color: $text; margin-top: 1; }
     #footer-bar { dock: bottom; height: 1; width: 100%; background: $surface; }
     #footer-keys { width: 100%; height: 1; }
+    #sidebar.blue-sidebar .sidebar-val { color: #c8d3f5; }
+    #sidebar.blue-sidebar #lbl-tips-body { color: #c8d3f5; }
     """
 
     BINDINGS = [
@@ -262,6 +264,17 @@ class LocalAITUI(App):
         core.save_state("tui_theme", theme)
         self.update_welcome_banner()
         self.set_skill(self.active_skill)
+
+        # Toggle blue text class on sidebar for code1 and code2 themes
+        try:
+            sidebar = self.query_one("#sidebar")
+            if theme in ("code1", "code2"):
+                sidebar.add_class("blue-sidebar")
+            else:
+                sidebar.remove_class("blue-sidebar")
+        except Exception:
+            pass
+
         if hasattr(self, "chat_area"):
             for child in self.chat_area.children:
                 if isinstance(child, Message): child.refresh(layout=True)
@@ -488,6 +501,17 @@ class LocalAITUI(App):
 
         os.environ["AI_SHOW_THINKING"] = "1" if core.get_state("show_thinking", True) else "0"
         self.set_skill(self.active_skill); self.set_mode(self.agent_mode)
+
+        # Toggle blue text class on launch for code1 & code2
+        try:
+            sidebar = self.query_one("#sidebar")
+            if getattr(self, "theme", "code1") in ("code1", "code2"):
+                sidebar.add_class("blue-sidebar")
+            else:
+                sidebar.remove_class("blue-sidebar")
+        except Exception:
+            pass
+
         self.set_reasoning(f"{self.reasoning_budget} tokens" if self.reasoning_active else "Disabled")
         self.update_welcome_banner(); self.chat_input.cursor_blink = True
         self.update_footer_visibility(); self.update_sidebar_visibility()
@@ -566,47 +590,53 @@ class LocalAITUI(App):
                     env = {**os.environ, "AI_WORKSPACE_PATH": self.workspace_path}
                     res = subprocess.run([sys.executable, ralph_bin, task_args], cwd=self.workspace_path, capture_output=True, text=True, timeout=300, env=env)
                     out = (res.stdout or res.stderr or "").strip()
-                    clean_out = ANSI_CLEAN_REGEX.sub('', out)
-                    formatted = f"### [task] Autonomous Task Output\n\n{clean_out or '[ok] Task completed successfully.'}"
+                    
+                    plain_text = ANSI_CLEAN_REGEX.sub('', out.replace('\r', '\n'))
+                    
+                    clean_lines = []
+                    for line in plain_text.splitlines():
+                        l_strip = line.strip()
+                        if not l_strip or (("Working..." in l_strip or any(c in l_strip for c in "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏")) and "working •" not in l_strip):
+                            continue
+                        clean_lines.append(l_strip)
+                    
+                    # Convert raw execution logs into clean Markdown report (No icons/emojis)
+                    formatted_blocks = []
+                    for line in clean_lines:
+                        if line.startswith("[loop] Starting autonomous execution"):
+                            m = re.search(r'in\s+(\S+)\s+\(max\s+(\d+)\s+turns\)\s+::\s+Goal:\s*(.*)', line)
+                            if m:
+                                formatted_blocks.append(f"> **Goal:** {m.group(3)}\n> **Workspace:** `{m.group(1)}` • **Limit:** `{m.group(2)} turns`\n")
+                            else:
+                                formatted_blocks.append(f"> **Goal:** {line}\n")
+                        elif m_turn := re.search(r'\[loop turn (\d+)/(\d+)\]', line):
+                            formatted_blocks.append(f"\n#### Step {m_turn.group(1)} / {m_turn.group(2)}")
+                        elif "working •" in line:
+                            t_name = line.split("working •")[-1].strip()
+                            formatted_blocks.append(f"* Executing tool: `{t_name}`")
+                        elif line.startswith("✔ Done") or line.startswith("Done"):
+                            timing = f" ({line.split('(')[-1]}" if "(" in line else ""
+                            formatted_blocks.append(f"  *Finished step*{timing}")
+                        elif "Task completed" in line or "[ok]" in line:
+                            m_ok = re.search(r'in (\d+) turn', line)
+                            turns_str = f" in {m_ok.group(1)} turns" if m_ok else ""
+                            formatted_blocks.append(f"\n---\n### ✔ Task Completed{turns_str}")
+                        else:
+                            formatted_blocks.append(line)
+
+                    clean_out = "\n".join(formatted_blocks)
+                    formatted = f"### Task Execution Report\n\n{clean_out or '✔ Task completed successfully.'}"
+                    
                     self.call_from_thread(assistant_msg.update_content, formatted)
                     self.history.append({"role": "user", "content": display_cmd})
                     self.history.append({"role": "assistant", "content": clean_out or "Task complete."})
                     self.refresh_db_counts()
-                except (OSError, subprocess.SubprocessError, TimeoutError) as e: self.call_from_thread(assistant_msg.update_content, f"[red][sys] Task loop error: {e}[/red]")
-            else: self.call_from_thread(assistant_msg.update_content, "[red][sys] tools/loop/ralph.py script not found.[/red]")
+                except (OSError, subprocess.SubprocessError, TimeoutError) as e: 
+                    self.call_from_thread(assistant_msg.update_content, f"[red][sys] Task loop error: {e}[/red]")
+            else: 
+                self.call_from_thread(assistant_msg.update_content, "[red][sys] tools/loop/ralph.py script not found.[/red]")
 
         self.run_worker(_run_task_sub, thread=True)
-
-    async def handle_meta_chat_command(self, cmd_root: str, args: str = "") -> None:
-        think_bin = os.path.join(CFG_DIR, "modules", "chat")
-        self._safe_remove_banner()
-        self.ensure_system_context()
-        c_raw = cmd_root.lstrip("/").lower()
-        sub_arg, output_hdr = "/t" if c_raw in ("tk", "thinking") else f"/{c_raw}", {"f": "Follow-up", "b": "Brainstorm", "t": "Thinking", "tk": "Thinking", "a": "All"}.get(c_raw, "Follow-up")
-
-        await self.chat_area.mount(Message("User", f"/{c_raw} {args}".strip()))
-        if args: self.history.append({"role": "user", "content": args})
-
-        assistant_msg = Message("Agent", f"Generating {output_hdr}...")
-        await self.chat_area.mount(assistant_msg)
-        self.chat_area.scroll_end(animate=False)
-
-        def _run_chat_sub():
-            if os.path.exists(think_bin):
-                try:
-                    res = subprocess.run([sys.executable, think_bin, sub_arg], input=json.dumps(self.history), capture_output=True, text=True, timeout=30)
-                    if out := (res.stdout or res.stderr or "").strip():
-                        clean_out = ANSI_CLEAN_REGEX.sub('', out)
-                        if clean_out.startswith("AI:"): clean_out = clean_out[3:].strip()
-                        lines = [l.strip() for l in clean_out.splitlines() if l.strip()]
-                        formatted = f"**{lines[0]}**\n\n" + "\n\n".join(q.strip() for item in lines[1:] for q in QUESTION_SPLIT_REGEX.split(item) if q.strip()) if len(lines) > 1 else clean_out
-                        self.call_from_thread(assistant_msg.update_content, formatted)
-                        self.history.append({"role": "assistant", "content": formatted})
-                    else: self.call_from_thread(assistant_msg.update_content, "[red][sys] Chat returned no output.[/red]")
-                except (OSError, subprocess.SubprocessError, TimeoutError, json.JSONDecodeError) as e: self.call_from_thread(assistant_msg.update_content, f"[red][sys] Chat error: {e}[/red]")
-            else: self.call_from_thread(assistant_msg.update_content, "[red][sys] modules/chat script not found.[/red]")
-
-        self.run_worker(_run_chat_sub, thread=True)
 
     async def handle_slash_command(self, cmd: str) -> None:
         self._safe_remove_banner()
@@ -634,9 +664,16 @@ class LocalAITUI(App):
             else: self.action_cycle_theme()
 
         elif root in ("/py", "/ipython"):
-            active = ipython.toggle_ipython_mode()
-            if hasattr(self, "lbl_harness"): self.lbl_harness.update(f"[dim]Harness[/dim] " + ("IPython" if active else "Legacy"))
-            self.notify(f"IPython harness {'enabled (single tool mode)' if active else 'disabled (classic tools)'}.")
+            if args:
+                if not ipython.is_ipython_enabled():
+                    ipython.toggle_ipython_mode(True)
+                    if hasattr(self, "lbl_harness"): self.lbl_harness.update("[dim]Harness[/dim] IPython")
+                    self.notify("IPython harness enabled.")
+                self.run_worker(lambda: self.process_query_worker(args), thread=True)
+            else:
+                active = ipython.toggle_ipython_mode()
+                if hasattr(self, "lbl_harness"): self.lbl_harness.update(f"[dim]Harness[/dim] " + ("IPython" if active else "Legacy"))
+                self.notify(f"IPython harness {'enabled (single tool mode)' if active else 'disabled (classic tools)'}.")
 
         elif root in ("/v", "/voice"):
             is_auto = (bool(args) and args.strip().lower() == "auto")
