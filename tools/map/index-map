@@ -108,7 +108,8 @@ class PythonGraphVisitor(ast.NodeVisitor):
 
     def visit_ClassDef(self, node):
         prev_class, self.current_class = self.current_class, node.name
-        self.classes.append((node.name, node.lineno, getattr(node, 'end_lineno', node.lineno)))
+        bases = [b.id for b in node.bases if isinstance(b, ast.Name)] or [b.attr for b in node.bases if isinstance(b, ast.Attribute)]
+        self.classes.append((node.name, node.lineno, getattr(node, 'end_lineno', node.lineno), bases))
         self.generic_visit(node)
         self.current_class = prev_class
 
@@ -430,19 +431,28 @@ def trace_symbol(symbol):
     if not (db := find_db_path()): print("[error] Database not found."); return
     conn = sqlite3.connect(db)
     cur = conn.cursor()
-    if not (nodes := cur.execute("SELECT id, type, filepath FROM nodes WHERE name = ?", (symbol,)).fetchall()):
+    
+    clean_sym = symbol.replace('.', ':').replace('/', ':')
+    query_sql = "SELECT id, type, filepath, meta FROM nodes WHERE name = ? OR id LIKE ? OR id LIKE ?"
+    nodes = cur.execute(query_sql, (symbol, f"%:{clean_sym}", f"%:{symbol}")).fetchall()
+    if not nodes:
         print(f"[error] Symbol '{symbol}' was not found in the relationship map."); conn.close(); return
 
-    for node_id, node_type, filepath in nodes:
-        print(f"\n\033[1;34m[Trace Call Tree] For: {symbol} ({node_type}) in {filepath}\033[0m")
+    for node_id, node_type, filepath, meta_str in nodes:
+        meta = json.loads(meta_str) if meta_str else {}
+        args_str = f"({', '.join(meta.get('args', []))})" if 'args' in meta else ""
+        lines_str = f" (Lines {meta.get('line_start')}-{meta.get('line_end')})" if meta.get('line_start') else ""
+        print(f"\n\033[1;34m[Trace Call Tree] For: {symbol}{args_str} [{node_type}] in {filepath}{lines_str}\033[0m")
+
         for title, rel_type in (("\n\033[1;32m<-- [Callers] (Who invokes/uses this symbol):\033[0m", "target"), ("\n\033[1;35m--> [Callees] (Who/What this symbol calls):\033[0m", "source")):
             print(title)
-            query = f"SELECT {'source' if rel_type == 'target' else 'target'} FROM edges WHERE {rel_type} = ? AND type = 'calls'"
-            rows = cur.execute(query, (node_id,)).fetchall()
+            q = f"SELECT n.name, n.type, n.filepath, n.meta FROM edges e JOIN nodes n ON n.id = e.{'source' if rel_type == 'target' else 'target'} WHERE e.{rel_type} = ? AND e.type IN ('calls', 'inherits')"
+            rows = cur.execute(q, (node_id,)).fetchall()
             if not rows: print("  (None detected)")
-            for (item,) in rows:
-                p = item.split(":")
-                print(f"  ├── \033[36m{p[-1]}\033[0m [{p[0]}] ({p[1]})")
+            for rname, rtype, rpath, rmeta in rows:
+                rm = json.loads(rmeta) if rmeta else {}
+                rargs = f"({', '.join(rm.get('args', []))})" if 'args' in rm else ""
+                print(f"  ├── \033[36m{rname}\033[0m{rargs} [{rtype}] ({rpath})")
     conn.close()
 
 
@@ -477,17 +487,21 @@ def extract_snippet(symbol):
     if not (db := find_db_path()): print("[error] Database not found."); return
     conn = sqlite3.connect(db)
     cur = conn.cursor()
-    if not (results := cur.execute("SELECT filepath, meta, type FROM nodes WHERE name = ?", (symbol,)).fetchall()):
+    
+    clean_sym = symbol.replace('.', ':').replace('/', ':')
+    query_sql = "SELECT filepath, meta, type, name FROM nodes WHERE name = ? OR id LIKE ? OR id LIKE ?"
+    results = cur.execute(query_sql, (symbol, f"%:{clean_sym}", f"%:{symbol}")).fetchall()
+    if not results:
         print(f"[error] Symbol '{symbol}' not found."); conn.close(); return
 
     root_dir = os.path.dirname(os.path.dirname(db)) if os.path.basename(os.path.dirname(db)) == ".agent" else os.path.dirname(db)
-    for filepath, meta_str, node_type in results:
+    for filepath, meta_str, node_type, name in results:
         meta = json.loads(meta_str) if meta_str else {}
         l_start, l_end = meta.get('line_start'), meta.get('line_end')
         full_path = os.path.join(root_dir, filepath)
         if not os.path.isfile(full_path): print(f"[error] Target path does not exist on disk: {filepath}"); continue
 
-        print(f"\n\033[1;36m[Snippet] {node_type.upper()} {symbol} in {filepath} (Lines {l_start} to {l_end}):\033[0m")
+        print(f"\n\033[1;36m[Snippet] {node_type.upper()} {name} in {filepath} (Lines {l_start} to {l_end}):\033[0m")
         if l_start and l_end:
             try:
                 with open(full_path, 'r', encoding='utf-8', errors='ignore') as f: lines = f.readlines()

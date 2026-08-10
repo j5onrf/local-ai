@@ -118,17 +118,13 @@ Running `ai init <path>` sets the default workspace agent profile:
      3. Hermes Pro           (~280t)
 
      1. Pi Lite              (~220t)
-     2. Claude Lite          (~230t)
+     2. Claude Lite          (~220t)
      3. Hermes Lite          (~220t)
 
   ─── Py ────────────────────────────
      1. Pi Py-Pro            (~300t)
      2. Claude Py-Pro        (~310t)
      3. Hermes Py-Pro        (~300t)
-
-     1. Pi Py-Lite           (~220t)
-     2. Claude Py-Lite       (~250t)
-     3. Hermes Py-Lite       (~240t)
 
   :: ↵ select  ↑/↓ navigate  Tab: YOLO [OFF]  Esc: default
 ```
@@ -137,14 +133,12 @@ Running `ai init <path>` sets the default workspace agent profile:
 
 | Tier | Profiles | Model Scale | Overhead | Behavior |
 | :--- | :--- | :--- | :--- | :--- |
-| **Pro** | `pi/pro`, `claude/pro`, `hermes/pro` | Medium/Large Models | `~280t–290t` | Index-first codebase mapping. |
-| **Lite** | `pi/lite`, `claude/lite`, `hermes/lite` | Small Models | `~220t–230t` | Index-first standby preventing tool-eagerness loops. |
-| **Py-Pro** | `pi/py-pro`, `claude/py-pro`, `hermes/py-pro` | Medium/Large Models | `~300t–310t` | Full IPython kernel harness (`exec_python`). |
-| **Py-Lite** | `pi/py-lite`, `claude/py-lite`, `hermes/py-lite` | Small Models | `~220t–250t` | Concise IPython kernel harness preventing tool-eagerness loops. |
+| **Pro** | `pi/pro`, `claude/pro`, `hermes/pro` | Medium/Large Models | `~280t–290t` | Full-scale codebase graph navigation & multi-file editing. |
+| **Lite** | `pi/lite`, `claude/lite`, `hermes/lite` | Small Models | `~220t` | Native JSON tools optimized for zero tool-calling confusion. |
+| **Py-Pro** | `pi/py-pro`, `claude/py-pro`, `hermes/py-pro` | Medium/Large Models | `~300t–310t` | Persistent IPython kernel harness (`exec_python`) with stateful memory. |
 
 * **Reset Workspace Profile:** Delete `.agent/config.json` inside the project folder (`rm .agent/config.json`).
 * **Customize Skills:** Modify or create profile `.md` files in `~/.config/local-ai/skills/profiles/`.
-
 ---
 
 ## 3. Command Reference

@@ -18,10 +18,19 @@ Execute all workspace tasks using the native `exec_python` tool.
 ### In-Kernel SDK Functions (Available inside `exec_python`):
 - **`read_file("path")` & `list_dir("path")`**: Inspect file contents and directory structures.
 - **`read_symbol("symbol")`**: Extract precise source code snippets from the index graph.
+- **`trace_symbol("symbol")`**: Trace callers (who invokes) and callees (who is called by) a function/class symbol.
+- **`blast_radius("symbol")`**: Calculate structural impact map to see what will break if a symbol is modified.
+- **`find_symbol("pattern")`**: Search codebase graph for matching symbols, functions, classes, or patterns.
+- **`architecture_overview()`**: Get high-level summary of active files, classes, functions, and connection counts.
 - **`write_file("path", "content")`**: Modify existing files or create new files.
 - **`run_command("cmd")`**: Execute terminal verification commands, test suites, or build tools.
 - **State Persistence**: Variables, imports, dataframes, and functions stay alive in kernel memory across cells.
 
 ## Codebase Graph & Symbol Intelligence:
-If context for a symbol is missing, suggest exactly one command prefixed with "Run: " and output NO other text, greetings, or explanations. Once context is sufficient, provide your final response and STOP recommending commands.
-- **Permitted Commands**: `read function <symbol>`, `trace symbol <symbol>`, `blast radius <symbol>`, `find symbol <pattern>`, `architecture overview`.
+Use in-kernel SDK functions inside `exec_python` cells directly to inspect code structure:
+- `read_symbol("symbol")` — Extract precise symbol source code
+- `trace_symbol("symbol")` — Trace callers and callees
+- `blast_radius("symbol")` — Calculate upstream impact map
+- `find_symbol("pattern")` — Search codebase graph
+- `architecture_overview()` — Get project structure summary
+*Note: SDK graph functions do NOT require python imports. Execute print(trace_symbol("name")) directly.*

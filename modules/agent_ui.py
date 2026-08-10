@@ -67,6 +67,7 @@ class InlineSpinner:
             except (IOError, OSError): pass
 
 
+# Inside _read_fd() in agent_ui.py
 def _read_fd(fd: int) -> str:
     old = termios.tcgetattr(fd)
     try:
@@ -77,7 +78,13 @@ def _read_fd(fd: int) -> str:
             char_bytes += os.read(fd, 2)
         return char_bytes.decode("utf-8", errors="ignore")
     finally:
-        termios.tcsetattr(fd, termios.TCSADRAIN, old)
+        termios.tcsetattr(fd, termios.TCSAFLUSH, old)
+        # Ensure standard ONLCR newline processing is restored
+        try:
+            sys.stdout.write("\033[0m")
+            sys.stdout.flush()
+        except Exception:
+            pass
 
 
 def get_key() -> str:
@@ -172,7 +179,6 @@ def run_interactive_selection(
     intent: str, jaccard_search_fn: Callable[[str], Optional[str]], clean_tool_prefix_fn: Callable[[str], str],
     print_stock_error_fn: Callable[[str], None], ensure_mysys_exists_fn: Callable[[], None]
 ) -> None:
-    """Renders the CLI command selection menu overlay, navigating via arrow keys."""
     if re.search(r'[\[\]{}()=\'"",;|<>#]', intent) or not (matched_base := jaccard_search_fn(intent)):
         print_stock_error_fn(intent)
         sys.exit(127)
@@ -192,9 +198,9 @@ def run_interactive_selection(
 
             idx_str = f"{current_idx + 1:02d}/{num_opts:02d}"
             prompt = (
-                f"\r\x1b[K\033[1;31m▲ WARNING: Destructive payload detected\033[0m\n\r\x1b[K\033[1;31m[{idx_str}]\033[0m ❯ \x1b[1;36m[{current_intent}]\x1b[0m {display_cmd}\n\r\x1b[K\033[2m::\033[0m execute payload? [y/N]: "
+                f"\r\x1b[2K\033[1;31m▲ WARNING: Destructive payload detected\033[0m\n\r\x1b[2K\033[1;31m[{idx_str}]\033[0m ❯ \x1b[1;36m[{current_intent}]\x1b[0m {display_cmd}\n\r\x1b[2K\033[2m::\033[0m execute payload? [y/N]: "
                 if is_danger else
-                f"\r\x1b[K\033[1;32m[{idx_str}]\033[0m ❯ \x1b[1;36m[{current_intent}]\x1b[0m {display_cmd}\n\r\x1b[K\033[2m::\033[0m ↵ run  Esc: "
+                f"\r\x1b[2K\033[1;32m[{idx_str}]\033[0m ❯ \x1b[1;36m[{current_intent}]\x1b[0m {display_cmd}\n\r\x1b[2K\033[2m::\033[0m ↵ run  Esc: "
             )
             sys.stderr.write(prompt)
             sys.stderr.flush()
@@ -203,12 +209,12 @@ def run_interactive_selection(
 
             if key in ('\x1b[A', '\x1b[B'):
                 current_idx = (current_idx + (1 if key == '\x1b[B' else -1) + num_opts) % num_opts
-                sys.stderr.write("\x1b[1A\r\x1b[K")
+                sys.stderr.write("\r\x1b[2K\x1b[1A\r\x1b[2K")
                 sys.stderr.flush()
                 continue
 
             if is_danger:
-                sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K\x1b[1A\r\x1b[K")
+                sys.stderr.write("\r\x1b[2K\x1b[1A\r\x1b[2K\x1b[1A\r\x1b[2K")
                 sys.stderr.flush()
                 if key.lower() == 'y':
                     if "system" in cmd_to_show: ensure_mysys_exists_fn()
@@ -225,7 +231,7 @@ def run_interactive_selection(
                 sys.stdout.flush()
                 sys.exit(0)
 
-            sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K")
+            sys.stderr.write("\r\x1b[2K\x1b[1A\r\x1b[2K")
             sys.stderr.flush()
             sys.exit(127)
     finally:
@@ -270,15 +276,12 @@ def select_workspace_profile(workspace_name: str) -> Tuple[str, bool]:
         ("claude/pro",     "Claude Pro",     "~290t", None),
         ("hermes/pro",     "Hermes Pro",     "~280t", None),
         ("pi/lite",        "Pi Lite",        "~220t", None),
-        ("claude/lite",    "Claude Lite",    "~230t", None),
+        ("claude/lite",    "Claude Lite",    "~220t", None),
         ("hermes/lite",    "Hermes Lite",    "~220t", None),
 
         ("pi/py-pro",      "Pi Py-Pro",      "~300t", "Py"),
         ("claude/py-pro",  "Claude Py-Pro",  "~310t", None),
         ("hermes/py-pro",  "Hermes Py-Pro",  "~300t", None),
-        ("pi/py-lite",     "Pi Py-Lite",     "~220t", None),
-        ("claude/py-lite", "Claude Py-Lite", "~250t", None),
-        ("hermes/py-lite", "Hermes Py-Lite", "~240t", None),
     ]
 
     sys.stderr.write(f"\n\033[1;36m[ai init]\033[0m Select default Agent Profile for workspace \033[1;33m{workspace_name}\033[0m:\n\n\033[?25l")
@@ -295,10 +298,10 @@ def select_workspace_profile(workspace_name: str) -> Tuple[str, bool]:
             lines_count = 0
             sub_idx = 1
             for idx, (k, lbl, d, cat) in enumerate(options):
-                if cat or k in ("pi/pro", "pi/lite", "pi/py-pro", "pi/py-lite"):
+                if cat or k in ("pi/pro", "pi/lite", "pi/py-pro"):
                     sub_idx = 1
 
-                if idx > 0 and (cat or k in ("pi/pro", "pi/lite", "pi/py-lite")):
+                if idx > 0 and (cat or k in ("pi/pro", "pi/lite")):
                     sys.stderr.write("\r\x1b[K\n")
                     lines_count += 1
 

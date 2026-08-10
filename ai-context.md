@@ -43,13 +43,6 @@ ai init ~/.config/local-ai/projects/session-test-3 ---> session test 3, projects
 ```properties
 # --- Index Map ---
 [TOOL] ~/.config/local-ai/tools/map/index-map --cat ---> index map, imap
-# --- Code Tracing ---
-[TOOL] ~/.config/local-ai/tools/map/index-map trace $1 --cat ---> trace symbol
-[TOOL] ~/.config/local-ai/tools/map/index-map blast-radius $1 --cat ---> blast radius
-[TOOL] ~/.config/local-ai/tools/map/index-map snippet $1 --cat ---> read function
-[TOOL] ~/.config/local-ai/tools/map/index-map architecture --cat ---> architecture overview
-# --- Code Search ---
-[TOOL] ~/.config/local-ai/tools/map/index-map search $1 --cat ---> find symbol, semantic search, find concept, search code
 ```
 
 ## 4. Web & Files

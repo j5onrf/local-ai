@@ -188,25 +188,20 @@ def get_prompt_input(symbol: str = "❯") -> str:
     if core:
         _auto_submit = core.get_state().get("voice_auto_submit", True)
 
-    sys.stdout.write(f"\001\033[1;30m\002{symbol}\001\033[0m\002 ")
-    sys.stdout.flush()
-    while True:
-        if os.path.exists(PENDING_FILE) and os.path.getsize(PENDING_FILE) > 0:
-            try:
-                with open(PENDING_FILE, "r", encoding="utf-8") as vf:
-                    if text := vf.read().strip():
-                        os.remove(PENDING_FILE)
-                        if _auto_submit:
-                            sys.stdout.write(f"{text}\n"); sys.stdout.flush()
-                            return text
-                        else:
-                            try: readline.set_startup_hook(lambda: readline.insert_text(text))
-                            except Exception: pass
-                            sys.stdout.write("\r\033[K")
-                            return input(f"\001\033[1;30m\002{symbol}\001\033[0m\002 ").strip()
-            except OSError: pass
-        if select.select([sys.stdin], [], [], 0.1)[0]:
-            return sys.stdin.readline().strip()
+    if os.path.exists(PENDING_FILE) and os.path.getsize(PENDING_FILE) > 0:
+        try:
+            with open(PENDING_FILE, "r", encoding="utf-8") as vf:
+                if text := vf.read().strip():
+                    os.remove(PENDING_FILE)
+                    sys.stdout.write(f"{text}\n")
+                    sys.stdout.flush()
+                    return text
+        except OSError: pass
+
+    try:
+        return input("❯ ").strip()
+    except (KeyboardInterrupt, EOFError):
+        raise
 
 
 class VoiceHandler(http.server.SimpleHTTPRequestHandler):

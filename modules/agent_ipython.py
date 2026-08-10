@@ -104,9 +104,31 @@ def _init_kernel_sdk(workspace: str, confirm_gate_fn: Optional[Callable[[str], b
         res = subprocess.run([sys.executable, mod_path, "snippet", sym], cwd=ws_real, capture_output=True, text=True, timeout=10)
         return (res.stdout or res.stderr or "").strip()
 
+    def _trace_symbol(sym: str) -> str:
+        mod_path = os.path.join(CFG_DIR, "tools", "map", "index-map")
+        res = subprocess.run([sys.executable, mod_path, "trace", sym], cwd=ws_real, capture_output=True, text=True, timeout=10)
+        return (res.stdout or res.stderr or "").strip()
+
+    def _blast_radius(sym: str) -> str:
+        mod_path = os.path.join(CFG_DIR, "tools", "map", "index-map")
+        res = subprocess.run([sys.executable, mod_path, "blast-radius", sym], cwd=ws_real, capture_output=True, text=True, timeout=10)
+        return (res.stdout or res.stderr or "").strip()
+
+    def _find_symbol(pat: str) -> str:
+        mod_path = os.path.join(CFG_DIR, "tools", "map", "index-map")
+        res = subprocess.run([sys.executable, mod_path, "search", pat], cwd=ws_real, capture_output=True, text=True, timeout=10)
+        return (res.stdout or res.stderr or "").strip()
+
+    def _architecture_overview() -> str:
+        mod_path = os.path.join(CFG_DIR, "tools", "map", "index-map")
+        res = subprocess.run([sys.executable, mod_path, "architecture"], cwd=ws_real, capture_output=True, text=True, timeout=10)
+        return (res.stdout or res.stderr or "").strip()
+
     sdk = {
         "open": safe_open, "read_file": _read_file, "write_file": _write_file, "list_dir": _list_dir,
-        "run_command": _run_command, "read_symbol": _read_symbol, "workspace": ws_real
+        "run_command": _run_command, "read_symbol": _read_symbol, "trace_symbol": _trace_symbol,
+        "blast_radius": _blast_radius, "find_symbol": _find_symbol,
+        "architecture_overview": _architecture_overview, "workspace": ws_real
     }
     _shell_globals.update(sdk)
     os.listdir = safe_listdir

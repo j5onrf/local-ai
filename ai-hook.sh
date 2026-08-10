@@ -20,10 +20,9 @@ elif [[ "$PROMPT_COMMAND" != *_ai_teleport* ]]; then
 fi
 
 ai_handle_missing() {
-    [[ -n "$*" ]] && cmd=$("$_AI_PY" "$_AI_DIR/ai-agent.py" --interactive "$*") || return 127
-    [[ -n "$cmd" ]] || return 127
-    exp="${cmd/#\~/$HOME}"
-    [[ -d "$exp" ]] && ai init "$exp" || eval "$cmd"
+    local cmd=$([[ -n "$*" ]] && "$_AI_PY" "$_AI_DIR/ai-agent.py" --interactive "$*") || return 127
+    local exp=$(echo "$cmd" | sed -E 's/\x1b\[[0-9;]*[a-zA-Z]|\r//g') && exp="${exp//\~/$HOME}"
+    [[ -d "$exp" ]] && ai init "$exp" || { [[ "$exp" == *.py ]] && "$_AI_PY" $exp || eval "$exp"; }
 }
 command_not_found_handle() { [[ "$1" != --* ]] && ai_handle_missing "$*"; }
 command_not_found_handler() { command_not_found_handle "$@"; }

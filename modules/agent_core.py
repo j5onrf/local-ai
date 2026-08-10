@@ -14,6 +14,7 @@ from rich.syntax import Syntax
 
 import agent_ui as ui
 import agent_cloud
+import agent_tools as tools
 
 CFG_DIR: str = os.path.expanduser("~/.config/local-ai")
 STATE_FILE: str = os.path.join(CFG_DIR, ".state.json")
@@ -163,7 +164,10 @@ class RichStreamer:
             if "<think>" in token and self.phase != "THINKING": self.phase, token = "THINKING", token.replace("<think>", "")
             if "</think>" in token: self.phase, token = "ANSWER", token.split("</think>", 1)[1] if "</think>" in token else ""
             if self.phase != "THINKING" and token:
-                try: sys.stdout.write(token); sys.stdout.flush()
+                try: 
+                    formatted = token.replace("\r\n", "\n").replace("\n", "\r\n")
+                    sys.stdout.write(formatted)
+                    sys.stdout.flush()
                 except (IOError, OSError): pass
             return
 
@@ -177,7 +181,7 @@ class RichStreamer:
             parts = token.split("</think>", 1)
             if parts[0]: self.update(parts[0])
             if show_think and self.think_hdr_printed:
-                sep = "" if self.acc_think.endswith("\n") else "\n"
+                sep = "" if self.acc_think.endswith("\n") else "\r\n"
                 _console_err.print(f"{sep}[dim]╰────────────────────────────────────────────────────────[/dim]")
                 sys.stderr.flush()
             self.phase = "ANSWER"
@@ -195,7 +199,10 @@ class RichStreamer:
                     _console_err.print("[dim]╭─ ⚙ ────────────────────────────────────────────────────[/dim]")
                     tok = tok.lstrip("\r\n")
                 if tok:
-                    try: sys.stderr.write(tok); sys.stderr.flush()
+                    try:
+                        out_tok = tok.replace("\r\n", "\n").replace("\n", "\r\n")
+                        sys.stderr.write(out_tok)
+                        sys.stderr.flush()
                     except (IOError, OSError): pass
         else:
             tok = RE_FINAL_ANSWER.sub('', token.replace("\\n", "\n"))
@@ -213,25 +220,28 @@ class RichStreamer:
 
             self.acc_ans += tok
             if tok:
-                try: sys.stdout.write(tok); sys.stdout.flush()
+                try:
+                    out_tok = tok.replace("\r\n", "\n").replace("\n", "\r\n")
+                    sys.stdout.write(out_tok)
+                    sys.stdout.flush()
                 except (IOError, OSError): pass
 
     def stop(self, interrupted: bool = False) -> None:
         self._stop_spinner()
         if interrupted:
-            try: sys.stdout.write("\033[?25h\n"); sys.stdout.flush()
+            try: sys.stdout.write("\033[?25h\r\n"); sys.stdout.flush()
             except (IOError, OSError): pass
             return
 
         show_think, render_md = os.environ.get("AI_SHOW_THINKING", "1") == "1", os.environ.get("AI_RENDER_MARKDOWN", "1") == "1"
 
         if self.phase == "THINKING" and show_think and self.think_hdr_printed:
-            sep = "" if self.acc_think.endswith("\n") else "\n"
+            sep = "" if self.acc_think.endswith("\n") else "\r\n"
             _console_err.print(f"{sep}[dim]╰────────────────────────────────────────────────────────[/dim]")
             self.phase = "ANSWER"
 
         if self.ans_started and self.acc_ans.strip():
-            try: sys.stdout.write("\n"); sys.stdout.flush()
+            try: sys.stdout.write("\r\n"); sys.stdout.flush()
             except (IOError, OSError): pass
 
 
@@ -517,7 +527,7 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
                 except (AttributeError, RuntimeError, OSError): pass
             raise
         except (requests.RequestException, OSError, TimeoutError, ValueError, TypeError) as e:
-            sys.stderr.write(f"\033[90m[sys] API response error: {e}\033[0m\n")
+            sys.stderr.write(f"\033[90m[sys] API response error: {e}\033[0m\r\n")
             return None
         finally:
             if res is not None:
@@ -567,7 +577,7 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
         if spinner:
             try: spinner.stop()
             except (AttributeError, RuntimeError, OSError): pass
-        sys.stderr.write("\r\x1b[2K\033[90m[sys] Interrupted.\033[0m\033[0m\n")
+        sys.stderr.write("\r\x1b[2K\033[90m[sys] Interrupted.\033[0m\033[0m\r\n")
         return None
 
 
