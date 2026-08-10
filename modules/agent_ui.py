@@ -254,8 +254,8 @@ def show_help() -> None:
         ("/h", "Help menu"), ("/v [auto], /voice", "Voice to text"), ("/tts", "Text out loud"), ("/box [1-5]", "Box style preset"), ("/t [N|show|hide]", "Set reasoning budget or show/hide"),
         ("/g, /yolo", "Toggle confirmation gates (YOLO / autonomous mode)"), ("/m", "Toggle database memory"),
         ("/md", "Toggle markdown"), ("/stats", "Generation speed stats"), ("/tok", "Context token usage"),
-        ("/sync", "Sync index"), ("/clear", "Chat & memory"), ("/sp", "Toggle spellchecker"),
-        ("/s <q>", "Skills"), ("/tui", "Textual UI"), ("-save <tag>", "Save session checkpoint"),
+        ("/sync", "Sync index"), ("/clear, /c", "Soft clear active chat history"), ("/reset, /purge", "Hard reset (.agent & database purge)"),
+        ("/sp", "Toggle spellchecker"), ("/s <q>", "Skills"), ("/tui", "Textual UI"), ("-save <tag>", "Save session checkpoint"),
         ("-load", "Load or clone checkpoint"), ("/f, /tk, /b, /a", "Follow-up, Thinking, Brainstorm, or All"),
         ("view file <path>", "Load file into context"), ("exit, quit, q", "Exit")
     ]

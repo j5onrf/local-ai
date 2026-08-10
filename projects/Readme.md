@@ -137,8 +137,9 @@ Running `ai init <path>` sets the default workspace agent profile:
 | **Lite** | `pi/lite`, `claude/lite`, `hermes/lite` | Small Models | `~220t` | Native JSON tools optimized for zero tool-calling confusion. |
 | **Py-Pro** | `pi/py-pro`, `claude/py-pro`, `hermes/py-pro` | Medium/Large Models | `~300t–310t` | Persistent IPython kernel harness (`exec_python`) with stateful memory. |
 
-* **Reset Workspace Profile:** Delete `.agent/config.json` inside the project folder (`rm .agent/config.json`).
+* **Reset Workspace Profile:** Type `/reset` in chat (or delete `.agent/config.json`). This purges workspace settings so `ai init` prompts for a new profile selection on next launch.
 * **Customize Skills:** Modify or create profile `.md` files in `~/.config/local-ai/skills/profiles/`.
+
 ---
 
 ## 3. Command Reference
@@ -159,7 +160,8 @@ Running `ai init <path>` sets the default workspace agent profile:
 │  /stats                      - Generation speed stats               │
 │  /tok                        - Context token usage                  │
 │  /sync                       - Sync index                           │
-│  /clear                      - Chat & memory                        │
+│  /clear, /c                  - Soft clear active chat history       │
+│  /reset, /purge              - Hard reset (.agent & database)       │
 │  /sp                         - Spellchecker                         │
 │  /s <q>                      - Skills                               │
 │  /tui                        - Launch Textual UI                    │
@@ -189,10 +191,13 @@ Replaces discrete JSON tool declarations with a live, persistent IPython kernel.
 - **Toggle Mode:** Type `/py` (or `/ipython`).
 - **Global Smart Handler:** Typing `/py <cmd_or_code>` automatically ensures IPython mode is **ON** and executes the command immediately in both raw CLI and TUI.
 - **In-Kernel SDK Functions:**
-  - `read_file("path")` & `write_file("path", "content")`
-  - `list_dir("path")`
-  - `run_command("cmd")`
-  - `read_symbol("symbol")`
+  - `read_file("path")` & `write_file("path", "content")` — File I/O
+  - `list_dir("path")` & `run_command("cmd")` — Directory & shell execution
+  - `read_symbol("symbol")` — Extract symbol code snippet from index graph
+  - `trace_symbol("symbol")` — Trace callers and callees in call tree
+  - `blast_radius("symbol")` — Calculate upstream structural impact map
+  - `find_symbol("pattern")` — Search graph for symbols or concepts
+  - `architecture_overview()` — Get high-level workspace structure summary
 - **Data Isolation:** Inspect large files or datasets using Python scripts (`import re`, `import ast`, `import json`) in memory without bloating the LLM context window.
 
 ---
@@ -230,7 +235,7 @@ The codebase intelligence engine features **dual-mode output routing**:
 
 - **Agent Mode (`ai init` / `/sync`):** Outputs map files directly to `project/.agent/` to keep source directories clean.
 - **Standalone CLI Mode (`index-map`):** Outputs map files to the project root directory when run independently in shell.
-- **AST Graph:** Maps classes, methods, and call-chains across Python, Rust, Go, JS/TS, C/C++, Lua.
+- **AST Graph:** Maps classes, methods, call-chains, and class inheritance across Python, Rust, Go, JS/TS, C/C++, Lua.
 - **Vector Search:** Embeds codeblocks into `sqlite-vec` virtual tables for semantic retrieval.
 
 ---
@@ -267,4 +272,15 @@ The codebase intelligence engine features **dual-mode output routing**:
 Override max context token limits or model defaults:
 ```bash
 AI_MAX_TOKENS=16000 ai init ~/my-project
+```
+
+---
+
+## 14. Reasonix Cognitive Engine (`/t`)
+
+Real-time reasoning trace step extraction and cognitive phase formatting inside the live thinking stream.
+
+- **Set Token Budget:** `/t <N>` — Set thinking token budget (e.g. `/t 500` or `/t 0` to disable thinking).
+- **Show / Hide Thinking:** `/t show` or `/t hide` — Toggle real-time thinking panel visibility while reasoning mode stays active.
+- **Quick Toggle:** `/t` — Toggle deep reasoning mode ON/OFF.
 ```

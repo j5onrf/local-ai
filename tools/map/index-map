@@ -267,10 +267,14 @@ def insert_node(conn, node_id, name, ntype, filepath, lang, meta_dict, text_to_e
 
 
 def _commit_structures_to_db(db_conn, rel_path, ext_label, classes, functions, file_lines, use_vec):
-    for name, start, end in classes:
+    for item in classes:
+        name, start, end = item[0], item[1], item[2]
+        bases = item[3] if len(item) > 3 else []
         cid = f"class:{rel_path}:{name}"
-        insert_node(db_conn, cid, name, 'class', rel_path, ext_label, {'line_start': start, 'line_end': end}, "\n".join(file_lines[max(0, start - 1):end]).strip() if file_lines else "", use_vec, EMBEDDING_SERVER)
+        insert_node(db_conn, cid, name, 'class', rel_path, ext_label, {'line_start': start, 'line_end': end, 'bases': bases}, "\n".join(file_lines[max(0, start - 1):end]).strip() if file_lines else "", use_vec, EMBEDDING_SERVER)
         db_conn.execute("INSERT OR IGNORE INTO edges VALUES (?, ?, ?)", (f"file:{rel_path}", cid, 'contains'))
+        for b in bases:
+            db_conn.execute("INSERT OR IGNORE INTO edges VALUES (?, ?, ?)", (cid, f"class:{rel_path}:{b}", 'inherits'))
 
     for name, parent_class, start, end, args in functions:
         fid = f"func:{rel_path}:{parent_class}:{name}" if parent_class else f"func:{rel_path}:{name}"
@@ -433,8 +437,9 @@ def trace_symbol(symbol):
     cur = conn.cursor()
     
     clean_sym = symbol.replace('.', ':').replace('/', ':')
-    query_sql = "SELECT id, type, filepath, meta FROM nodes WHERE name = ? OR id LIKE ? OR id LIKE ?"
-    nodes = cur.execute(query_sql, (symbol, f"%:{clean_sym}", f"%:{symbol}")).fetchall()
+    short_sym = symbol.split('.')[-1].split(':')[-1]
+    query_sql = "SELECT id, type, filepath, meta FROM nodes WHERE name = ? OR name = ? OR id LIKE ? OR id LIKE ?"
+    nodes = cur.execute(query_sql, (symbol, short_sym, f"%:{clean_sym}", f"%:{short_sym}")).fetchall()
     if not nodes:
         print(f"[error] Symbol '{symbol}' was not found in the relationship map."); conn.close(); return
 
@@ -460,7 +465,10 @@ def get_blast_radius(symbol):
     if not (db := find_db_path()): print("[error] Database not found."); return
     conn = sqlite3.connect(db)
     cur = conn.cursor()
-    if not (starts := cur.execute("SELECT id, type, filepath FROM nodes WHERE name = ?", (symbol,)).fetchall()):
+    clean_sym = symbol.replace('.', ':').replace('/', ':')
+    short_sym = symbol.split('.')[-1].split(':')[-1]
+    query_sql = "SELECT id, type, filepath FROM nodes WHERE name = ? OR name = ? OR id LIKE ? OR id LIKE ?"
+    if not (starts := cur.execute(query_sql, (symbol, short_sym, f"%:{clean_sym}", f"%:{short_sym}")).fetchall()):
         print(f"[error] Symbol '{symbol}' not found."); conn.close(); return
 
     for node_id, node_type, filepath in starts:
@@ -489,8 +497,9 @@ def extract_snippet(symbol):
     cur = conn.cursor()
     
     clean_sym = symbol.replace('.', ':').replace('/', ':')
-    query_sql = "SELECT filepath, meta, type, name FROM nodes WHERE name = ? OR id LIKE ? OR id LIKE ?"
-    results = cur.execute(query_sql, (symbol, f"%:{clean_sym}", f"%:{symbol}")).fetchall()
+    short_sym = symbol.split('.')[-1].split(':')[-1]
+    query_sql = "SELECT filepath, meta, type, name FROM nodes WHERE name = ? OR name = ? OR id LIKE ? OR id LIKE ?"
+    results = cur.execute(query_sql, (symbol, short_sym, f"%:{clean_sym}", f"%:{short_sym}")).fetchall()
     if not results:
         print(f"[error] Symbol '{symbol}' not found."); conn.close(); return
 

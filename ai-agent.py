@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Local-Ai Agent [j5onrf] [v0.9.8.30]"""
+"""Local-Ai Agent [j5onrf] [v0.9.8.31]"""
 
-import json, os, re, sqlite3, subprocess, sys, threading, time, urllib.request as urlreq
+import json, os, re, shutil, sqlite3, subprocess, sys, threading, time, urllib.request as urlreq
 from typing import List, Optional, Tuple, Dict, Any
 from contextlib import closing
 
@@ -302,21 +302,30 @@ def run_interactive_chat(args: List[str]) -> None:
                         except Exception as e: ui._console.print(f"\r\x1b[2K[red][sys] Sync failed: {e}[/red]\n")
                     continue
 
-                if q_lower in ("/clear", "/reset"):
+                if q_lower in ("/clear", "/c"):
                     chat_history = [{"role": "system", "content": active_system_prompt}, {"role": "assistant", "content": "Agent: Workspace loaded. Awaiting instructions."}]
-                    ws_base = os.path.basename(workspace_path)
-                    for p in (
-                        os.path.join(workspace_path, ".agent", "session.json"), os.path.join(workspace_path, ".agent", "tpm.md"),
-                        os.path.join(workspace_path, ".agent", "history.md"), os.path.join(workspace_path, "history.md"),
-                        os.path.join(workspace_path, ".agent", f"index-map-{ws_base}.txt"), os.path.join(workspace_path, f"index-map-{ws_base}.txt"),
-                        os.path.join(workspace_path, ".agent", f"index-map-memory-{ws_base}.db"), os.path.join(workspace_path, f"index-map-memory-{ws_base}.db")
-                    ):
-                        if os.path.exists(p):
-                            try: os.remove(p)
-                            except OSError: pass
+                    ui._console.print("[green][sys] Active chat history cleared.[/green]\n")
+                    continue
+
+                if q_lower in ("/reset", "/purge"):
+                    chat_history = [{"role": "system", "content": active_system_prompt}, {"role": "assistant", "content": "Agent: Workspace loaded. Awaiting instructions."}]
+                    agent_dir = os.path.join(workspace_path, ".agent")
+                    db_path = os.path.join(SESSIONS_DIR, f"{safe_name}.db")
+
+                    # Deletes .agent/ (including config.json and index maps)
+                    if os.path.exists(agent_dir):
+                        try: shutil.rmtree(agent_dir)
+                        except OSError: pass
+
+                    # Deletes the workspace SQLite database
+                    if os.path.exists(db_path):
+                        try: os.remove(db_path)
+                        except OSError: pass
+
                     core.run_mod("ai-agent-sessions", "clear", safe_name)
                     core.run_mod("ai-agent-memories", "tpm-clear", safe_name)
-                    ui._console.print("[green][sys] Session and memory cleared.[/green]\n")
+
+                    ui._console.print("[yellow][sys] Workspace reset complete. Launching 'ai init' next time will prompt for a new profile.[/yellow]\n")
                     continue
 
                 if query == "/tok":

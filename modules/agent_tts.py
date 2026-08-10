@@ -17,13 +17,17 @@ def stop_tts() -> None:
 
 
 def is_tts_enabled() -> bool:
-    if core:
-        return core.get_state().get("tts_enabled", False)
+    try:
+        if core:
+            return bool(core.get_state("tts_enabled", False))
+    except Exception: pass
     return False
 
 
 def speak_text(text: str) -> None:
-    if not text: return
+    if not is_tts_enabled(): return
+    if not text or not text.strip(): return
+
     clean = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
     clean = re.sub(r'```.*?```', 'code block omitted', clean, flags=re.DOTALL)
     clean = re.sub(r'[*_#`~>\[\]()|]', '', clean).strip()
