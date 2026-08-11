@@ -683,11 +683,15 @@ class LocalAITUI(App):
                     ipython.toggle_ipython_mode(True)
                     if hasattr(self, "lbl_harness"): self.lbl_harness.update("[dim]Harness[/dim] NOOA IPython")
                     self.notify("NOOA IPython harness enabled.")
+                    if "py-" not in self.active_skill:
+                        self.notify(f"[yellow]Warning: Active skill '{self.active_skill}' is a classic JSON skill. Use a Py profile (e.g. pi/py-pro) for best in-kernel SDK results.[/yellow]", sys_prefix=False)
                 self.run_worker(lambda: self.process_query_worker(args), thread=True)
             else:
                 active = ipython.toggle_ipython_mode()
                 if hasattr(self, "lbl_harness"): self.lbl_harness.update(f"[dim]Harness[/dim] " + ("NOOA IPython" if active else "Legacy"))
                 self.notify(f"NOOA IPython harness {'enabled (single tool mode)' if active else 'disabled (classic tools)'}.")
+                if active and "py-" not in self.active_skill:
+                    self.notify(f"[yellow]Warning: Active skill '{self.active_skill}' is a classic JSON skill. Use a Py profile (e.g. pi/py-pro) for best in-kernel SDK results.[/yellow]", sys_prefix=False)
 
         elif root in ("/v", "/voice"):
             is_auto = (bool(args) and args.strip().lower() == "auto")

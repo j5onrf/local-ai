@@ -117,6 +117,21 @@ class GraphSDK:
         return (res.stdout or res.stderr or "").strip()
 
 
+def delegate(goal: str, workspace: str = ".") -> str:
+    """NOOA-inspired Sub-Agent Delegation: Runs an isolated sub-task loop in a private context and returns final summary."""
+    try:
+        import agent_core as core
+        ws_real = os.path.realpath(workspace)
+        sub_history = [
+            {"role": "system", "content": f"You are an isolated sub-agent worker in workspace '{ws_real}'.\nGoal: {goal}\nExecute required tool operations to complete the goal, then output ONLY a concise final summary report."},
+            {"role": "user", "content": f"Execute sub-task: {goal}"}
+        ]
+        ans = core.stream_response(sub_history, prefix="SubAgent:", show_stats=False, thinking_budget=0, is_agent=True)
+        return (ans or "Sub-agent completed task.").strip()
+    except Exception as e:
+        return f"[error] Sub-agent delegation failed: {e}"
+
+
 def _init_kernel_sdk(workspace: str, confirm_gate_fn: Optional[Callable[[str], bool]] = None) -> None:
     global _shell_globals, _shell_instance, _confirm_gate_fn
     if confirm_gate_fn:
@@ -184,14 +199,19 @@ def _init_kernel_sdk(workspace: str, confirm_gate_fn: Optional[Callable[[str], b
     mem_sdk = MemorySDK(ws_real, safe_name)
     graph_sdk = GraphSDK(ws_real)
 
+    def _delegate(goal: str) -> str:
+        return delegate(goal, ws_real)
+
     sdk = {
         "open": safe_open, "read_file": _read_file, "write_file": _write_file, "list_dir": _list_dir,
         "run_command": _run_command, "read_symbol": graph_sdk.snippet, "trace_symbol": graph_sdk.trace,
         "blast_radius": graph_sdk.blast_radius, "find_symbol": graph_sdk.search,
         "architecture_overview": graph_sdk.architecture, "preview": bounded_repr,
-        "bounded_repr": bounded_repr, "memory": mem_sdk, "graph": graph_sdk, "workspace": ws_real
+        "bounded_repr": bounded_repr, "memory": mem_sdk, "graph": graph_sdk,
+        "delegate": _delegate, "workspace": ws_real
     }
     _shell_globals.update(sdk)
+    _shell_globals["delegate"] = _delegate
     os.listdir = safe_listdir
     if _shell_instance:
         _shell_instance.user_ns.update(sdk)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local-Ai Agent [j5onrf] [v0.9.8.33]"""
+"""Local-Ai Agent [j5onrf] [v0.9.8.36]"""
 
 import json, os, re, shutil, sqlite3, subprocess, sys, threading, time, urllib.request as urlreq
 from typing import List, Optional, Tuple, Dict, Any
@@ -192,10 +192,14 @@ def run_interactive_chat(args: List[str]) -> None:
                         if not ipython.is_ipython_enabled():
                             ipython.toggle_ipython_mode(True)
                             ui._console.print("[cyan][sys] IPython harness enabled (exec_python single tool mode).[/cyan]\n")
+                            if "py-" not in clean_name:
+                                ui._console.print(f"[yellow][sys] Warning: Active profile ('{clean_name}') is a classic JSON skill. For best in-kernel SDK results, use a Py profile (e.g. pi/py-pro).[/yellow]\n")
                         query = cmd_payload
                     else:
                         active = ipython.toggle_ipython_mode()
                         ui._console.print(f"[cyan][sys] IPython harness {'enabled (exec_python single tool mode)' if active else 'disabled (classic JSON tools)'}.[/cyan]\n")
+                        if active and "py-" not in clean_name:
+                            ui._console.print(f"[yellow][sys] Warning: Active profile ('{clean_name}') is a classic JSON skill. For best in-kernel SDK results, use a Py profile (e.g. pi/py-pro).[/yellow]\n")
                         continue
 
                 parts = query.split()
