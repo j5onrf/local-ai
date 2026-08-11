@@ -190,6 +190,7 @@ Replaces discrete JSON tool declarations with a live, persistent, **NOOA-Enhance
 
 - **Toggle Mode:** Type `/py` (or `/ipython`).
 - **Global Smart Handler:** Typing `/py <cmd_or_code>` automatically ensures IPython mode is **ON** and executes the command immediately in both raw CLI and TUI.
+- **Zero-Trust Out-of-Bounds Boundary Gates:** All file reads, writes, directory listings, and raw Python `open()` / `os.listdir()` calls targeting paths outside the project root folder trigger mandatory authorization prompts.
 - **Pass-By-Reference & Bounded Previews (`preview()` / `bounded_repr()`):** Heavy objects, DataFrames, lists, and dicts stay alive in kernel RAM while outputting lightweight bounded previews to context tokens.
 - **Model-Callable Harness Objects (`graph` & `memory`):**
   - **`graph` Namespace:** `graph.snippet("sym")`, `graph.trace("sym")`, `graph.blast_radius("sym")`, `graph.search("pat")`, `graph.architecture()`
