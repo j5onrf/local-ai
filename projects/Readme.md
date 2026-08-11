@@ -134,7 +134,7 @@ Running `ai init <path>` sets the default workspace agent profile:
 | Tier | Profiles | Model Scale | Overhead | Behavior |
 | :--- | :--- | :--- | :--- | :--- |
 | **Pro** | `pi/pro`, `claude/pro`, `hermes/pro` | Medium/Large Models | `~280t–290t` | Full-scale codebase graph navigation & multi-file editing. |
-| **Lite** | `pi/lite`, `claude/lite`, `hermes/lite` | Small Models | `~220t` | Native JSON tools optimized for zero tool-calling confusion. |
+| **Lite** | `pi/lite`, `claude/lite`, `hermes/lite` | Small/Medium Models | `~220t` | Native JSON tools optimized for zero tool-calling confusion. |
 | **Py-Pro** | `pi/py-pro`, `claude/py-pro`, `hermes/py-pro` | Medium/Large Models | `~300t–310t` | NOOA-enhanced IPython kernel harness (`exec_python`) with stateful memory. |
 
 * **Reset Workspace Profile:** Type `/reset` in chat (or delete `.agent/config.json`). This purges workspace settings so `ai init` prompts for a new profile selection on next launch.
