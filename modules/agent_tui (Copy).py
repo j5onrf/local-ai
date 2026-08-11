@@ -135,21 +135,20 @@ class Message(Static):
         u_style = "bold #888888" if app_theme in ("mono", "grok") else ("bold #89b4fa" if "code" in app_theme else ("bold #0265dc" if not is_dark else "bold cyan"))
         code_fmt = "ansi_dark" if is_dark else "ansi_light"
 
-        bg_col = "#0d0d0d" if app_theme in ("mono", "grok") else ("#1a1a1a" if app_theme == "dark" else ("#1b1c2b" if is_dark else "#f0f0f4"))
-        border_col = getattr(self.app, "border_accent", "#89b4fa")
-
         if self.sender == "User":
             text = self.content if isinstance(self.content, str) else next((i["text"] for i in self.content if isinstance(i, dict) and i.get("type") == "text"), "[Multimodal Payload]")
             if compact_state == 0:
+                bar_col = getattr(self.app, "border_accent", "#89b4fa")
+                bg_col = "#0d0d0d" if app_theme in ("mono", "grok") else ("#1a1a1a" if app_theme == "dark" else ("#1b1c2b" if is_dark else "#f0f0f4"))
                 user_txt_col = "white" if app_theme in ("mono", "grok", "dark") else ("#303446" if not is_dark else "#c8d3f5")
-                res = Panel(Text(text, style=user_txt_col), box=LEFT_BAR, border_style=border_col, style=f"on {bg_col}", padding=(0, 2))
+                res = Panel(Text(text, style=user_txt_col), box=LEFT_BAR, border_style=bar_col, style=f"on {bg_col}", padding=(0, 2))
             else: res = Text(text, style=u_style)
         else:
             text = str(self.content or "")
             show_think = os.environ.get("AI_SHOW_THINKING", "1") == "1"
             if "<think>" in text:
                 before, after = text.split("<think>", 1)
-                items = []
+                border_col, items = getattr(self.app, "border_accent", "bright_black"), []
                 if before.strip(): items.append(Markdown(before.strip(), code_theme=code_fmt))
 
                 if "</think>" in after:
@@ -159,21 +158,16 @@ class Message(Static):
                     if rest.strip():
                         clean_rest = MULTI_NEWLINE_RE.sub('\n\n', CLEAN_CODE_BLOCKS_RE.sub('```\n', rest.strip()))
                         items.append(Markdown(clean_rest, code_theme=code_fmt))
-                    body = Group(*items) if items else Text("Thinking...", style="italic dim")
+                    res = Group(*items) if items else Text("Thinking...", style="italic dim")
                 else:
                     think = after.strip()
                     if show_think and think:
                         items.append(Panel(_format_tui_reasonix_text(think, app_theme), title="⚙ Thinking Process...", title_align="left", border_style=border_col, box=ROUNDED, expand=True))
                     else: items.append(Text("Thinking...", style="italic dim"))
-                    body = Group(*items)
+                    res = Group(*items)
             else:
                 clean_text = MULTI_NEWLINE_RE.sub('\n\n', CLEAN_CODE_BLOCKS_RE.sub('```\n', text.strip()))
-                body = Markdown(clean_text, code_theme=code_fmt) if clean_text else Text("...", style="italic dim")
-
-            if compact_state == 0:
-                res = Panel(body, box=ROUNDED, border_style="dim " + border_col, style=f"on {bg_col}", padding=(0, 2))
-            else:
-                res = body
+                res = Markdown(clean_text, code_theme=code_fmt)
 
         self._cached_render, self._cached_theme = res, app_theme
         return res
@@ -225,7 +219,6 @@ class LocalAITUI(App):
     #input-bar { width: auto; height: 100%; color: $primary; padding: 0; margin: 0; }
     Input { width: 1fr; border: none; outline: none; background: transparent; height: 1; color: $text; padding: 0 2; margin-top: 1; }
     Input:focus { border: none; outline: none; }
-    Input > .input--cursor { background: #ffffff; color: #000000; text-style: bold; }
     #input-toggle { width: auto; height: 1; margin-top: 2; color: $secondary; padding: 0 1; }
     #input-toggle:hover { color: $primary; text-style: bold; }
     #btn-image-url { width: auto; height: 1; color: $secondary; padding: 0 1; margin-top: 2; }
@@ -237,8 +230,7 @@ class LocalAITUI(App):
     .sidebar-section { height: auto; border-bottom: none; padding-bottom: 1; margin-bottom: 1; }
     .sidebar-label { color: $primary; text-style: bold; margin-bottom: 0; }
     .sidebar-val { color: $text; margin-bottom: 0; }
-    .sys-notice { margin-top: 1; margin-bottom: 0; }
-    .theme-notice { margin-top: 1; margin-bottom: 0; color: #ffffff; text-style: bold; }
+    .sys-notice, .theme-notice { margin-top: 1; margin-bottom: 0; }
     #card-tips { background: $panel; padding: 1; margin-top: 1; }
     #card-tips-header { height: 1; width: 100%; }
     #lbl-tips-title { width: 1fr; color: $primary; text-style: bold; }
