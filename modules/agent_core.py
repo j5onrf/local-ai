@@ -54,10 +54,10 @@ EDIT_TOOLS: List[Dict[str, Any]] = [
 TOOL_VERBS = {"read_symbol": "tracing symbol", "read_file": "checking", "write_file": "updating", "list_dir": "checking", "run_command": "executing"}
 
 DEFAULTS = {
-    "spell_active": True, "show_stats": True, "memory_active": True, "box_style": 2, "yolo_mode": False,
+    "spell_active": True, "show_stats": True, "memory_active": True, "box_style": 1, "yolo_mode": False,
     "show_thinking": True, "reasoning_active": False, "reasoning_budget": 500, "render_markdown": True,
     "compact_mode": 0, "sidebar_hidden": False, "footer_hidden": True, "tips_card_hidden": False, "tui_theme": "code",
-    "voice_auto_submit": True, "tts_enabled": False
+    "voice_auto_submit": True, "tts_enabled": False, "tui_borders_enabled": True
 }
 
 try: import agent_usage as usage_log

@@ -30,6 +30,7 @@ import agent_cloud, agent_core as core, agent_skills as skills, agent_ui as ui, 
 CONTEXT_FILE = os.path.join(CFG_DIR, "ai-context.md")
 SKILLS_DIR, SESSIONS_DIR = os.path.join(CFG_DIR, "skills"), os.path.join(CFG_DIR, "projects", "database")
 LEFT_BAR = Box("▌   \n" * 8)
+NO_BOX = Box("    \n" * 8)
 
 # PRE-COMPILED REGEXES FOR MAXIMUM STREAMING TPS
 TOKEN_RE, STOP_WORDS = re.compile(r"[^\w\s]"), {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"}
@@ -171,7 +172,10 @@ class Message(Static):
                 body = Markdown(clean_text, code_theme=code_fmt) if clean_text else Text("...", style="italic dim")
 
             if compact_state == 0:
-                res = Panel(body, box=ROUNDED, border_style="dim " + border_col, style=f"on {bg_col}", padding=(0, 2))
+                borders_on = getattr(self.app, "borders_enabled", True)
+                box_type = ROUNDED if borders_on else NO_BOX
+                b_style = ("dim " + border_col) if borders_on else border_col
+                res = Panel(body, box=box_type, border_style=b_style, style=f"on {bg_col}", padding=(0, 2))
             else:
                 res = body
 
@@ -254,6 +258,7 @@ class LocalAITUI(App):
     BINDINGS = [
         Binding("tab", "toggle_plan_build", "Toggle Mode", show=False),
         Binding("ctrl+b", "toggle_sidebar", "Sidebar", show=True),
+        Binding("ctrl+f", "toggle_borders", "Borders", show=True),
         Binding("ctrl+g", "toggle_compact", "Compact", show=True),
         Binding("ctrl+r", "toggle_reasoning", "Reasoning", show=True),
         Binding("ctrl+t", "cycle_theme", "Theme", show=True),
@@ -338,6 +343,7 @@ class LocalAITUI(App):
         except (json.JSONDecodeError, TypeError, ValueError): self.history = []
 
         self.generation_cancelled, self.active_response, self.stats_turns = False, None, 0
+        self.borders_enabled = core.get_state("tui_borders_enabled", True)
         self.footer_hidden, self.sidebar_hidden, self.tips_card_hidden = core.get_state("footer_hidden", True), core.get_state("sidebar_hidden", False), core.get_state("tips_card_hidden", False)
 
     def on_unmount(self) -> None:
@@ -468,7 +474,7 @@ class LocalAITUI(App):
                     with Horizontal(id="card-tips-header"):
                         yield Static("Quick Tips", id="lbl-tips-title")
                         yield CloseCardButton("×", id="btn-close-tips")
-                    yield Static("Tab: Switch Mode\nCtrl+B: Sidebar\nCtrl+G: Compact\nCtrl+T: Themes\n/tok: Context\n/py: Harness\n/v: Voice To Text\n/tts: Text To Speech\n/task: Goal\n/help: Commands", id="lbl-tips-body")
+                    yield Static("Tab: Switch Mode\nCtrl+B: Sidebar\nCtrl+F: Borders\nCtrl+G: Compact\nCtrl+T: Themes\n/tok: Context\n/py: Harness\n/v: Voice To Text\n/tts: Text To Speech\n/task: Goal\n/help: Commands", id="lbl-tips-body")
 
         with Horizontal(id="footer-bar"): yield Footer(id="footer-keys")
 
@@ -1124,6 +1130,15 @@ class LocalAITUI(App):
         status = f"{self.reasoning_budget} tokens" if self.reasoning_active else "Disabled"
         self.set_reasoning(status)
         self.notify(f"Deep reasoning {'enabled' if self.reasoning_active else 'disabled'} ({status}).")
+
+    def action_toggle_borders(self) -> None:
+        self.borders_enabled = not self.borders_enabled
+        core.save_state("tui_borders_enabled", self.borders_enabled)
+        if hasattr(self, "chat_area"):
+            for child in self.chat_area.children:
+                if isinstance(child, Message): child.refresh(layout=True)
+            self.chat_area.refresh(layout=True)
+        self.notify(f"Message borders: {'Enabled' if self.borders_enabled else 'Disabled (Borderless)'}", sys_prefix=False)
 
 
 if __name__ == "__main__":
