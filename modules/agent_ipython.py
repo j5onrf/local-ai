@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local-AI Standalone IPython Kernel & RLM Harness Module"""
+"""Local-AI Standalone IPython Kernel & RLM Harness Module (NOOA-Enhanced)"""
 
 import ast, contextlib, io, json, os, sys, subprocess, traceback
 from typing import Dict, Any, List, Optional, Tuple, Callable
@@ -35,6 +35,87 @@ _orig_open = open
 _orig_listdir = os.listdir
 _orig_scandir = os.scandir
 _confirm_gate_fn = None
+
+
+def bounded_repr(val: Any, max_len: int = 1200) -> str:
+    """NOOA-inspired bounded preview generator: Keeps full object in RAM while truncating context output."""
+    if val is None: return "None"
+    if hasattr(val, "shape") and hasattr(val, "head"):
+        try: return f"<DataFrame shape={val.shape}>\n{val.head(5)}"
+        except Exception: pass
+    if isinstance(val, (list, tuple, set)) and len(val) > 20:
+        sample = list(val)[:3]
+        if sample and isinstance(sample[0], (list, tuple, set)):
+            sample_sub = [list(sub)[:3] for sub in sample]
+            return f"<{type(val).__name__} len={len(val)} shape=({len(val)}, {len(sample[0]) if hasattr(sample[0], '__len__') else '?'}) preview={sample_sub} ...>"
+        return f"<{type(val).__name__} len={len(val)} preview={sample} ...>"
+    if isinstance(val, dict) and len(val) > 20:
+        return f"<dict keys_count={len(val)} preview_keys={list(val.keys())[:5]} ...>"
+
+    s = str(val).strip()
+    if len(s) > max_len:
+        lines = s.splitlines()
+        head = "\n".join(lines[:15]) if len(lines) > 15 else s[:max_len // 2]
+        return f"{head}\n... [Bounded Preview: Snipped {len(s) - len(head)} chars. Live object remains in kernel RAM]"
+    return s
+
+
+class MemorySDK:
+    """Model-Callable Harness API for Temporal Personality Memory."""
+    def __init__(self, workspace: str, safe_name: str):
+        self.workspace, self.safe_name = workspace, safe_name
+
+    def search(self, query: str) -> str:
+        """Search memory for user preferences or facts."""
+        mod_path = os.path.join(CFG_DIR, "modules", "ai-agent-memories")
+        res = subprocess.run([sys.executable, mod_path, "get-context", self.safe_name, query], capture_output=True, text=True, timeout=10)
+        return (res.stdout or res.stderr or "").strip() or "No matching memories found."
+
+    def get_facts(self) -> str:
+        """Get all stored TPM facts."""
+        mod_path = os.path.join(CFG_DIR, "modules", "ai-agent-memories")
+        res = subprocess.run([sys.executable, mod_path, "tpm-get", self.safe_name], capture_output=True, text=True, timeout=10)
+        return (res.stdout or res.stderr or "").strip() or "No facts stored."
+
+    def add_fact(self, key: str, value: str) -> str:
+        """Add or update a persistent user preference fact."""
+        mod_path = os.path.join(CFG_DIR, "modules", "ai-agent-memories")
+        payload = json.dumps({key.strip().lower(): str(value).strip()})
+        subprocess.run([sys.executable, mod_path, "tpm-reconcile", self.safe_name], input=payload, text=True, timeout=10)
+        return f"Fact reconciled: {key} = {value}"
+
+
+class GraphSDK:
+    """Model-Callable Harness API for Codebase Index Graph."""
+    def __init__(self, workspace: str):
+        self.workspace = workspace
+        self.mod_path = os.path.join(CFG_DIR, "tools", "map", "index-map")
+
+    def snippet(self, symbol: str) -> str:
+        """Extract precise source code snippet for a symbol."""
+        res = subprocess.run([sys.executable, self.mod_path, "snippet", symbol], cwd=self.workspace, capture_output=True, text=True, timeout=10)
+        return (res.stdout or res.stderr or "").strip()
+
+    def trace(self, symbol: str) -> str:
+        """Trace callers and callees for a symbol."""
+        res = subprocess.run([sys.executable, self.mod_path, "trace", symbol], cwd=self.workspace, capture_output=True, text=True, timeout=10)
+        return (res.stdout or res.stderr or "").strip()
+
+    def blast_radius(self, symbol: str) -> str:
+        """Calculate upstream impact map for modifying a symbol."""
+        res = subprocess.run([sys.executable, self.mod_path, "blast-radius", symbol], cwd=self.workspace, capture_output=True, text=True, timeout=10)
+        return (res.stdout or res.stderr or "").strip()
+
+    def search(self, pattern: str) -> str:
+        """Search codebase graph for matching symbols or concepts."""
+        res = subprocess.run([sys.executable, self.mod_path, "search", pattern], cwd=self.workspace, capture_output=True, text=True, timeout=10)
+        return (res.stdout or res.stderr or "").strip()
+
+    def architecture(self) -> str:
+        """Get high-level workspace structure summary."""
+        res = subprocess.run([sys.executable, self.mod_path, "architecture"], cwd=self.workspace, capture_output=True, text=True, timeout=10)
+        return (res.stdout or res.stderr or "").strip()
+
 
 def _init_kernel_sdk(workspace: str, confirm_gate_fn: Optional[Callable[[str], bool]] = None) -> None:
     global _shell_globals, _shell_instance, _confirm_gate_fn
@@ -99,36 +180,16 @@ def _init_kernel_sdk(workspace: str, confirm_gate_fn: Optional[Callable[[str], b
         res = subprocess.run(cmd, shell=True, cwd=ws_real, capture_output=True, text=True, timeout=120)
         return ((res.stdout or "") + ("\n" + res.stderr if res.stderr else "")).strip()
 
-    def _read_symbol(sym: str) -> str:
-        mod_path = os.path.join(CFG_DIR, "tools", "map", "index-map")
-        res = subprocess.run([sys.executable, mod_path, "snippet", sym], cwd=ws_real, capture_output=True, text=True, timeout=10)
-        return (res.stdout or res.stderr or "").strip()
-
-    def _trace_symbol(sym: str) -> str:
-        mod_path = os.path.join(CFG_DIR, "tools", "map", "index-map")
-        res = subprocess.run([sys.executable, mod_path, "trace", sym], cwd=ws_real, capture_output=True, text=True, timeout=10)
-        return (res.stdout or res.stderr or "").strip()
-
-    def _blast_radius(sym: str) -> str:
-        mod_path = os.path.join(CFG_DIR, "tools", "map", "index-map")
-        res = subprocess.run([sys.executable, mod_path, "blast-radius", sym], cwd=ws_real, capture_output=True, text=True, timeout=10)
-        return (res.stdout or res.stderr or "").strip()
-
-    def _find_symbol(pat: str) -> str:
-        mod_path = os.path.join(CFG_DIR, "tools", "map", "index-map")
-        res = subprocess.run([sys.executable, mod_path, "search", pat], cwd=ws_real, capture_output=True, text=True, timeout=10)
-        return (res.stdout or res.stderr or "").strip()
-
-    def _architecture_overview() -> str:
-        mod_path = os.path.join(CFG_DIR, "tools", "map", "index-map")
-        res = subprocess.run([sys.executable, mod_path, "architecture"], cwd=ws_real, capture_output=True, text=True, timeout=10)
-        return (res.stdout or res.stderr or "").strip()
+    safe_name = os.path.basename(ws_real)
+    mem_sdk = MemorySDK(ws_real, safe_name)
+    graph_sdk = GraphSDK(ws_real)
 
     sdk = {
         "open": safe_open, "read_file": _read_file, "write_file": _write_file, "list_dir": _list_dir,
-        "run_command": _run_command, "read_symbol": _read_symbol, "trace_symbol": _trace_symbol,
-        "blast_radius": _blast_radius, "find_symbol": _find_symbol,
-        "architecture_overview": _architecture_overview, "workspace": ws_real
+        "run_command": _run_command, "read_symbol": graph_sdk.snippet, "trace_symbol": graph_sdk.trace,
+        "blast_radius": graph_sdk.blast_radius, "find_symbol": graph_sdk.search,
+        "architecture_overview": graph_sdk.architecture, "preview": bounded_repr,
+        "bounded_repr": bounded_repr, "memory": mem_sdk, "graph": graph_sdk, "workspace": ws_real
     }
     _shell_globals.update(sdk)
     os.listdir = safe_listdir
@@ -174,8 +235,10 @@ def run_cell(code: str, workspace: str, confirm_gate_fn: Optional[Callable[[str]
 
         out = stdout_buf.getvalue().strip()
         if not out and eval_result is not None:
-            out = str(eval_result).strip()
-        return (out[:1200] + f"\n... [Snipped {len(out)-1200} chars]") if len(out) > 1500 else (out or "(Cell executed successfully with no output)")
+            out = bounded_repr(eval_result)
+        elif out:
+            out = bounded_repr(out)
+        return out or "(Cell executed successfully with no output)"
     except PermissionError as e:
         return f"[denied] {e}"
     except Exception as e:

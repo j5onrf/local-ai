@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local-Ai Agent [j5onrf] [v0.9.8.31]"""
+"""Local-Ai Agent [j5onrf] [v0.9.8.32]"""
 
 import json, os, re, shutil, sqlite3, subprocess, sys, threading, time, urllib.request as urlreq
 from typing import List, Optional, Tuple, Dict, Any

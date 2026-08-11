@@ -1,6 +1,6 @@
 # Local-AI Agent Workspace & Session Manual
 
-High-speed local developer agent, episodic memory, SQLite checkpoints, IPython kernel harness, and codebase index graph.
+High-speed local developer agent, episodic memory, SQLite checkpoints, NOOA-enhanced IPython kernel harness, and codebase index graph.
 
 ```console
 ~ ❯ sess
@@ -50,7 +50,7 @@ Switch CLI box styles using `/box [1-5]` (or type `/box` to cycle). Selection pe
 ║ directory:  ~                 ║
 ║     skill:  default           ║
 ║  database:  stateless         ║
-╚══════════════ Ctrl+C to exit ═╝
+╚══════════════ Ctrl+C to exit ─ ╝
 ```
 
 #### Style #3: Heavy Square
@@ -135,7 +135,7 @@ Running `ai init <path>` sets the default workspace agent profile:
 | :--- | :--- | :--- | :--- | :--- |
 | **Pro** | `pi/pro`, `claude/pro`, `hermes/pro` | Medium/Large Models | `~280t–290t` | Full-scale codebase graph navigation & multi-file editing. |
 | **Lite** | `pi/lite`, `claude/lite`, `hermes/lite` | Small Models | `~220t` | Native JSON tools optimized for zero tool-calling confusion. |
-| **Py-Pro** | `pi/py-pro`, `claude/py-pro`, `hermes/py-pro` | Medium/Large Models | `~300t–310t` | Persistent IPython kernel harness (`exec_python`) with stateful memory. |
+| **Py-Pro** | `pi/py-pro`, `claude/py-pro`, `hermes/py-pro` | Medium/Large Models | `~300t–310t` | NOOA-enhanced IPython kernel harness (`exec_python`) with stateful memory. |
 
 * **Reset Workspace Profile:** Type `/reset` in chat (or delete `.agent/config.json`). This purges workspace settings so `ai init` prompts for a new profile selection on next launch.
 * **Customize Skills:** Modify or create profile `.md` files in `~/.config/local-ai/skills/profiles/`.
@@ -184,12 +184,16 @@ Full-screen async Textual interface powered by `uvloop` background workers. Laun
 
 ---
 
-## 5. IPython Kernel Harness (`/py`)
+## 5. IPython Kernel Harness (`/py`) - NOOA-Enhanced
 
-Replaces discrete JSON tool declarations with a live, persistent IPython kernel. Loaded variables, functions, and imports remain alive in kernel memory across cells, saving up to 90% context tokens.
+Replaces discrete JSON tool declarations with a live, persistent, **NOOA-Enhanced IPython RLM kernel harness** (NVIDIA Object-Oriented Agent architecture). Loaded variables, functions, data structures, and imports remain alive in kernel RAM across cells, saving up to 90% context tokens.
 
 - **Toggle Mode:** Type `/py` (or `/ipython`).
 - **Global Smart Handler:** Typing `/py <cmd_or_code>` automatically ensures IPython mode is **ON** and executes the command immediately in both raw CLI and TUI.
+- **Pass-By-Reference & Bounded Previews (`preview()` / `bounded_repr()`):** Heavy objects, DataFrames, lists, and dicts stay alive in kernel RAM while outputting lightweight bounded previews to context tokens.
+- **Model-Callable Harness Objects (`graph` & `memory`):**
+  - **`graph` Namespace:** `graph.snippet("sym")`, `graph.trace("sym")`, `graph.blast_radius("sym")`, `graph.search("pat")`, `graph.architecture()`
+  - **`memory` Namespace:** `memory.search("query")`, `memory.get_facts()`, `memory.add_fact("key", "val")`
 - **In-Kernel SDK Functions:**
   - `read_file("path")` & `write_file("path", "content")` — File I/O
   - `list_dir("path")` & `run_command("cmd")` — Directory & shell execution
@@ -198,6 +202,7 @@ Replaces discrete JSON tool declarations with a live, persistent IPython kernel.
   - `blast_radius("symbol")` — Calculate upstream structural impact map
   - `find_symbol("pattern")` — Search graph for symbols or concepts
   - `architecture_overview()` — Get high-level workspace structure summary
+  - `preview(obj)` / `bounded_repr(obj)` — Generate bounded preview of live kernel objects
 - **Data Isolation:** Inspect large files or datasets using Python scripts (`import re`, `import ast`, `import json`) in memory without bloating the LLM context window.
 
 ---
@@ -283,4 +288,3 @@ Real-time reasoning trace step extraction and cognitive phase formatting inside 
 - **Set Token Budget:** `/t <N>` — Set thinking token budget (e.g. `/t 500` or `/t 0` to disable thinking).
 - **Show / Hide Thinking:** `/t show` or `/t hide` — Toggle real-time thinking panel visibility while reasoning mode stays active.
 - **Quick Toggle:** `/t` — Toggle deep reasoning mode ON/OFF.
-```
