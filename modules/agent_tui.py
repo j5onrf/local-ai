@@ -156,7 +156,7 @@ class Message(Static):
                 if "</think>" in after:
                     think, rest = after.split("</think>", 1)
                     if show_think and think.strip():
-                        items.append(Panel(_format_tui_reasonix_text(think.strip(), app_theme), title="⚙ Thinking Process", title_align="left", border_style=border_col, box=ROUNDED, expand=True))
+                        items.append(Panel(_format_tui_reasonix_text(think.strip(), app_theme), title="⚙", title_align="left", border_style=border_col, box=ROUNDED, expand=True))
                     if rest.strip():
                         clean_rest = MULTI_NEWLINE_RE.sub('\n\n', CLEAN_CODE_BLOCKS_RE.sub('```\n', rest.strip()))
                         items.append(Markdown(clean_rest, code_theme=code_fmt))
@@ -164,7 +164,7 @@ class Message(Static):
                 else:
                     think = after.strip()
                     if show_think and think:
-                        items.append(Panel(_format_tui_reasonix_text(think, app_theme), title="⚙ Thinking Process...", title_align="left", border_style=border_col, box=ROUNDED, expand=True))
+                        items.append(Panel(_format_tui_reasonix_text(think, app_theme), title="⚙ Thinking...", title_align="left", border_style=border_col, box=ROUNDED, expand=True))
                     else: items.append(Text("Thinking...", style="italic dim"))
                     body = Group(*items)
             else:
