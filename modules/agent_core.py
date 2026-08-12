@@ -483,7 +483,7 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
             in_tok, out_tok = _calc_turn_tokens(ans_text, messages, captured_usage, is_local)
 
             if speed_test and show_stats and not first_chunk:
-                speed_test.end(actual_out_tokens=out_tok, is_local=is_local)
+                speed_test.end(actual_out_tokens=out_tok, is_local=is_local, resolved_model=resolved_model, active_model=body.get("model"))
 
             calls = [val for _, val in sorted(tool_calls_map.items())] if tool_calls_map else None
             if not calls or not is_agent:

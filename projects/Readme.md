@@ -208,6 +208,18 @@ Replaces discrete JSON tool declarations with a live, persistent, **NOOA-Enhance
   - `preview(obj)` / `bounded_repr(obj)` — Generate bounded preview of live kernel objects
 - **Data Isolation:** Inspect large files or datasets using Python scripts (`import re`, `import ast`, `import json`) in memory without bloating the LLM context window.
 
+<details>
+<summary><b>💡 Top 5 Everyday Real-World Use Cases (Click to Expand)</b></summary>
+<br>
+
+1. **Fix a Bug or Add a Feature (Surgical Edits):** Ask the agent in plain English (*"The contact form on my website isn't validating email addresses. Fix it and test it."*). The agent uses the graph engine to pinpoint the exact file, reads only that function, writes the fix, and runs tests to prove it works.
+2. **Safety Check Before Changing Anything (Blast Radius):** Ask *"If I change the pricing calculation in my app, what else will break?"*. The agent runs a `blast_radius` check across all connected files and alerts you before anything breaks.
+3. **Understand How Your App Works (Plain English Explanations):** Ask *"Explain in plain English how user login works in this project"*. The agent extracts *only* the login function from the graph and explains it simply without dumping 500 lines of code.
+4. **Process Big Log Files or Datasets (Zero Context Bloat):** Ask *"I have a 20,000-line error log file. Tell me why my app crashed today"*. In `/py` mode, it opens the file in background RAM, filters out the normal lines, and gives you a 3-bullet-point summary without lagging your session.
+5. **Build a Full Feature Start-to-Finish (`/task`):** Type `/task "Create a user profile page with an avatar upload button and tests"`. The agent enters a self-directed loop, creates files, writes code, executes tests, self-corrects if tests fail, and notifies you when 100% complete.
+
+</details>
+
 ---
 
 ## 6. Autonomous Task Loops (Ralph Engine)

@@ -182,6 +182,16 @@ def _init_kernel_sdk(workspace: str, confirm_gate_fn: Optional[Callable[[str], b
     def _write_file(path: str, content: str) -> str:
         if not _check_boundary(path, "WRITE"): return "[denied] Out-of-bounds write blocked."
         full = os.path.realpath(path if os.path.isabs(path) else os.path.join(ws_real, path))
+
+        if os.path.exists(full):
+            try:
+                with _orig_open(full, "r", encoding="utf-8", errors="replace") as f: old = f.read()
+                if diff := "\n".join(difflib.unified_diff(old.splitlines(), content.splitlines(), fromfile=f"a/{path}", tofile=f"b/{path}", lineterm="")):
+                    from rich.syntax import Syntax
+                    from rich.console import Console
+                    Console(stderr=True).print("\n", Syntax(diff, "diff", theme="ansi_dark", background_color="default"), "\n")
+            except Exception: pass
+
         os.makedirs(os.path.dirname(full) or ws_real, exist_ok=True)
         with _orig_open(full, "w", encoding="utf-8") as f: f.write(content)
         return f"wrote {len(content)} chars to {path}"
