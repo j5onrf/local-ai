@@ -56,7 +56,7 @@ TOOL_VERBS = {"read_symbol": "tracing symbol", "read_file": "checking", "write_f
 DEFAULTS = {
     "spell_active": True, "show_stats": True, "memory_active": True, "box_style": 1, "yolo_mode": False,
     "show_thinking": True, "reasoning_active": False, "reasoning_budget": 500, "render_markdown": True,
-    "compact_mode": 0, "sidebar_hidden": False, "footer_hidden": True, "tips_card_hidden": False, "tui_theme": "code",
+    "compact_mode": 0, "sidebar_hidden": False, "footer_hidden": True, "tips_card_hidden": False, "tui_theme": "code1",
     "voice_auto_submit": True, "tts_enabled": False, "tui_borders_enabled": True
 }
 
