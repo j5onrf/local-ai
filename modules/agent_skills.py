@@ -145,40 +145,47 @@ def run_skill_selector(workspace: str, raw_cmd: str, dept_skills_dir: str, stop_
             if num_opts > 0 and current_idx >= num_opts: current_idx = 0
 
             cols = shutil.get_terminal_size((80, 24)).columns or 80
+            max_desc_len = max(10, cols - 42)
+
             if num_opts == 0:
-                sys.stderr.write(f"\r\x1b[K\033[1;30m[00/00]\033[0m ❯ \x1b[1;31m[No matches]\x1b[0m for: \033[1;33m{search_query}\033[0m\n\r\x1b[K\033[3m   \"Backspace to delete\"\033[0m [Esc to exit]: ")
+                sys.stderr.write(f"\r\x1b[2K\033[1;30m[00/00]\033[0m ❯ \x1b[1;31m[No matches]\x1b[0m for: \033[1;33m{search_query}\033[0m\n\r\x1b[2K\033[3m   \"Backspace to delete\"\033[0m [Esc to exit]: ")
             else:
                 _, sel = candidates[current_idx]
-                desc = sel['desc'] if len(sel['desc']) <= cols - 35 else sel['desc'][:cols - 38] + "..."
+                clean_desc = sel['desc'].replace('\n', ' ').strip()
+                desc = clean_desc if len(clean_desc) <= max_desc_len else clean_desc[:max_desc_len - 3] + "..."
                 filter_ind = f" \033[90m| Filter: \033[1;33m{search_query}\033[0m" if search_query else ""
-                sys.stderr.write(f"\r\x1b[K\033[1;30m[\033[1;32m{current_idx + 1:02d}/{num_opts:02d}\033[1;30m]\033[0m ❯ \x1b[1;36m[skill]\x1b[0m \033[1;32m{sel['name']}\033[0m \033[90m({sel['rel_path']}){filter_ind}\033[0m\n\r\x1b[K\033[3m   \"{desc}\"\033[0m [↵ load  Type to filter  Esc]: ")
+                sys.stderr.write(f"\r\x1b[2K\033[1;30m[\033[1;32m{current_idx + 1:02d}/{num_opts:02d}\033[1;30m]\033[0m ❯ \x1b[1;36m[skill]\x1b[0m \033[1;32m{sel['name']}\033[0m \033[90m({sel['rel_path']}){filter_ind}\033[0m\n\r\x1b[2K\033[3m   \"{desc}\"\033[0m [↵ load  Type to filter  Esc]: ")
             sys.stderr.flush()
 
             key = ui.get_key()
+            clear_2_lines = "\r\x1b[2K\x1b[1A\r\x1b[2K"
             if key in ('\x03', '\x1b'):
-                sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K\x1b[1A\r\x1b[KCancelled.\n"); break
+                sys.stderr.write(f"{clear_2_lines}Cancelled.\n"); break
             elif key in ('\r', ''):
                 if num_opts > 0:
                     _, sel = candidates[current_idx]
                     try:
                         with open(sel["path"], "r", encoding="utf-8") as sf: body = sf.read().strip()
                         chat_history[0]["content"] += f"\n\n### Loaded On-Demand Skill: {sel['name']}\n{body}\n"
-                        sys.stderr.write(f"\r\x1b[K\x1b[1A\r\x1b[K\x1b[1A\r\x1b[K\033[2;32m[sys] Skill '{sel['name']}' successfully loaded.\033[0m\n")
+                        sys.stderr.write(f"{clear_2_lines}\033[2;32m[sys] Skill '{sel['name']}' successfully loaded.\033[0m\n")
                         print(json.dumps(chat_history))
                     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as e:
-                        sys.stderr.write(f"\r\x1b[K\x1b[1A\r\x1b[K\x1b[1A\r\x1b[K\033[1;31m[sys] Failed to load skill: {e}\033[0m\n")
-                else: sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K\x1b[1A\r\x1b[KNo skill selected.\n")
+                        sys.stderr.write(f"{clear_2_lines}\033[1;31m[sys] Failed to load skill: {e}\033[0m\n")
+                else: sys.stderr.write(f"{clear_2_lines}No skill selected.\n")
                 break
-            elif key in ('\x1b[A', '\x1b[B'):
-                if num_opts > 0: current_idx = (current_idx + (1 if key == '\x1b[B' else -1) + num_opts) % num_opts
-                sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K\x1b[1A\r\x1b[K")
+            elif key == '\x1b[A':  # Arrow Up: Previous item, clamp at 0
+                if num_opts > 0: current_idx = max(0, current_idx - 1)
+                sys.stderr.write(clear_2_lines)
+            elif key == '\x1b[B':  # Arrow Down: Next item, clamp at max
+                if num_opts > 0: current_idx = min(num_opts - 1, current_idx + 1)
+                sys.stderr.write(clear_2_lines)
             elif key in ('\x7f', '\x08'):
                 if search_query: search_query, current_idx = search_query[:-1], 0
-                sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K\x1b[1A\r\x1b[K")
+                sys.stderr.write(clear_2_lines)
             elif len(key) == 1 and key.isprintable():
                 search_query, current_idx = search_query + key, 0
-                sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K\x1b[1A\r\x1b[K")
-            else: sys.stderr.write("\r\x1b[K\x1b[1A\r\x1b[K\x1b[1A\r\x1b[K")
+                sys.stderr.write(clear_2_lines)
+            else: sys.stderr.write(clear_2_lines)
     except KeyboardInterrupt:
         sys.stderr.write("\r\x1b[2K\nCancelled.\n"); sys.stderr.flush(); sys.exit(130)
     finally: sys.stderr.write("\033[?25h"); sys.stderr.flush()
