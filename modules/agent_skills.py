@@ -189,10 +189,30 @@ def run_skill_selector(workspace: str, raw_cmd: str, dept_skills_dir: str, stop_
                     _, sel = candidates[current_idx]
                     try:
                         with open(sel["path"], "r", encoding="utf-8") as sf: body = sf.read().strip()
-                        chat_history[0]["content"] += f"\n\n### Loaded On-Demand Skill: {sel['name']}\n{body}\n"
+                        sys_c = chat_history[0]["content"]
+                        
+                        # Extract existing skill blocks
+                        raw_blocks = re.findall(r"### Loaded On-Demand Skill:\s*([^\n]+)\n([\s\S]*?)(?=\n\n### Loaded On-Demand Skill:|\Z)", sys_c)
+                        cat = "personality" if "personality" in sel["path"] else ("code" if "code" in sel["path"] else "system")
+                        
+                        # Filter out same-category or duplicate skills
+                        active_skills = []
+                        for s_n, s_b in raw_blocks:
+                            s_cat = "personality" if any(p in s_n for p in ("caveman", "pirate", "personality")) else "other"
+                            if s_cat != cat and s_n != sel["name"]:
+                                active_skills.append((s_n, s_b))
+                        
+                        # Append new skill & cap at 3 max
+                        active_skills.append((sel["name"], body))
+                        if len(active_skills) > 3: active_skills = active_skills[-3:]
+                        
+                        # Rebuild system prompt
+                        base_p = sys_c.split("### Loaded On-Demand Skill:")[0].strip()
+                        new_blocks = "\n\n".join(f"### Loaded On-Demand Skill: {n}\n{b}" for n, b in active_skills)
+                        chat_history[0]["content"] = f"{base_p}\n\n{new_blocks}\n"
+
                         sys.stderr.write(f"{clear_2_lines}\033[2;32m[sys] Skill '{sel['name']}' successfully loaded.\033[0m\n")
                         print(json.dumps(chat_history))
-                        sys.stdout.flush()
                     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as e:
                         sys.stderr.write(f"{clear_2_lines}\033[1;31m[sys] Failed to load skill: {e}\033[0m\n")
                 else: sys.stderr.write(f"{clear_2_lines}No skill selected.\n")

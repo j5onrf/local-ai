@@ -243,12 +243,24 @@ Self-directed iterative loop that runs tools, verifies results, and self-correct
 
 ---
 
-## 8. Local RAG & Context Injection
+## 8. Local RAG, Skills & Context Injection
 
 - **Whole File:** `file <path>` — Append entire file into context.
 - **Targeted Symbol:** `read_symbol("<symbol>")` — Inject specific AST function/class snippet from index graph (saves 95% tokens).
+- **On-Demand Skills (`/s <skill>`):** Inject specialized specialty prompts (`/s pirate-talk`, `/s caveman`, `/s reviewer`) on the fly into active chat sessions.
+  - **Multi-Skill Stacking:** Stack up to 3 active on-demand skills simultaneously.
+  - **Category Auto-Swap:** Loading a new skill of the same category (e.g. `personality/`) automatically replaces the old skill to prevent persona collisions.
+  - **Unload Skills (`/s off`):** Type `/s off` (or `/s clear` / `/s reset`) to remove all on-demand skills and revert to your base profile skill.
 
----
+<details>
+<summary><b>💡 Quick Tips for Skills (Click to Expand)</b></summary>
+<br>
+
+* **Quick Persona Swap:** Type `/s caveman` to switch to token-slashing caveman mode. Type `/s pirate` to swap directly to pirate mode.
+* **Stack Specialty Skills:** Type `/s pirate reviewer` to combine pirate persona with code reviewer instructions!
+* **Reset to Default:** Type `/s off` anytime to clear on-demand skills and return to your base workspace profile.
+
+</details>
 
 ## 9. Codebase Graph Mapper
 
