@@ -37,7 +37,30 @@ def load_skill_content(skills_str: str, skills_dir: str, cfg_dir: str) -> str:
         if sf := find_skill_file(skills_dir, skill):
             if "system" in skill: ensure_mysys_exists(skills_dir, cfg_dir)
             try:
-                with open(sf, "r", encoding="utf-8") as f: contents.append(f.read().strip())
+                with open(sf, "r", encoding="utf-8") as f: raw = f.read().strip()
+                meta, body = {}, raw
+                if raw.startswith("---"):
+                    parts = raw.split("---", 2)
+                    if len(parts) >= 3:
+                        fm_str, body = parts[1], parts[2].strip()
+                        for line in fm_str.splitlines():
+                            if ":" in line and not line.strip().startswith("#"):
+                                k, v = line.split(":", 1)
+                                k, v = k.strip(), v.strip().strip("\"'")
+                                meta[k] = True if v.lower() == "true" else (False if v.lower() == "false" else (int(v) if v.isdigit() else v))
+                elif raw.startswith("{"):
+                    if m := re.match(r'^\s*(\{[\s\S]*?\})\s*', raw):
+                        try:
+                            meta = json.loads(m.group(1))
+                            body = raw[m.end():].strip()
+                        except (json.JSONDecodeError, TypeError): pass
+                if meta:
+                    try:
+                        import agent_core
+                        for k, v in meta.items():
+                            agent_core.save_state("yolo_mode" if k == "yolo" else k, v)
+                    except Exception: pass
+                contents.append(body)
             except (OSError, UnicodeDecodeError) as e:
                 sys.stderr.write(f"\033[1;31mError loading skill '{skill}': {e}\033[0m\n")
     return "\n\n".join(contents)
@@ -104,7 +127,7 @@ def load_skill_blueprints(dept_skills_dir: str, stop_words: Set[str]) -> List[Di
 
                         if lines[0].startswith("# [SKILL]") and "--->" in lines[0]:
                             header, intents = lines[0].split("--->", 1)
-                            skill_name, intent_list = header.replace("# [SKILL]", "").strip(), [i.strip() for i in intents.split(",") if i.strip()]
+                            skill_name, intent_list = header.replace("# [SKILL]", "").replace("#", "").strip(), [i.strip() for i in intents.split(",") if i.strip()]
                         else:
                             base_name = os.path.splitext(f)[0]
                             skill_name = next((l.replace("#", "").strip() for l in lines if l.startswith("#")), base_name.replace("-", " ").replace("_", " ").title())

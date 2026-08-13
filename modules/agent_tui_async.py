@@ -41,7 +41,8 @@ async def start_subagent_ipc_hub(app) -> None:
         try:
             if data := await reader.read(1024):
                 p = json.loads(data.decode("utf-8"))
-                app.notify(f"[dim]⚡ [bold cyan]{p.get('sub_id', 'Sub-agent')}[/bold cyan]: {p.get('status', 'Active')}[/dim]", sys_prefix=False)
+                params = p.get("params", {}) if isinstance(p.get("params"), dict) else p
+                app.notify(f"[dim]⚡ [bold cyan]{params.get('sub_id', 'Sub-agent')}[/bold cyan]: {params.get('status', 'Active')}[/dim]", sys_prefix=False)
         except (OSError, json.JSONDecodeError): pass
         finally:
             writer.close()

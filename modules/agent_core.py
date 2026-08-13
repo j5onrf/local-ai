@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Core Module - Handles streaming SSE, tool gates, and Rich rendering"""
 
-import os, sys, json, ast, re, shutil, subprocess, difflib, urllib.parse, urllib.request as urlreq
+import os, sys, time, json, ast, re, shutil, subprocess, difflib, urllib.parse, urllib.request as urlreq
 from typing import List, Dict, Any, Optional, Tuple
 
 import requests
@@ -245,7 +245,14 @@ class RichStreamer:
             except (IOError, OSError): pass
 
 
-def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float, show_stats: bool, ctx_used: Optional[int] = None) -> None:
+def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float, show_stats: bool, ctx_used: Optional[int] = None, user_msg: str = "", assistant_msg: str = "") -> None:
+    try:
+        ws = os.environ.get("AI_WORKSPACE_PATH", os.getcwd())
+        agent_dir = os.path.join(ws, ".agent")
+        os.makedirs(agent_dir, exist_ok=True)
+        with open(os.path.join(agent_dir, "session.jsonl"), "a", encoding="utf-8") as f:
+            f.write(json.dumps({"timestamp": int(time.time()), "user_msg": user_msg, "assistant_msg": assistant_msg, "model": model, "in_tok": in_tok, "out_tok": out_tok}) + "\n")
+    except OSError: pass
     if not usage_log: return
     try:
         usage_log.record(model, in_tok, out_tok, cost)
@@ -490,7 +497,8 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
                 tool_toks = sum(get_accurate_token_count(m.get("content") or "") for m in messages if m.get("role") in ("assistant", "tool"))
                 final_out = max(out_tok, tool_toks)
                 if spinner: spinner.stop("Done" if ans_text and ans_text.strip() else None)
-                _log_turn_usage(resolved_model or body.get("model") or "local-model", in_tok, final_out, 0.0, show_stats, in_tok + final_out)
+                user_msg = next((m.get("content", "") or "" for m in reversed(messages) if m.get("role") == "user"), "")
+                _log_turn_usage(resolved_model or body.get("model") or "local-model", in_tok, final_out, 0.0, show_stats, in_tok + final_out, user_msg=user_msg, assistant_msg=ans_text)
                 return ans_text
 
             messages.append({"role": "assistant", "content": ans_text or None, "tool_calls": calls})
