@@ -337,7 +337,6 @@ Act as a senior staff engineer...
 | `reasoning_budget` | Integer | Deep reasoning token budget (e.g. `750` or `0`). |
 | `yolo` | Boolean | Autonomous mode (`true` disables gates, `false` enables). |
 | `description` | String | Skill summary description shown in TUI menu. |
-```
 
 ---
 
