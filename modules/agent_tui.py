@@ -456,7 +456,7 @@ class LocalAITUI(App):
                     yield Static(f"[dim]Dir[/dim]     {format_dir_path(self.workspace_path)}", id="lbl-dir", classes="sidebar-val")
                     yield Static(f"[dim]Skill[/dim]   {self.active_skill}", id="lbl-skill", classes="sidebar-val")
                     yield Static(f"[dim]Mode[/dim]    {self.agent_mode}", id="lbl-mode", classes="sidebar-val")
-                    yield Static("[dim]Harness[/dim] Legacy", id="lbl-harness", classes="sidebar-val")
+                    yield Static("[dim]Harness[/dim] Native Tools", id="lbl-harness", classes="sidebar-val")
                     yield Static("[dim]Image[/dim]   None", id="lbl-image", classes="sidebar-val")
 
                 with Vertical(classes="sidebar-section"):
@@ -503,7 +503,7 @@ class LocalAITUI(App):
         self.lbl_voice, self.lbl_tts, self.lbl_image = self.query_one("#lbl-voice", Static), self.query_one("#lbl-tts", Static), self.query_one("#lbl-image", Static)
 
         if hasattr(ipython, "is_ipython_enabled"):
-            self.lbl_harness.update(f"[dim]Harness[/dim] " + ("NOOA IPython" if ipython.is_ipython_enabled() else "Legacy"))
+            self.lbl_harness.update(f"[dim]Harness[/dim] " + ("NOOA IPython" if ipython.is_ipython_enabled() else "Native Tools"))
 
         if hasattr(voice, "is_bridge_running"):
             is_act = voice.is_bridge_running()
