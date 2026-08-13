@@ -169,6 +169,7 @@ def run_skill_selector(workspace: str, raw_cmd: str, dept_skills_dir: str, stop_
                         chat_history[0]["content"] += f"\n\n### Loaded On-Demand Skill: {sel['name']}\n{body}\n"
                         sys.stderr.write(f"{clear_2_lines}\033[2;32m[sys] Skill '{sel['name']}' successfully loaded.\033[0m\n")
                         print(json.dumps(chat_history))
+                        sys.stdout.flush()
                     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as e:
                         sys.stderr.write(f"{clear_2_lines}\033[1;31m[sys] Failed to load skill: {e}\033[0m\n")
                 else: sys.stderr.write(f"{clear_2_lines}No skill selected.\n")

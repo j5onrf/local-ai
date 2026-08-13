@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local-Ai Agent [j5onrf] [v0.9.8.36]"""
+"""Local-Ai Agent [j5onrf] [v0.9.8.38]"""
 
 import json, os, re, shutil, sqlite3, subprocess, sys, threading, time, urllib.request as urlreq
 from typing import List, Optional, Tuple, Dict, Any
@@ -216,7 +216,8 @@ def run_interactive_chat(args: List[str]) -> None:
                     ui._console.print("[dim yellow][sys] Suspending chat. Launching TUI...[/dim yellow]")
                     time.sleep(0.5)
                     try:
-                        tui_env = {**os.environ, "AI_IS_AGENT": "1" if is_agent else "0", "AI_WORKSPACE_PATH": workspace_path, "AI_ACTIVE_SKILL": clean_name or "default"}
+                        active_skill_env = os.environ.get("AI_ACTIVE_SKILL", clean_name or "default")
+                        tui_env = {**os.environ, "AI_IS_AGENT": "1" if is_agent else "0", "AI_WORKSPACE_PATH": workspace_path, "AI_ACTIVE_SKILL": active_skill_env, "AI_SESSION_HISTORY": json.dumps(chat_history)}
                         subprocess.run([sys.executable, f"{CFG_DIR}/modules/agent_tui.py"], env=tui_env)
                         st = core.get_state()
                         reasoning_active, reasoning_budget = st.get("reasoning_active", False), st.get("reasoning_budget", 500)
@@ -345,9 +346,23 @@ def run_interactive_chat(args: List[str]) -> None:
                     elif action == "DISABLE": spell_active = False
 
             if query.startswith(("/", "-")) and query.split()[0] in ("/skill", "/s"):
+                parts = query.split(maxsplit=1)
+                sub_cmd = parts[1].strip().lower() if len(parts) > 1 else ""
+                if sub_cmd in ("off", "clear", "reset", "none", "remove"):
+                    chat_history[0]["content"] = active_system_prompt
+                    os.environ["AI_ACTIVE_SKILL"] = clean_name or "default"
+                    ui._console.print(f"[green][sys] On-demand skill removed. Reverted to base skill: [bold]{clean_name or 'default'}[/bold].[/green]\n")
+                    continue
+
                 res = subprocess.run([sys.executable, f"{CFG_DIR}/modules/agent_skills.py", safe_name, query], input=json.dumps(chat_history), stdout=subprocess.PIPE, text=True)
-                if res.stdout.strip():
-                    try: chat_history = json.loads(res.stdout.strip())
+                out_str = re.sub(r'\x1b\[[0-9;]*[a-zA-Z]', '', res.stdout or "").strip()
+                if out_str:
+                    try:
+                        chat_history = json.loads(out_str)
+                        if match := re.search(r"### Loaded On-Demand Skill:\s*(.+)", chat_history[0].get("content", "")):
+                            s_name = match.group(1).strip().replace(" ", "-")
+                            os.environ["AI_ACTIVE_SKILL"] = f"{clean_name} {s_name}"
+                        ui._console.print("[green][sys] Skill loaded successfully.[/green]\n")
                     except json.JSONDecodeError as e: ui._console.print(f"[red]Error loading session: {e}[/red]")
                 continue
 

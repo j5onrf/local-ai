@@ -772,16 +772,30 @@ class LocalAITUI(App):
             except (OSError, subprocess.SubprocessError): pass
         elif root in ("/skill", "/s"):
             if args:
-                if content := skills.load_skill_content(args, SKILLS_DIR, CFG_DIR):
+                sub_cmd = args.strip().lower()
+                if sub_cmd in ("off", "clear", "reset", "none", "remove"):
+                    self.on_demand_skill = None
+                    self.set_skill(self.base_skill)
+                    if self.history and self.history[0].get("role") == "system":
+                        sys_c = self.history[0]["content"]
+                        if "### Loaded On-Demand Skill:" in sys_c:
+                            self.history[0]["content"] = sys_c.split("### Loaded On-Demand Skill:")[0].strip()
+                    os.environ["AI_ACTIVE_SKILL"] = self.base_skill
+                    self.notify(f"On-demand skill removed. Reverted to base skill: [bold]{self.base_skill}[/bold]")
+                elif content := skills.load_skill_content(args, SKILLS_DIR, CFG_DIR):
                     s_name, s_text = content if isinstance(content, tuple) else (args, content)
                     self.on_demand_skill = s_name
                     combined_skill = f"{self.base_skill} {self.on_demand_skill}"
                     self.set_skill(combined_skill)
-                    self.history = [m for m in self.history if not (m.get("role") == "system" and str(m.get("content", "")).startswith("[SKILL BLUEPRINT:"))]
-                    self.history.append({"role": "system", "content": f"[SKILL BLUEPRINT: {s_name}]\n{s_text}"})
+                    self.ensure_system_context()
+                    if self.history and self.history[0].get("role") == "system":
+                        self.history[0]["content"] += f"\n\n### Loaded On-Demand Skill: {s_name}\n{s_text}\n"
+                    else:
+                        self.history.insert(0, {"role": "system", "content": f"### Loaded On-Demand Skill: {s_name}\n{s_text}\n"})
+                    os.environ["AI_ACTIVE_SKILL"] = combined_skill
                     self.notify(f"Active skills: [bold]{combined_skill}[/bold] (Swapped on-demand skill to [bold]{s_name}[/bold])")
                 else: self.notify(f"No skill blueprint file found for '[bold]{args}[/bold]'.")
-            else: self.notify("Usage: /skill <query> or /s <query>")
+            else: self.notify("Usage: /skill <query>, /s <query>, or /s off")
         elif root in ("/compact", "/c"): self.action_toggle_compact()
         elif root in ("/t", "/thinking"):
             if args:
