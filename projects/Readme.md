@@ -314,7 +314,34 @@ The Local-AI framework provides **dual-mode sub-agent execution**:
 
 ---
 
-## 12. Security & Execution Isolation
+## 12. Skill Profile Frontmatter Overrides (`---`)
+
+Skill profiles support **YAML (`---`) or JSON (`{...}`) frontmatter headers** to override runtime settings automatically on load (`ai init` or `/s <skill>`).
+
+#### Frontmatter Syntax Example (`my-skill.md`):
+
+```markdown
+---
+reasoning_budget: 750
+yolo: true
+description: "Expert Python refactoring agent with high reasoning budget"
+---
+# [SKILL] Python Refactoring ---> python-refactor
+Act as a senior staff engineer...
+```
+
+#### Supported Frontmatter Keys:
+
+| Key | Type | Description |
+| :--- | :--- | :--- |
+| `reasoning_budget` | Integer | Deep reasoning token budget (e.g. `750` or `0`). |
+| `yolo` | Boolean | Autonomous mode (`true` disables gates, `false` enables). |
+| `description` | String | Skill summary description shown in TUI menu. |
+```
+
+---
+
+## 13. Security & Execution Isolation
 
 - **Read-Only Default:** Workspace edits require explicit `ai init` enablement.
 - **Directory Lock:** Enforces confirmation gates for paths outside project root.
@@ -323,7 +350,7 @@ The Local-AI framework provides **dual-mode sub-agent execution**:
 
 ---
 
-## 13. Reasonix Cognitive Engine (`/t`)
+## 14. Reasonix Cognitive Engine (`/t`)
 
 Real-time reasoning trace step extraction and cognitive phase formatting inside the live thinking stream.
 
@@ -333,7 +360,7 @@ Real-time reasoning trace step extraction and cognitive phase formatting inside 
 
 ---
 
-## 14. Environment Variables & Context Limits
+## 15. Environment Variables & Context Limits
 
 Override max context token limits or model defaults:
 ```bash
