@@ -52,7 +52,6 @@
 
 5. Memory, Indexing & Storage
    ├── agent_context.py         - Jaccard semantic intent router (ai-context.md)
-   ├── index-map                - AST codebase relational graph, SQLite vector index, snippet engine
    ├── ai-agent-sessions        - SQLite session logger, checkpoints (-save / -load)
    └── ai-agent-memories        - Temporal Personality Memory (TPM) background compiler
 ```

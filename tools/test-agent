@@ -21,8 +21,8 @@ print(f"{CYAN}==================================================================
 
 all_passed = True
 
-# --- PASS 1: GRANULAR BYTECODE COMPILATION (ALL 21 FILES) ---
-print(f"{CYAN}[Pass 1/8] Bytecode Compilation (Granular 21 Files){RESET}")
+# --- PASS 1: GRANULAR BYTECODE COMPILATION (20 FILES) ---
+print(f"{CYAN}[Pass 1/8] Bytecode Compilation (Granular 20 Files){RESET}")
 files_to_compile = [
     "ai-agent.py", "modules/agent_core.py", "modules/agent_ipython.py",
     "modules/agent_tools.py", "modules/agent_tui.py", "modules/agent_tui_async.py",
@@ -30,7 +30,7 @@ files_to_compile = [
     "modules/agent_skills.py", "modules/agent_spell.py", "modules/agent_ui.py",
     "modules/agent_voice.py", "modules/agent_tts.py", "modules/model-select.py",
     "modules/speed_test.py", "modules/ai-agent-sessions", "modules/ai-agent-memories",
-    "modules/chat", "tools/loop/ralph.py", "tools/map/index-map"
+    "modules/chat", "tools/loop/ralph.py"
 ]
 
 for f in files_to_compile:
@@ -152,18 +152,14 @@ try:
         print_result("ai-context.md exists", False, "File missing")
         all_passed = False
 
-    # --- PASS 8: SPEND LEDGER & INDEX-MAP CLI ---
-    print(f"\n{CYAN}[Pass 8/8] Spend Ledger & Index-Map CLI{RESET}")
+    # --- PASS 8: SPEND LEDGER & PRICING ---
+    print(f"\n{CYAN}[Pass 8/8] Spend Ledger & Cost Engine{RESET}")
     import agent_usage as usage
     usage.record("gemini-3.7-flash", 1000000, 1000000, 0.0)
     line = usage.turn_line(1000000, 1000000, 4.50, 2000000, 8192)
-    p8_a = "$4.50" in line
-    print_result("Gemini 3.7 Flash Spend Accounting", p8_a, f"Summary: {line.strip()}")
-
-    r = subprocess.run([sys.executable, os.path.join(CFG_DIR, "tools", "map", "index-map"), "--help"], capture_output=True, text=True, timeout=5)
-    p8_b = r.returncode == 0 and "Usage:" in r.stdout
-    print_result("tools/map/index-map CLI execution", p8_b)
-    all_passed = all_passed and (p8_a and p8_b)
+    p8 = "$4.50" in line
+    print_result("Gemini 3.7 Flash Spend Accounting", p8, f"Summary: {line.strip()}")
+    all_passed = all_passed and p8
 
 finally:
     shutil.rmtree(sandbox_dir, ignore_errors=True)
