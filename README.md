@@ -18,8 +18,7 @@
 
 ## Overview & Execution Modes
 
-Lightweight Python orchestration (rich + requests + sqlite-vec) controlling a C++ backend (llama-server).
-Built with zero context-stuffing for extreme efficiency on quantized local engines (`LFM2.5-8B-A1B+`, `Qwen-3.5-2B+`, `Qwen3.6-35B-A3B+`) and cloud provider cascades.
+Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`) controlling a C++ backend (`llama-server`). Built for extreme efficiency on quantized local models (`LFM2.5-8B-A1B+`, `Qwen-3.5-2B+`, `Qwen3.6-35B-A3B+`) and cloud provider cascades. Active: Dedicated HF endpoint (`Qwen/Qwen3.8-27B`).
 
 - **Direct Shell Jaccard (`<shortcut>`):** Sub-millisecond keyword routing to local shell scripts via [`ai-context.md`](ai-context.md).
 - **Single-Turn Query (`ai <query>`):** Instant response piped straight back to your active shell prompt.
