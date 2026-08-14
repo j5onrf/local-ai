@@ -449,6 +449,11 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
             spinner.start("Working...")
         try:
             res = _session.post(url, json=body_tools, headers={"Content-Type": "application/json", **headers}, timeout=timeout, stream=True)
+            if res.status_code != 200:
+                err_text = res.text[:200].replace('\n', ' ').strip()
+                sys.stderr.write(f"\033[90m[sys] Remote API HTTP {res.status_code}: {err_text}\033[0m\r\n")
+                continue
+
             first_chunk, acc_content, tool_calls_map, in_think_block, captured_usage = True, [], {}, False, None
 
             for line in res.iter_lines():
@@ -466,7 +471,7 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
                     if not choices: continue
                     delta = choices[0].get("delta", {})
 
-                    content, reasoning = delta.get("content", "") or "", delta.get("reasoning_content", "") or delta.get("thinking", "") or ""
+                    content, reasoning = delta.get("content", "") or "", delta.get("reasoning_content", "") or delta.get("thinking", "") or delta.get("reasoning", "") or ""
 
                     if spinner:
                         try: spinner.update("Thinking..." if reasoning else "Working...")

@@ -1,33 +1,31 @@
 #!/usr/bin/env bash
 
 # --- WORKSPACE 1: Brave Origin ---
-if hyprctl clients | grep -q "class: brave-origin"; then
-    # If already running, extract its address and silently send it to workspace 1
-    BRAVE_ADDR=$(hyprctl clients -j | jq -r '.[] | select(.class == "brave-origin") | .address')
-    if [ -n "$BRAVE_ADDR" ]; then
-        hyprctl dispatch movetoworkspacesilent "1,address:$BRAVE_ADDR" >/dev/null 2>&1
-    fi
+if hyprctl clients -j 2>/dev/null | jq -e '.[] | select(.class == "brave-origin")' >/dev/null 2>&1; then
+    # Move existing Brave Origin instances silently to workspace 1
+    hyprctl dispatch movetoworkspacesilent "1,class:^(brave-origin)$" >/dev/null 2>&1
 else
-    # Modern Hyprland syntax (Unified windowrule + match:class + strict boolean typing)
-    hyprctl keyword windowrule "workspace 1 silent, match:class ^(brave-origin)$" >/dev/null 2>&1
-    hyprctl keyword windowrule "no_initial_focus 1, match:class ^(brave-origin)$" >/dev/null 2>&1
-    
-    hyprctl dispatch exec brave-origin >/dev/null 2>&1
+    # Launch directly onto workspace 1
+    hyprctl dispatch exec "[workspace 1 silent] brave-origin" >/dev/null 2>&1
 fi
 
 # --- WORKSPACE 2: Nautilus (Left) ---
-if hyprctl clients | grep -q "class: org.gnome.Nautilus"; then
-    hyprctl dispatch movetoworkspacesilent "2,class:org.gnome.Nautilus" >/dev/null 2>&1
+if hyprctl clients -j 2>/dev/null | jq -e '.[] | select(.class == "org.gnome.Nautilus")' >/dev/null 2>&1; then
+    # Move existing Nautilus instances silently to workspace 2
+    hyprctl dispatch movetoworkspacesilent "2,class:^(org.gnome.Nautilus)$" >/dev/null 2>&1
 else
-    hyprctl dispatch exec "[workspace 2 silent]" nautilus >/dev/null 2>&1
+    # Launch directly onto workspace 2
+    hyprctl dispatch exec "[workspace 2 silent] nautilus" >/dev/null 2>&1
     sleep 0.25 
 fi
 
 # --- WORKSPACE 2: Gnome Text Editor (Right) ---
-if hyprctl clients | grep -q "class: org.gnome.TextEditor"; then
-    hyprctl dispatch movetoworkspacesilent "2,class:org.gnome.TextEditor" >/dev/null 2>&1
+if hyprctl clients -j 2>/dev/null | jq -e '.[] | select(.class == "org.gnome.TextEditor")' >/dev/null 2>&1; then
+    # Move existing Text Editor instances silently to workspace 2
+    hyprctl dispatch movetoworkspacesilent "2,class:^(org.gnome.TextEditor)$" >/dev/null 2>&1
 else
-    hyprctl dispatch exec "[workspace 2 silent]" gnome-text-editor >/dev/null 2>&1
+    # Launch directly onto workspace 2
+    hyprctl dispatch exec "[workspace 2 silent] gnome-text-editor" >/dev/null 2>&1
 fi
 
 echo "Workspace reset complete: State --Work"

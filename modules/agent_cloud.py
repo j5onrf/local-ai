@@ -7,17 +7,11 @@ from typing import List, Dict, Any, Tuple
 ENV_PATH: str = os.path.expanduser("~/.config/local-ai/.env")
 RE_ENV_API_KEY: re.Pattern = re.compile(r"^([A-Z0-9_]+_API_KEY|[A-Z0-9_]+_KEY)\s*=\s*\"?([^\"]*)\"?$")
 
-URL_MAP = {
-    "GEMINI_API_KEY": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-    "OPENAI_API_KEY": "https://api.openai.com/v1/chat/completions",
-    "XAI_API_KEY": "https://api.x.ai/v1/chat/completions",
-    "OPENROUTER_API_KEY": "https://openrouter.ai/api/v1/chat/completions"
-}
-
 FALLBACK_MODELS = {
-    "gemini": "gemini-3.7-flash",
+    "gemini": "gemini-3.5-flash-lite",
     "openai": "gpt-5.5",
-    "xai": "grok-4.5"
+    "xai": "grok-4.5",
+    "custom": "default"
 }
 
 
@@ -25,6 +19,25 @@ def get_active_configs(messages: List[Dict[str, str]]) -> List[Tuple[str, Dict[s
     """Compiles active cloud API configurations, prioritizing them based on their top-down order in .env."""
     configs: List[Tuple[str, Dict[str, str], Dict[str, Any], int]] = []
     if not os.path.exists(ENV_PATH): return configs
+
+    custom_url = os.environ.get("CUSTOM_URL")
+    if not custom_url:
+        try:
+            with open(ENV_PATH, "r", encoding="utf-8") as f:
+                for line in f:
+                    if (s := line.strip()) and not s.startswith("#") and s.startswith("CUSTOM_URL="):
+                        custom_url = s.split("=", 1)[1].strip().strip('"').strip("'")
+                        break
+        except OSError: pass
+    custom_url = custom_url or "https://victor-qwen3-8-27b-free-endpoint.hf.space/v1/chat/completions"
+
+    url_map = {
+        "GEMINI_API_KEY": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+        "OPENAI_API_KEY": "https://api.openai.com/v1/chat/completions",
+        "XAI_API_KEY": "https://api.x.ai/v1/chat/completions",
+        "OPENROUTER_API_KEY": "https://openrouter.ai/api/v1/chat/completions",
+        "CUSTOM_API_KEY": custom_url
+    }
 
     try:
         with open(ENV_PATH, "r", encoding="utf-8") as f:
@@ -45,7 +58,7 @@ def get_active_configs(messages: List[Dict[str, str]]) -> List[Tuple[str, Dict[s
                             if system_prompt: body["system"] = system_prompt
                             configs.append(("https://api.anthropic.com/v1/messages", {"x-api-key": val_clean, "anthropic-version": "2023-06-01"}, body, 30))
 
-                        elif url := URL_MAP.get(key_name):
+                        elif url := url_map.get(key_name):
                             fallback = FALLBACK_MODELS.get(provider, "default-model")
                             model_var = "OPENROUTER_MODEL" if provider == "openrouter" else f"{provider.upper()}_MODEL"
                             body = {"model": os.environ.get(model_var) or fallback, "messages": messages, "stream": True}

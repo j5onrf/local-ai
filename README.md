@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <code>gpt</code> &nbsp; <code>claude</code> &nbsp; <code>grok</code> &nbsp; <code>gemini</code> &nbsp; <code>openrouter</code> &nbsp; <code>gguf</code>
+  <code>gpt</code> &nbsp; <code>claude</code> &nbsp; <code>grok</code> &nbsp; <code>gemini</code> &nbsp; <code>openrouter</code> &nbsp; <code>custom-hf</code> &nbsp; <code>gguf</code>
 </p>
 
 ---
@@ -49,7 +49,7 @@ Built with zero context-stuffing for extreme efficiency on quantized local engin
 | Core Module | Capability | Description |
 | :--- | :--- | :--- |
 | **Engine** | **Zero-Daemon** | 0% idle CPU/RAM usage. Native Python standard-library execution. |
-| **Resilience** | **Provider Cascade** | Top-down `.env` fallback: Gemini $\rightarrow$ OpenRouter $\rightarrow$ OpenAI $\rightarrow$ Claude $\rightarrow$ Grok $\rightarrow$ Local GGUF. |
+| **Resilience** | **Provider Cascade** | Top-down `.env` fallback: Custom Endpoints / HF $\rightarrow$ Gemini $\rightarrow$ OpenRouter $\rightarrow$ OpenAI $\rightarrow$ Claude $\rightarrow$ Grok $\rightarrow$ Local GGUF. |
 | **Multi-Agent** | **Subagents** | [Vercel Eve](https://github.com/vercel/eve)-style sub-agents with [herdr](https://github.com/ogulcancelik/herdr) multiplexing (`-save`/`-load`) + in-kernel `delegate("goal")` sub-loops. |
 | **Safety** | **Zero-Trust Gates** | Mandatory approval prompts for commands and out-of-bounds file access. |
 | **Validation** | **Type-Safe & AST Guard** | [Pydantic AI](https://github.com/pydantic/pydantic-ai) schemas + [OpenAI Agents](https://github.com/openai/openai-agents-python)-style self-correcting `.py`/`.json` writes. |
@@ -137,6 +137,10 @@ nano ~/.config/local-ai/.env
 
 ```env
 # Top-Down Cascade Fallback Priority
+CUSTOM_API_KEY="none"
+CUSTOM_URL="https://.../v1/chat/completions"
+CUSTOM_MODEL="default"
+
 GEMINI_API_KEY="AIzaSyYourGeminiKey"
 GEMINI_MODEL="gemini-3.5-flash-lite"
 

@@ -19,7 +19,7 @@
 # --- Stack Diagnostic Suite ---
 [TOOL] ~/.config/local-ai/tools/test-agent --cat --s ---> agent test
 # --- Cloud Model Select TUI ---
-~/.config/local-ai/modules/model-select.py ---> model select, models select, mst
+~/.config/local-ai/modules/model-select.py ---> model select, cloud model
 # --- AI Status Model Route ---
 [TOOL] ~/.config/local-ai/tools/agentic/system/ai-status ---> aistatus, aistat, ais
 ```

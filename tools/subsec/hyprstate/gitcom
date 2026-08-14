@@ -1,39 +1,31 @@
 #!/usr/bin/env bash
 
-# 1. Dynamically query the currently active workspace (uses JSON jq or fallback to awk)
-CURRENT_WS=$(hyprctl activeworkspace -j | jq -r '.id' 2>/dev/null || hyprctl activeworkspace | awk '{print $3}')
+# 1. Dynamically query the currently active workspace ID
+CURRENT_WS=$(hyprctl activeworkspace -j 2>/dev/null | jq -r '.id' 2>/dev/null)
 
-# Fallback check to default to workspace 1 if workspace retrieval returns blank
-if [[ -z "$CURRENT_WS" ]]; then
+if [[ -z "$CURRENT_WS" || "$CURRENT_WS" == "null" ]]; then
     CURRENT_WS=1
 fi
 
-# --- Lazygit (Left) ---
-if pgrep -f "lazygit" > /dev/null; then
-    # Pull existing window to your active workspace
-    hyprctl dispatch movetoworkspacesilent "${CURRENT_WS},class:^(lazygit)$" >/dev/null 2>&1
+TARGET_DIR="$HOME/.config/local-ai"
+
+# --- 1. Lazygit (Left) ---
+if hyprctl clients -j 2>/dev/null | jq -e '.[] | select(.class == "lazygit")' >/dev/null 2>&1; then
+    # Pull existing window to active workspace
+    hyprctl dispatch movetoworkspace "${CURRENT_WS},class:^(lazygit)$" >/dev/null 2>&1
 else
-    # Inject a dynamic rule targeting your active workspace
-    hyprctl keyword windowrule "workspace ${CURRENT_WS} silent,class:^(lazygit)$" >/dev/null 2>&1
-    # Launch Kitty directly in the local-ai config directory
-    hyprctl dispatch exec "kitty --class lazygit --directory $HOME/.config/local-ai lazygit" >/dev/null 2>&1
-    # Small pause to guarantee chronological split (ensures lazygit tiles first/left)
-    sleep 0.2
+    # Launch Kitty with lazygit directly
+    kitty --class lazygit --directory "$TARGET_DIR" lazygit &
+    sleep 0.25
 fi
 
-# --- Kitty Terminal (Right) ---
-if pgrep -f "local-ai-terminal" > /dev/null; then
-    # Pull existing terminal to your active workspace
-    hyprctl dispatch movetoworkspacesilent "${CURRENT_WS},class:^(local-ai-terminal)$" >/dev/null 2>&1
+# --- 2. Kitty Terminal (Right) ---
+if hyprctl clients -j 2>/dev/null | jq -e '.[] | select(.class == "local-ai-terminal")' >/dev/null 2>&1; then
+    # Pull existing terminal to active workspace
+    hyprctl dispatch movetoworkspace "${CURRENT_WS},class:^(local-ai-terminal)$" >/dev/null 2>&1
 else
-    # Inject a dynamic rule targeting your active workspace
-    hyprctl keyword windowrule "workspace ${CURRENT_WS} silent,class:^(local-ai-terminal)$" >/dev/null 2>&1
-    
-    # Store the interactive bash commands (which automatically loads your .bashrc and expands aliases)
-    INNER_CMD='cd '"$HOME"'/.config/local-ai; if read -e -p "${PS1@P}" -i "ai-commit"; then history -s "$REPLY"; history -a; eval "$REPLY"; fi; exec bash'
-    
-    # Launch Kitty with interactive bash (-i) to run the isolated command string
-    hyprctl dispatch exec "kitty --class local-ai-terminal --directory $HOME/.config/local-ai --title '~/.config/local-ai' bash -i -c '$INNER_CMD'" >/dev/null 2>&1
+    # Launch interactive terminal directly
+    kitty --class local-ai-terminal --directory "$TARGET_DIR" --title '~/.config/local-ai' bash -i -c 'cd "'"$TARGET_DIR"'"; if read -e -p "${PS1@P}" -i "ai-commit"; then history -s "$REPLY"; history -a; eval "$REPLY"; fi; exec bash' &
 fi
 
 echo "Workspace reset complete: State --GitCom (Active WS: ${CURRENT_WS})"

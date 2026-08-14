@@ -21,7 +21,9 @@ get_gemini_limits() {
     local model="${1:-gemini-3.5-flash-lite}"
     local m_low; m_low=$(echo "$model" | tr '[:upper:]' '[:lower:]')
     
-    if [[ "$m_low" == *"3.6-flash"* ]]; then
+    if [[ "$m_low" == *"3.7-flash"* ]]; then
+        echo "15 RPM / 1,500 RPD"
+    elif [[ "$m_low" == *"3.6-flash"* ]]; then
         echo "15 RPM / 1,500 RPD"
     elif [[ "$m_low" == *"3.5-flash-lite"* ]]; then
         echo "30 RPM / 1,500 RPD"
@@ -89,6 +91,7 @@ if [[ -f "$ENV_PATH" ]]; then
                     elif [[ "$provider" == "openai" ]]; then m_val="gpt-5.5"
                     elif [[ "$provider" == "claude" ]]; then m_val="claude-fable-5"
                     elif [[ "$provider" == "xai" ]]; then m_val="grok-4.5"
+                    elif [[ "$provider" == "custom" ]]; then m_val="${CUSTOM_MODEL:-default}"
                     else m_val="default-model"
                     fi
                 fi
@@ -227,11 +230,12 @@ for i in "${!active_providers[@]}"; do
     elif [[ "$provider" == "claude" ]]; then domain="https://api.anthropic.com"
     elif [[ "$provider" == "xai" ]]; then domain="https://api.x.ai"
     elif [[ "$provider" == "openrouter" ]]; then domain="https://openrouter.ai"
+    elif [[ "$provider" == "custom" ]]; then domain="${CUSTOM_URL:-https://g9hnto0u7lvbu837.us-east-2.aws.endpoints.huggingface.cloud/v1}"
     fi
     
     status=$(check_conn "$key_val" "$domain")
     if [[ $status -eq 0 ]]; then
-        resolved_provider=$(echo "$provider" | tr '[:lower:]' '[:upper:]' | sed 's/XAI/x.AI/; s/CLAUDE/Anthropic Claude/; s/GEMINI/Google Gemini/; s/OPENAI/OpenAI/; s/OPENROUTER/OpenRouter/')
+        resolved_provider=$(echo "$provider" | tr '[:lower:]' '[:upper:]' | sed 's/XAI/x.AI/; s/CLAUDE/Anthropic Claude/; s/GEMINI/Google Gemini/; s/OPENAI/OpenAI/; s/OPENROUTER/OpenRouter/; s/CUSTOM/Custom Endpoint/')
         resolved_model="$model_val"
         if [[ $i -eq 0 && ${#active_providers[@]} -gt 1 ]]; then
             f_prov="${active_providers[1]}"
@@ -281,6 +285,12 @@ if [[ $or_status -eq 0 && "${OPENROUTER_MODEL:-}" == *"free"* && -n "${OPENROUTE
 fi
 echo "* **OPENROUTER_USAGE**: \`${or_meta}\`"
 echo "* **OPENROUTER METRICS**: \`RPM: ${or_rpm} | RPD: ${or_rpd}\` (Last 24h rolling)"
+if [[ -n "${CUSTOM_API_KEY:-}" ]]; then
+    echo ""
+    echo "* **CUSTOM_API_KEY**  : $(mask_key "${CUSTOM_API_KEY:-}")"
+    echo "* **CUSTOM_MODEL**    : \`${CUSTOM_MODEL:-default}\`"
+    echo "* **CUSTOM_URL**      : \`${CUSTOM_URL:-*Not Set*}\`"
+fi
 echo -e "\n---\n\n## ENDPOINT STATUS"
 
 [[ -n "${GEMINI_API_KEY:-}" ]] && echo "* **Google APIs**   : $([[ $gemini_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")" || echo "* **Google APIs**   : *Skipped (No Key)*"
@@ -288,4 +298,8 @@ echo -e "\n---\n\n## ENDPOINT STATUS"
 [[ -n "${CLAUDE_API_KEY:-}" ]] && echo "* **Anthropic APIs**: $([[ $claude_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")" || echo "* **Anthropic APIs**: *Skipped (No Key)*"
 [[ -n "${XAI_API_KEY:-}" ]] && echo "* **x.AI APIs**      : $([[ $xai_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")" || echo "* **x.AI APIs**      : *Skipped (No Key)*"
 [[ -n "${OPENROUTER_API_KEY:-}" ]] && echo "* **OpenRouter API** : $([[ $or_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")" || echo "* **OpenRouter API** : *Skipped (No Key)*"
+if [[ -n "${CUSTOM_API_KEY:-}" ]]; then
+    custom_status=$(check_conn "${CUSTOM_API_KEY}" "${CUSTOM_URL:-https://g9hnto0u7lvbu837.us-east-2.aws.endpoints.huggingface.cloud/v1}")
+    echo "* **Custom Endpoint**: $([[ $custom_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")"
+fi
 echo -e "* **Local Server**   : $([[ $local_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")"
