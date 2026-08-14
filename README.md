@@ -136,9 +136,11 @@ nano ~/.config/local-ai/.env
 
 ```env
 # Top-Down Cascade Fallback Priority
+
+# Custom / Free Community Endpoints
 CUSTOM_API_KEY="none"
-CUSTOM_URL="https://.../v1/chat/completions"
-CUSTOM_MODEL="default"
+CUSTOM_URL="https://g9hnto0u7lvbu837.us-east-2.aws.endpoints.huggingface.cloud/v1/chat/completions"
+CUSTOM_MODEL="Qwen/Qwen3.8-27B"
 
 GEMINI_API_KEY="AIzaSyYourGeminiKey"
 GEMINI_MODEL="gemini-3.5-flash-lite"
