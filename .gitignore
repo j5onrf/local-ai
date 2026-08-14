@@ -16,6 +16,7 @@ tools/email/.email
 .active_sessions
 projects/database/home.db
 .active_sessions
+.email
 
 # Ignore Python cache directories and bytecode
 __pycache__/

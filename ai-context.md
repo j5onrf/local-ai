@@ -18,8 +18,10 @@
 ```properties
 # --- Stack Diagnostic Suite ---
 [TOOL] ~/.config/local-ai/tools/test-agent --cat --s ---> agent test
-# --- AI Status ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/ai-status ---> aistatus, aistat
+# --- Cloud Model Select TUI ---
+~/.config/local-ai/modules/model-select.py ---> model select, models select, mst
+# --- AI Status Model Route ---
+[TOOL] ~/.config/local-ai/tools/agentic/system/ai-status ---> aistatus, aistat, ais
 ```
 
 ## 1. Workspaces
@@ -87,10 +89,8 @@ pkill -9 -f "pw-play|koko" ---> stop speech, kill tts
 ## 6. TUI Apps
 
 ```properties
-# --- Model Select TUI ---
-~/.config/local-ai/modules/model-select.py ---> model select, models select, mst
 # --- Email TUI ---
-[TOOL] ~/.config/local-ai/tools/email/email-agent ---> email agent
+~/.config/local-ai/tools/email/email-agent ---> email agent
 # --- Hyprland State ---
 ~/.config/local-ai/tools/subsec/hyprstate/work ---> hyprstate work, hyprwork
 ~/.config/local-ai/tools/subsec/hyprstate/gitcom ---> hyprstate gitcom, gitcom

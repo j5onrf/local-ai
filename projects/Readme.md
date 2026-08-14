@@ -249,7 +249,7 @@ Self-directed iterative loop that runs tools, verifies results, and self-correct
 
 - **Whole File:** `file <path>` — Append entire file into context.
 - **Targeted Symbol:** `read_symbol("<symbol>")` — Inject specific AST function/class snippet from index graph (saves 95% tokens).
-- **On-Demand Skills (`/s <skill>`):** Inject specialized specialty prompts (`/s pirate-talk`, `/s caveman`, `/s reviewer`) on the fly into active chat sessions.
+- **On-Demand Skills (`/s <skill>`):** Inject specialized specialty prompts (`/s pirate`, `/s caveman`, `/s reviewer`) on the fly into active chat sessions.
   - **Multi-Skill Stacking:** Stack up to 3 active on-demand skills simultaneously.
   - **Category Auto-Swap:** Loading a new skill of the same category (e.g. `personality/`) automatically replaces the old skill to prevent persona collisions.
   - **Unload Skills (`/s off`):** Type `/s off` (or `/s clear` / `/s reset`) to remove all on-demand skills and revert to your base profile skill.
