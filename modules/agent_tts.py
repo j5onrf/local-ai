@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Local-AI Kokoro Text-to-Speech (Text Out Loud) Module"""
 
-import os, re, subprocess, sys, threading
+import os, re, subprocess, threading
 
-CFG_DIR = os.path.expanduser("~/.config/local-ai")
 VOICE_FILE = os.path.expanduser("~/.config/koko_current_voice")
+
+RE_THINK_BLOCK: re.Pattern = re.compile(r'<think>.*?</think>', re.DOTALL)
+RE_CODE_BLOCK: re.Pattern = re.compile(r'```.*?```', re.DOTALL)
+RE_MARKDOWN_CHARS: re.Pattern = re.compile(r'[*_#`~>\[\]()|]')
 
 try:
     import agent_core as core
@@ -28,9 +31,9 @@ def speak_text(text: str) -> None:
     if not is_tts_enabled(): return
     if not text or not text.strip(): return
 
-    clean = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
-    clean = re.sub(r'```.*?```', 'code block omitted', clean, flags=re.DOTALL)
-    clean = re.sub(r'[*_#`~>\[\]()|]', '', clean).strip()
+    clean = RE_THINK_BLOCK.sub('', text)
+    clean = RE_CODE_BLOCK.sub('code block omitted', clean)
+    clean = RE_MARKDOWN_CHARS.sub('', clean).strip()
     if not clean: return
 
     def _run():
@@ -43,7 +46,8 @@ def speak_text(text: str) -> None:
             except OSError: pass
 
         wav_path = "/dev/shm/tts.wav"
-        escaped_text = clean.replace('"', '\\"')
+        # Strict shell escaping protects against code execution or syntax errors
+        escaped_text = clean.replace('\\', '\\\\').replace('"', '\\"').replace('$', '\\$').replace('`', '\\`')
         cmd = f'OMP_NUM_THREADS=6 koko --style "{voice}" --speed 1.15 text "{escaped_text}" -o {wav_path} && pw-play {wav_path}'
         subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 

@@ -5,7 +5,7 @@ Handles multi-turn autonomous goal execution, completion detection,
 stagnation recovery, and execution logging.
 """
 
-import os, sys, time, argparse, re
+import os, sys, time, argparse
 from typing import List, Dict, Any, Optional
 
 CFG_DIR = os.path.expanduser("~/.config/local-ai")

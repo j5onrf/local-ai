@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Local-AI Standalone IPython Kernel & RLM Harness Module (NOOA-Enhanced)"""
 
-import ast, contextlib, io, json, os, sys, subprocess, traceback
+import ast, contextlib, difflib, io, json, os, sys, subprocess, traceback
 from typing import Dict, Any, List, Optional, Tuple, Callable
 
 CFG_DIR = os.path.expanduser("~/.config/local-ai")
@@ -33,7 +33,6 @@ def toggle_ipython_mode(enable: Optional[bool] = None) -> bool:
 
 _orig_open = open
 _orig_listdir = os.listdir
-_orig_scandir = os.scandir
 _confirm_gate_fn = None
 
 
@@ -138,7 +137,6 @@ def _init_kernel_sdk(workspace: str, confirm_gate_fn: Optional[Callable[[str], b
         _confirm_gate_fn = confirm_gate_fn
     ws_real = os.path.realpath(workspace)
     
-    # 1. Force working directory to workspace
     try: os.chdir(ws_real)
     except OSError: pass
 
@@ -161,7 +159,6 @@ def _init_kernel_sdk(workspace: str, confirm_gate_fn: Optional[Callable[[str], b
             return core._confirm_gate(f"OUT-OF-BOUNDS KERNEL {op_name}: {full}", None)
         return True
 
-    # 2. Zero-Trust Overrides for raw Python built-ins inside REPL
     def safe_open(file, mode='r', *args, **kwargs):
         if isinstance(file, (str, bytes, os.PathLike)):
             if not _check_boundary(str(file), "READ" if 'r' in mode else "WRITE"):
@@ -177,7 +174,8 @@ def _init_kernel_sdk(workspace: str, confirm_gate_fn: Optional[Callable[[str], b
     def _read_file(path: str) -> str:
         if not _check_boundary(path, "READ"): return "[denied] Out-of-bounds read blocked."
         full = os.path.realpath(path if os.path.isabs(path) else os.path.join(ws_real, path))
-        with _orig_open(full, "r", encoding="utf-8", errors="replace") as f: return f.read()
+        with _orig_open(full, "r", encoding="utf-8", errors="replace") as f:
+            return f.read()
 
     def _write_file(path: str, content: str) -> str:
         if not _check_boundary(path, "WRITE"): return "[denied] Out-of-bounds write blocked."
@@ -185,7 +183,8 @@ def _init_kernel_sdk(workspace: str, confirm_gate_fn: Optional[Callable[[str], b
 
         if os.path.exists(full):
             try:
-                with _orig_open(full, "r", encoding="utf-8", errors="replace") as f: old = f.read()
+                with _orig_open(full, "r", encoding="utf-8", errors="replace") as f:
+                    old = f.read()
                 if diff := "\n".join(difflib.unified_diff(old.splitlines(), content.splitlines(), fromfile=f"a/{path}", tofile=f"b/{path}", lineterm="")):
                     from rich.syntax import Syntax
                     from rich.console import Console
@@ -193,7 +192,8 @@ def _init_kernel_sdk(workspace: str, confirm_gate_fn: Optional[Callable[[str], b
             except Exception: pass
 
         os.makedirs(os.path.dirname(full) or ws_real, exist_ok=True)
-        with _orig_open(full, "w", encoding="utf-8") as f: f.write(content)
+        with _orig_open(full, "w", encoding="utf-8") as f:
+            f.write(content)
         return f"wrote {len(content)} chars to {path}"
 
     def _list_dir(path: str = ".") -> List[str]:
@@ -221,7 +221,6 @@ def _init_kernel_sdk(workspace: str, confirm_gate_fn: Optional[Callable[[str], b
         "delegate": _delegate, "workspace": ws_real
     }
     _shell_globals.update(sdk)
-    _shell_globals["delegate"] = _delegate
     os.listdir = safe_listdir
     if _shell_instance:
         _shell_instance.user_ns.update(sdk)
@@ -229,6 +228,14 @@ def _init_kernel_sdk(workspace: str, confirm_gate_fn: Optional[Callable[[str], b
 
 def inspect_ast_safety(code: str, workspace: str, confirm_gate_fn: Optional[Callable[[str], bool]] = None) -> Optional[str]:
     if not confirm_gate_fn or os.environ.get("AI_CONFIRM_GATES", "1") == "0": return None
+    # Skip AST safety parse for IPython line/cell magics (% and !)
+    clean = code.strip()
+    if clean.startswith(("%", "!", "?")):
+        if clean.startswith("!"):
+            if not confirm_gate_fn(f"PYTHON SHELL ESCAPE: {clean[:40]}"):
+                return "[denied] Execution halted by user gate."
+        return None
+
     try:
         tree = ast.parse(code)
         for node in ast.walk(tree):

@@ -8,12 +8,17 @@ import agent_ui as ui
 import agent_context as context
 
 PAGER_STRIP_RE: re.Pattern = re.compile(r'\|\s*(leaf|mdcat|cat|glow|view)\b.*$', re.IGNORECASE)
+RE_FRONTMATTER_JSON: re.Pattern = re.compile(r'^\s*(\{[\s\S]*?\})\s*')
+RE_METADATA_LINE: re.Pattern = re.compile(r'^\w+:\s')
+RE_SKILL_SPLIT: re.Pattern = re.compile(r"[-_]")
+RE_SKILL_BLOCK: re.Pattern = re.compile(r"### Loaded On-Demand Skill:\s*([^\n]+)\n([\s\S]*?)(?=\n\n### Loaded On-Demand Skill:|\Z)")
 
 
 def ensure_mysys_exists(skills_dir: str, cfg_dir: str) -> None:
     """Ensures host hardware profile facts are generated and placed in context."""
     if not os.path.exists(os.path.join(skills_dir, "system", "mysys.md")):
-        try: subprocess.run([sys.executable, os.path.join(cfg_dir, "tools", "generate-profile")], check=False)
+        try:
+            subprocess.run([sys.executable, os.path.join(cfg_dir, "tools", "generate-profile")], check=False)
         except Exception: pass
 
 
@@ -37,7 +42,8 @@ def load_skill_content(skills_str: str, skills_dir: str, cfg_dir: str) -> str:
         if sf := find_skill_file(skills_dir, skill):
             if "system" in skill: ensure_mysys_exists(skills_dir, cfg_dir)
             try:
-                with open(sf, "r", encoding="utf-8") as f: raw = f.read().strip()
+                with open(sf, "r", encoding="utf-8") as f:
+                    raw = f.read().strip()
                 meta, body = {}, raw
                 if raw.startswith("---"):
                     parts = raw.split("---", 2)
@@ -49,7 +55,7 @@ def load_skill_content(skills_str: str, skills_dir: str, cfg_dir: str) -> str:
                                 k, v = k.strip(), v.strip().strip("\"'")
                                 meta[k] = True if v.lower() == "true" else (False if v.lower() == "false" else (int(v) if v.isdigit() else v))
                 elif raw.startswith("{"):
-                    if m := re.match(r'^\s*(\{[\s\S]*?\})\s*', raw):
+                    if m := RE_FRONTMATTER_JSON.match(raw):
                         try:
                             meta = json.loads(m.group(1))
                             body = raw[m.end():].strip()
@@ -78,10 +84,12 @@ def _exec_tool_cmd(cmd: str, interactive: bool = False) -> str:
         out = subprocess.check_output(sanitized, shell=True, text=True, timeout=15, cwd=workspace, env=env).strip()
         return f"{out}\n" if out else "Action executed successfully.\n"
     except subprocess.CalledProcessError:
-        sys.stderr.write("\033[1;31m[sys] Tool execution failed or was cancelled.\033[0m\n"); sys.stderr.flush()
+        sys.stderr.write("\033[1;31m[sys] Tool execution failed or was cancelled.\033[0m\n")
+        sys.stderr.flush()
         return "__ABORT_TURN__"
     except (OSError, subprocess.SubprocessError, TimeoutError) as e:
-        sys.stderr.write(f"\033[1;31m[sys] Error running tool: {e}\033[0m\n"); sys.stderr.flush()
+        sys.stderr.write(f"\033[1;31m[sys] Error running tool: {e}\033[0m\n")
+        sys.stderr.flush()
         return "__ABORT_TURN__"
 
 
@@ -101,13 +109,15 @@ def get_system_context(query: str, context_file: str, stop_words: Set[str], skil
 
             if "system" in tool.lower(): ensure_mysys_exists(skills_dir, cfg_dir)
             tool = tool.replace(" --s", "").strip()
-            for flag in (" --leaf", " --glow", " --cat", " --mdcat", " --view"): tool = tool.replace(flag, "")
+            for flag in (" --leaf", " --glow", " --cat", " --mdcat", " --view"):
+                tool = tool.replace(flag, "")
             intent_tokens = set(context.tokenize(entry.get("intent", ""), stop_words))
 
             args = " ".join(w for w in query.split() if any(c in w for c in ("/", "~", ".")) or (context.tokenize(w, stop_words) and context.tokenize(w, stop_words)[0] not in intent_tokens))
             if "$1" in tool or "{}" in tool: tool = tool.replace("$1", args).replace("{}", args).strip()
 
-            sys.stderr.write(f"\033[2m[sys] Executing: {tool}\033[0m\n"); sys.stderr.flush()
+            sys.stderr.write(f"\033[2m[sys] Executing: {tool}\033[0m\n")
+            sys.stderr.flush()
             return run_local_tool(tool)
     return ""
 
@@ -121,9 +131,10 @@ def load_skill_blueprints(dept_skills_dir: str, stop_words: Set[str]) -> List[Di
                 if f.endswith(".md"):
                     path = os.path.join(r, f)
                     try:
-                        with open(path, "r", encoding="utf-8") as sf: lines = [l.strip() for l in sf.readlines() if l.strip()]
+                        with open(path, "r", encoding="utf-8") as sf:
+                            lines = [l.strip() for l in sf.readlines() if l.strip()]
                         if not lines: continue
-                        desc_line = next((l for l in lines if not l.startswith(("#", "---", ">", "*", "-", "import ")) and not re.match(r'^\w+:\s', l)), "")
+                        desc_line = next((l for l in lines if not l.startswith(("#", "---", ">", "*", "-", "import ")) and not RE_METADATA_LINE.match(l)), "")
 
                         if lines[0].startswith("# [SKILL]") and "--->" in lines[0]:
                             header, intents = lines[0].split("--->", 1)
@@ -131,11 +142,15 @@ def load_skill_blueprints(dept_skills_dir: str, stop_words: Set[str]) -> List[Di
                         else:
                             base_name = os.path.splitext(f)[0]
                             skill_name = next((l.replace("#", "").strip() for l in lines if l.startswith("#")), base_name.replace("-", " ").replace("_", " ").title())
-                            intent_list = list(set(re.split(r"[-_]", base_name.lower()) + context.tokenize(skill_name, stop_words)))
+                            intent_list = list(set(RE_SKILL_SPLIT.split(base_name.lower()) + context.tokenize(skill_name, stop_words)))
 
                         blueprints.append({
-                            "name": skill_name.lower(), "path": path, "rel_path": os.path.relpath(path, dept_skills_dir),
-                            "desc": desc_line or "No description provided.", "intents": intent_list, "tokens": context.tokenize(" ".join(intent_list), stop_words)
+                            "name": skill_name.lower(),
+                            "path": path,
+                            "rel_path": os.path.relpath(path, dept_skills_dir),
+                            "desc": desc_line or "No description provided.",
+                            "intents": intent_list,
+                            "tokens": context.tokenize(" ".join(intent_list), stop_words)
                         })
                     except (OSError, UnicodeDecodeError, KeyError, IndexError, ValueError): pass
     return blueprints
@@ -143,25 +158,34 @@ def load_skill_blueprints(dept_skills_dir: str, stop_words: Set[str]) -> List[Di
 
 def run_skill_selector(workspace: str, raw_cmd: str, dept_skills_dir: str, stop_words: Set[str]) -> None:
     """Runs the dynamic arrow-key skill loading overlay inside the active terminal."""
-    try: chat_history = json.loads(sys.stdin.read().strip())
+    try:
+        chat_history = json.loads(sys.stdin.read().strip())
     except Exception as e:
-        sys.stderr.write(f"\033[1;31m[skill-mgr] Failed to load history: {e}\033[0m\n"); sys.exit(1)
+        sys.stderr.write(f"\033[1;31m[skill-mgr] Failed to load history: {e}\033[0m\n")
+        sys.exit(1)
 
     parts = raw_cmd.strip().split(maxsplit=1)
-    search_query, skills, current_idx = parts[1].strip() if len(parts) > 1 else "", load_skill_blueprints(dept_skills_dir, stop_words), 0
-    sys.stderr.write("\033[?25l"); sys.stderr.flush()
+    search_query = parts[1].strip() if len(parts) > 1 else ""
+    skills = load_skill_blueprints(dept_skills_dir, stop_words)
+    current_idx = 0
+    sys.stderr.write("\033[?25l")
+    sys.stderr.flush()
 
     try:
         while True:
-            q_tokens, sq_lower = set(context.tokenize(search_query, stop_words)) if search_query else set(), search_query.lower()
+            q_tokens = set(context.tokenize(search_query, stop_words)) if search_query else set()
+            sq_lower = search_query.lower()
             candidates = []
             for s in skills:
-                if not search_query: candidates.append((1.0, s))
+                if not search_query:
+                    candidates.append((1.0, s))
                 else:
                     s_tokens = set(s["tokens"])
                     score = len(q_tokens & s_tokens) / len(q_tokens | s_tokens) if (q_tokens & s_tokens) else 0.0
-                    if sq_lower in s["name"] or sq_lower in os.path.basename(s["path"]).lower() or any(sq_lower in i for i in s["intents"]): score = max(score, 0.8)
-                    if score > 0.0: candidates.append((score, s))
+                    if sq_lower in s["name"] or sq_lower in os.path.basename(s["path"]).lower() or any(sq_lower in i for i in s["intents"]):
+                        score = max(score, 0.8)
+                    if score > 0.0:
+                        candidates.append((score, s))
 
             candidates.sort(key=lambda x: -x[0])
             num_opts = len(candidates)
@@ -183,30 +207,28 @@ def run_skill_selector(workspace: str, raw_cmd: str, dept_skills_dir: str, stop_
             key = ui.get_key()
             clear_2_lines = "\r\x1b[2K\x1b[1A\r\x1b[2K"
             if key in ('\x03', '\x1b'):
-                sys.stderr.write(f"{clear_2_lines}Cancelled.\n"); break
+                sys.stderr.write(f"{clear_2_lines}Cancelled.\n")
+                break
             elif key in ('\r', ''):
                 if num_opts > 0:
                     _, sel = candidates[current_idx]
                     try:
-                        with open(sel["path"], "r", encoding="utf-8") as sf: body = sf.read().strip()
+                        with open(sel["path"], "r", encoding="utf-8") as sf:
+                            body = sf.read().strip()
                         sys_c = chat_history[0]["content"]
                         
-                        # Extract existing skill blocks
-                        raw_blocks = re.findall(r"### Loaded On-Demand Skill:\s*([^\n]+)\n([\s\S]*?)(?=\n\n### Loaded On-Demand Skill:|\Z)", sys_c)
+                        raw_blocks = RE_SKILL_BLOCK.findall(sys_c)
                         cat = "personality" if "personality" in sel["path"] else ("code" if "code" in sel["path"] else "system")
                         
-                        # Filter out same-category or duplicate skills
                         active_skills = []
                         for s_n, s_b in raw_blocks:
                             s_cat = "personality" if any(p in s_n for p in ("caveman", "pirate", "personality")) else "other"
                             if s_cat != cat and s_n != sel["name"]:
                                 active_skills.append((s_n, s_b))
                         
-                        # Append new skill & cap at 3 max
                         active_skills.append((sel["name"], body))
                         if len(active_skills) > 3: active_skills = active_skills[-3:]
                         
-                        # Rebuild system prompt
                         base_p = sys_c.split("### Loaded On-Demand Skill:")[0].strip()
                         new_blocks = "\n\n".join(f"### Loaded On-Demand Skill: {n}\n{b}" for n, b in active_skills)
                         chat_history[0]["content"] = f"{base_p}\n\n{new_blocks}\n"
@@ -215,12 +237,13 @@ def run_skill_selector(workspace: str, raw_cmd: str, dept_skills_dir: str, stop_
                         print(json.dumps(chat_history))
                     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as e:
                         sys.stderr.write(f"{clear_2_lines}\033[1;31m[sys] Failed to load skill: {e}\033[0m\n")
-                else: sys.stderr.write(f"{clear_2_lines}No skill selected.\n")
+                else:
+                    sys.stderr.write(f"{clear_2_lines}No skill selected.\n")
                 break
-            elif key == '\x1b[A':  # Arrow Up: Previous item, clamp at 0
+            elif key == '\x1b[A':
                 if num_opts > 0: current_idx = max(0, current_idx - 1)
                 sys.stderr.write(clear_2_lines)
-            elif key == '\x1b[B':  # Arrow Down: Next item, clamp at max
+            elif key == '\x1b[B':
                 if num_opts > 0: current_idx = min(num_opts - 1, current_idx + 1)
                 sys.stderr.write(clear_2_lines)
             elif key in ('\x7f', '\x08'):
@@ -229,10 +252,15 @@ def run_skill_selector(workspace: str, raw_cmd: str, dept_skills_dir: str, stop_
             elif len(key) == 1 and key.isprintable():
                 search_query, current_idx = search_query + key, 0
                 sys.stderr.write(clear_2_lines)
-            else: sys.stderr.write(clear_2_lines)
+            else:
+                sys.stderr.write(clear_2_lines)
     except KeyboardInterrupt:
-        sys.stderr.write("\r\x1b[2K\nCancelled.\n"); sys.stderr.flush(); sys.exit(130)
-    finally: sys.stderr.write("\033[?25h"); sys.stderr.flush()
+        sys.stderr.write("\r\x1b[2K\nCancelled.\n")
+        sys.stderr.flush()
+        sys.exit(130)
+    finally:
+        sys.stderr.write("\033[?25h")
+        sys.stderr.flush()
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@
 
 import asyncio, json, os, re, select, shutil, subprocess, sys, termios, tty, atexit
 import urllib.request as urlreq
+from typing import Set
 
 ENV_PATH, CACHE_PATH = os.path.expanduser("~/.config/local-ai/.env"), os.path.expanduser("~/.config/local-ai/.openrouter_cache_v2.json")
 
@@ -13,17 +14,18 @@ def cleanup_terminal():
     if ORIGINAL_TERMIOS:
         try: termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, ORIGINAL_TERMIOS)
         except (termios.error, OSError): pass
-    sys.stdout.write("\033[?25h\033[0m"); sys.stdout.flush()
+    sys.stdout.write("\x1b[H\x1b[2J\033[?25h\033[0m")
+    sys.stdout.flush()
 
 
 atexit.register(cleanup_terminal)
 
-GEMINI_CURATED = ["gemini-3.5-flash-lite", "gemini-3.6-flash"]
-OPENAI_CURATED = ["gpt-5.5", "gpt-5", "o3", "o3-mini", "gpt-4o", "gpt-4o-mini"]
-CLAUDE_CURATED = ["claude-opus-5", "claude-fable-5", "claude-sonnet-5", "claude-opus-4-8", "claude-opus-4-7", "claude-opus-4-6"]
+GEMINI_CURATED = ["gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.5-pro"]
+OPENAI_CURATED = ["gpt-5.5", "gpt-5", "gpt-4.5", "o3", "o3-mini", "gpt-4o", "gpt-4o-mini"]
+CLAUDE_CURATED = ["claude-3-7-sonnet", "claude-opus-5", "claude-fable-5", "claude-sonnet-5", "claude-opus-4-8", "claude-opus-4-7"]
 GROK_CURATED = ["grok-4.5", "grok-4", "grok-3", "grok-2"]
 OR_FREE_DEFAULTS = ["openrouter/free", "nvidia/nemotron-3-ultra:free", "poolside/laguna-m.1:free", "tencent/hy3:free", "google/gemma-4-26b-a4b:free", "meta-llama/llama-3.3-70b-instruct:free", "deepseek/deepseek-chat:free", "microsoft/phi-4:free", "mistralai/mistral-nemo:free"]
-OR_PAID_DEFAULTS = ["deepseek/deepseek-v4-flash", "xiaomi/mimo-v2.5", "minimax/minimax-m3", "tencent/hy3", "z-ai/glm-5.2", "deepseek/deepseek-v4-pro", "anthropic/claude-opus-4.7", "anthropic/claude-opus-4.8", "stepfun/step-3.7-flash", "anthropic/claude-sonnet-4.6", "openai/gpt-5.5", "anthropic/claude-sonnet-5", "xiaomi/mimo-v2.5-pro", "openai/gpt-4o-mini", "openai/gpt-oss-120b"]
+OR_PAID_DEFAULTS = ["deepseek/deepseek-v4-flash", "anthropic/claude-3.7-sonnet", "google/gemini-3.7-flash", "xiaomi/mimo-v2.5", "minimax/minimax-m3", "tencent/hy3", "z-ai/glm-5.2", "deepseek/deepseek-v4-pro", "anthropic/claude-opus-4.8", "openai/gpt-5.5", "openai/gpt-4o-mini"]
 
 
 def classify_openrouter_models(raw_data):
@@ -50,7 +52,7 @@ def classify_openrouter_models(raw_data):
 
 
 def load_env_vars():
-    v = {"GEMINI_API_KEY": "", "OPENROUTER_API_KEY": "", "CLAUDE_API_KEY": "", "OPENAI_API_KEY": "", "XAI_API_KEY": "", "GEMINI_MODEL": "gemini-3.5-flash-lite", "OPENROUTER_MODEL": "openrouter/free", "CLAUDE_MODEL": "claude-fable-5", "OPENAI_MODEL": "gpt-5.5", "XAI_MODEL": "grok-4.5"}
+    v = {"GEMINI_API_KEY": "", "OPENROUTER_API_KEY": "", "CLAUDE_API_KEY": "", "OPENAI_API_KEY": "", "XAI_API_KEY": "", "GEMINI_MODEL": "gemini-3.7-flash", "OPENROUTER_MODEL": "openrouter/free", "CLAUDE_MODEL": "claude-fable-5", "OPENAI_MODEL": "gpt-5.5", "XAI_MODEL": "grok-4.5"}
     if os.path.exists(ENV_PATH):
         try:
             with open(ENV_PATH, "r", encoding="utf-8") as f:
@@ -62,6 +64,22 @@ def load_env_vars():
     return v
 
 
+def get_active_key_set() -> Set[str]:
+    """Single-pass reader returning all active non-placeholder API key names."""
+    active = set()
+    if os.path.exists(ENV_PATH):
+        try:
+            with open(ENV_PATH, "r", encoding="utf-8") as f:
+                for l in f:
+                    if (s := l.strip()) and not s.startswith("#") and "=" in s:
+                        k, v = s.split("=", 1)
+                        val = v.strip().strip('"').strip("'")
+                        if val and not any(sub in val.lower() for sub in ("your", "here", "api-key")):
+                            active.add(k.strip())
+        except (OSError, UnicodeDecodeError): pass
+    return active
+
+
 def update_env(key, value):
     if not os.path.exists(ENV_PATH): return
     try:
@@ -69,22 +87,12 @@ def update_env(key, value):
         updated = False
         for i, l in enumerate(lines):
             if re.match(rf"^#?\s*{key}\s*=\s*.*$", l):
-                lines[i] = f"{'#' if l.strip().startswith('#') else ''}{key}=\"{value}\"\n"; updated = True; break
+                lines[i] = f"{'#' if l.strip().startswith('#') else ''}{key}=\"{value}\"\n"
+                updated = True
+                break
         if not updated: lines.append(f'{key}="{value}"\n')
         with open(ENV_PATH, "w", encoding="utf-8") as f: f.writelines(lines)
     except OSError: pass
-
-
-def is_key_active(key):
-    if os.path.exists(ENV_PATH):
-        try:
-            with open(ENV_PATH, "r", encoding="utf-8") as f:
-                for l in f:
-                    if (s := l.strip()).startswith(f"{key}=") or s.startswith(f"{key} ="):
-                        val = s.split("=", 1)[1].strip().strip('"').strip("'")
-                        if val and not any(k in val.lower() for k in ("your", "here")): return True
-        except (OSError, UnicodeDecodeError): pass
-    return False
 
 
 def set_key_commented_state(key, should_comment):
@@ -94,7 +102,9 @@ def set_key_commented_state(key, should_comment):
         updated = False
         for i, l in enumerate(lines):
             if f"{key}=" in l.strip() or f"{key} =" in l.strip():
-                lines[i] = f"{'#' if should_comment else ''}{l.strip().lstrip('#').strip()}\n"; updated = True; break
+                lines[i] = f"{'#' if should_comment else ''}{l.strip().lstrip('#').strip()}\n"
+                updated = True
+                break
         if not updated and not should_comment:
             pm = {"GEMINI_API_KEY": "AIzaSyYourFullGeminiApiKeyHere", "OPENROUTER_API_KEY": "sk-or-v1-YourFullOpenRouterKeyHere", "CLAUDE_API_KEY": "your-claude-api-key-here", "OPENAI_API_KEY": "your-openai-api-key-here", "XAI_API_KEY": "xai-your-grok-api-key-here"}
             lines.append(f'{key}="{pm.get(key, "your-key-here")}"\n')
@@ -172,13 +182,17 @@ async def async_get_key():
     return await asyncio.to_thread(_read)
 
 
-def draw_main_menu(selected, gemini_curr, claude_curr, openai_curr, grok_curr, or_curr, message=""):
+def draw_main_menu(selected, gemini_curr, claude_curr, openai_curr, grok_curr, or_curr, active_keys: Set[str], message=""):
     sys.stdout.write("\x1b[H\x1b[2J")
     amber, green, red, reset, bold, dim = "\033[38;2;230;120;60m", "\033[1;32m", "\033[1;31m", "\033[0m", "\033[1m", "\033[90m"
 
-    gemini_act, or_act, claude_act, openai_act, grok_act = (is_key_active(k) for k in ("GEMINI_API_KEY", "OPENROUTER_API_KEY", "CLAUDE_API_KEY", "OPENAI_API_KEY", "XAI_API_KEY"))
-    status_text = f"{green}[ ENABLED ]{reset}" if any([gemini_act, or_act, claude_act, openai_act, grok_act]) else f"{red}[ DISABLED ]{reset}"
+    gemini_act = "GEMINI_API_KEY" in active_keys
+    or_act = "OPENROUTER_API_KEY" in active_keys
+    claude_act = "CLAUDE_API_KEY" in active_keys
+    openai_act = "OPENAI_API_KEY" in active_keys
+    grok_act = "XAI_API_KEY" in active_keys
 
+    status_text = f"{green}[ ENABLED ]{reset}" if any([gemini_act, or_act, claude_act, openai_act, grok_act]) else f"{red}[ DISABLED ]{reset}"
     fmt_disp = lambda curr, act: f"{green}{curr}{reset}" if act else f"{red}DISABLED (grayed out){reset}"
     is_or_free = "free" in or_curr.lower()
 
@@ -203,14 +217,14 @@ def draw_main_menu(selected, gemini_curr, claude_curr, openai_curr, grok_curr, o
     sys.stdout.flush()
 
 
-async def run_selector(title, full_models_list, current, key_name):
+async def run_selector(title, full_models_list, current, key_name, is_active):
     state = {"showing_all": False, "search_query": ""}
     def get_opts():
         filt = full_models_list if not state["search_query"] else [m for m in full_models_list if state["search_query"].lower() in m.lower()]
         return [f"🚫 Turn Off {title}"] + (filt if (state["showing_all"] or state["search_query"]) else filt[:20])
 
     opts = get_opts()
-    selected = opts.index(current) if (is_key_active(key_name) and current in opts) else 0
+    selected = opts.index(current) if (is_active and current in opts) else 0
     amber, green, red, reset, bold, dim, max_v = "\033[38;2;230;120;60m", "\033[1;32m", "\033[1;31m", "\033[0m", "\033[1m", "\033[90m", 14
 
     while True:
@@ -224,7 +238,7 @@ async def run_selector(title, full_models_list, current, key_name):
         for i in range(start, end):
             opt = opts[i]
             bullet = f"{amber}❯{reset} " if i == selected else "  "
-            line = f"{bullet}{red}{opt} {dim}(disabled){reset}" if (i == 0 and not is_key_active(key_name)) else f"{bullet}{green}{opt} {dim}(active){reset}" if (opt == current and is_key_active(key_name)) else f"{bullet}{opt}"
+            line = f"{bullet}{red}{opt} {dim}(disabled){reset}" if (i == 0 and not is_active) else f"{bullet}{green}{opt} {dim}(active){reset}" if (opt == current and is_active) else f"{bullet}{opt}"
             sys.stdout.write(f"     {bold if i == selected else ''}{line}{reset}\n")
 
         m_above, m_below = start > 0, end < len(opts)
@@ -265,7 +279,8 @@ async def async_main():
 
     try:
         while True:
-            draw_main_menu(selected_idx, gemini_curr, claude_curr, openai_curr, grok_curr, or_curr, message)
+            active_keys = get_active_key_set()
+            draw_main_menu(selected_idx, gemini_curr, claude_curr, openai_curr, grok_curr, or_curr, active_keys, message)
             message = ""
             key = await async_get_key()
 
@@ -286,10 +301,14 @@ async def async_main():
                         6: ("OpenRouter Paid", or_paid_list, or_curr, "OPENROUTER_API_KEY", "OPENROUTER_MODEL"),
                     }
                     title, lst, curr, k_name, m_name = target_map[selected_idx]
-                    res = await run_selector(title, lst, curr, k_name)
-                    if res == "DISABLE": set_key_commented_state(k_name, True); message = f"✓ {title} disabled."
+                    is_active = k_name in active_keys
+                    res = await run_selector(title, lst, curr, k_name, is_active)
+                    if res == "DISABLE":
+                        set_key_commented_state(k_name, True)
+                        message = f"✓ {title} disabled."
                     elif res:
-                        set_key_commented_state(k_name, False); update_env(m_name, res)
+                        set_key_commented_state(k_name, False)
+                        update_env(m_name, res)
                         if selected_idx == 1: gemini_curr = res
                         elif selected_idx == 2: openai_curr = res
                         elif selected_idx == 3: claude_curr = res
@@ -298,14 +317,19 @@ async def async_main():
                         message = f"✓ Saved {m_name}={res} and re-enabled {title} API Key."
                 elif selected_idx == 7:
                     message = "\033[1;33m↺ Checking OpenRouter for current model rankings...\033[0m"
-                    draw_main_menu(selected_idx, gemini_curr, claude_curr, openai_curr, grok_curr, or_curr, message)
+                    draw_main_menu(selected_idx, gemini_curr, claude_curr, openai_curr, grok_curr, or_curr, active_keys, message)
                     if raw_data := await async_fetch_openrouter_models(env["OPENROUTER_API_KEY"]):
                         or_free_list, or_paid_list, gemini_list, claude_list, openai_list, grok_list = classify_openrouter_models(raw_data)
                         save_cached_lists(or_free_list, or_paid_list, gemini_list, claude_list, openai_list, grok_list)
                         message = "✓ Dynamic model rankings & provider APIs synchronized."
                     else: message = "\033[1;31m✗ Connection failed. Keeping cached defaults."
-                elif selected_idx == 8: break
-            elif key == 'q': break
+                elif selected_idx == 8:
+                    cleanup_terminal()
+                    print("\033[1;32m✓ Local-AI configuration saved.\033[0m")
+                    return
+            elif key in ('q', 'esc'):
+                cleanup_terminal()
+                return
     finally: cleanup_terminal()
 
 if __name__ == "__main__":

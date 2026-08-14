@@ -1,10 +1,24 @@
 #!/usr/bin/env python3
 """Dynamic Cloud Cascade Engine - Top-down .env provider API priority."""
 
-import os, re, json
-from typing import List, Dict, Any, Tuple, Optional
+import os, re
+from typing import List, Dict, Any, Tuple
 
 ENV_PATH: str = os.path.expanduser("~/.config/local-ai/.env")
+RE_ENV_API_KEY: re.Pattern = re.compile(r"^([A-Z0-9_]+_API_KEY|[A-Z0-9_]+_KEY)\s*=\s*\"?([^\"]*)\"?$")
+
+URL_MAP = {
+    "GEMINI_API_KEY": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+    "OPENAI_API_KEY": "https://api.openai.com/v1/chat/completions",
+    "XAI_API_KEY": "https://api.x.ai/v1/chat/completions",
+    "OPENROUTER_API_KEY": "https://openrouter.ai/api/v1/chat/completions"
+}
+
+FALLBACK_MODELS = {
+    "gemini": "gemini-3.7-flash",
+    "openai": "gpt-5.5",
+    "xai": "grok-4.5"
+}
 
 
 def get_active_configs(messages: List[Dict[str, str]]) -> List[Tuple[str, Dict[str, str], Dict[str, Any], int]]:
@@ -12,21 +26,15 @@ def get_active_configs(messages: List[Dict[str, str]]) -> List[Tuple[str, Dict[s
     configs: List[Tuple[str, Dict[str, str], Dict[str, Any], int]] = []
     if not os.path.exists(ENV_PATH): return configs
 
-    url_map = {
-        "GEMINI_API_KEY": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-        "OPENAI_API_KEY": "https://api.openai.com/v1/chat/completions",
-        "XAI_API_KEY": "https://api.x.ai/v1/chat/completions",
-        "OPENROUTER_API_KEY": "https://openrouter.ai/api/v1/chat/completions"
-    }
-
     try:
         with open(ENV_PATH, "r", encoding="utf-8") as f:
             for line in f:
                 if (line_strip := line.strip()) and not line_strip.startswith("#"):
-                    if match := re.match(r"^([A-Z0-9_]+_API_KEY|[A-Z0-9_]+_KEY)\s*=\s*\"?([^\"]*)\"?$", line_strip):
+                    if match := RE_ENV_API_KEY.match(line_strip):
                         key_name, key_val = match.groups()
                         val_clean = key_val.strip()
-                        if not val_clean or any(k in val_clean.lower() for k in ("your", "here", "api-key")): continue
+                        if not val_clean or any(k in val_clean.lower() for k in ("your", "here", "api-key")):
+                            continue
 
                         provider = key_name.split("_")[0].lower()
 
@@ -37,8 +45,8 @@ def get_active_configs(messages: List[Dict[str, str]]) -> List[Tuple[str, Dict[s
                             if system_prompt: body["system"] = system_prompt
                             configs.append(("https://api.anthropic.com/v1/messages", {"x-api-key": val_clean, "anthropic-version": "2023-06-01"}, body, 30))
 
-                        elif url := url_map.get(key_name):
-                            fallback = {"gemini": "gemini-3.5-flash-lite", "openai": "gpt-5.5", "xai": "grok-4.5"}.get(provider, "default-model")
+                        elif url := URL_MAP.get(key_name):
+                            fallback = FALLBACK_MODELS.get(provider, "default-model")
                             model_var = "OPENROUTER_MODEL" if provider == "openrouter" else f"{provider.upper()}_MODEL"
                             body = {"model": os.environ.get(model_var) or fallback, "messages": messages, "stream": True}
                             headers = {"Authorization": f"Bearer {val_clean}"}
@@ -48,5 +56,6 @@ def get_active_configs(messages: List[Dict[str, str]]) -> List[Tuple[str, Dict[s
                                 headers["HTTP-Referer"] = "https://github.com/j5onrf/local-ai"
 
                             configs.append((url, headers, body, 180 if provider == "openrouter" else 30))
-    except (OSError, UnicodeDecodeError, KeyError, IndexError, ValueError): pass
+    except (OSError, UnicodeDecodeError, KeyError, IndexError, ValueError):
+        pass
     return configs

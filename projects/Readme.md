@@ -152,6 +152,8 @@ Running `ai init <path>` sets the default workspace agent profile:
 │                                                                     │
 │   Available commands:                                               │
 │  /h                          - Help menu                            │
+│  /v [auto], /voice           - Voice to text                        │
+│  /tts                        - Text out loud                        │
 │  /py [code_or_cmd]           - Toggle or execute via IPython        │
 │  /box [1-5]                  - Box style preset                     │
 │  /task [goal]                - Autonomous task loop                 │
@@ -312,7 +314,7 @@ The Local-AI framework provides **dual-mode sub-agent execution**:
 ### 2. Multi-Terminal Parallel Sub-Agents (`ai init`)
 * **Process Badges:** Assigns sequence IDs (`[sub-agent #1]`, `[sub-agent #2]`) when launching `ai init` in parallel terminals.
 * **Self-Healing Registry:** Auto-purges stale PID lockfiles (`.active_sessions/`) on exit or crash.
-* **SQLite Lock Protection:** `PRAGMA busy_timeout = 5000` + `WAL` mode eliminates multi-agent database locks.
+* **SQLite Lock Protection:** `PRAGMA busy_timeout = 30000` + `WAL` mode eliminates multi-agent database locks.
 * **Unix Socket IPC:** Async socket hub (`/tmp/local-ai-<workspace>.sock`) parses JSON-RPC 2.0 status messages for live TUI notifications.
 
 <details>
@@ -371,7 +373,15 @@ Real-time reasoning trace step extraction and cognitive phase formatting inside 
 
 ---
 
-## 15. Environment Variables & Context Limits
+## 15. Voice Bridge & Neural Audio (`/v` & `/tts`)
+
+- **Voice to Text (`/v` / `/v auto`):** HTTPS bridge (`:9999`) for mobile/tablet dictation. Use `/v` for prompt review, `/v auto` for auto-submit.
+- **Neural TTS (`/tts`):** Reads responses aloud via PipeWire & Kokoro; auto-filters code and `<think>` blocks.
+- **Stop Speech:** Run `pkill -9 -f "pw-play|koko"`, type `stop talking`, or bind `Super+Shift+X`.
+
+---
+
+## 16. Environment Variables & Context Limits
 
 Override max context token limits or model defaults:
 ```bash

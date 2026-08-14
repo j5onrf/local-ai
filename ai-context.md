@@ -13,11 +13,11 @@
 
 ---
 
-## 0. Core Level
+## 0. Start Agent
 
 ```properties
-# --- IPython RLM Kernel Harness Toggle ---
-~/.config/local-ai/modules/agent_ipython.py ---> ipython, python harness, ipy, py harness
+# --- Stack Diagnostic Suite ---
+[TOOL] ~/.config/local-ai/tools/test-agent --cat --s ---> agent test
 ```
 
 ## 1. Voice & TTS
@@ -65,7 +65,7 @@ ai init ~/.config/local-ai/projects/session-test-3 ---> session test 3, projects
 
 ```properties
 # --- AI Status ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/ai-status ---> ai status, aistat, status, route
+[TOOL] ~/.config/local-ai/tools/agentic/system/ai-status ---> ai status, aistatus, aistatus, airoute
 # --- System Health ---
 [TOOL] ~/.config/local-ai/tools/agentic/system/system-health ---> system health, sysh
 # --- Log Checker ---

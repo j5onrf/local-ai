@@ -32,11 +32,10 @@ SKILLS_DIR, SESSIONS_DIR = os.path.join(CFG_DIR, "skills"), os.path.join(CFG_DIR
 LEFT_BAR = Box("▌   \n" * 8)
 NO_BOX = Box("    \n" * 8)
 
-# PRE-COMPILED REGEXES FOR MAXIMUM STREAMING TPS
-TOKEN_RE, STOP_WORDS = re.compile(r"[^\w\s]"), {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"}
+TOKEN_RE = re.compile(r"[^\w\s]")
+STOP_WORDS = frozenset({"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"})
 CSI_U_REGEX = re.compile(r'(?:\x1b\[<|\x1b\[|\[<)?\d+;\d+;\d+[mM]|\x1b\[[0-9;]*[a-zA-Z~]|\x1b[\[\(\=][0-9;]*[a-zA-Z~]?')
 ANSI_CLEAN_REGEX = re.compile(r'\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
-QUESTION_SPLIT_REGEX = re.compile(r'(?<=\?)\s+')
 REASONIX_STEP_RE = re.compile(r'^(?:\d+\.\s*|Step \d+:?\s*|Phase \d+:?\s*|\#{1,3}\s*)\*\*?([^\n\*:]+)\*\*?:?', re.IGNORECASE)
 CLEAN_CODE_BLOCKS_RE = re.compile(r'```\n\s*\n+')
 MULTI_NEWLINE_RE = re.compile(r'\n{3,}')
@@ -95,9 +94,6 @@ def _format_tui_reasonix_text(text: str, theme: str = "code1") -> Text:
     return res
 
 
-tokenize = lambda text: [w for w in TOKEN_RE.sub(" ", text.lower()).split() if len(w) > 1 and w not in STOP_WORDS] if text else []
-
-# RICH THEME DEFINITIONS (code1, code2, dark, mono)
 code1_theme = Theme(name="code1", primary="#89b4fa", secondary="#a6adc8", accent="#89b4fa", background="#11121d", surface="#161726", panel="#1b1c2b")
 code2_theme = Theme(name="code2", primary="#ff9e64", secondary="#e0af68", accent="#ff9e64", background="#11121d", surface="#161726", panel="#1b1c2b")
 mono_theme = Theme(name="mono", primary="#ffffff", secondary="#a0a0a0", accent="#ffffff", background="#000000", surface="#0d0d0d", panel="#121212")
@@ -120,17 +116,29 @@ class CloseCardButton(Static):
 class Message(Static):
     def __init__(self, sender: str, content: Any) -> None:
         super().__init__()
-        self.sender, self.content, self._cached_render, self._cached_theme = sender, content, None, None
+        self.sender, self.content = sender, content
+        self._cached_render = None
+        self._cached_theme = None
+        self._cached_compact = None
+        self._cached_borders = None
 
     def update_content(self, new_content: Any) -> None:
-        self.content, self._cached_render = new_content, None
+        self.content = new_content
+        self._cached_render = None
         self.refresh()
 
     def render(self) -> Any:
         app_theme = getattr(self.app, "theme", "code1")
-        if self._cached_render is not None and self._cached_theme == app_theme: return self._cached_render
+        compact_state = getattr(self.app, "compact_mode", 0)
+        borders_on = getattr(self.app, "borders_enabled", True)
 
-        compact_state, is_dark = getattr(self.app, "compact_mode", 0), getattr(self.app, "is_dark_theme", True)
+        if (self._cached_render is not None and 
+            self._cached_theme == app_theme and 
+            self._cached_compact == compact_state and 
+            self._cached_borders == borders_on):
+            return self._cached_render
+
+        is_dark = getattr(self.app, "is_dark_theme", True)
         self.styles.color = "#c8d3f5" if ("code" in app_theme and is_dark) else None
         self.styles.margin = (1, 2, 0, 0) if compact_state == 0 else (0, 2, 0, 0)
         u_style = "bold #888888" if app_theme in ("mono", "grok") else ("bold #89b4fa" if "code" in app_theme else ("bold #0265dc" if not is_dark else "bold cyan"))
@@ -172,14 +180,16 @@ class Message(Static):
                 body = Markdown(clean_text, code_theme=code_fmt) if clean_text else Text("...", style="italic dim")
 
             if compact_state == 0:
-                borders_on = getattr(self.app, "borders_enabled", True)
                 box_type = ROUNDED if borders_on else NO_BOX
                 b_style = ("dim " + border_col) if borders_on else border_col
                 res = Panel(body, box=box_type, border_style=b_style, style=f"on {bg_col}", padding=(0, 2))
             else:
                 res = body
 
-        self._cached_render, self._cached_theme = res, app_theme
+        self._cached_render = res
+        self._cached_theme = app_theme
+        self._cached_compact = compact_state
+        self._cached_borders = borders_on
         return res
 
 
@@ -278,7 +288,6 @@ class LocalAITUI(App):
         self.update_welcome_banner()
         self.set_skill(self.active_skill)
 
-        # Toggle blue text class on sidebar for code1 and code2 themes
         try:
             sidebar = self.query_one("#sidebar")
             if theme in ("code1", "code2"):
@@ -516,7 +525,6 @@ class LocalAITUI(App):
         os.environ["AI_SHOW_THINKING"] = "1" if core.get_state("show_thinking", True) else "0"
         self.set_skill(self.active_skill); self.set_mode(self.agent_mode)
 
-        # Toggle blue text class on launch for code1 & code2
         try:
             sidebar = self.query_one("#sidebar")
             if getattr(self, "theme", "code1") in ("code1", "code2"):
@@ -606,15 +614,13 @@ class LocalAITUI(App):
                     out = (res.stdout or res.stderr or "").strip()
                     
                     plain_text = ANSI_CLEAN_REGEX.sub('', out.replace('\r', '\n'))
-                    
                     clean_lines = []
                     for line in plain_text.splitlines():
                         l_strip = line.strip()
                         if not l_strip or (("Working..." in l_strip or any(c in l_strip for c in "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏")) and "working •" not in l_strip):
                             continue
                         clean_lines.append(l_strip)
-                    
-                    # Convert raw execution logs into clean Markdown report (No icons/emojis)
+
                     formatted_blocks = []
                     for line in clean_lines:
                         if line.startswith("[loop] Starting autonomous execution"):
@@ -821,7 +827,11 @@ class LocalAITUI(App):
                     self.notify(f"Deep reasoning {'enabled' if self.reasoning_active else 'disabled'} ({status}).")
                 else: self.action_toggle_reasoning()
             else: self.action_toggle_reasoning()
-        elif root in ("/f", "/tk", "/b", "/a"): await self.handle_meta_chat_command(root, args)
+        elif root in ("/f", "/tk", "/b", "/a"):
+            if hasattr(self, "handle_meta_chat_command"):
+                await self.handle_meta_chat_command(root, args)
+            else:
+                self.notify(f"Preset command '{root}' is not configured for this workspace profile.")
         else: self.notify(f"Unknown command '{root}'. Type [bold]/help[/bold] for commands.")
 
     def prompt_tui_confirm(self, prompt_text: str) -> bool:
@@ -870,7 +880,6 @@ class LocalAITUI(App):
             self.call_from_thread(self.disable_input)
             self.generation_cancelled, self.active_response = False, None
             accumulated, start_time, first_token_time, token_count = "", time.perf_counter(), None, 0
-            thinking_budget = self.reasoning_budget if self.reasoning_active else 0
             last_ui_update = 0.0
 
             enable_think = self.reasoning_active and self.reasoning_budget > 0
@@ -1092,8 +1101,12 @@ class LocalAITUI(App):
         self.chat_input.disabled, _ = False, self.chat_input.focus()
 
     def action_stop_generation(self) -> None:
-        if self.chat_input.disabled:
+        if self.chat_input.disabled or getattr(self, "entering_gate_authorization", False):
             self.generation_cancelled = True
+            if getattr(self, "entering_gate_authorization", False):
+                self.entering_gate_authorization = False
+                self.gate_auth_result = False
+                self.gate_auth_event.set()
             if self.active_response:
                 try: self.active_response.close()
                 except (OSError, AttributeError): pass
@@ -1113,11 +1126,6 @@ class LocalAITUI(App):
             self.query_one("#footer-bar", Horizontal).display = not self.footer_hidden
             self.query_one("#input-toggle", FooterToggle).update("▲ Show" if self.footer_hidden else "▼ Hide")
         except (KeyError, AttributeError): pass
-
-    def action_toggle_toggle(self) -> None:
-        self.footer_hidden = not self.footer_hidden
-        core.save_state("footer_hidden", self.footer_hidden)
-        self.update_footer_visibility()
 
     def action_toggle_footer(self) -> None:
         self.footer_hidden = not self.footer_hidden

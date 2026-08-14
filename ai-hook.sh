@@ -20,16 +20,19 @@ elif [[ "$PROMPT_COMMAND" != *_ai_teleport* ]]; then
 fi
 
 ai_handle_missing() {
-    local cmd=$([[ -n "$*" ]] && "$_AI_PY" "$_AI_DIR/ai-agent.py" --interactive "$*") || return 127
-    local exp=$(echo "$cmd" | sed -E 's/\x1b\[[0-9;]*[a-zA-Z]|\r//g') && exp="${exp//\~/$HOME}"
-    [[ -d "$exp" ]] && ai init "$exp" || { [[ "$exp" == *.py ]] && "$_AI_PY" $exp || eval "$exp"; }
+    local cmd
+    cmd=$([[ -n "$*" ]] && "$_AI_PY" "$_AI_DIR/ai-agent.py" --interactive "$*") || return 127
+    local exp
+    exp=$(echo "$cmd" | sed -E 's/\x1b\[[0-9;]*[a-zA-Z]|\r//g') && exp="${exp//\~/$HOME}"
+    [[ -d "$exp" ]] && ai init "$exp" || { [[ "$exp" == *.py ]] && "$_AI_PY" "$exp" || eval "$exp"; }
 }
 command_not_found_handle() { [[ "$1" != --* ]] && ai_handle_missing "$*"; }
 command_not_found_handler() { command_not_found_handle "$@"; }
 
 ai() {
     if [[ "$1" == "init" ]]; then
-        local path=$(pwd) skills=() name map db
+        local path skills=() name map db
+        path=$(pwd)
         [[ -n "${2:-}" && "${2:-}" != -* ]] && { path="$2"; skills=("${@:3}"); } || skills=("${@:2}")
         mkdir -p "$path" && path=$(CDPATH= cd "$path" && pwd -P) || return 1
         echo "$path" > "$_AI_DIR/.active_cd.$$"
@@ -53,9 +56,11 @@ view() {
     local f="${1:-}"
     if [[ -z "$f" && (! -t 0 || -p /dev/stdin) ]]; then
         FORCE_COLOR=1 "$_AI_PY" -c "import sys,rich.markdown,rich.console;rich.console.Console().print(rich.markdown.Markdown(sys.stdin.read()))"
-    elif [[ "$f" == *.md && -f "$f" ]]; then
+    elif [[ -n "$f" && "$f" == *.md && -f "$f" ]]; then
         FORCE_COLOR=1 "$_AI_PY" -m rich.markdown "$f"
-    else
+    elif [[ -n "$f" ]]; then
         cat "$@"
+    else
+        cat
     fi
 }

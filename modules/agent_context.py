@@ -7,7 +7,7 @@ from typing import List, Set, Dict, Any, Optional, Tuple
 _CACHED_ENTRIES: Optional[List[Dict[str, Any]]] = None
 _LAST_M_TIME: float = 0.0
 TOKEN_RE: re.Pattern = re.compile(r"[^\w\s]")
-STOP_WORDS: Set[str] = {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"}
+STOP_WORDS: Set[str] = frozenset({"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"})
 
 
 def tokenize(text: str, stop_words: Set[str] = STOP_WORDS) -> List[str]:
@@ -21,18 +21,26 @@ def load_context_entries(context_file: str, stop_words: Set[str] = STOP_WORDS) -
     if not os.path.exists(context_file): return []
     try:
         current_mtime = os.path.getmtime(context_file)
-        if _CACHED_ENTRIES is not None and current_mtime <= _LAST_M_TIME: return _CACHED_ENTRIES
+        if _CACHED_ENTRIES is not None and current_mtime <= _LAST_M_TIME:
+            return _CACHED_ENTRIES
 
         with open(context_file, "r", encoding="utf-8") as f:
-            lines = [l.strip() for l in f.read().splitlines() if (c := l.strip()) and not c.startswith("#") and "--->" in c]
+            lines = [c for l in f.read().splitlines() if (c := l.strip()) and not c.startswith("#") and "--->" in c]
 
         parsed: List[Dict[str, Any]] = []
         for line in lines:
             cmd, intents_str = line.split("--->", 1)
             cmd_clean = cmd.strip()
+            primary_intent = intents_str.split(",")[0].strip()
             for intent in [i.strip() for i in intents_str.split(",") if i.strip()]:
                 if tokens := tokenize(intent, stop_words):
-                    parsed.append({"cmd": cmd_clean, "intent": intent, "primary": intents_str.split(",")[0].strip(), "tokens": tokens, "tokens_set": set(tokens)})
+                    parsed.append({
+                        "cmd": cmd_clean,
+                        "intent": intent,
+                        "primary": primary_intent,
+                        "tokens": tokens,
+                        "tokens_set": frozenset(tokens)
+                    })
 
         _CACHED_ENTRIES, _LAST_M_TIME = parsed, current_mtime
         return _CACHED_ENTRIES
@@ -42,20 +50,29 @@ def load_context_entries(context_file: str, stop_words: Set[str] = STOP_WORDS) -
 
 
 def jaccard_search(query: str, context_file: str, stop_words: Set[str] = STOP_WORDS, threshold: float = 0.45) -> Optional[str]:
-    """Computes Jaccard index intersections to locate and rank mapped intents."""
-    q_clean, q_tokens = query.strip().lower(), set(tokenize(query, stop_words))
-    if not q_tokens or not (entries := load_context_entries(context_file, stop_words)): return None
+    """Computes Jaccard index intersections to locate and rank mapped intents with zero set-union allocations."""
+    q_clean = query.strip().lower()
+    q_tokens = frozenset(tokenize(query, stop_words))
+    if not q_tokens or not (entries := load_context_entries(context_file, stop_words)):
+        return None
 
+    len_q = len(q_tokens)
     candidates: List[Tuple[float, str, str]] = []
+
     for entry in entries:
         ent_tokens, ent_clean = entry["tokens_set"], entry["intent"].strip().lower()
-        if not (inter_len := len(q_tokens & ent_tokens)) and q_clean not in ent_clean: continue
-        union_len = len(q_tokens | ent_tokens)
+        inter_len = len(q_tokens & ent_tokens)
+        if not inter_len and q_clean not in ent_clean:
+            continue
+
+        # Zero-allocation union size computation: |A| + |B| - |A ∩ B|
+        union_len = len_q + len(ent_tokens) - inter_len
         score = inter_len / union_len if union_len else 0.0
 
         if q_clean in ent_clean: score = max(score, 0.8)
         if q_clean == ent_clean: score = 3.0
-        if score >= threshold: candidates.append((score, entry["cmd"], entry.get("primary", entry["intent"])))
+        if score >= threshold:
+            candidates.append((score, entry["cmd"], entry.get("primary", entry["intent"])))
 
     if not candidates: return None
     candidates.sort(key=lambda x: (-x[0], len(x[2])))

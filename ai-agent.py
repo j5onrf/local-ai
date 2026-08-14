@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Local-Ai Agent [j5onrf] [v0.9.8.41]"""
+"""Local-Ai Agent [j5onrf] [v0.9.8.50]"""
 
-import json, os, re, shutil, sqlite3, subprocess, sys, threading, time, urllib.request as urlreq
-from typing import List, Optional, Tuple, Dict, Any
+import json, os, re, shutil, sqlite3, subprocess, sys, threading, time
+from typing import List, Optional, Tuple
 from contextlib import closing
 
 CFG_DIR: str = os.path.expanduser("~/.config/local-ai")
@@ -14,8 +14,10 @@ BASE_PROMPT: str = "Read-only local shell assistant.\nIf <context> is provided, 
 BASE_PROMPT_CHAT: str = BASE_PROMPT + "### Conversational Guidelines:\n- Role: Active, natural, and highly articulate conversational assistant.\n- Tone: Professional, warm, objective, and intellectually engaging.\n\n"
 BASE_PROMPT_AGENT: str = "Active local project workspace developer agent.\nIf <context> is provided, answer directly using only its facts. Otherwise, answer normally.\n\n"
 
-try: from agent_context import STOP_WORDS
-except ImportError: STOP_WORDS = {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"}
+try:
+    from agent_context import STOP_WORDS
+except ImportError:
+    STOP_WORDS = frozenset({"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"})
 
 
 def load_env_file(path: str) -> None:
@@ -63,10 +65,20 @@ def workspace_db_counts(safe_name: str) -> Tuple[int, int]:
 
 
 def ensure_clean_agent_dir(workspace_path: str) -> None:
-    """Relocates auto-created agent files into project/.agent/ to keep workspace clean."""
+    """Relocates auto-created agent files (and SQLite WAL companions) into project/.agent/."""
     if not (ws_name := os.path.basename(workspace_path)): return
     agent_dir = os.path.join(workspace_path, ".agent")
-    for fname in (f"index-map-{ws_name}.txt", f"index-map-memory-{ws_name}.db", "history.md", "tpm.md"):
+    
+    files_to_relocate = [
+        f"index-map-{ws_name}.txt",
+        f"index-map-memory-{ws_name}.db",
+        f"index-map-memory-{ws_name}.db-wal",
+        f"index-map-memory-{ws_name}.db-shm",
+        "history.md",
+        "tpm.md"
+    ]
+
+    for fname in files_to_relocate:
         src = os.path.join(workspace_path, fname)
         if os.path.exists(src):
             os.makedirs(agent_dir, exist_ok=True)
@@ -78,7 +90,8 @@ def sync_md_to_sqlite(workspace: str, workspace_path: str) -> None:
     md_path = os.path.join(workspace_path, ".agent", "tpm.md")
     if os.path.exists(md_path):
         try:
-            with open(md_path, "r", encoding="utf-8") as f: matches = re.findall(r"\*\s+\*\*([^*]+)\*\*:\s*(.*)", f.read())
+            with open(md_path, "r", encoding="utf-8") as f:
+                matches = re.findall(r"\*\s+\*\*([^*]+)\*\*:\s*(.*)", f.read())
             if matches:
                 core.run_mod("ai-agent-memories", "tpm-reconcile", workspace, input_data=json.dumps({k.strip().lower(): v.strip() for k, v in matches}))
         except (OSError, json.JSONDecodeError): pass
@@ -205,7 +218,8 @@ def run_interactive_chat(args: List[str]) -> None:
                 parts = query.split()
                 if parts and parts[0] in ("/task", "/loop", "/ralph"):
                     task_text = query.split(maxsplit=1)[1] if len(parts) > 1 else ""
-                    subprocess.run([sys.executable, f"{CFG_DIR}/tools/loop/ralph.py", task_text])
+                    ralph_env = {**os.environ, "AI_WORKSPACE_PATH": workspace_path}
+                    subprocess.run([sys.executable, f"{CFG_DIR}/tools/loop/ralph.py", task_text], cwd=workspace_path, env=ralph_env)
                     continue
 
                 if query.lower() in ("/help", "/h"):
@@ -259,6 +273,7 @@ def run_interactive_chat(args: List[str]) -> None:
                     ui._console.print(f"[yellow][sys] Confirmation gates {'disabled (Autonomous / YOLO mode active)' if new_yolo else 'enabled (y/n confirmation required per action)'}.[/yellow]\n")
                     continue
 
+                parts = query.split()
                 if parts and parts[0] in ("/t", "/thinking"):
                     if len(parts) > 1:
                         sub = parts[1].lower()
@@ -317,12 +332,10 @@ def run_interactive_chat(args: List[str]) -> None:
                     agent_dir = os.path.join(workspace_path, ".agent")
                     db_path = os.path.join(SESSIONS_DIR, f"{safe_name}.db")
 
-                    # Deletes .agent/ (including config.json and index maps)
                     if os.path.exists(agent_dir):
                         try: shutil.rmtree(agent_dir)
                         except OSError: pass
 
-                    # Deletes the workspace SQLite database
                     if os.path.exists(db_path):
                         try: os.remove(db_path)
                         except OSError: pass
@@ -385,7 +398,7 @@ def run_interactive_chat(args: List[str]) -> None:
             if is_agent and memory_active:
                 if not is_first_turn and len(query) > 5:
                     try:
-                        res = subprocess.run([sys.executable, f"{CFG_DIR}/modules/ai-agent-memories", "get-context", safe_name, query], stdout=subprocess.PIPE, text=True)
+                        res = subprocess.run([sys.executable, f"{CFG_DIR}/modules/ai-agent-memories", "get-context", safe_name, query], stdout=subprocess.PIPE, text=True, timeout=10)
                         if res.returncode == 2: pending_query = None; continue
                         if res.returncode == 3: memory_active = False; core.save_state("memory_active", False)
                         past_memory = res.stdout.strip()
@@ -437,12 +450,18 @@ def run_interactive_chat(args: List[str]) -> None:
 
 def run_direct_query(args: List[str]) -> None:
     query_parts = args[1:]
+    query = " ".join(query_parts).strip()
+
+    if query.lower() in ("/help", "/h", "help", "--help", "-h"):
+        ui.show_help()
+        sys.exit(0)
+
     skill_content = ""
     if query_parts and query_parts[-1].startswith("-"):
         skill_content = skills.load_skill_content(query_parts[-1].lstrip("-").lower(), SKILLS_DIR, CFG_DIR)
         query_parts = query_parts[:-1]
+        query = " ".join(query_parts).strip()
 
-    query = " ".join(query_parts)
     sys_ctx = skills.get_system_context(query, CONTEXT_FILE, STOP_WORDS, SKILLS_DIR, CFG_DIR)
     if sys_ctx == "__ABORT_TURN__": sys_ctx = ""
 

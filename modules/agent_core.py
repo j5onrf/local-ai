@@ -14,27 +14,20 @@ from rich.syntax import Syntax
 
 import agent_ui as ui
 import agent_cloud
-import agent_tools as tools
 
 CFG_DIR: str = os.path.expanduser("~/.config/local-ai")
 STATE_FILE: str = os.path.join(CFG_DIR, ".state.json")
 
 _console, _console_err, _session = Console(), Console(stderr=True), requests.Session()
 
+# Pre-compiled regular expressions
 ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*m')
 RE_THINKING_TITLE = re.compile(r'^\s*Thinking Process:\s*', re.IGNORECASE)
 RE_FINAL_ANSWER = re.compile(r'^\s*Final Answer:\s*', re.IGNORECASE)
 RE_MULTIPLE_NEWLINES = re.compile(r'\n{2,}')
 RE_JSON_OBJECT = re.compile(r"\{[\s\S]*\}")
 RE_ABS_PATH = re.compile(r'/(?:[a-zA-Z0-9_\-\.]+/)*[a-zA-Z0-9_\-\.]*')
-
-_MD_COMPACT_RULES = (
-    (re.compile(r'\*\*(.*?)\*\*'), r'[bold]\1[/bold]'),
-    (re.compile(r'\*(.*?)\*'), r'[italic]\1[/italic]'),
-    (re.compile(r'`(.*?)`'), r'[cyan]\1[/cyan]'),
-    (re.compile(r'^(\s*\d+\.)'), r'[bold green]\1[/bold green]'),
-    (re.compile(r'^(\s*)[-•*]'), r'\1[bold cyan]•[/bold cyan]'),
-)
+RE_TOOL_CALL_BLOCK = re.compile(r'<\|tool_call_start\|>.*?<\|tool_call_end\|>', re.DOTALL)
 
 BINARY_EXTENSIONS = {".db", ".sqlite", ".sqlite3", ".bin", ".pyc", ".so", ".dll", ".exe", ".png", ".jpg", ".jpeg", ".gif", ".zip", ".tar", ".gz", ".7z", ".pdf", ".docx", ".xlsx", ".db-wal", ".db-shm"}
 
@@ -66,24 +59,44 @@ except ImportError: usage_log = None
 try: import speed_test
 except ImportError: speed_test = None
 
+# Internal caches
+_state_cache: Dict[str, Any] = {}
+_state_mtime: float = 0.0
+_server_alive_cache: Dict[str, Tuple[bool, float]] = {}
+
 
 def get_state(key: str = "", default: Any = None) -> Any:
-    st = dict(DEFAULTS)
-    if os.path.exists(STATE_FILE):
-        try:
-            with open(STATE_FILE, "r", encoding="utf-8") as f: st.update(json.load(f))
-        except (OSError, json.JSONDecodeError): pass
-    return st.get(key, default) if key else st
+    """Retrieves state with mtime-based filesystem caching."""
+    global _state_cache, _state_mtime
+    try:
+        if os.path.exists(STATE_FILE):
+            mtime = os.path.getmtime(STATE_FILE)
+            if mtime != _state_mtime or not _state_cache:
+                with open(STATE_FILE, "r", encoding="utf-8") as f:
+                    _state_cache = json.load(f)
+                _state_mtime = mtime
+        else:
+            _state_cache = {}
+    except (OSError, json.JSONDecodeError):
+        pass
+
+    merged = {**DEFAULTS, **_state_cache}
+    return merged.get(key, default) if key else merged
 
 
 def save_state(key: str, value: Any) -> None:
+    """Persists state atomically and updates in-memory cache."""
+    global _state_cache, _state_mtime
     st = get_state()
     st[key] = value
     tmp = f"{STATE_FILE}.tmp"
     try:
         os.makedirs(CFG_DIR, exist_ok=True)
-        with open(tmp, "w", encoding="utf-8") as f: json.dump(st, f, indent=2)
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(st, f, indent=2)
         os.replace(tmp, STATE_FILE)
+        _state_cache = st
+        _state_mtime = os.path.getmtime(STATE_FILE)
     except OSError:
         try:
             if os.path.exists(tmp): os.remove(tmp)
@@ -102,7 +115,8 @@ def run_mod(module_name: str, *args: str, input_data: Optional[str] = None) -> s
             try:
                 res = subprocess.run([sys.executable, path, *args], input=input_data, capture_output=True, text=True, timeout=15)
                 return res.stdout.strip() if res.returncode == 0 else ""
-            except (OSError, subprocess.SubprocessError, TimeoutError): return ""
+            except (OSError, subprocess.SubprocessError, TimeoutError):
+                return ""
     return ""
 
 
@@ -122,26 +136,10 @@ def background_tpm_update(user_msg: str, assistant_msg: str, workspace: str, wor
                 if res := run_mod("ai-agent-memories", "tpm-get", workspace):
                     md_dir = os.path.join(workspace_path, ".agent")
                     os.makedirs(md_dir, exist_ok=True)
-                    with open(os.path.join(md_dir, "tpm.md"), "w", encoding="utf-8") as f: f.write(res + "\n")
-    except (OSError, urlreq.URLError, TimeoutError, json.JSONDecodeError): pass
-
-
-def _clear_lines(stream_err: bool, text: str, extra_top: int = 0) -> None:
-    cols = shutil.get_terminal_size((80, 24)).columns or 80
-    rows = extra_top + sum(max(1, (len(ANSI_ESCAPE.sub('', l.replace('\t', '    '))) + cols - 1) // cols) for l in text.split("\n"))
-    up = max(0, rows - 1)
-    target = sys.stderr if stream_err else sys.stdout
-    try:
-        target.write(f"\r\033[{up}A\033[J" if up > 0 else "\r\033[J")
-        target.flush()
-    except (IOError, OSError): pass
-
-
-def _render_compact_markdown_think(raw_think: str) -> None:
-    clean = RE_THINKING_TITLE.sub('', raw_think).strip()
-    if clean:
-        try: _console_err.print(Markdown(clean, code_theme="ansi_dark"))
-        except (ValueError, KeyError, TypeError, OSError): _console_err.print(clean)
+                    with open(os.path.join(md_dir, "tpm.md"), "w", encoding="utf-8") as f:
+                        f.write(res + "\n")
+    except (OSError, urlreq.URLError, TimeoutError, json.JSONDecodeError):
+        pass
 
 
 class RichStreamer:
@@ -156,7 +154,9 @@ class RichStreamer:
 
     def start(self) -> None:
         if self.active:
-            try: sys.stdout.write("\033[?25h"); sys.stdout.flush()
+            try:
+                sys.stdout.write("\033[?25h")
+                sys.stdout.flush()
             except (IOError, OSError): pass
 
     def update(self, token: str) -> None:
@@ -171,7 +171,7 @@ class RichStreamer:
                 except (IOError, OSError): pass
             return
 
-        show_think, render_md = os.environ.get("AI_SHOW_THINKING", "1") == "1", os.environ.get("AI_RENDER_MARKDOWN", "1") == "1"
+        show_think = os.environ.get("AI_SHOW_THINKING", "1") == "1"
 
         if "<think>" in token and self.phase != "THINKING":
             self.phase, token = "THINKING", token.replace("<think>", "")
@@ -214,7 +214,9 @@ class RichStreamer:
                 p_str = f"{p_clean} " if p_clean else ""
                 p_style = "\033[1;32m" if "Agent" in p_clean else "\033[1;36m"
                 if p_str:
-                    try: sys.stdout.write(f"{p_style}{p_str}\033[0m"); sys.stdout.flush()
+                    try:
+                        sys.stdout.write(f"{p_style}{p_str}\033[0m")
+                        sys.stdout.flush()
                     except (IOError, OSError): pass
                 self.acc_ans += p_str
 
@@ -229,11 +231,13 @@ class RichStreamer:
     def stop(self, interrupted: bool = False) -> None:
         self._stop_spinner()
         if interrupted:
-            try: sys.stdout.write("\033[?25h\r\n"); sys.stdout.flush()
+            try:
+                sys.stdout.write("\033[?25h\r\n")
+                sys.stdout.flush()
             except (IOError, OSError): pass
             return
 
-        show_think, render_md = os.environ.get("AI_SHOW_THINKING", "1") == "1", os.environ.get("AI_RENDER_MARKDOWN", "1") == "1"
+        show_think = os.environ.get("AI_SHOW_THINKING", "1") == "1"
 
         if self.phase == "THINKING" and show_think and self.think_hdr_printed:
             sep = "" if self.acc_think.endswith("\n") else "\r\n"
@@ -241,7 +245,9 @@ class RichStreamer:
             self.phase = "ANSWER"
 
         if self.ans_started and self.acc_ans.strip():
-            try: sys.stdout.write("\r\n"); sys.stdout.flush()
+            try:
+                sys.stdout.write("\r\n")
+                sys.stdout.flush()
             except (IOError, OSError): pass
 
 
@@ -256,7 +262,6 @@ def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float, show_sta
     if not usage_log: return
     try:
         usage_log.record(model, in_tok, out_tok, cost)
-        usage_log.refresh_balance_async(min_age=10)
         if show_stats and sys.stdout.isatty():
             ctx_max = int(os.environ.get("AI_MAX_TOKENS", 8192)) if ctx_used is not None else None
             print(usage_log.turn_line(in_tok, out_tok, cost, ctx_used, ctx_max))
@@ -267,8 +272,7 @@ def _process_stream_chunk(content: str, reasoning: str, in_think_block: bool) ->
     if content:
         if "Final Answer:" in content: content = RE_FINAL_ANSWER.sub('', content).lstrip()
         if "<|tool_call" in content:
-            content = re.sub(r'<\|tool_call_start\|>.*?<\|tool_call_end\|>', '', content, flags=re.DOTALL)
-            content = content.replace("<|tool_call_start|>", "").replace("<|tool_call_end|>", "")
+            content = RE_TOOL_CALL_BLOCK.sub('', content).replace("<|tool_call_start|>", "").replace("<|tool_call_end|>", "")
     if reasoning: return (f"<think>{reasoning}", True, True) if not in_think_block else (reasoning, True, True)
     if content:
         if in_think_block and "</think>" not in content: return f"</think>{content}", False, False
@@ -332,7 +336,8 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
             out = (res.stdout or res.stderr or "").strip()
             _print_tool_output(spinner, out)
             return out or f"[error] Symbol '{sym}' not found in index graph."
-        except (OSError, subprocess.SubprocessError, TimeoutError) as e: return f"[error] failed to extract symbol: {e}"
+        except (OSError, subprocess.SubprocessError, TimeoutError) as e:
+            return f"[error] failed to extract symbol: {e}"
 
     if name == "read_file":
         if os.path.splitext(full)[1].lower() in BINARY_EXTENSIONS or os.path.isdir(full):
@@ -340,7 +345,8 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
         if _is_outside_workspace(workspace, full) and not _confirm_gate(f"OUT-OF-BOUNDS READ: {full}", spinner): return denial
         if gates_active and not _confirm_gate(f"read file {raw_path}", spinner): return denial
         try:
-            with open(full, "r", encoding="utf-8", errors="replace") as f: content = f.read(60000)
+            with open(full, "r", encoding="utf-8", errors="replace") as f:
+                content = f.read(60000)
             _print_tool_output(spinner, content)
             return content
         except OSError as e: return f"[error] failed to read file: {e}"
@@ -356,7 +362,8 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
 
         if sys.stdout.isatty() and os.path.exists(full):
             try:
-                with open(full, "r", encoding="utf-8", errors="replace") as f: old = f.read()
+                with open(full, "r", encoding="utf-8", errors="replace") as f:
+                    old = f.read()
                 if diff := "\n".join(difflib.unified_diff(old.splitlines(), content.splitlines(), fromfile=f"a/{raw_path}", tofile=f"b/{raw_path}", lineterm="")):
                     _console_err.print("\n", Syntax(diff, "diff", theme="ansi_dark", background_color="default"), "\n")
             except OSError: pass
@@ -366,7 +373,8 @@ def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any
 
         try:
             os.makedirs(os.path.dirname(full) or workspace, exist_ok=True)
-            with open(full, "w", encoding="utf-8") as f: f.write(content)
+            with open(full, "w", encoding="utf-8") as f:
+                f.write(content)
             return f"wrote {len(content)} chars to {raw_path}"
         except OSError as e: return f"[error] failed to write file: {e}"
 
@@ -547,11 +555,23 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
 
 
 def _is_local_server_alive(url: str, timeout: float = 0.3) -> bool:
+    """Checks local LLM server liveness with 2.0s memoization to eliminate turn latency."""
     if "localhost" not in url and "127.0.0.1" not in url: return True
+    now = time.time()
+    cached = _server_alive_cache.get("local")
+    if cached and (now - cached[1] < 2.0):
+        return cached[0]
+
+    alive = False
     try:
         req = urlreq.Request("http://localhost:8080/v1/models", method="GET")
-        with urlreq.urlopen(req, timeout=timeout) as r: return r.status == 200
-    except (OSError, urlreq.URLError, TimeoutError): return False
+        with urlreq.urlopen(req, timeout=timeout) as r:
+            alive = (r.status == 200)
+    except (OSError, urlreq.URLError, TimeoutError):
+        alive = False
+
+    _server_alive_cache["local"] = (alive, now)
+    return alive
 
 
 def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_dir: str = "", show_stats: bool = False, thinking_budget: int = 0, is_agent: bool = False) -> Optional[str]:
@@ -567,10 +587,11 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
 
         for url, headers, body, timeout in configs:
             norm_url = "http://localhost:8080/v1/chat/completions" if ":8080" in url else url.replace("127.0.0.1", "localhost")
-            if "localhost" in norm_url: body.update(think_kwargs)
+            curr_body = dict(body)
+            if "localhost" in norm_url: curr_body.update(think_kwargs)
             if norm_url not in seen_urls:
                 seen_urls.add(norm_url)
-                unique_configs.append(("http://localhost:8080/v1/chat/completions" if ":8080" in url else url, headers, body, timeout))
+                unique_configs.append(("http://localhost:8080/v1/chat/completions" if ":8080" in url else url, headers, curr_body, timeout))
 
         if "http://localhost:8080/v1/chat/completions" not in seen_urls:
             unique_configs.append(("http://localhost:8080/v1/chat/completions", {}, local_body, 180))

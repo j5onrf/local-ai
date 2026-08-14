@@ -2,18 +2,21 @@
 """Offline/Online Spellchecker Module - LanguageTool API & phonetic edit-distance."""
 
 import os, sys, re, json, shutil, difflib, urllib.parse as urlparse, urllib.request as urlreq
-from typing import Set, Dict, Tuple, List, Callable, Any, Optional
+from typing import Set, Dict, Tuple, List, Callable, Optional
 
 TYPO_OVERRIDES: Dict[str, str] = {
     "hellow": "hello", "helow": "hello", "helo": "hello",
     "howre": "how are", "wru": "where are you", "hru": "how are you",
     "youa": "you", "trainted": "trained"
 }
-PROTECTED_WORDS: Set[str] = {"hello", "hi", "hey", "how", "here", "you", "who", "there"}
-DEV_TERMS: Set[str] = {
+PROTECTED_WORDS: Set[str] = frozenset({"hello", "hi", "hey", "how", "here", "you", "who", "there"})
+DEV_TERMS: Set[str] = frozenset({
     "auth", "git", "bash", "zsh", "cli", "tui", "yaml", "json", "ast", "llm",
     "api", "url", "cmd", "args", "uuid", "md", "txt", "db", "sqlite", "epoxy", "wttr"
-}
+})
+
+RE_WORD_BOUNDARIES: re.Pattern = re.compile(r'(\b[a-zA-Z]+\b)')
+RE_WHITESPACE: re.Pattern = re.compile(r'(\s+)')
 
 
 def load_system_dictionary() -> Set[str]:
@@ -70,7 +73,7 @@ def _match_case(original: str, replacement: str) -> str:
 
 
 def _transform_words(query: str, mapper: Callable[[str], Optional[str]]) -> Tuple[str, bool]:
-    chunks, changed = re.split(r'(\b[a-zA-Z]+\b)', query), False
+    chunks, changed = RE_WORD_BOUNDARIES.split(query), False
     res = []
     for chunk in chunks:
         if chunk.isalpha() and (rep := mapper(chunk)):
@@ -93,7 +96,7 @@ def check_query_spelling_offline(query: str) -> Tuple[str, bool]:
 
 def highlight_diff(original: str, corrected: str) -> str:
     """Highlights differences between the original input and the auto-corrected query."""
-    orig_words, corr_words = re.split(r'(\s+)', original), re.split(r'(\s+)', corrected)
+    orig_words, corr_words = RE_WHITESPACE.split(original), RE_WHITESPACE.split(corrected)
     res = []
     for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, orig_words, corr_words).get_opcodes():
         chunk = "".join(corr_words[j1:j2])
@@ -110,20 +113,27 @@ def _get_prio(w: str, orig: str) -> int:
 
 
 def check_query_spelling(query: str, get_key_fn: Callable[[], str]) -> Tuple[str, str]:
-    """Runs spellcheck verification pipelines with fallback priorities."""
+    """Runs spellcheck verification pipelines with fast local timeout handling."""
     orig_input = query
     query, changed_static = apply_static_overrides(query)
     corrected_query, changed, used_grammar = query, changed_static, False
     resp_data = None
 
-    for url in ("http://localhost:8010/v2/check", "http://localhost:8081/v2/check", "https://api.languagetool.org/v2/check"):
+    endpoints = [
+        ("http://localhost:8010/v2/check", 0.25),
+        ("http://localhost:8081/v2/check", 0.25),
+        ("https://api.languagetool.org/v2/check", 1.2)
+    ]
+
+    for url, timeout_val in endpoints:
         try:
             req = urlreq.Request(url, data=urlparse.urlencode({'text': query, 'language': 'en-US'}).encode('utf-8'), method='POST')
-            with urlreq.urlopen(req, timeout=1.2) as r:
+            with urlreq.urlopen(req, timeout=timeout_val) as r:
                 resp_data = json.loads(r.read().decode('utf-8'))
                 used_grammar = True
                 break
-        except (OSError, urlreq.URLError, TimeoutError, json.JSONDecodeError): pass
+        except (OSError, urlreq.URLError, TimeoutError, json.JSONDecodeError):
+            pass
 
     if resp_data and "matches" in resp_data and (matches := resp_data["matches"]):
         matches.sort(key=lambda m: m.get("offset", 0), reverse=True)

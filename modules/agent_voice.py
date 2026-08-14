@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """Local-AI Standalone Voice to Text Module"""
 
-import base64, fcntl, http.server, json, os, re, readline, select, socket, socketserver, ssl, subprocess, sys, termios, threading, time, urllib.request as urlreq
+import base64, http.server, json, os, re, socket, ssl, subprocess, sys, threading, time, urllib.request as urlreq
 from typing import Tuple
 
 PORT = 9999
 CFG_DIR = os.path.expanduser("~/.config/local-ai")
 PENDING_FILE = os.path.join(CFG_DIR, ".voice_pending.txt")
+
+RE_CLEAN_TRANSCRIPTION: re.Pattern = re.compile(r'[^a-zA-Z0-9\s?.,!\'-]')
+RE_NUMERIC_DIGITS: re.Pattern = re.compile(r'^\d{1,4}$')
 
 try:
     import agent_core as core
@@ -149,9 +152,10 @@ def load_voice_env() -> None:
 def transcribe_gemini(audio_data: bytes, mime_type: str = "audio/webm") -> str:
     load_voice_env()
     gkey = os.environ.get("GEM_VOICE") or os.environ.get("GEMINI_API_KEY")
-    model = os.environ.get("GEM_MODEL") or os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
+    model = os.environ.get("GEM_MODEL") or os.environ.get("GEMINI_MODEL", "gemini-3.7-flash")
     if not gkey:
-        sys.stderr.write("[error] GEM_VOICE key is not set in ~/.config/local-ai/.env\n"); sys.stderr.flush()
+        sys.stderr.write("[error] GEM_VOICE key is not set in ~/.config/local-ai/.env\n")
+        sys.stderr.flush()
         return ""
 
     encoded = base64.b64encode(audio_data).decode("utf-8")
@@ -173,13 +177,16 @@ def transcribe_gemini(audio_data: bytes, mime_type: str = "audio/webm") -> str:
             except OSError: pass
             res_data = json.loads(resp.read().decode("utf-8"))
             raw = res_data["candidates"][0]["content"]["parts"][0]["text"].strip()
-            clean = re.sub(r'[^a-zA-Z0-9\s?.,!\'-]', '', raw).strip()
+            clean = RE_CLEAN_TRANSCRIPTION.sub('', raw).strip()
             cl_lower = clean.lower()
-            if not clean or len(clean) < 2 or cl_lower in ("silence", "uh", "um", "mm", "thank you", "thank you."): return ""
-            if re.match(r'^\d{1,4}$', clean) and len(set(clean)) == 1: return ""
+            if not clean or len(clean) < 2 or cl_lower in ("silence", "uh", "um", "mm", "thank you", "thank you."):
+                return ""
+            if RE_NUMERIC_DIGITS.match(clean) and len(set(clean)) == 1:
+                return ""
             return clean
     except Exception as e:
-        sys.stderr.write(f"[error] Transcription failed: {e}\n"); sys.stderr.flush()
+        sys.stderr.write(f"[error] Transcription failed: {e}\n")
+        sys.stderr.flush()
         return ""
 
 
@@ -199,7 +206,7 @@ def get_prompt_input(symbol: str = "❯") -> str:
         except OSError: pass
 
     try:
-        return input("❯ ").strip()
+        return input(f"{symbol} ").strip()
     except (KeyboardInterrupt, EOFError):
         raise
 
@@ -215,7 +222,8 @@ class VoiceHandler(http.server.SimpleHTTPRequestHandler):
                 audio_data = self.rfile.read(length)
                 query = transcribe_gemini(audio_data, mime_type=mime_type) if audio_data else ""
                 if query:
-                    sys.stderr.write(f"[sys] Transcribed: {query}\n"); sys.stderr.flush()
+                    sys.stderr.write(f"[sys] Transcribed: {query}\n")
+                    sys.stderr.flush()
                     with open(PENDING_FILE, "w", encoding="utf-8") as f:
                         f.write(query)
 
@@ -224,8 +232,10 @@ class VoiceHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(query.encode("utf-8"))
         except Exception as e:
-            sys.stderr.write(f"[error] Server error: {e}\n"); sys.stderr.flush()
-            self.send_response(500); self.end_headers()
+            sys.stderr.write(f"[error] Server error: {e}\n")
+            sys.stderr.flush()
+            self.send_response(500)
+            self.end_headers()
 
     def do_GET(self):
         self.send_response(200)
@@ -236,24 +246,30 @@ class VoiceHandler(http.server.SimpleHTTPRequestHandler):
 
 def run_server() -> None:
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try: s.connect(("8.8.8.8", 80)); local_ip = s.getsockname()[0]
-    except Exception: local_ip = "127.0.0.1"
-    finally: s.close()
+    try:
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+    except Exception:
+        local_ip = "127.0.0.1"
+    finally:
+        s.close()
 
     cert_path = os.path.join(CFG_DIR, "server.pem")
     if not os.path.exists(cert_path):
         subprocess.run(f'openssl req -new -x509 -keyout "{cert_path}" -out "{cert_path}" -days 365 -nodes -subj "/CN={local_ip}"', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.TCPServer(("", PORT), VoiceHandler) as httpd:
+    # ThreadingHTTPServer ensures multiple requests / streaming uploads don't block the visualizer UI
+    with http.server.ThreadingHTTPServer(("", PORT), VoiceHandler) as httpd:
         if os.path.exists(cert_path):
             ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
             ctx.load_cert_chain(certfile=cert_path)
             httpd.socket = ctx.wrap_socket(httpd.socket, server_side=True)
 
         print(f"[ok] Voice to Text active: https://{local_ip}:{PORT}")
-        try: httpd.serve_forever()
-        except KeyboardInterrupt: print("\n[sys] Server stopped.")
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            print("\n[sys] Server stopped.")
 
 
 def toggle_voice_bridge(auto_toggle: bool = False) -> Tuple[bool, bool]:

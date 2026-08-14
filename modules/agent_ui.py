@@ -14,6 +14,7 @@ try: import tty, termios
 except ImportError: pass
 
 _console, _console_err = Console(), Console(stderr=True)
+RE_UNSAFE_SHELL_CHARS: re.Pattern = re.compile(r'[\[\]{}()=\'"",;|<>#]')
 
 
 class InlineSpinner:
@@ -67,7 +68,6 @@ class InlineSpinner:
             except (IOError, OSError): pass
 
 
-# Inside _read_fd() in agent_ui.py
 def _read_fd(fd: int) -> str:
     old = termios.tcgetattr(fd)
     try:
@@ -79,12 +79,10 @@ def _read_fd(fd: int) -> str:
         return char_bytes.decode("utf-8", errors="ignore")
     finally:
         termios.tcsetattr(fd, termios.TCSAFLUSH, old)
-        # Ensure standard ONLCR newline processing is restored
         try:
             sys.stdout.write("\033[0m")
             sys.stdout.flush()
-        except Exception:
-            pass
+        except Exception: pass
 
 
 def get_key() -> str:
@@ -179,7 +177,7 @@ def run_interactive_selection(
     intent: str, jaccard_search_fn: Callable[[str], Optional[str]], clean_tool_prefix_fn: Callable[[str], str],
     print_stock_error_fn: Callable[[str], None], ensure_mysys_exists_fn: Callable[[], None]
 ) -> None:
-    if re.search(r'[\[\]{}()=\'"",;|<>#]', intent) or not (matched_base := jaccard_search_fn(intent)):
+    if RE_UNSAFE_SHELL_CHARS.search(intent) or not (matched_base := jaccard_search_fn(intent)):
         print_stock_error_fn(intent)
         sys.exit(127)
 
@@ -251,11 +249,11 @@ def show_help() -> None:
     cmd_table.add_column("Description", style="white")
 
     cmds = [
-        ("/h", "Help menu"), ("/v [auto], /voice", "Voice to text"), ("/tts", "Text out loud"), ("/box [1-5]", "Box style preset"), ("/t [N|show|hide]", "Set reasoning budget or show/hide"),
+        ("/h", "Help menu"), ("/v \\[auto], /voice", "Voice to text"), ("/tts", "Text out loud"), ("/box \\[1-5]", "Box style preset"), ("/t \\[N|show|hide]", "Set reasoning budget or show/hide"),
         ("/g, /yolo", "Toggle confirmation gates (YOLO / autonomous mode)"), ("/m", "Toggle database memory"),
         ("/md", "Toggle markdown"), ("/stats", "Generation speed stats"), ("/tok", "Context token usage"),
         ("/sync", "Sync index"), ("/clear, /c", "Soft clear active chat history"), ("/reset, /purge", "Hard reset (.agent & database purge)"),
-        ("/sp", "Toggle spellchecker"), ("/s <q>", "Skills"), ("/tui", "Textual UI"), ("-save <tag>", "Save session checkpoint"),
+        ("/sp", "Toggle spellchecker"), ("/s <query>", "Skills"), ("/tui", "Textual UI"), ("-save <tag>", "Save session checkpoint"),
         ("-load", "Load or clone checkpoint"), ("/f, /tk, /b, /a", "Follow-up, Thinking, Brainstorm, or All"),
         ("view file <path>", "Load file into context"), ("exit, quit, q", "Exit")
     ]

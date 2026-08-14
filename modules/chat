@@ -7,10 +7,13 @@ try: import agent_ui as ui
 except ImportError: ui = None
 
 CFG_DIR = os.path.expanduser("~/.config/local-ai")
+RE_QUESTION_SPLIT = re.compile(r'(?<=\?)\s+')
 
-try: history = json.loads(sys.stdin.read())
+try:
+    history = json.loads(sys.stdin.read())
 except (OSError, json.JSONDecodeError):
-    sys.stderr.write("Error: No valid chat history passed to brainstorm tool.\n"); sys.exit(1)
+    sys.stderr.write("Error: No valid chat history passed to brainstorm tool.\n")
+    sys.exit(1)
 
 q_str = " ".join(sys.argv[1:]).lower().strip()
 m = re.match(r'^/?([ftba])(?:\s+(\d+))?$', q_str)
@@ -30,7 +33,8 @@ if cmd == "a":
         p = os.path.join(CFG_DIR, "skills", "meta", fn)
         if os.path.exists(p):
             try:
-                txt = open(p, "r", encoding="utf-8").read().strip()
+                with open(p, "r", encoding="utf-8") as f:
+                    txt = f.read().strip()
                 prompts[hdr] = txt.split("Template:")[0].strip() if "Template:" in txt else txt
             except (OSError, UnicodeDecodeError): pass
     prompt = (
@@ -48,10 +52,13 @@ if cmd == "a":
     )
 else:
     meta_path = os.path.join(CFG_DIR, "skills", "meta", file_name)
+    prompt = ""
     if os.path.exists(meta_path):
-        try: prompt = open(meta_path, "r", encoding="utf-8").read().strip().replace("exactly 3", f"exactly {count}")
-        except (OSError, UnicodeDecodeError): prompt = ""
-    else: prompt = ""
+        try:
+            with open(meta_path, "r", encoding="utf-8") as f:
+                prompt = f.read().strip().replace("exactly 3", f"exactly {count}")
+        except (OSError, UnicodeDecodeError):
+            prompt = ""
     if not prompt:
         prompt = f"Analyze history and output exactly {count} next-step {fallback_term} items.\nEach option must be strictly 6 to 10 words long.\nNo conversational filler. Output exactly this format:\n\n{output_hdr}\n[Option 1]\n[Option 2]\n[Option 3]"
 
@@ -59,7 +66,7 @@ history.append({"role": "user", "content": f"[COMMAND: Do not continue the conve
 
 configs = []
 if gkey := os.environ.get("GEMINI_API_KEY"):
-    configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Authorization": f"Bearer {gkey}"}, os.environ.get("CLOUD_MODEL", "gemini-3.5-flash-lite"), {}, 10))
+    configs.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {"Authorization": f"Bearer {gkey}"}, os.environ.get("CLOUD_MODEL", "gemini-3.7-flash"), {}, 10))
 if okey := os.environ.get("OPENROUTER_API_KEY"):
     configs.append(("https://openrouter.ai/api/v1/chat/completions", {"Authorization": f"Bearer {okey}", "HTTP-Referer": "https://github.com/j5onrf/local-ai"}, os.environ.get("OPENROUTER_MODEL", "openrouter/free"), {}, 10))
 configs.append(("http://localhost:8080/v1/chat/completions", {}, None, {"chat_template_kwargs": {"enable_thinking": False}}, 180))
@@ -106,12 +113,14 @@ for url, headers, model, extra, timeout in configs:
                     clean = l.strip("*#: \t").lower().rstrip('s:')
                     if clean in hdr_map: sys.stdout.write(f"\033[1;32mAI:\033[0m {hdr_map[clean]}\n")
                     else:
-                        for q in [x.strip() for x in re.split(r'(?<=\?)\s+', l) if x.strip()]: sys.stdout.write(f"{q}\n")
+                        for q in [x.strip() for x in RE_QUESTION_SPLIT.split(l) if x.strip()]:
+                            sys.stdout.write(f"{q}\n")
                 sys.stdout.flush()
                 sys.exit(0)
     except KeyboardInterrupt:
         if spinner: spinner.stop()
-        sys.stderr.write("\n\033[90m[sys] Interrupted.\033[0m\n"); sys.exit(130)
+        sys.stderr.write("\n\033[90m[sys] Interrupted.\033[0m\n")
+        sys.exit(130)
     except (urlreq.URLError, TimeoutError, OSError):
         if spinner: spinner.stop()
 

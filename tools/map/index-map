@@ -19,13 +19,20 @@ LANG_RULES = {
 }
 COMPILED_LANG_RULES = {l: {k: re.compile(v) for k, v in r.items()} for l, r in LANG_RULES.items()}
 
-DEFAULT_IGNORED = {'.git', '__pycache__', 'logs', '.auto-f', 'node_modules', 'venv', '.venv', 'SSD_BACKUPS', '.cargo', '.rustup', '.cache', '.npm', '.local', '.mozilla', 'target', '.agent', '.idea', '.vscode'}
+DEFAULT_IGNORED = frozenset({'.git', '__pycache__', 'logs', '.auto-f', 'node_modules', 'venv', '.venv', 'SSD_BACKUPS', '.cargo', '.rustup', '.cache', '.npm', '.local', '.mozilla', 'target', '.agent', '.idea', '.vscode'})
 
+RE_MD_TITLE = re.compile(r'^#\s+(.*)', re.M)
+RE_MD_FRONTMATTER = re.compile(r'^---\s*\n(.*?)\n---\s*\n', re.DOTALL)
+RE_MD_TAGS = re.compile(r'tags\s*:\s*[\[\']?([^\]\']+)\]?', re.I)
+RE_MD_WIKI_LINKS = re.compile(r'\[\[([^#\]|]+)(?:#[^\]|]+)?(?:\|[^\]]+)?\]\]')
+RE_MD_STD_LINKS = re.compile(r'\[[^\]]+\]\(([^)]+\.(?:md|txt|py|sh|rs|go|lua))\)')
 
-def safe_exit(code=0):
-    try: sys.stdout.flush(); sys.stderr.flush()
-    except Exception: pass
-    sys.exit(code)
+RE_QML_COMMENTS = re.compile(r'//.*|/\*.*?\*/', re.DOTALL)
+RE_QML_PROPS = re.compile(r'\bproperty\s+\w+\s+(\w+)')
+RE_QML_FUNCS = re.compile(r'\bfunction\s+(\w+)')
+
+RE_SVG_WIDTH = re.compile(r'width\s*=\s*["\']([^"\']+)["\']')
+RE_SVG_HEIGHT = re.compile(r'height\s*=\s*["\']([^"\']+)["\']')
 
 
 def load_gitignore_patterns(target_dir):
@@ -136,7 +143,8 @@ def parse_non_python_file(filepath, ext):
     rules, classes, functions, calls = COMPILED_LANG_RULES[lang], [], [], []
 
     try:
-        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f: lines = f.readlines()
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            lines = f.readlines()
     except Exception: return empty
 
     cur_class, cur_func = None, None
@@ -160,12 +168,12 @@ def parse_non_python_file(filepath, ext):
 def analyze_markdown_file(filepath):
     try:
         with open(filepath, 'r', encoding='utf-8', errors='ignore') as f: content = f.read()
-        tm, tags, links = re.search(r'^#\s+(.*)', content, re.M), set(), set()
-        if fm_match := re.search(r'^---\s*\n(.*?)\n---\s*\n', content, re.DOTALL):
-            if tags_match := re.search(r'tags\s*:\s*[\[\']?([^\]\']+)\]?', fm_match.group(1), re.I):
+        tm, tags, links = RE_MD_TITLE.search(content), set(), set()
+        if fm_match := RE_MD_FRONTMATTER.search(content):
+            if tags_match := RE_MD_TAGS.search(fm_match.group(1)):
                 tags.update(t.strip().lower() for t in tags_match.group(1).split(',') if t.strip())
-        for w in re.findall(r'\[\[([^#\]|]+)(?:#[^\]|]+)?(?:\|[^\]]+)?\]\]', content): links.add(w.strip())
-        for ml in re.findall(r'\[[^\]]+\]\(([^)]+\.(?:md|txt|py|sh|rs|go|lua))\)', content):
+        for w in RE_MD_WIKI_LINKS.findall(content): links.add(w.strip())
+        for ml in RE_MD_STD_LINKS.findall(content):
             if not ml.startswith(("http", "https")): links.add(os.path.basename(ml))
         return {"type": "markdown", "title": tm.group(1).strip() if tm else os.path.splitext(os.path.basename(filepath))[0], "tags": sorted(list(tags)), "links": sorted(list(links))}
     except Exception: return {"type": "markdown", "title": os.path.splitext(os.path.basename(filepath))[0]}
@@ -187,7 +195,7 @@ def analyze_image_file(filepath):
                 idx += length + 2
         elif ext == "svg":
             text = head.decode("utf-8", errors="ignore")
-            wm, hm = re.search(r'width\s*=\s*["\']([^"\']+)["\']', text), re.search(r'height\s*=\s*["\']([^"\']+)["\']', text)
+            wm, hm = RE_SVG_WIDTH.search(text), RE_SVG_HEIGHT.search(text)
             return {"type": "image/svg", "dim": f"{wm.group(1) if wm else ''}x{hm.group(1) if hm else ''}", "size": size_str}
         return {"type": f"image/{ext}", "dim": f"{w}x{h}", "size": size_str} if w and h else {"type": f"image/{ext}", "size": size_str}
     except Exception: return {"type": f"image/{ext}", "size": size_str}
@@ -202,8 +210,9 @@ def analyze_json_file(filepath):
 
 def analyze_qml_file(filepath):
     try:
-        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f: content = re.sub(r'//.*|/\*.*?\*/', '', f.read(), flags=re.DOTALL)
-        return {"type": "qml", "properties": re.findall(r'\bproperty\s+\w+\s+(\w+)', content), "functions": re.findall(r'\bfunction\s+(\w+)', content)}
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            content = RE_QML_COMMENTS.sub('', f.read())
+        return {"type": "qml", "properties": RE_QML_PROPS.findall(content), "functions": RE_QML_FUNCS.findall(content)}
     except Exception: return {"type": "qml", "error": "Unparseable"}
 
 
@@ -388,7 +397,9 @@ def run_indexing(target_dir, force=False, is_agent=False, no_db=False):
             elif ext in ('.rs', '.go', '.lua', '.js', '.ts', '.cpp', '.hpp', '.c', '.h'):
                 parsed = parse_non_python_file(fp, ext)
                 raw_calls[rel_path] = parsed['calls']
-                try: file_lines = open(fp, 'r', encoding='utf-8', errors='ignore').read().splitlines()
+                try:
+                    with open(fp, 'r', encoding='utf-8', errors='ignore') as f:
+                        file_lines = f.read().splitlines()
                 except Exception: file_lines = []
                 skeleton[rel_path] = {"type": ext.lstrip('.'), "classes": [c[0] for c in parsed['classes']], "functions": [f[0] for f in parsed['functions']]}
                 if db_conn: _commit_structures_to_db(db_conn, rel_path, ext.lstrip('.'), parsed['classes'], parsed['functions'], file_lines, use_vec)

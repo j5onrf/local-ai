@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """Native Tool Engine - Handles file editing, commands, & graph intelligence"""
 
-import os, sys, json, ast, re, difflib, subprocess, urllib.parse
+import os, sys, json, ast, re, subprocess, urllib.parse
 from typing import List, Dict, Any, Optional, Callable
 
 CFG_DIR: str = os.path.expanduser("~/.config/local-ai")
-BINARY_EXTENSIONS = {".db", ".sqlite", ".sqlite3", ".bin", ".pyc", ".so", ".dll", ".exe", ".png", ".jpg", ".jpeg", ".gif", ".zip", ".tar", ".gz", ".7z", ".pdf", ".docx", ".xlsx", ".db-wal", ".db-shm"}
+BINARY_EXTENSIONS = frozenset({
+    ".db", ".sqlite", ".sqlite3", ".bin", ".pyc", ".so", ".dll", ".exe",
+    ".png", ".jpg", ".jpeg", ".gif", ".zip", ".tar", ".gz", ".7z",
+    ".pdf", ".docx", ".xlsx", ".db-wal", ".db-shm"
+})
 RE_ABS_PATH = re.compile(r'/(?:[a-zA-Z0-9_\-\.]+/)*[a-zA-Z0-9_\-\.]*')
 
 EDIT_TOOLS: List[Dict[str, Any]] = [
@@ -103,7 +107,8 @@ def run_tool(name: str, args: Dict[str, Any], workspace: str, confirm_gate_fn: O
         if _is_outside_workspace(workspace, full) and not _gate(f"OUT-OF-BOUNDS READ: {full}"): return denial
         if gates_active and not _gate(f"read file {raw_path}"): return denial
         try:
-            with open(full, "r", encoding="utf-8", errors="replace") as f: content = f.read(60000)
+            with open(full, "r", encoding="utf-8", errors="replace") as f:
+                content = f.read(60000)
             if print_output_fn: print_output_fn(content)
             return content
         except OSError as e: return f"[error] failed to read file: {e}"
@@ -122,7 +127,8 @@ def run_tool(name: str, args: Dict[str, Any], workspace: str, confirm_gate_fn: O
 
         try:
             os.makedirs(os.path.dirname(full) or workspace, exist_ok=True)
-            with open(full, "w", encoding="utf-8") as f: f.write(content)
+            with open(full, "w", encoding="utf-8") as f:
+                f.write(content)
             return f"wrote {len(content)} chars to {raw_path}"
         except OSError as e: return f"[error] failed to write file: {e}"
 
