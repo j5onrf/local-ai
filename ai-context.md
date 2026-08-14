@@ -28,9 +28,9 @@
 
 ```properties
 # --- Workspaces ---
-ai init ~/.config/local-ai/projects/session-test ---> session test, projects session, projects
-ai init ~/.config/local-ai/projects/session-test-2 ---> session test 2, projects session, projects
-ai init ~/.config/local-ai/projects/session-test-3 ---> session test 3, projects session, projects
+ai init ~/.config/local-ai/projects/session-test ---> session test, projects session
+ai init ~/.config/local-ai/projects/session-test-2 ---> session test 2, projects session
+ai init ~/.config/local-ai/projects/session-test-3 ---> session test 3, projects session
 ```
 
 ## 2. Codebase Map
@@ -110,5 +110,5 @@ pkill -9 -f "pw-play|koko" ---> stop speech, kill tts
 [TOOL] curl -s "wttr.in/?format=3" --cat ---> weather simple, get weather
 [TOOL] curl -s wttr.in --cat ---> weather full, get weather
 # --- Time & Date ---
-[TOOL] date "+TIME: %I:%M:%S %p %Z, %A, %B %d, %Y" ---> what date, what time, get date
+[TOOL] date "+Current System Date, Time: %-I %M %p on %A, %B %-d, %Y" ---> get date, get time
 ```

@@ -8,6 +8,7 @@ VOICE_FILE = os.path.expanduser("~/.config/koko_current_voice")
 RE_THINK_BLOCK: re.Pattern = re.compile(r'<think>.*?</think>', re.DOTALL)
 RE_CODE_BLOCK: re.Pattern = re.compile(r'```.*?```', re.DOTALL)
 RE_MARKDOWN_CHARS: re.Pattern = re.compile(r'[*_#`~>\[\]()|]')
+RE_TIME_COLON: re.Pattern = re.compile(r'(\b\d{1,2}):(\d{2}\b)')
 
 try:
     import agent_core as core
@@ -33,6 +34,8 @@ def speak_text(text: str) -> None:
 
     clean = RE_THINK_BLOCK.sub('', text)
     clean = RE_CODE_BLOCK.sub('code block omitted', clean)
+    clean = RE_TIME_COLON.sub(r'\1 \2', clean)  # Converts 11:36 -> 11 36
+    clean = clean.replace(':', ', ')             # Replaces any lingering colons with natural pauses
     clean = RE_MARKDOWN_CHARS.sub('', clean).strip()
     if not clean: return
 
