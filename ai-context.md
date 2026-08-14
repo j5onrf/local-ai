@@ -1,4 +1,4 @@
-# Local-AI Blueprint
+# Local-AI Config
 
 > **Syntax**: `[command / execution] ──> [intent1], [intent2], [intent3]`  
 > **Delimiter**: `" ---> "` (Three-dash arrow with a trailing space)
