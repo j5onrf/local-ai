@@ -42,9 +42,9 @@ ai init ~/.config/local-ai/projects/session-test-3 ---> session test 3, projects
 
 ```properties
 # --- Voice to Text ---
-~/.config/local-ai/modules/agent_voice.py ---> voice, voice query, voice bridge, voice to text, v2t
+~/.config/local-ai/modules/agent_voice.py ---> voice, voice query, voice to text, v2t
 # --- Text to Speech (TTS) ---
-pkill -9 -f "pw-play|koko" ---> stop speech, kill tts, quiet, stop talking, tts
+pkill -9 -f "pw-play|koko" ---> stop speech, kill tts
 ```
 
 ## 4. Web & Files
