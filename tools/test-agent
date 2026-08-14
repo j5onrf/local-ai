@@ -144,9 +144,9 @@ try:
     if os.path.exists(ctx_path):
         entries = context.load_context_entries(ctx_path)
         print_result(f"ai-context.md ({len(entries)} intent tokens)", len(entries) > 0)
-        match = context.jaccard_search("weather forecast", ctx_path)
+        match = context.jaccard_search("get weather", ctx_path)
         p7 = match is not None and "wttr" in match
-        print_result("Intent Matching Query ('weather' -> wttr)", p7)
+        print_result("Intent Matching Query ('get weather' -> wttr)", p7)
         all_passed = all_passed and p7
     else:
         print_result("ai-context.md exists", False, "File missing")
@@ -155,11 +155,17 @@ try:
     # --- PASS 8: SPEND LEDGER & PRICING ---
     print(f"\n{CYAN}[Pass 8/8] Spend Ledger & Cost Engine{RESET}")
     import agent_usage as usage
-    usage.record("gemini-3.7-flash", 1000000, 1000000, 0.0)
-    line = usage.turn_line(1000000, 1000000, 4.50, 2000000, 8192)
-    p8 = "$4.50" in line
-    print_result("Gemini 3.7 Flash Spend Accounting", p8, f"Summary: {line.strip()}")
-    all_passed = all_passed and p8
+    orig_ledger = usage.LEDGER_PATH
+    try:
+        # Isolate in sandbox to prevent recording dummy spend in real ledger
+        usage.LEDGER_PATH = os.path.join(sandbox_dir, "test_ledger.json")
+        usage.record("gemini", 1000000, 1000000, 0.0)
+        line = usage.turn_line(1000000, 1000000, 4.50, 2000000, 8192)
+        p8 = "$4.50" in line
+        print_result("Dummy Test Spend Accounting", p8, f"Summary: {line.strip()}")
+        all_passed = all_passed and p8
+    finally:
+        usage.LEDGER_PATH = orig_ledger
 
 finally:
     shutil.rmtree(sandbox_dir, ignore_errors=True)
