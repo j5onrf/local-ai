@@ -253,11 +253,13 @@ class RichStreamer:
 
 def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float, show_stats: bool, ctx_used: Optional[int] = None, user_msg: str = "", assistant_msg: str = "") -> None:
     try:
-        ws = os.environ.get("AI_WORKSPACE_PATH", os.getcwd())
-        agent_dir = os.path.join(ws, ".agent")
-        os.makedirs(agent_dir, exist_ok=True)
-        with open(os.path.join(agent_dir, "session.jsonl"), "a", encoding="utf-8") as f:
-            f.write(json.dumps({"timestamp": int(time.time()), "user_msg": user_msg, "assistant_msg": assistant_msg, "model": model, "in_tok": in_tok, "out_tok": out_tok}) + "\n")
+        ws = os.environ.get("AI_WORKSPACE_PATH")
+        # Only log session.jsonl inside explicit project workspaces (never in ~/.config/local-ai or home)
+        if ws and os.path.isdir(ws) and os.path.realpath(ws) not in (os.path.realpath(os.path.expanduser("~")), os.path.realpath(CFG_DIR)):
+            agent_dir = os.path.join(ws, ".agent")
+            os.makedirs(agent_dir, exist_ok=True)
+            with open(os.path.join(agent_dir, "session.jsonl"), "a", encoding="utf-8") as f:
+                f.write(json.dumps({"timestamp": int(time.time()), "user_msg": user_msg, "assistant_msg": assistant_msg, "model": model, "in_tok": in_tok, "out_tok": out_tok}) + "\n")
     except OSError: pass
     if not usage_log: return
     try:
