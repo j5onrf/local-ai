@@ -45,7 +45,7 @@ Switch CLI box styles using `/box [1-5]` (or type `/box` to cycle). Selection pe
 
 #### Style #2: Double Border
 ```console
-╔═  ❖ Local-AI Agent  ══════════╗
+╔═  ◆ Local-AI Agent  ══════════╗
 ║     model:  gemini-3.5-flash  ║
 ║ directory:  ~                 ║
 ║     skill:  default           ║
@@ -55,7 +55,7 @@ Switch CLI box styles using `/box [1-5]` (or type `/box` to cycle). Selection pe
 
 #### Style #3: Heavy Square
 ```console
-┏━  ❖ Local-AI Agent  ━━━━━━━━━━┓
+┏━  ◆ Local-AI Agent  ━━━━━━━━━━┓
 ┃     model:  gemini-3.5-flash  ┃
 ┃ directory:  ~                 ┃
 ┃     skill:  default           ┃

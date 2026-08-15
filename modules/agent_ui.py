@@ -133,8 +133,8 @@ def draw_session_box(
 
     STYLES = {
         1: (">_ Local-AI Agent", ROUNDED, "green", "bold bright_green"),
-        2: ("❖ Local-AI Agent", DOUBLE, "bright_blue", "bold bright_blue"),
-        3: ("❖ Local-AI Agent", HEAVY, "bright_cyan", "bold bright_white"),
+        2: ("\u25c6 Local-AI Agent", DOUBLE, "bright_blue", "bold bright_blue"),
+        3: ("\u25c6 Local-AI Agent", HEAVY, "bright_cyan", "bold bright_white"),
         4: ("Local-AI Agent", HORIZONTALS, "dim white", "bold cyan"),
     }
 
