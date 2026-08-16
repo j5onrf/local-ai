@@ -4,8 +4,6 @@ server.pem
 .auto-f
 ai-history
 tools/agentic/fusion/logs
-index-map-local-ai.txt
-modules/index-map-modules.txt
 .openrouter_cache_v2.json
 .active_cd*
 .request_log

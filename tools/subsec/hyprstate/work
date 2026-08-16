@@ -1,31 +1,31 @@
 #!/usr/bin/env bash
+# Hyprland Workspace State Manager -- Work
+# Path: ~/.config/local-ai/tools/subsec/hyprstate/work
 
-# --- WORKSPACE 1: Brave Origin ---
-if hyprctl clients -j 2>/dev/null | jq -e '.[] | select(.class == "brave-origin")' >/dev/null 2>&1; then
-    # Move existing Brave Origin instances silently to workspace 1
-    hyprctl dispatch movetoworkspacesilent "1,class:^(brave-origin)$" >/dev/null 2>&1
-else
-    # Launch directly onto workspace 1
-    hyprctl dispatch exec "[workspace 1 silent] brave-origin" >/dev/null 2>&1
-fi
+set -euo pipefail
 
-# --- WORKSPACE 2: Nautilus (Left) ---
-if hyprctl clients -j 2>/dev/null | jq -e '.[] | select(.class == "org.gnome.Nautilus")' >/dev/null 2>&1; then
-    # Move existing Nautilus instances silently to workspace 2
-    hyprctl dispatch movetoworkspacesilent "2,class:^(org.gnome.Nautilus)$" >/dev/null 2>&1
-else
-    # Launch directly onto workspace 2
-    hyprctl dispatch exec "[workspace 2 silent] nautilus" >/dev/null 2>&1
-    sleep 0.25 
-fi
+manage_app() {
+    local target_ws="$1"
+    local exact_class="$2"
+    local launch_cmd="$3"
 
-# --- WORKSPACE 2: Gnome Text Editor (Right) ---
-if hyprctl clients -j 2>/dev/null | jq -e '.[] | select(.class == "org.gnome.TextEditor")' >/dev/null 2>&1; then
-    # Move existing Text Editor instances silently to workspace 2
-    hyprctl dispatch movetoworkspacesilent "2,class:^(org.gnome.TextEditor)$" >/dev/null 2>&1
-else
-    # Launch directly onto workspace 2
-    hyprctl dispatch exec "[workspace 2 silent] gnome-text-editor" >/dev/null 2>&1
-fi
+    # Check if a window with this class is already open in Hyprland
+    if hyprctl clients -j 2>/dev/null | jq -e ".[] | select(.class == \"${exact_class}\")" >/dev/null 2>&1; then
+        # Already open: Just move the existing window to the designated workspace
+        hyprctl dispatch movetoworkspacesilent "${target_ws},class:^(${exact_class})$" >/dev/null 2>&1 || true
+    else
+        # Not open: Launch silently in background
+        nohup ${launch_cmd} >/dev/null 2>&1 &
+    fi
+}
+
+# --- 1. Brave Origin -> Workspace 1 ---
+manage_app 1 "brave-origin" "brave-origin"
+
+# --- 2. Nautilus Files -> Workspace 2 ---
+manage_app 2 "org.gnome.Nautilus" "nautilus"
+
+# --- 3. Gnome Text Editor -> Workspace 2 ---
+manage_app 2 "org.gnome.TextEditor" "gnome-text-editor"
 
 echo "Workspace reset complete: State --Work"
