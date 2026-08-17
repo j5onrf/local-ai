@@ -2,7 +2,7 @@
   <img alt="Local-AI Agent" src="logo.svg" height="130" />
 </div>
 
-<h1 align="center">Local-AI Agent <img src="https://shieldcn.dev/badge/version-v0.9.8.56.svg?variant=secondary" alt="Version"></h1>
+<h1 align="center">Local-AI Agent <img src="https://shieldcn.dev/badge/version-v0.9.8.56.svg?variant=secondary" alt="Version"><a href="https://github.com/j5onrf/local-ai"> <img src="https://img.shields.io/github/repo-size/j5onrf/local-ai?style=flat-rounded&label&color=27272a" alt="Repo Size"></a></h1>
 
 <p align="center">
   <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/github/last-commit/j5onrf/local-ai.svg?color=emerald&variant=secondary" alt="Last Commit"></a>
