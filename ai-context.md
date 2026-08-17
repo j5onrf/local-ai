@@ -70,7 +70,7 @@ pkill -9 -f "pw-play|koko" ---> stop speech, kill tts
 ```properties
 # --- System Profile ---
 [TOOL] cat ~/.config/local-ai/skills/system/mysys.md ---> mysys
-[TOOL] ~/.config/local-ai/tools/generate-profile ---> generate profile, sync mysys
+[TOOL] ~/.config/local-ai/tools/generate-profile ---> generate profile, genp
 
 # --- System Health ---
 [TOOL] ~/.config/local-ai/tools/agentic/system/system-health ---> system health, sysh

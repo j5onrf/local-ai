@@ -2,7 +2,7 @@
     <img alt="Local-AI Agent" src="logo.png" width="800" />
 </div>
 
-<h1 align="center">Local-AI Agent <kbd>v0.9.8.54-beta</kbd></h1>
+<h1 align="center">Local-AI Agent <kbd>v0.9.8.55-beta</kbd></h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/last-commit/j5onrf/local-ai?style=for-the-badge&labelColor=1f1f1f&color=8dbdff" alt="Last Commit">
@@ -18,7 +18,7 @@
 
 ## Overview & Execution Modes
 
-Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`) controlling a C++ backend (`llama-server`). Built for extreme efficiency on quantized local models (`LFM2.5-8B-A1B+`, `Qwen-3.5-2B+`, `Qwen3.6-35B-A3B+`) and cloud provider cascades. 🟢 **Active:** Dedicated HF endpoint ([`Qwen/Qwen3.8-27B`](https://huggingface.co/spaces/victor/Qwen3.8-27B-free-endpoint)).
+Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`) controlling a C++ backend (`llama-server`).Built for extreme efficiency on quantized local models (`LFM2.5-8B-A1B+`, `Qwen-3.5-2B+`, `Qwen3.6-35B-A3B+`) and cloud providers. 🟢 **Active:** Dedicated HF endpoints ([`Qwen/Qwen3.8-27B`](https://huggingface.co/spaces/victor/Qwen3.8-27B-free-endpoint), [`DeepSeek-V4-Flash-0731`](https://huggingface.co/spaces/victor/DeepSeek-V4-Flash-0731-free-endpoint)).
 
 - **Direct Shell Jaccard (`<shortcut>`):** Sub-millisecond keyword routing to local shell scripts via [`ai-context.md`](ai-context.md).
 - **Single-Turn Query (`ai <query>`):** Instant response piped straight back to your active shell prompt.
@@ -48,7 +48,7 @@ Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`)
 | Core Module | Capability | Description |
 | :--- | :--- | :--- |
 | **Engine** | **Zero-Daemon** | 0% idle CPU/RAM usage. Native Python standard-library execution. |
-| **Resilience** | **Provider Cascade** | Top-down `.env` fallback: Custom Endpoints / HF $\rightarrow$ Gemini $\rightarrow$ OpenRouter $\rightarrow$ OpenAI $\rightarrow$ Claude $\rightarrow$ Grok $\rightarrow$ Local GGUF. |
+| **Providers** | **Active Provider** | Direct `.env` configuration: Custom Endpoints / HF, Gemini, OpenRouter, OpenAI, Claude, Grok, or Local GGUF. |
 | **Multi-Agent** | **Subagents** | [Vercel Eve](https://github.com/vercel/eve)-style sub-agents with [herdr](https://github.com/ogulcancelik/herdr) multiplexing (`-save`/`-load`) + in-kernel `delegate("goal")` sub-loops. |
 | **Safety** | **Zero-Trust Gates** | Mandatory approval prompts for commands and out-of-bounds file access. |
 | **Validation** | **Type-Safe & AST Guard** | [Pydantic AI](https://github.com/pydantic/pydantic-ai) schemas + [OpenAI Agents](https://github.com/openai/openai-agents-python)-style self-correcting `.py`/`.json` writes. |
@@ -135,12 +135,8 @@ nano ~/.config/local-ai/.env
 <kbd>
 
 ```env
-# Top-Down Cascade Fallback Priority
-
-# Custom / Free Community Endpoints
-CUSTOM_API_KEY="none"
-CUSTOM_URL="https://g9hnto0u7lvbu837.us-east-2.aws.endpoints.huggingface.cloud/v1/chat/completions"
-CUSTOM_MODEL="Qwen/Qwen3.8-27B"
+# Configure manually or run: model select
+# Top-Down (First Active Key is Used)
 
 GEMINI_API_KEY="AIzaSyYourGeminiKey"
 GEMINI_MODEL="gemini-3.5-flash-lite"
@@ -155,7 +151,7 @@ CLAUDE_API_KEY="your-claude-key"
 CLAUDE_MODEL="claude-opus-5"
 
 XAI_API_KEY="xai-your-grok-key"
-XAI_MODEL="grok-4.5"
+XAI_MODEL="grok-4.6"
 
 AI_MAX_TOKENS="8192"
 ```

@@ -83,22 +83,24 @@ if [[ -f "$ENV_PATH" ]]; then
                     m_var="$(echo "$provider" | tr '[:lower:]' '[:upper:]')_MODEL"
                 fi
                 
-                # Extract model setting from .env in-place
-                m_val=$(grep -E "^${m_var}=" "$ENV_PATH" | cut -d'=' -f2 | tr -d '"'\'' ' || echo "")
+                # Read single active exported variable directly
+                m_val="${!m_var:-}"
                 if [[ -z "$m_val" ]]; then
-                    # Dynamic defaults matching agent_cloud.py
-                    if [[ "$provider" == "gemini" ]]; then m_val="gemini-3.5-flash-lite"
-                    elif [[ "$provider" == "openai" ]]; then m_val="gpt-5.5"
-                    elif [[ "$provider" == "claude" ]]; then m_val="claude-fable-5"
-                    elif [[ "$provider" == "xai" ]]; then m_val="grok-4.5"
+                    if [[ "$provider" == "gemini" ]]; then m_val="${GEMINI_MODEL:-gemini-3.5-flash-lite}"
+                    elif [[ "$provider" == "openai" ]]; then m_val="${OPENAI_MODEL:-gpt-5.5}"
+                    elif [[ "$provider" == "claude" ]]; then m_val="${CLAUDE_MODEL:-claude-fable-5}"
+                    elif [[ "$provider" == "xai" ]]; then m_val="${XAI_MODEL:-grok-4.5}"
                     elif [[ "$provider" == "custom" ]]; then m_val="${CUSTOM_MODEL:-default}"
                     else m_val="default-model"
                     fi
                 fi
                 
-                active_providers+=("$provider")
-                active_keys+=("$k_val")
-                active_models+=("$m_val")
+                # Prevent duplicate entries for the same provider
+                if [[ ! " ${active_providers[*]:-} " =~ " ${provider} " ]]; then
+                    active_providers+=("$provider")
+                    active_keys+=("$k_val")
+                    active_models+=("$m_val")
+                fi
             fi
         fi
     done < "$ENV_PATH"
@@ -213,7 +215,7 @@ fallback_model="*None*"
 
 if [[ ${#active_providers[@]} -gt 1 ]]; then
     f_prov="${active_providers[1]}"
-    fallback_provider=$(echo "$f_prov" | tr '[:lower:]' '[:upper:]' | sed 's/XAI/x.AI/; s/CLAUDE/Anthropic Claude/; s/GEMINI/Google Gemini/; s/OPENAI/OpenAI/; s/OPENROUTER/OpenRouter/')
+    fallback_provider=$(echo "$f_prov" | tr '[:lower:]' '[:upper:]' | sed 's/XAI/x.AI/; s/CLAUDE/Anthropic Claude/; s/GEMINI/Google Gemini/; s/OPENAI/OpenAI/; s/OPENROUTER/OpenRouter/; s/CUSTOM/Custom Endpoint/')
     fallback_model="${active_models[1]}"
 elif [[ $local_status -eq 0 ]]; then
     fallback_provider="Local AI Server"
@@ -286,10 +288,21 @@ fi
 echo "* **OPENROUTER_USAGE**: \`${or_meta}\`"
 echo "* **OPENROUTER METRICS**: \`RPM: ${or_rpm} | RPD: ${or_rpd}\` (Last 24h rolling)"
 if [[ -n "${CUSTOM_API_KEY:-}" ]]; then
+    hf_pool=$(python3 -c "
+import json, os
+try:
+    with open(os.path.expanduser('~/.config/local-ai/.openrouter_cache_v2.json')) as f:
+        m = json.load(f).get('custom', [])
+        print(', '.join(m[:5]))
+except:
+    print('Qwen/Qwen3.8-27B, DeepSeek-V4-Flash')
+" 2>/dev/null || echo "Qwen/Qwen3.8-27B, DeepSeek-V4-Flash")
+
     echo ""
     echo "* **CUSTOM_API_KEY**  : $(mask_key "${CUSTOM_API_KEY:-}")"
     echo "* **CUSTOM_MODEL**    : \`${CUSTOM_MODEL:-default}\`"
     echo "* **CUSTOM_URL**      : \`${CUSTOM_URL:-*Not Set*}\`"
+    echo "* **HF AVAILABLE POOL**: \`${hf_pool}\`"
 fi
 echo -e "\n---\n\n## ENDPOINT STATUS"
 

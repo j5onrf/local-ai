@@ -451,8 +451,9 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
             res = _session.post(url, json=body_tools, headers={"Content-Type": "application/json", **headers}, timeout=timeout, stream=True)
             if res.status_code != 200:
                 err_text = res.text[:200].replace('\n', ' ').strip()
-                sys.stderr.write(f"\033[90m[sys] Remote API HTTP {res.status_code}: {err_text}\033[0m\r\n")
-                continue
+                if spinner: spinner.stop()
+                sys.stderr.write(f"\r\033[1;31m[error] Server HTTP {res.status_code}: {err_text}\033[0m\r\n")
+                return None
 
             first_chunk, acc_content, tool_calls_map, in_think_block, captured_usage = True, [], {}, False, None
 
@@ -514,7 +515,7 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
                 if spinner: spinner.stop("Done" if ans_text and ans_text.strip() else None)
                 user_msg = next((m.get("content", "") or "" for m in reversed(messages) if m.get("role") == "user"), "")
                 _log_turn_usage(resolved_model or body.get("model") or "local-model", in_tok, final_out, 0.0, show_stats, in_tok + final_out, user_msg=user_msg, assistant_msg=ans_text)
-                return ans_text
+                return ans_text if ans_text else "(No response generated)"
 
             messages.append({"role": "assistant", "content": ans_text or None, "tool_calls": calls})
 
@@ -584,36 +585,26 @@ def _is_local_server_alive(url: str, timeout: float = 0.3) -> bool:
 def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_dir: str = "", show_stats: bool = False, thinking_budget: int = 0, is_agent: bool = False) -> Optional[str]:
     spinner = ui.InlineSpinner()
     try:
-        configs = [c for c in agent_cloud.get_active_configs(messages) if _is_local_server_alive(c[0])]
+        configs = agent_cloud.get_active_configs(messages)
         enable_think = thinking_budget > 0
         budget_val = thinking_budget if enable_think else 0
         think_kwargs = {"thinking_budget_tokens": budget_val, "reasoning_budget": budget_val, "chat_template_kwargs": {"enable_thinking": enable_think}}
 
-        local_body = {"messages": messages, "stream": True, **think_kwargs}
-        seen_urls, unique_configs = set(), []
+        if not configs:
+            # Fallback to local server only if zero cloud keys configured in .env
+            configs = [("http://localhost:8080/v1/chat/completions", {}, {"messages": messages, "stream": True, **think_kwargs}, 180)]
 
-        for url, headers, body, timeout in configs:
-            norm_url = "http://localhost:8080/v1/chat/completions" if ":8080" in url else url.replace("127.0.0.1", "localhost")
-            curr_body = dict(body)
-            if "localhost" in norm_url: curr_body.update(think_kwargs)
-            if norm_url not in seen_urls:
-                seen_urls.add(norm_url)
-                unique_configs.append(("http://localhost:8080/v1/chat/completions" if ":8080" in url else url, headers, curr_body, timeout))
+        url, headers, body, timeout = configs[0]
+        body = {**body, **think_kwargs}
 
-        if "http://localhost:8080/v1/chat/completions" not in seen_urls:
-            unique_configs.append(("http://localhost:8080/v1/chat/completions", {}, local_body, 180))
-
-        for url, headers, body, timeout in unique_configs:
-            if (ans := agentic_turn(messages, url, headers, body, timeout, spinner, show_stats, is_agent=is_agent)) is not None:
-                if spinner: spinner.stop("Done")
-                return ans
+        ans = agentic_turn(messages, url, headers, body, timeout, spinner, show_stats, is_agent=is_agent)
         if spinner: spinner.stop("Done")
-        return None
+        return ans
     except KeyboardInterrupt:
         if spinner:
             try: spinner.stop()
             except (AttributeError, RuntimeError, OSError): pass
-        sys.stderr.write("\r\x1b[2K\033[90m[sys] Interrupted.\033[0m\033[0m\r\n")
+        sys.stderr.write("\r\x1b[2K\033[90m[sys] Interrupted.\033[0m\r\n")
         return None
 
 

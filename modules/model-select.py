@@ -24,7 +24,14 @@ GEMINI_CURATED = ["gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite
 OPENAI_CURATED = ["gpt-5.5", "gpt-5", "gpt-4.5", "o3", "o3-mini", "gpt-4o", "gpt-4o-mini"]
 CLAUDE_CURATED = ["claude-3-7-sonnet", "claude-opus-5", "claude-fable-5", "claude-sonnet-5", "claude-opus-4-8", "claude-opus-4-7"]
 GROK_CURATED = ["grok-4.5", "grok-4", "grok-3", "grok-2"]
-CUSTOM_CURATED = ["default", "Qwen/Qwen3.8-27B", "deepseek-ai/DeepSeek-V4-Flash", "local-endpoint", "vllm-endpoint"]
+HF_ENDPOINT_MAP = {
+    "Qwen/Qwen3.8-27B": "https://g9hnto0u7lvbu837.us-east-2.aws.endpoints.huggingface.cloud/v1/chat/completions",
+    "deepseek-ai/DeepSeek-V4-Flash-0731": "https://q5dh1rfszfym23hj.us-east-2.aws.endpoints.huggingface.cloud/v1/chat/completions",
+    "Qwen/Qwen2.5-Coder-32B-Instruct": "https://router.huggingface.co/hf-inference/v1/chat/completions",
+    "meta-llama/Llama-3.3-70B-Instruct": "https://router.huggingface.co/hf-inference/v1/chat/completions",
+    "deepseek-ai/DeepSeek-R1": "https://router.huggingface.co/hf-inference/v1/chat/completions"
+}
+CUSTOM_CURATED = list(HF_ENDPOINT_MAP.keys())
 OR_FREE_DEFAULTS = ["openrouter/free", "nvidia/nemotron-3-ultra:free", "poolside/laguna-m.1:free", "tencent/hy3:free", "google/gemma-4-26b-a4b:free", "meta-llama/llama-3.3-70b-instruct:free", "deepseek/deepseek-chat:free", "microsoft/phi-4:free", "mistralai/mistral-nemo:free"]
 OR_PAID_DEFAULTS = ["deepseek/deepseek-v4-flash", "anthropic/claude-3.7-sonnet", "google/gemini-3.7-flash", "xiaomi/mimo-v2.5", "minimax/minimax-m3", "tencent/hy3", "z-ai/glm-5.2", "deepseek/deepseek-v4-pro", "anthropic/claude-opus-4.8", "openai/gpt-5.5", "openai/gpt-4o-mini"]
 
@@ -174,6 +181,24 @@ async def async_fetch_openrouter_models(api_key):
             with urlreq.urlopen(req, timeout=8) as res:
                 return json.loads(res.read().decode("utf-8")).get("data", []) if res.status == 200 else None
         except (urlreq.URLError, TimeoutError, json.JSONDecodeError, OSError): return None
+    return await asyncio.to_thread(_fetch)
+
+
+async def async_fetch_hf_spaces():
+    def _fetch():
+        discovered = dict(HF_ENDPOINT_MAP)
+        try:
+            req = urlreq.Request("https://huggingface.co/api/spaces?search=free-endpoint&limit=15", headers={"User-Agent": "local-ai"})
+            with urlreq.urlopen(req, timeout=5) as res:
+                if res.status == 200:
+                    for sp in json.loads(res.read().decode("utf-8")):
+                        sp_id = sp.get("id", "")
+                        if sp_id and "qwen" in sp_id.lower() or "deepseek" in sp_id.lower():
+                            sub = sp_id.replace("/", "-").replace(".", "-").replace("_", "-").lower()
+                            m_name = sp_id.split("/")[-1].replace("-free-endpoint", "").replace("-", "/")
+                            discovered[m_name] = f"https://{sub}.hf.space/v1/chat/completions"
+        except Exception: pass
+        return discovered
     return await asyncio.to_thread(_fetch)
 
 
@@ -337,21 +362,29 @@ async def async_main():
                     elif res:
                         set_key_commented_state(k_name, False)
                         update_env(m_name, res)
-                        if selected_idx == 1: gemini_curr = res
+                        if selected_idx == 5:
+                            custom_curr = res
+                            hf_url = HF_ENDPOINT_MAP.get(res, "https://g9hnto0u7lvbu837.us-east-2.aws.endpoints.huggingface.cloud/v1/chat/completions")
+                            update_env("CUSTOM_URL", hf_url)
+                            update_env("CUSTOM_API_KEY", "not-needed")
+                        elif selected_idx == 1: gemini_curr = res
                         elif selected_idx == 2: openai_curr = res
                         elif selected_idx == 3: claude_curr = res
                         elif selected_idx == 4: grok_curr = res
-                        elif selected_idx == 5: custom_curr = res
                         else: or_curr = res
-                        message = f"✓ Saved {m_name}={res} and re-enabled {title} Endpoint."
+                        message = f"✓ Saved {m_name}={res} and auto-configured endpoint."
                 elif selected_idx == 8:
-                    message = "\033[1;33m↺ Checking OpenRouter for current model rankings...\033[0m"
+                    message = "\033[1;33m↺ Querying OpenRouter & HuggingFace for live endpoints...\033[0m"
                     draw_main_menu(selected_idx, gemini_curr, claude_curr, openai_curr, grok_curr, or_curr, custom_curr, active_keys, message)
-                    if raw_data := await async_fetch_openrouter_models(env["OPENROUTER_API_KEY"]):
-                        or_free_list, or_paid_list, gemini_list, claude_list, openai_list, grok_list = classify_openrouter_models(raw_data)
-                        save_cached_lists(or_free_list, or_paid_list, gemini_list, claude_list, openai_list, grok_list, custom_list)
-                        message = "✓ Dynamic model rankings & provider APIs synchronized."
-                    else: message = "\033[1;31m✗ Connection failed. Keeping cached defaults."
+                    raw_or = await async_fetch_openrouter_models(env["OPENROUTER_API_KEY"])
+                    raw_hf = await async_fetch_hf_spaces()
+                    if raw_hf:
+                        HF_ENDPOINT_MAP.update(raw_hf)
+                        custom_list = list(HF_ENDPOINT_MAP.keys())
+                    if raw_or:
+                        or_free_list, or_paid_list, gemini_list, claude_list, openai_list, grok_list = classify_openrouter_models(raw_or)
+                    save_cached_lists(or_free_list, or_paid_list, gemini_list, claude_list, openai_list, grok_list, custom_list)
+                    message = "✓ Synchronized live OpenRouter rankings and HuggingFace endpoints."
                 elif selected_idx == 9:
                     cleanup_terminal()
                     print("\033[1;32m✓ Local-AI configuration saved.\033[0m")

@@ -8,7 +8,7 @@ ENV_PATH: str = os.path.expanduser("~/.config/local-ai/.env")
 RE_ENV_API_KEY: re.Pattern = re.compile(r"^([A-Z0-9_]+_API_KEY|[A-Z0-9_]+_KEY)\s*=\s*\"?([^\"]*)\"?$")
 
 FALLBACK_MODELS = {
-    "gemini": "gemini-3.5-flash-lite",
+    "gemini": "gemini-3.7-flash",
     "openai": "gpt-5.5",
     "xai": "grok-4.5",
     "custom": "default"
@@ -18,18 +18,27 @@ FALLBACK_MODELS = {
 def get_active_configs(messages: List[Dict[str, str]]) -> List[Tuple[str, Dict[str, str], Dict[str, Any], int]]:
     """Compiles active cloud API configurations, prioritizing them based on their top-down order in .env."""
     configs: List[Tuple[str, Dict[str, str], Dict[str, Any], int]] = []
-    if not os.path.exists(ENV_PATH): return configs
+    if not os.path.exists(ENV_PATH):
+        return configs
 
-    custom_url = os.environ.get("CUSTOM_URL")
-    if not custom_url:
-        try:
-            with open(ENV_PATH, "r", encoding="utf-8") as f:
-                for line in f:
-                    if (s := line.strip()) and not s.startswith("#") and s.startswith("CUSTOM_URL="):
-                        custom_url = s.split("=", 1)[1].strip().strip('"').strip("'")
-                        break
-        except OSError: pass
-    custom_url = custom_url or "https://victor-qwen3-8-27b-free-endpoint.hf.space/v1/chat/completions"
+    custom_model_low = (os.environ.get("CUSTOM_MODEL") or "").lower()
+
+    if "deepseek" in custom_model_low:
+        custom_url = "https://q5dh1rfszfym23hj.us-east-2.aws.endpoints.huggingface.cloud/v1/chat/completions"
+    elif "qwen" in custom_model_low:
+        custom_url = "https://g9hnto0u7lvbu837.us-east-2.aws.endpoints.huggingface.cloud/v1/chat/completions"
+    else:
+        custom_url = os.environ.get("CUSTOM_URL")
+        if not custom_url:
+            try:
+                with open(ENV_PATH, "r", encoding="utf-8") as f:
+                    for line in f:
+                        if (s := line.strip()) and not s.startswith("#") and s.startswith("CUSTOM_URL="):
+                            custom_url = s.split("=", 1)[1].strip().strip('"').strip("'")
+                            break
+            except OSError:
+                pass
+        custom_url = custom_url or "https://q5dh1rfszfym23hj.us-east-2.aws.endpoints.huggingface.cloud/v1/chat/completions"
 
     url_map = {
         "GEMINI_API_KEY": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
@@ -55,8 +64,9 @@ def get_active_configs(messages: List[Dict[str, str]]) -> List[Tuple[str, Dict[s
                             system_prompt = next((m.get("content") for m in messages if m.get("role") == "system"), None)
                             claude_msgs = [{"role": m.get("role") or "user", "content": m.get("content") or ""} for m in messages if m.get("role") != "system"]
                             body = {"model": os.environ.get("CLAUDE_MODEL", "claude-fable-5"), "messages": claude_msgs, "stream": True, "max_tokens": 4096}
-                            if system_prompt: body["system"] = system_prompt
-                            configs.append(("https://api.anthropic.com/v1/messages", {"x-api-key": val_clean, "anthropic-version": "2023-06-01"}, body, 30))
+                            if system_prompt:
+                                body["system"] = system_prompt
+                            return [("https://api.anthropic.com/v1/messages", {"x-api-key": val_clean, "anthropic-version": "2023-06-01"}, body, 30)]
 
                         elif url := url_map.get(key_name):
                             fallback = FALLBACK_MODELS.get(provider, "default-model")
@@ -64,11 +74,12 @@ def get_active_configs(messages: List[Dict[str, str]]) -> List[Tuple[str, Dict[s
                             body = {"model": os.environ.get(model_var) or fallback, "messages": messages, "stream": True}
                             headers = {"Authorization": f"Bearer {val_clean}"}
 
+                            timeout_val = 180 if provider in ("openrouter", "custom") else 30
                             if provider == "openrouter":
                                 body["usage"] = {"include": True}
                                 headers["HTTP-Referer"] = "https://github.com/j5onrf/local-ai"
 
-                            configs.append((url, headers, body, 180 if provider == "openrouter" else 30))
+                            return [(url, headers, body, timeout_val)]
     except (OSError, UnicodeDecodeError, KeyError, IndexError, ValueError):
         pass
     return configs
