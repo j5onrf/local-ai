@@ -2,22 +2,22 @@
   <img alt="Local-AI Agent" src="logo.svg" height="130" />
 </div>
 
-<h1 align="center">Local-AI Agent <img src="https://shieldcn.dev/badge/version-v0.9.8.56--beta.svg?variant=outline" alt="Version"></h1>
+<h1 align="center">Local-AI Agent <img src="https://shieldcn.dev/badge/version-v0.9.8.56.svg?variant=secondary" alt="Version"></h1>
 
 <p align="center">
-  <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/github/last-commit/j5onrf/local-ai.svg?color=emerald&variant=outline" alt="Last Commit"></a>
-  <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/badge/language-python.svg?color=emerald&variant=outline" alt="Language"></a>
-  <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/github/repo-size/j5onrf/local-ai.svg?color=emerald&variant=outline" alt="Repo Size"></a>
-  <a href="https://github.com/j5onrf/local-ai/blob/main/LICENSE"><img src="https://shieldcn.dev/badge/license-MIT.svg?color=emerald&variant=outline" alt="License"></a>
+  <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/github/last-commit/j5onrf/local-ai.svg?color=emerald&variant=secondary" alt="Last Commit"></a>
+  <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/badge/Python.svg?variant=branded&brand=python" alt="Language"></a>
+  <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/badge/C%2B%2B.svg?variant=branded&brand=cplusplus"></a>
+  <a href="https://github.com/j5onrf/local-ai/blob/main/LICENSE"><img src="https://shieldcn.dev/badge/license-MIT-green.svg" alt="License"></a>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Provider-GPT--4o-10b981?style=flat-square" />
-  <img src="https://img.shields.io/badge/Provider-Claude-3b82f6?style=flat-square" />
-  <img src="https://img.shields.io/badge/Provider-Grok-8b5cf6?style=flat-square" />
-  <img src="https://img.shields.io/badge/Provider-Gemini-ec4899?style=flat-square" />
-  <img src="https://img.shields.io/badge/Provider-HF-ff9d00?style=flat-square" />
-  <img src="https://img.shields.io/badge/Local-GGUF-00F2FE?style=flat-square" />
+  <img src="https://img.shields.io/badge/GPT--4o-10b981?style=flat-round" />
+  <img src="https://img.shields.io/badge/Claude-3b82f6?style=flat-round" />
+  <img src="https://img.shields.io/badge/Grok-8b5cf6?style=flat-round" />
+  <img src="https://img.shields.io/badge/PGemini-ec4899?style=flat-round" />
+  <img src="https://img.shields.io/badge/HF-ff9d00?style=flat-round" />
+  <img src="https://img.shields.io/badge/GGUF-00F2FE?style=flat-round" />
 </p>
 
 ---
