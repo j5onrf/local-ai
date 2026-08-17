@@ -2,7 +2,7 @@
   <img alt="Local-AI Agent" src="logo.svg" height="130" />
 </div>
 
-<h1 align="center">Local-AI Agent <img src="https://shieldcn.dev/badge/version-v0.9.8.56.svg?variant=secondary" alt="Version"><a href="https://github.com/j5onrf/local-ai"> <img src="https://img.shields.io/github/repo-size/j5onrf/local-ai?style=flat-rounded&label&color=27272a" alt="Repo Size"></a></h1>
+<h1 align="center">Local-AI Agent <img src="https://shieldcn.dev/badge/version-v0.9.8.57.svg?variant=secondary" alt="Version"><a href="https://github.com/j5onrf/local-ai"> <img src="https://img.shields.io/github/repo-size/j5onrf/local-ai?style=flat-rounded&label&color=27272a" alt="Repo Size"></a></h1>
 
 <p align="center">
   <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/github/last-commit/j5onrf/local-ai.svg?color=emerald&variant=secondary" alt="Last Commit"></a>
@@ -12,7 +12,7 @@
   <a href="https://shieldcn.dev/badge/status-beta-blue.svg"><img src="https://shieldcn.dev/badge/status-beta-blue.svg" alt="License"></a>
 </p>
 <p align="center">
-  <code>gpt</code> &nbsp; <code>claude</code> &nbsp; <code>grok</code> &nbsp; <code>gemini</code> &nbsp; <code>openrouter</code> &nbsp; <code>hf</code> &nbsp; <code>gguf</code>
+  <code>LFM2.5-8B-A1B+</code> &nbsp; <code>Qwen-3.5-2B+</code> &nbsp; <code>Qwen3.6-35B-A3B+</code> &nbsp; <code>Qwen3.8-27B+</code> &nbsp; <code>DeepSeek-V4-Flash</code>
 </p>
 
 <p align="center">
@@ -28,7 +28,7 @@
 
 ## Overview & Execution Modes
 
-Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`) controlling a C++ backend (`llama-server`).Built for extreme efficiency on quantized local models (`LFM2.5-8B-A1B+`, `Qwen-3.5-2B+`, `Qwen3.6-35B-A3B+`) and cloud providers. 🟢 **Active:** Dedicated HF endpoints ([`Qwen/Qwen3.8-27B`](https://huggingface.co/spaces/victor/Qwen3.8-27B-free-endpoint), [`DeepSeek-V4-Flash`](https://huggingface.co/spaces/victor/DeepSeek-V4-Flash-0731-free-endpoint)).
+Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`) controlling a C++ backend (`llama-server`).Built for extreme efficiency on 4bit quantized local models (`LFM2.5-8B-A1B+`, `Qwen-3.5-2B+`, `Qwen3.6-35B-A3B+`) and cloud providers. 🟢 **Active:** Dedicated HF endpoints ([`Qwen/Qwen3.8-27B`](https://huggingface.co/spaces/victor/Qwen3.8-27B-free-endpoint), [`DeepSeek-V4-Flash`](https://huggingface.co/spaces/victor/DeepSeek-V4-Flash-0731-free-endpoint)).
 
 - **Direct Shell Jaccard (`<shortcut>`):** Sub-millisecond keyword routing to local shell scripts via [`ai-context.md`](ai-context.md).
 - **Single-Turn Query (`ai <query>`):** Instant response piped straight back to your active shell prompt.
