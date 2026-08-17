@@ -9,10 +9,11 @@
   <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/badge/Python.svg?variant=branded&brand=python" alt="Language"></a>
   <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/badge/C%2B%2B.svg?variant=branded&brand=cplusplus"></a>
   <a href="https://github.com/j5onrf/local-ai/blob/main/LICENSE"><img src="https://shieldcn.dev/badge/license-MIT-green.svg" alt="License"></a>
-  <a href="https://shieldcn.dev/badge/status-beta-blue.svg"><img src="https://shieldcn.dev/badge/status-beta-blue.svg" alt="License"></a>
+  <a href="https://shieldcn.dev/badge/status-beta-blue.svg"><img src="https://shieldcn.dev/badge/status-beta-blue.svg" alt="Status"></a>
 </p>
+
 <p align="center">
-  <code>LFM2.5-8B-A1B+</code> &nbsp; <code>Qwen-3.5-2B+</code> &nbsp; <code>Qwen3.6-35B-A3B+</code> &nbsp; <code>Qwen3.8-27B+</code> &nbsp; <code>DeepSeek-V4-Flash</code>
+  <code>Qwen-3.5-2B</code> &nbsp; <code>Qwen3.6-35B-A3B</code> &nbsp; <code>Qwen3.8-27B</code> &nbsp; <code>DeepSeek-V4</code>
 </p>
 
 <p align="center">
@@ -28,7 +29,7 @@
 
 ## Overview & Execution Modes
 
-Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`) controlling a C++ backend (`llama-server`).Built for extreme efficiency on 4bit quantized local models (`LFM2.5-8B-A1B+`, `Qwen-3.5-2B+`, `Qwen3.6-35B-A3B+`) and cloud providers. 🟢 **Active:** Dedicated HF endpoints ([`Qwen/Qwen3.8-27B`](https://huggingface.co/spaces/victor/Qwen3.8-27B-free-endpoint), [`DeepSeek-V4-Flash`](https://huggingface.co/spaces/victor/DeepSeek-V4-Flash-0731-free-endpoint)).
+Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`) controlling a C++ backend (`llama-server`).Built for extreme efficiency on 4bit quantized local models and cloud providers. 🟢 **Active:** Dedicated HF endpoints ([`Qwen/Qwen3.8-27B`](https://huggingface.co/spaces/victor/Qwen3.8-27B-free-endpoint), [`DeepSeek-V4-Flash`](https://huggingface.co/spaces/victor/DeepSeek-V4-Flash-0731-free-endpoint)).
 
 - **Direct Shell Jaccard (`<shortcut>`):** Sub-millisecond keyword routing to local shell scripts via [`ai-context.md`](ai-context.md).
 - **Single-Turn Query (`ai <query>`):** Instant response piped straight back to your active shell prompt.
