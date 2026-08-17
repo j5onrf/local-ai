@@ -30,7 +30,7 @@
 
 ## Overview & Execution Modes
 
-Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`) controlling a C++ backend (`llama-server`). Built for extreme efficiency on quantized local models and cloud providers. 
+Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`) controlling a C++ backend (`llama-server` <img src="https://shieldcn.dev/badge/llama.cpp.svg?variant=branded&color=zinc&size=xs" align="center" />). Built for extreme efficiency on quantized local models and cloud providers.
 
 🟢 **Active:** Dedicated ![Hugging Face](https://shieldcn.dev/badge/Hugging%20Face.svg?variant=branded&brand=huggingface&size=xs) endpoints: ([`Qwen/Qwen3.8-27B`](https://huggingface.co/spaces/victor/Qwen3.8-27B-free-endpoint), [`DeepSeek-V4-Flash`](https://huggingface.co/spaces/victor/DeepSeek-V4-Flash-0731-free-endpoint)).
 
