@@ -12,10 +12,10 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/GPT--4o-10b981?style=flat-round" />
+  <img src="https://img.shields.io/badge/GPT-10b981?style=flat-round" />
   <img src="https://img.shields.io/badge/Claude-3b82f6?style=flat-round" />
   <img src="https://img.shields.io/badge/Grok-8b5cf6?style=flat-round" />
-  <img src="https://img.shields.io/badge/PGemini-ec4899?style=flat-round" />
+  <img src="https://img.shields.io/badge/Gemini-ec4899?style=flat-round" />
   <img src="https://img.shields.io/badge/HF-ff9d00?style=flat-round" />
   <img src="https://img.shields.io/badge/GGUF-00F2FE?style=flat-round" />
 </p>
