@@ -18,7 +18,7 @@
 
 ## Overview & Execution Modes
 
-Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`) controlling a C++ backend (`llama-server`).Built for extreme efficiency on quantized local models (`LFM2.5-8B-A1B+`, `Qwen-3.5-2B+`, `Qwen3.6-35B-A3B+`) and cloud providers. 🟢 **Active:** Dedicated HF endpoints ([`Qwen/Qwen3.8-27B`](https://huggingface.co/spaces/victor/Qwen3.8-27B-free-endpoint), [`DeepSeek-V4-Flash-0731`](https://huggingface.co/spaces/victor/DeepSeek-V4-Flash-0731-free-endpoint)).
+Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`) controlling a C++ backend (`llama-server`).Built for extreme efficiency on quantized local models (`LFM2.5-8B-A1B+`, `Qwen-3.5-2B+`, `Qwen3.6-35B-A3B+`) and cloud providers. 🟢 **Active:** Dedicated HF endpoints ([`Qwen/Qwen3.8-27B`](https://huggingface.co/spaces/victor/Qwen3.8-27B-free-endpoint), [`DeepSeek-V4-Flash`](https://huggingface.co/spaces/victor/DeepSeek-V4-Flash-0731-free-endpoint)).
 
 - **Direct Shell Jaccard (`<shortcut>`):** Sub-millisecond keyword routing to local shell scripts via [`ai-context.md`](ai-context.md).
 - **Single-Turn Query (`ai <query>`):** Instant response piped straight back to your active shell prompt.
