@@ -29,7 +29,11 @@ RE_JSON_OBJECT = re.compile(r"\{[\s\S]*\}")
 RE_ABS_PATH = re.compile(r'/(?:[a-zA-Z0-9_\-\.]+/)*[a-zA-Z0-9_\-\.]*')
 RE_TOOL_CALL_BLOCK = re.compile(r'<\|tool_call_start\|>.*?<\|tool_call_end\|>', re.DOTALL)
 
-BINARY_EXTENSIONS = {".db", ".sqlite", ".sqlite3", ".bin", ".pyc", ".so", ".dll", ".exe", ".png", ".jpg", ".jpeg", ".gif", ".zip", ".tar", ".gz", ".7z", ".pdf", ".docx", ".xlsx", ".db-wal", ".db-shm"}
+BINARY_EXTENSIONS = frozenset({
+    ".db", ".sqlite", ".sqlite3", ".bin", ".pyc", ".so", ".dll", ".exe",
+    ".png", ".jpg", ".jpeg", ".gif", ".zip", ".tar", ".gz", ".7z",
+    ".pdf", ".docx", ".xlsx", ".db-wal", ".db-shm"
+})
 
 _TPM_SKIP_QUERIES = frozenset({"hello", "hi", "hey", "exit", "quit", "q", "/clear", "/reset", "/stats", "/tok", "/m", "/r"})
 _TPM_BLACKLIST = frozenset({"files", "file", "file_list", "project", "code", "description", "features", "dependencies", "project_type", "directory", "folder", "workspace"})
@@ -134,12 +138,26 @@ def background_tpm_update(user_msg: str, assistant_msg: str, workspace: str, wor
             if parsed := {str(k).strip().lower(): str(v).strip() for k, v in json.loads(m.group(0)).items() if k and v is not None and str(k).strip().lower() not in _TPM_BLACKLIST}:
                 run_mod("ai-agent-memories", "tpm-reconcile", workspace, input_data=json.dumps(parsed))
                 if res := run_mod("ai-agent-memories", "tpm-get", workspace):
-                    md_dir = os.path.join(workspace_path, ".agent")
-                    os.makedirs(md_dir, exist_ok=True)
-                    with open(os.path.join(md_dir, "tpm.md"), "w", encoding="utf-8") as f:
-                        f.write(res + "\n")
+                    if workspace_path and os.path.isdir(workspace_path) and os.path.realpath(workspace_path) not in (os.path.realpath(os.path.expanduser("~")), os.path.realpath(CFG_DIR)):
+                        md_dir = os.path.join(workspace_path, ".agent")
+                        os.makedirs(md_dir, exist_ok=True)
+                        with open(os.path.join(md_dir, "tpm.md"), "w", encoding="utf-8") as f:
+                            f.write(res + "\n")
     except (OSError, urlreq.URLError, TimeoutError, json.JSONDecodeError):
         pass
+
+
+def _clear_lines(stream_err: bool, text: str, extra_top: int = 0) -> None:
+    if not text: return
+    cols = shutil.get_terminal_size((80, 24)).columns or 80
+    lines = text.split("\n")
+    rows = extra_top + sum(max(1, (len(ANSI_ESCAPE.sub('', l.replace('\t', '    '))) + cols - 1) // cols) for l in lines)
+    up = max(0, rows - 1)
+    target = sys.stderr if stream_err else sys.stdout
+    try:
+        target.write(f"\r\033[{up}A\033[J" if up > 0 else "\r\033[J")
+        target.flush()
+    except (IOError, OSError): pass
 
 
 class RichStreamer:
@@ -238,6 +256,7 @@ class RichStreamer:
             return
 
         show_think = os.environ.get("AI_SHOW_THINKING", "1") == "1"
+        render_md = os.environ.get("AI_RENDER_MARKDOWN", "1") == "1"
 
         if self.phase == "THINKING" and show_think and self.think_hdr_printed:
             sep = "" if self.acc_think.endswith("\n") else "\r\n"
@@ -245,10 +264,26 @@ class RichStreamer:
             self.phase = "ANSWER"
 
         if self.ans_started and self.acc_ans.strip():
-            try:
-                sys.stdout.write("\r\n")
-                sys.stdout.flush()
-            except (IOError, OSError): pass
+            if render_md and sys.stdout.isatty():
+                # Erase raw text stream and render full Rich Markdown
+                _clear_lines(False, self.acc_ans)
+                p_clean = self.prefix.strip()
+                p_style = "bold green" if "Agent" in p_clean else "bold cyan"
+                p_str = f"{p_clean} " if p_clean else ""
+                ans_body = self.acc_ans[len(p_str):] if p_str and self.acc_ans.startswith(p_str) else self.acc_ans
+                clean_md = RE_FINAL_ANSWER.sub('', ans_body).replace('\\n', '\n').strip()
+                if p_str:
+                    _console.print(Text(p_str, style=p_style), end="")
+                try:
+                    _console.print(Markdown(clean_md, code_theme="ansi_dark"))
+                except Exception:
+                    sys.stdout.write(f"{ans_body}\r\n")
+                    sys.stdout.flush()
+            else:
+                try:
+                    sys.stdout.write("\r\n")
+                    sys.stdout.flush()
+                except (IOError, OSError): pass
 
 
 def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float, show_stats: bool, ctx_used: Optional[int] = None, user_msg: str = "", assistant_msg: str = "") -> None:
@@ -472,7 +507,8 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
                     if not choices: continue
                     delta = choices[0].get("delta", {})
 
-                    content, reasoning = delta.get("content", "") or "", delta.get("reasoning_content", "") or delta.get("thinking", "") or delta.get("reasoning", "") or ""
+                    content = delta.get("content", "") or ""
+                    reasoning = delta.get("reasoning_content", "") or delta.get("thinking", "") or delta.get("reasoning", "") or ""
 
                     if spinner:
                         try: spinner.update("Thinking..." if reasoning else "Working...")
@@ -591,7 +627,6 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
         think_kwargs = {"thinking_budget_tokens": budget_val, "reasoning_budget": budget_val, "chat_template_kwargs": {"enable_thinking": enable_think}}
 
         if not configs:
-            # Fallback to local server only if zero cloud keys configured in .env
             configs = [("http://localhost:8080/v1/chat/completions", {}, {"messages": messages, "stream": True, **think_kwargs}, 180)]
 
         url, headers, body, timeout = configs[0]
@@ -604,7 +639,7 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
         if spinner:
             try: spinner.stop()
             except (AttributeError, RuntimeError, OSError): pass
-        sys.stderr.write("\r\x1b[2K\033[90m[sys] Interrupted.\033[0m\r\n")
+        sys.stderr.write("\r\x1b[2K\033[90m[sys] Interrupted.\033[0m\033[0m\r\n")
         return None
 
 

@@ -257,62 +257,29 @@ if [[ "$resolved_provider" == "*None / All Offline*" && $local_status -eq 0 ]]; 
     fallback_model="*None*"
 fi
 
-echo -e "# ACTIVE AI ROUTING DIAGNOSTICS\n\nSummarize the active provider, model, 24h RPD count, and standby fallback route in 1-2 direct sentences:\n\n---\n\n## ACTIVE RUNTIME ROUTE"
-echo "* **Selected Provider**: **${resolved_provider}**"
-echo "* **Active Model**     : \`${resolved_model}\`"
-echo "* **Fallback Route**   : **${fallback_provider}** (\`${fallback_model}\`)"
-echo ""
-echo -e "---\n\n## CREDENTIALS & CONFIGURATION"
-echo "* **GEMINI_API_KEY**  : $(mask_key "${GEMINI_API_KEY:-}")"
-echo "* **GEM_VOICE (Voice)**: $(mask_key "${GEM_VOICE:-}")"
-echo "* **GEMINI_MODEL**     : \`${GEMINI_MODEL:-gemini-3.5-flash-lite}\` (Free Limits: ${gemini_limits})"
-echo "* **GEMINI METRICS**  : \`RPM: ${gemini_rpm} | RPD: ${gemini_rpd}\` (Last 24h rolling)"
-echo ""
-echo "* **OPENAI_API_KEY**  : $(mask_key "${OPENAI_API_KEY:-}")"
-echo "* **OPENAI_MODEL**    : \`${OPENAI_MODEL:-gpt-5.5}\`"
-echo "* **OPENAI METRICS**  : \`RPM: ${openai_rpm} | RPD: ${openai_rpd}\` (Last 24h rolling)"
-echo ""
-echo "* **CLAUDE_API_KEY**  : $(mask_key "${CLAUDE_API_KEY:-}")"
-echo "* **CLAUDE_MODEL**    : \`${CLAUDE_MODEL:-claude-fable-5}\`"
-echo "* **CLAUDE METRICS**  : \`RPM: ${claude_rpm} | RPD: ${claude_rpd}\` (Last 24h rolling)"
-echo ""
-echo "* **XAI_API_KEY**     : $(mask_key "${XAI_API_KEY:-}")"
-echo "* **XAI_MODEL**       : \`${XAI_MODEL:-grok-4.5}\`"
-echo "* **XAI METRICS**     : \`RPM: ${grok_rpm} | RPD: ${grok_rpd}\` (Last 24h rolling)"
-echo ""
-echo "* **OPENROUTER_KEY**  : $(mask_key "${OPENROUTER_API_KEY:-}")"
-echo "* **OPENROUTER_MODEL**: \`${OPENROUTER_MODEL:-openrouter/free}\` (Free Limits: 20 RPM / 200 RPD)"
-if [[ $or_status -eq 0 && "${OPENROUTER_MODEL:-}" == *"free"* && -n "${OPENROUTER_API_KEY:-}" ]]; then
-    echo "* **FREE POOL ROUTES**: \`${or_free_list}\`"
-fi
-echo "* **OPENROUTER_USAGE**: \`${or_meta}\`"
-echo "* **OPENROUTER METRICS**: \`RPM: ${or_rpm} | RPD: ${or_rpd}\` (Last 24h rolling)"
-if [[ -n "${CUSTOM_API_KEY:-}" ]]; then
-    hf_pool=$(python3 -c "
-import json, os
-try:
-    with open(os.path.expanduser('~/.config/local-ai/.openrouter_cache_v2.json')) as f:
-        m = json.load(f).get('custom', [])
-        print(', '.join(m[:5]))
-except:
-    print('Qwen/Qwen3.8-27B, DeepSeek-V4-Flash')
-" 2>/dev/null || echo "Qwen/Qwen3.8-27B, DeepSeek-V4-Flash")
+# Helper for status text
+st_label() {
+    local key="$1" status="$2"
+    if [[ -z "$key" ]]; then echo "Skipped (No Key)"
+    elif [[ "$status" -eq 0 ]]; then echo "Online"
+    else echo "Offline"
+    fi
+}
 
-    echo ""
-    echo "* **CUSTOM_API_KEY**  : $(mask_key "${CUSTOM_API_KEY:-}")"
-    echo "* **CUSTOM_MODEL**    : \`${CUSTOM_MODEL:-default}\`"
-    echo "* **CUSTOM_URL**      : \`${CUSTOM_URL:-*Not Set*}\`"
-    echo "* **HF AVAILABLE POOL**: \`${hf_pool}\`"
-fi
-echo -e "\n---\n\n## ENDPOINT STATUS"
+echo -e "[SYSTEM OVERRIDE: Output the following markdown table verbatim. Do not explain, summarize, analyze, or add ASCII art.]\n"
+echo "### System Status"
+echo "| Provider | Active Model | Status | 24h Activity |"
+echo "| :--- | :--- | :--- | :--- |"
+echo "| **Active Route (${resolved_provider})** | \`${resolved_model}\` | **Online** | Selected |"
 
-[[ -n "${GEMINI_API_KEY:-}" ]] && echo "* **Google APIs**   : $([[ $gemini_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")" || echo "* **Google APIs**   : *Skipped (No Key)*"
-[[ -n "${OPENAI_API_KEY:-}" ]] && echo "* **OpenAI APIs**   : $([[ $openai_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")" || echo "* **OpenAI APIs**   : *Skipped (No Key)*"
-[[ -n "${CLAUDE_API_KEY:-}" ]] && echo "* **Anthropic APIs**: $([[ $claude_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")" || echo "* **Anthropic APIs**: *Skipped (No Key)*"
-[[ -n "${XAI_API_KEY:-}" ]] && echo "* **x.AI APIs**      : $([[ $xai_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")" || echo "* **x.AI APIs**      : *Skipped (No Key)*"
-[[ -n "${OPENROUTER_API_KEY:-}" ]] && echo "* **OpenRouter API** : $([[ $or_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")" || echo "* **OpenRouter API** : *Skipped (No Key)*"
 if [[ -n "${CUSTOM_API_KEY:-}" ]]; then
-    custom_status=$(check_conn "${CUSTOM_API_KEY}" "${CUSTOM_URL:-https://g9hnto0u7lvbu837.us-east-2.aws.endpoints.huggingface.cloud/v1}")
-    echo "* **Custom Endpoint**: $([[ $custom_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")"
+    c_st=$(check_conn "${CUSTOM_API_KEY}" "${CUSTOM_URL:-https://g9hnto0u7lvbu837.us-east-2.aws.endpoints.huggingface.cloud/v1}")
+    echo "| **Custom / HF** | \`${CUSTOM_MODEL:-default}\` | $(st_label "${CUSTOM_API_KEY}" "$c_st") | Endpoint |"
 fi
-echo -e "* **Local Server**   : $([[ $local_status -eq 0 ]] && echo "**Online**" || echo "*Offline*")"
+
+echo "| **Google Gemini** | \`${GEMINI_MODEL:-gemini-3.5-flash-lite}\` | $(st_label "${GEMINI_API_KEY:-}" "$gemini_status") | RPM: ${gemini_rpm} / RPD: ${gemini_rpd} |"
+echo "| **OpenAI** | \`${OPENAI_MODEL:-gpt-5.5}\` | $(st_label "${OPENAI_API_KEY:-}" "$openai_status") | RPM: ${openai_rpm} / RPD: ${openai_rpd} |"
+echo "| **Anthropic Claude** | \`${CLAUDE_MODEL:-claude-fable-5}\` | $(st_label "${CLAUDE_API_KEY:-}" "$claude_status") | RPM: ${claude_rpm} / RPD: ${claude_rpd} |"
+echo "| **x.AI Grok** | \`${XAI_MODEL:-grok-4.5}\` | $(st_label "${XAI_API_KEY:-}" "$xai_status") | RPM: ${grok_rpm} / RPD: ${grok_rpd} |"
+echo "| **OpenRouter** | \`${OPENROUTER_MODEL:-openrouter/free}\` | $(st_label "${OPENROUTER_API_KEY:-}" "$or_status") | RPM: ${or_rpm} / RPD: ${or_rpd} |"
+echo "| **Local Server** | \`${local_model}\` | $([[ $local_status -eq 0 ]] && echo "Online" || echo "Offline") | GGUF |"

@@ -193,10 +193,12 @@ async def async_fetch_hf_spaces():
                 if res.status == 200:
                     for sp in json.loads(res.read().decode("utf-8")):
                         sp_id = sp.get("id", "")
-                        if sp_id and "qwen" in sp_id.lower() or "deepseek" in sp_id.lower():
-                            sub = sp_id.replace("/", "-").replace(".", "-").replace("_", "-").lower()
-                            m_name = sp_id.split("/")[-1].replace("-free-endpoint", "").replace("-", "/")
-                            discovered[m_name] = f"https://{sub}.hf.space/v1/chat/completions"
+                        if sp_id:
+                            clean_id = sp_id.split("/")[-1].replace("-free-endpoint", "")
+                            # Only add if not already covered by curated endpoints
+                            if not any(clean_id.lower() in k.lower() for k in discovered):
+                                sub = sp_id.replace("/", "-").replace(".", "-").replace("_", "-").lower()
+                                discovered[sp_id] = f"https://{sub}.hf.space/v1/chat/completions"
         except Exception: pass
         return discovered
     return await asyncio.to_thread(_fetch)
