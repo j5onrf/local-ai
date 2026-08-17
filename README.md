@@ -1,5 +1,5 @@
 <div align="center">
-    <img alt="Local-AI Agent" src="logo.png" width="800" />
+    <img alt="Local-AI Agent" src="logo.svg" width="300" />
 </div>
 
 <h1 align="center">Local-AI Agent <kbd>v0.9.8.56-beta</kbd></h1>
