@@ -2,17 +2,26 @@
   <img alt="Local-AI Agent" src="logo.svg" height="130" />
 </div>
 
-<h1 align="center">Local-AI Agent <img src="https://shieldcn.dev/badge/version-v0.9.8.56.svg?variant=secondary" alt="Version"></h1>
+<h1 align="center">Local-AI Agent <img src="https://shieldcn.dev/badge/version-v0.9.8.56.svg?variant=secondary" alt="Version"><a href="https://github.com/j5onrf/local-ai"> <img src="https://img.shields.io/github/repo-size/j5onrf/local-ai?style=flat-rounded&label&color=27272a" alt="Repo Size"></a></h1>
 
 <p align="center">
   <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/github/last-commit/j5onrf/local-ai.svg?color=emerald&variant=secondary" alt="Last Commit"></a>
   <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/badge/Python.svg?variant=branded&brand=python" alt="Language"></a>
   <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/badge/C%2B%2B.svg?variant=branded&brand=cplusplus"></a>
   <a href="https://github.com/j5onrf/local-ai/blob/main/LICENSE"><img src="https://shieldcn.dev/badge/license-MIT-green.svg" alt="License"></a>
+  <a href="https://shieldcn.dev/badge/status-beta-blue.svg"><img src="https://shieldcn.dev/badge/status-beta-blue.svg" alt="License"></a>
+</p>
+<p align="center">
+  <code>gpt</code> &nbsp; <code>claude</code> &nbsp; <code>grok</code> &nbsp; <code>gemini</code> &nbsp; <code>openrouter</code> &nbsp; <code>hf</code> &nbsp; <code>gguf</code>
 </p>
 
 <p align="center">
-  <code>gpt</code> &nbsp; <code>claude</code> &nbsp; <code>grok</code> &nbsp; <code>gemini</code> &nbsp; <code>openrouter</code> &nbsp; <code>hf</code> &nbsp; <code>gguf</code>
+  <img src="https://img.shields.io/badge/GPT-10b981?variant=branded" />
+  <img src="https://img.shields.io/badge/Claude-3b82f6?style=flat-round" />
+  <img src="https://img.shields.io/badge/Grok-8b5cf6?style=flat-round" />
+  <img src="https://img.shields.io/badge/Gemini-ec4899?style=flat-round" />
+  <img src="https://img.shields.io/badge/HF-ff9d00?style=flat-round" />
+  <img src="https://img.shields.io/badge/GGUF-00F2FE?style=flat-round" />
 </p>
 
 ---
