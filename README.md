@@ -10,7 +10,6 @@
   <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/badge/C%2B%2B.svg?variant=branded&brand=cplusplus"></a>
   <a href="https://github.com/j5onrf/local-ai/blob/main/LICENSE"><img src="https://shieldcn.dev/badge/license-MIT-green.svg" alt="License"></a>
   <a href="https://shieldcn.dev/badge/status-beta-blue.svg"><img src="https://shieldcn.dev/badge/status-beta-blue.svg" alt="Status"></a>
-  <img src="https://img.shields.io/github/repo-size/j5onrf/local-ai?style=flat-rounded&label&color=27272a" alt="Repo Size"></a>
 </p>
 <p align="center">
   <code>gpt</code> &nbsp; <code>claude</code> &nbsp; <code>grok</code> &nbsp; <code>gemini</code> &nbsp; <code>openrouter</code> &nbsp; <code>hf</code> &nbsp; <code>gguf</code>
