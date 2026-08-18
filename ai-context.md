@@ -89,6 +89,8 @@ pkill -9 -f "pw-play|koko" ---> stop speech, kill tts
 ## 6. TUI Apps
 
 ```properties
+# --- T3 Code WebApp ---
+~/.config/local-ai/tools/subsec/apps/t3code.sh ---> agent ui
 # --- Email TUI ---
 ~/.config/local-ai/tools/email/email-agent ---> email agent
 # --- Hyprland State ---

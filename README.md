@@ -174,10 +174,10 @@ AI_MAX_TOKENS="8192"
 - [x] **Kokoro Neural Text-to-Speech:** Real-time local neural voice reader (`/tts`), PipeWire audio integration, and automatic thinking/code block filtering.
 - [x] **NOOA IPython Kernel Harness:** Single-tool Python kernel execution engine (`/py`) with NVIDIA NOOA bounded previews (`preview()`), model-callable `memory`/`graph` APIs, in-kernel `delegate()` sub-agents, AST safety gates, and stateful context token conservation.
 - [x] **DeepSeek Session Audit & IPC:** Real-time JSONL event logging (`.agent/session.jsonl`), JSON-RPC 2.0 sub-agent socket IPC, and YAML skill profile frontmatter headers.
+- [ ] **React Agent WebApp (T3 Fork):** Local-first React control surface & desktop WebApp powered by a lightweight WebSocket-to-IPC socket bridge—featuring interactive Monaco side-by-side git diffs, Reasonix collapsible thinking accordions, and visual sub-agent task trees.
 - [ ] **Context Stress Testing:** Continuous context-window pressure tests across quantized local engines.
 - [ ] **Automated File Containment Validation:** Zero-trust security verification on traversal boundaries.
 - [ ] **v1.0.0 Production Release Tag!**
-  
 ---
 
 ## Credits

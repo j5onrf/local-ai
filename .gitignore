@@ -20,3 +20,7 @@ projects/database/home.db
 __pycache__/
 *.pyc
 .spend_ledger.json
+
+# Runtime Caches
+.cache/
+
