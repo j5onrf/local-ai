@@ -10,8 +10,17 @@ Maps codebase structure into a flat shorthand index (`.txt`) and a parallel SQLi
 
 ## CLI Usage
 
+#### Standalone Project Mapping
 ```console
-index-map [dir]              # Build flat index & graph database
+# Option 1: cd into directory and map
+cd /path/to/project && index-map
+
+# Option 2: Map any directory from anywhere
+index-map /path/to/project
+```
+
+#### Graph & Symbol Commands
+```console
 index-map architecture       # Overview of files, classes, functions & call count
 index-map search <pattern>   # Substring or vector semantic search
 index-map trace <symbol>     # Call tree (callers & callees)
