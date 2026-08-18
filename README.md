@@ -19,7 +19,7 @@
 
 ## Overview & Execution Modes
 
-Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`) controlling a C++ backend `llama-server`. Built for extreme efficiency on quantized local engines (`LFM2.5-8B-A1B`, `Qwen-3.5-2B`, `Qwen3.6-35B-A3B`, `Qwen3.8-27B`) and cloud providers.
+Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`) controlling a C++ backend `llama-server`. Built for extreme efficiency on quantized local engines (`LFM2.5-8B-A1B`, `Qwen-3.5-2B`, `Qwen3.6-35B-A3B`, `Qwen3.8-27B`, `DeepSeek-V4-Flash`) and cloud providers.
 
 🟢 **Active:** Dedicated `Huggingface` endpoints: ([`Qwen/Qwen3.8-27B`](https://huggingface.co/spaces/victor/Qwen3.8-27B-free-endpoint), [`DeepSeek-V4-Flash`](https://huggingface.co/spaces/victor/DeepSeek-V4-Flash-0731-free-endpoint)).
 
