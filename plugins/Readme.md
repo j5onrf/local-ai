@@ -1,4 +1,4 @@
-# Custom Plugins & Tools: `tools/plugins/`
+# Custom Plugins & Tools: `plugins/`
 
 User-extensible directory for custom standalone scripts, feature extensions, and automation tools.
 
@@ -8,7 +8,7 @@ User-extensible directory for custom standalone scripts, feature extensions, and
 
 1. **Create an Executable Script:** Place your `.py` or `.sh` script in this folder and make it executable:
    ```bash
-   chmod +x ~/.config/local-ai/tools/plugins/my-plugin
+   chmod +x ~/.config/local-ai/plugins/my-plugin
    ```
 
 2. **Include a Shebang:** Ensure the first line defines the interpreter so `index-map` indexes AST symbols:
@@ -17,11 +17,22 @@ User-extensible directory for custom standalone scripts, feature extensions, and
    """Summary of plugin capability."""
    ```
 
-3. **Map Trigger in `ai-context.md`:** Add a single line to `~/.config/local-ai/ai-context.md` for shortcut routing:
+3. **Map Trigger in `ai-context.md`:** Add a line to `~/.config/local-ai/ai-context.md` for shortcut routing:
    ```properties
    # --- My Custom Plugin ---
-   [TOOL] ~/.config/local-ai/tools/plugins/my-plugin --cat ---> my plugin, run feature, custom tool
+   [TOOL] ~/.config/local-ai/plugins/my-plugin --cat ---> my plugin, run feature
    ```
+
+---
+
+## Execution & Output Flags (`ai-context.md`)
+
+| Format | Output Behavior |
+| :--- | :--- |
+| `[TOOL] <path>` | Formatted output through Rich Markdown (`\| view`). |
+| `[TOOL] <path> --cat` | Direct raw terminal output (`\| cat`). |
+| `[TOOL] <path> --s` | Silent execution (bypasses authorization gate). |
+| `<path>` (No `[TOOL]`) | Native foreground execution (for interactive TUIs and curses apps). |
 
 ---
 
