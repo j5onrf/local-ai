@@ -14,6 +14,7 @@ from rich.syntax import Syntax
 
 import agent_ui as ui
 import agent_cloud
+import agent_tools as tools
 
 CFG_DIR: str = os.path.expanduser("~/.config/local-ai")
 STATE_FILE: str = os.path.join(CFG_DIR, ".state.json")
@@ -38,17 +39,8 @@ BINARY_EXTENSIONS = frozenset({
 _TPM_SKIP_QUERIES = frozenset({"hello", "hi", "hey", "exit", "quit", "q", "/clear", "/reset", "/stats", "/tok", "/m", "/r"})
 _TPM_BLACKLIST = frozenset({"files", "file", "file_list", "project", "code", "description", "features", "dependencies", "project_type", "directory", "folder", "workspace"})
 
-EDIT_TOOLS: List[Dict[str, Any]] = [
-    {"type": "function", "function": {"name": n, "description": d, "parameters": {"type": "object", "properties": p, "required": r}}}
-    for n, d, p, r in [
-        ("read_symbol", "Extract the precise source code snippet for a function or class symbol from the index graph without reading the whole file.", {"symbol": {"type": "string"}}, ["symbol"]),
-        ("read_file", "Read a text file from the project.", {"path": {"type": "string"}}, ["path"]),
-        ("write_file", "Create or overwrite a file in the project.", {"path": {"type": "string"}, "content": {"type": "string"}}, ["path", "content"]),
-        ("list_dir", "List directory contents in the project.", {"path": {"type": "string"}}, []),
-        ("run_command", "Run a shell command in project root.", {"command": {"type": "string"}}, ["command"]),
-    ]
-]
-TOOL_VERBS = {"read_symbol": "tracing symbol", "read_file": "checking", "write_file": "updating", "list_dir": "checking", "run_command": "executing"}
+EDIT_TOOLS: List[Dict[str, Any]] = getattr(tools, "EDIT_TOOLS", [])
+TOOL_VERBS: Dict[str, str] = getattr(tools, "TOOL_VERBS", {})
 
 DEFAULTS = {
     "spell_active": True, "show_stats": True, "memory_active": True, "box_style": 1, "yolo_mode": False,
@@ -326,17 +318,6 @@ def _calc_turn_tokens(ans_text: str, messages: List[Dict[str, Any]], captured_us
     return sum(len(str(m.get("content") or "")) for m in messages) // 4, len(ans_text) // 4
 
 
-def _safe_path(workspace: str, p: str) -> str:
-    if not p: return os.path.realpath(workspace)
-    p = os.path.expanduser(urllib.parse.unquote(str(p).strip()))
-    return os.path.realpath(p if os.path.isabs(p) else os.path.join(workspace, p))
-
-
-def _is_outside_workspace(workspace: str, full_path: str) -> bool:
-    root = os.path.realpath(workspace)
-    return full_path != root and not full_path.startswith(root + os.sep)
-
-
 def _confirm_gate(reason: str, spinner: Any) -> bool:
     if spinner: spinner.stop()
     is_tty = (hasattr(sys, "__stdout__") and sys.__stdout__ and sys.__stdout__.isatty()) or sys.stdout.isatty()
@@ -352,112 +333,12 @@ def _print_tool_output(spinner: Any, text: str) -> None:
 
 
 def _run_edit_tool(name: str, args: Dict[str, Any], workspace: str, spinner: Any = None) -> str:
-    gates_active = os.environ.get("AI_CONFIRM_GATES", "1") == "1"
-    denial = "[denied] User declined tool execution."
-    raw_path = args.get("path", "")
-    full = _safe_path(workspace, raw_path) if raw_path else ""
-
-    if name == "exec_python":
-        try:
-            import agent_ipython as ipython
-            out = ipython.run_cell(args.get("code", ""), workspace, lambda r: _confirm_gate(r, spinner))
-            _print_tool_output(spinner, out)
-            return out
-        except Exception as e: return f"[error] Python kernel execution failed: {e}"
-
-    if name == "read_symbol":
-        sym = args.get("symbol", "").strip()
-        try:
-            mod_path = os.path.join(CFG_DIR, "tools", "map", "index-map")
-            res = subprocess.run([sys.executable, mod_path, "snippet", sym], cwd=workspace, capture_output=True, text=True, timeout=10)
-            out = (res.stdout or res.stderr or "").strip()
-            _print_tool_output(spinner, out)
-            return out or f"[error] Symbol '{sym}' not found in index graph."
-        except (OSError, subprocess.SubprocessError, TimeoutError) as e:
-            return f"[error] failed to extract symbol: {e}"
-
-    if name == "read_file":
-        if os.path.splitext(full)[1].lower() in BINARY_EXTENSIONS or os.path.isdir(full):
-            return f"[error] Refused to read binary file or directory '{raw_path}'."
-        if _is_outside_workspace(workspace, full) and not _confirm_gate(f"OUT-OF-BOUNDS READ: {full}", spinner): return denial
-        if gates_active and not _confirm_gate(f"read file {raw_path}", spinner): return denial
-        try:
-            with open(full, "r", encoding="utf-8", errors="replace") as f:
-                content = f.read(60000)
-            _print_tool_output(spinner, content)
-            return content
-        except OSError as e: return f"[error] failed to read file: {e}"
-
-    if name == "write_file":
-        content = args.get("content", "")
-        if full.endswith(".py"):
-            try: ast.parse(content)
-            except SyntaxError as e: return f"[error] Write blocked. Python syntax error: {e} on line {getattr(e, 'lineno', '?')}."
-        if full.endswith(".json"):
-            try: json.loads(content)
-            except (json.JSONDecodeError, TypeError, ValueError) as e: return f"[error] Write blocked. JSON syntax error: {e}."
-
-        if sys.stdout.isatty() and os.path.exists(full):
-            try:
-                with open(full, "r", encoding="utf-8", errors="replace") as f:
-                    old = f.read()
-                if diff := "\n".join(difflib.unified_diff(old.splitlines(), content.splitlines(), fromfile=f"a/{raw_path}", tofile=f"b/{raw_path}", lineterm="")):
-                    _console_err.print("\n", Syntax(diff, "diff", theme="ansi_dark", background_color="default"), "\n")
-            except OSError: pass
-
-        if _is_outside_workspace(workspace, full) and not _confirm_gate(f"OUT-OF-BOUNDS WRITE: {full}", spinner): return denial
-        if gates_active and not _confirm_gate(f"{'overwrite' if os.path.exists(full) else 'create'} {raw_path}", spinner): return denial
-
-        try:
-            os.makedirs(os.path.dirname(full) or workspace, exist_ok=True)
-            with open(full, "w", encoding="utf-8") as f:
-                f.write(content)
-            return f"wrote {len(content)} chars to {raw_path}"
-        except OSError as e: return f"[error] failed to write file: {e}"
-
-    if name == "list_dir":
-        if _is_outside_workspace(workspace, full) and not _confirm_gate(f"OUT-OF-BOUNDS LIST DIR: {full}", spinner): return denial
-        if gates_active and not _confirm_gate(f"list directory {raw_path or '.'}", spinner): return denial
-        try:
-            entries = sorted(os.listdir(full))
-            res_str = "\n".join((e + "/" if os.path.isdir(os.path.join(full, e)) else e) for e in entries) or "(empty)"
-            if sys.stdout.isatty():
-                if spinner: spinner.stop()
-                _console_err.print(f"[dim]{res_str}[/dim]")
-            return res_str
-        except OSError as e: return f"[error] failed to list files: {e}"
-
-    if name == "run_command":
-        cmd = args.get("command", "")
-        expanded = cmd.replace("~", os.path.expanduser("~"))
-        abs_paths = RE_ABS_PATH.findall(expanded)
-        sys_prefixes = ("/bin/", "/usr/bin/", "/usr/local/bin/", "/sbin/", "/usr/sbin/")
-        target_paths = [p for p in abs_paths if not any(p.startswith(sp) for sp in sys_prefixes)]
-        if (".." in cmd or any(_is_outside_workspace(workspace, p) for p in target_paths if os.path.exists(p) or os.path.isabs(p))) and not _confirm_gate(f"OUT-OF-BOUNDS EXECUTION: $ {cmd}", spinner):
-            return denial
-
-        if gates_active:
-            if not sys.stdout.isatty(): return "[denied] no terminal available to approve command execution"
-            if not _confirm_gate(f"execute: $ {cmd}", spinner): return denial
-        else:
-            _console_err.print(f"[dim]  Executing command autonomously: $ {cmd}[/dim]")
-
-        shell = os.environ.get("SHELL") or "/bin/sh"
-        if spinner:
-            try: spinner.update("Working...")
-            except (AttributeError, RuntimeError): pass
-            spinner.start("Working...")
-        try:
-            res = subprocess.run([shell, "-lc", cmd], cwd=workspace, capture_output=True, text=True, timeout=300)
-            out = ((res.stdout or "") + (("\n" + res.stderr) if res.stderr else "")).strip()[:10000]
-            _print_tool_output(spinner, out)
-            return f"(exit {res.returncode})\n{out}" if res.returncode != 0 else (out or "(exit 0, no output)")
-        except subprocess.TimeoutExpired: return "[error] command timed out after 300 seconds"
-        except OSError as e: return f"[error] failed to run command: {e}"
-        finally:
-            if spinner: spinner.stop()
-
-    return f"[error] unknown tool {name}"
+    """Delegates directly to centralized agent_tools engine with gate & output hooks."""
+    return tools.run_tool(
+        name, args, workspace,
+        confirm_gate_fn=lambda r: _confirm_gate(r, spinner),
+        print_output_fn=lambda t: _print_tool_output(spinner, t)
+    )
 
 
 def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, str], body: Dict[str, Any], timeout: int, spinner: Any, show_stats: bool = False, is_agent: bool = False) -> Optional[str]:

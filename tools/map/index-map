@@ -9,11 +9,11 @@ except ImportError: HAS_VEC = False
 EMBEDDING_SERVER = "http://localhost:8080"
 
 LANG_RULES = {
-    'rust': {'class': r'\b(?:struct|enum|trait|union)\s+(\w+)', 'func': r'\bfn\s+(\w+)', 'call': r'\b(\w+)\s*\('},
+    'rust': {'class': r'\b(?:struct|enum|trait|union)\s+(\w+)', 'func': r'\b(?:async\s+)?(?:pub(?:\([^)]+\))?\s+)?fn\s+(\w+)', 'call': r'\b(\w+)\s*\('},
     'go': {'class': r'\btype\s+(\w+)\s+struct\b', 'func': r'\bfunc\s+(?:\([^)]+\)\s+)?(\w+)', 'call': r'\b(\w+)\s*\('},
     'lua': {'class': r'\b(\w+)\s*=\s*\{\}', 'func': r'\bfunction\s+([\w.:]+)', 'call': r'\b([\w.:]+)\s*\('},
-    'javascript': {'class': r'\bclass\s+(\w+)', 'func': r'\b(?:function\s+(\w+)|(\w+)\s*=\s*(?:\([^)]*\)|[^\s=]+)\s*=>|const\s+(\w+)\s*=\s*function)', 'call': r'\b(\w+)\s*\('},
-    'typescript': {'class': r'\b(?:class|interface|type)\s+(\w+)', 'func': r'\b(?:class|interface|type)\s+(\w+)', 'call': r'\b(\w+)\s*\('},
+    'javascript': {'class': r'\bclass\s+(\w+)', 'func': r'\b(?:async\s+)?(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?(?:\([^)]*\)|[^\s=]+)\s*=>|(?:const|let|var)\s+(\w+)\s*=\s*function)', 'call': r'\b(\w+)\s*\('},
+    'typescript': {'class': r'\b(?:class|interface|type)\s+(\w+)', 'func': r'\b(?:async\s+)?(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?(?:\([^)]*\)|[^\s=]+)\s*=>|(?:public|private|protected|static|async)?\s*(\w+)\s*\([^)]*\)\s*:\s*[\w<>\[\]\s|]+)', 'call': r'\b(\w+)\s*\('},
     'cpp': {'class': r'\b(?:class|struct)\s+(\w+)', 'func': r'\b\w+(?:<[^>]+>)?\s+(\w+)\s*\([^)]*\)\s*\{', 'call': r'\b(\w+)\s*\('},
     'c': {'class': r'\bstruct\s+(\w+)', 'func': r'\b\w+\s+(\w+)\s*\([^)]*\)\s*\{', 'call': r'\b(\w+)\s*\('}
 }
@@ -379,9 +379,20 @@ def run_indexing(target_dir, force=False, is_agent=False, no_db=False):
             if should_ignore(rel_path, False, patterns, DEFAULT_IGNORED): continue
 
             ext = os.path.splitext(file)[1].lower()
-            if db_conn: insert_node(db_conn, f"file:{rel_path}", rel_path, 'file', rel_path, ext.lstrip('.'), {}, rel_path, use_vec, EMBEDDING_SERVER)
+            
+            # Detect extensionless Python executable scripts via shebang
+            is_py_shebang = False
+            if not ext and not is_binary(fp):
+                try:
+                    with open(fp, 'r', encoding='utf-8', errors='ignore') as f:
+                        first_line = f.readline()
+                        if first_line.startswith("#!") and "python" in first_line:
+                            is_py_shebang = True
+                except Exception: pass
 
-            if ext == '.py':
+            if db_conn: insert_node(db_conn, f"file:{rel_path}", rel_path, 'file', rel_path, (ext.lstrip('.') or ('python' if is_py_shebang else 'file')), {}, rel_path, use_vec, EMBEDDING_SERVER)
+
+            if ext == '.py' or is_py_shebang:
                 try:
                     with open(fp, 'r', encoding='utf-8', errors='replace') as f: content = f.read()
                     lines = content.splitlines()

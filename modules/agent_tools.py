@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """Native Tool Engine - Handles file editing, commands, & graph intelligence"""
 
-import os, sys, json, ast, re, subprocess, urllib.parse
+import os, sys, json, ast, re, difflib, subprocess, urllib.parse
 from typing import List, Dict, Any, Optional, Callable
 
+from rich.console import Console
+from rich.syntax import Syntax
+
 CFG_DIR: str = os.path.expanduser("~/.config/local-ai")
+_console_err = Console(stderr=True)
 BINARY_EXTENSIONS = frozenset({
     ".db", ".sqlite", ".sqlite3", ".bin", ".pyc", ".so", ".dll", ".exe",
     ".png", ".jpg", ".jpeg", ".gif", ".zip", ".tar", ".gz", ".7z",
@@ -121,6 +125,13 @@ def run_tool(name: str, args: Dict[str, Any], workspace: str, confirm_gate_fn: O
         if full.endswith(".json"):
             try: json.loads(content)
             except (json.JSONDecodeError, TypeError, ValueError) as e: return f"[error] Write blocked. JSON syntax error: {e}."
+
+        if sys.stdout.isatty() and os.path.exists(full):
+            try:
+                with open(full, "r", encoding="utf-8", errors="replace") as f: old = f.read()
+                if diff := "\n".join(difflib.unified_diff(old.splitlines(), content.splitlines(), fromfile=f"a/{raw_path}", tofile=f"b/{raw_path}", lineterm="")):
+                    _console_err.print("\n", Syntax(diff, "diff", theme="ansi_dark", background_color="default"), "\n")
+            except OSError: pass
 
         if _is_outside_workspace(workspace, full) and not _gate(f"OUT-OF-BOUNDS WRITE: {full}"): return denial
         if gates_active and not _gate(f"{'overwrite' if os.path.exists(full) else 'create'} {raw_path}"): return denial
