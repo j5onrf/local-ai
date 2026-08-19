@@ -22,6 +22,8 @@
 ~/.config/local-ai/modules/model-select.py ---> model select, cloud model
 # --- AI Status Model Route ---
 [TOOL] ~/.config/local-ai/tools/agentic/system/ai-status ---> aistatus, aistat, ais
+# --- Blueprint ---
+[TOOL] ~/.config/local-ai/tools/blueprint ---> plugins, cheatsheet, bp, cs, blueprint
 ```
 
 ## 1. Workspaces
@@ -104,8 +106,6 @@ pkill -9 -f "pw-play|koko" ---> stop speech, kill tts
 ## 7. Tools & Utilities
 
 ```properties
-# --- Blueprint ---
-[TOOL] ~/.config/local-ai/tools/blueprint ---> cheatsheet, bp, cs, blueprint
 # --- AI Commit ---
 ~/.config/local-ai/tools/agentic/system/ai-commit ---> ai-commit, gc, git commit
 # --- Weather ---
