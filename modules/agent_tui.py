@@ -958,8 +958,7 @@ class LocalAITUI(App):
 
                 for tc in calls:
                     fname, raw_args = tc.get("function", {}).get("name", ""), tc.get("function", {}).get("arguments", "")
-                    try: args = json.loads(raw_args) if raw_args else {}
-                    except (json.JSONDecodeError, TypeError, ValueError): args = {}
+                    args = core._heal_tool_args(raw_args) if hasattr(core, "_heal_tool_args") else (json.loads(raw_args) if raw_args else {})
                     brief = str(args.get("symbol") or args.get("path") or args.get("command") or "")[:100]
                     verb = getattr(core, "TOOL_VERBS", {}).get(fname, "working")
 

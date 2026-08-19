@@ -29,6 +29,51 @@ RE_MULTIPLE_NEWLINES = re.compile(r'\n{2,}')
 RE_JSON_OBJECT = re.compile(r"\{[\s\S]*\}")
 RE_ABS_PATH = re.compile(r'/(?:[a-zA-Z0-9_\-\.]+/)*[a-zA-Z0-9_\-\.]*')
 RE_TOOL_CALL_BLOCK = re.compile(r'<\|tool_call_start\|>.*?<\|tool_call_end\|>', re.DOTALL)
+RE_MD_JSON_WRAPPER = re.compile(r'```(?:json)?\s*([\s\S]*?)\s*```', re.DOTALL)
+RE_XML_TOOL_TAGS = re.compile(r'<\|?[a-zA-Z_]+_call_?(?:start|end)?\|?>', re.DOTALL)
+
+
+def _heal_tool_args(raw: str) -> Dict[str, Any]:
+    """Self-healing JSON tool argument parser (Unsloth-inspired).
+    Recovers from missing brackets, single quotes, unescaped linebreaks, and leaked XML.
+    """
+    if not raw or not raw.strip():
+        return {}
+
+    cleaned = raw.strip()
+    if m := RE_MD_JSON_WRAPPER.search(cleaned):
+        cleaned = m.group(1).strip()
+
+    cleaned = RE_XML_TOOL_TAGS.sub('', cleaned).strip()
+
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        pass
+
+    # Heal single quotes -> double quotes
+    healed = re.sub(r"(?<!\\)'", '"', cleaned)
+    # Heal unquoted keys (e.g. {path: "/foo"} -> {"path": "/foo"})
+    healed = re.sub(r'(\b[a-zA-Z_][a-zA-Z0-9_]*\b)\s*:', r'"\1":', healed)
+    # Fix trailing commas before closing braces
+    healed = re.sub(r',\s*([\]}])', r'\1', healed)
+
+    # Auto-balance missing braces/brackets
+    open_braces = healed.count('{') - healed.count('}')
+    open_brackets = healed.count('[') - healed.count(']')
+    if open_brackets > 0:
+        healed += ']' * open_brackets
+    if open_braces > 0:
+        healed += '}' * open_braces
+
+    try:
+        return json.loads(healed)
+    except json.JSONDecodeError:
+        extracted = {}
+        for k, v in re.findall(r'"?([a-zA-Z_][a-zA-Z0-9_]*)"?\s*:\s*["\']?([^,"\']+)["\']?', cleaned):
+            extracted[k] = v.strip()
+        return extracted
+
 
 BINARY_EXTENSIONS = frozenset({
     ".db", ".sqlite", ".sqlite3", ".bin", ".pyc", ".so", ".dll", ".exe",
@@ -438,10 +483,8 @@ def agentic_turn(messages: List[Dict[str, Any]], url: str, headers: Dict[str, st
 
             for tc in calls:
                 fname = tc.get("function", {}).get("name", "")
-                try:
-                    raw_args = tc.get("function", {}).get("arguments") or ""
-                    args = json.loads(raw_args) if raw_args else {}
-                except (json.JSONDecodeError, TypeError, ValueError): args = {}
+                raw_args = tc.get("function", {}).get("arguments") or ""
+                args = _heal_tool_args(raw_args)
                 brief = str(args.get("symbol") or args.get("path") or args.get("command") or "")[:100]
                 verb = TOOL_VERBS.get(fname, "working")
 

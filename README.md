@@ -2,7 +2,7 @@
   <img alt="Local-AI Agent" src="logo.svg" height="130" />
 </div>
 
-<h1 align="center">Local-AI Agent <img src="https://shieldcn.dev/badge/version-v0.9.8.59.svg?variant=secondary" alt="Version"><a href="https://github.com/j5onrf/local-ai"> </h1>
+<h1 align="center">Local-AI Agent <img src="https://shieldcn.dev/badge/version-v0.9.8.60.svg?variant=secondary" alt="Version"><a href="https://github.com/j5onrf/local-ai"> </h1>
 
 <p align="center">
   <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/github/last-commit/j5onrf/local-ai.svg?color=emerald&variant=secondary" alt="Last Commit"></a>
@@ -54,7 +54,8 @@ Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`)
 | **Providers** | **Active Provider** | Direct `.env` configuration: Custom Endpoints / HF, Gemini, OpenRouter, OpenAI, Claude, Grok, or Local GGUF. |
 | **Multi-Agent** | **Subagents** | [Vercel Eve](https://github.com/vercel/eve)-style sub-agents with [herdr](https://github.com/ogulcancelik/herdr) multiplexing (`-save`/`-load`) + in-kernel `delegate("goal")` sub-loops. |
 | **Safety** | **Zero-Trust Gates** | Mandatory approval prompts for commands and out-of-bounds file access. |
-| **Validation** | **Type-Safe & AST Guard** | [Pydantic AI](https://github.com/pydantic/pydantic-ai) schemas + [OpenAI Agents](https://github.com/openai/openai-agents-python)-style self-correcting `.py`/`.json` writes. |
+| **Integrity** | **Type-Safe & AST Guard** | [Pydantic AI](https://github.com/pydantic/pydantic-ai) schemas + [OpenAI Agents](https://github.com/openai/openai-agents-python)-style self-correcting `.py`/`.json` file writes. |
+| **Resilience** | **Self-Healing Tool Calls** | [Unsloth](https://github.com/unslothai/unsloth)-inspired heuristic parser fixing malformed JSON/XML arguments on the fly before tool execution. |
 | **Optimization** | **Token-Slasher** | Custom [`tools/`](tools/) and [`skills/`](skills/) integration built for minimal token consumption. |
 | **Voice-to-Text** | **Tablet/Phone Bridge** | Zero-latency HTTPS voice bridge with Gemini cloud audio transcription (`/v [auto]`). |
 | **Text-to-Speech** | **Neural Kokoro TTS** | Local PipeWire audio reader (`/tts`) using `koko` with automatic code/thinking filtering. |
@@ -174,6 +175,7 @@ AI_MAX_TOKENS="8192"
 - [x] **Kokoro Neural Text-to-Speech:** Real-time local neural voice reader (`/tts`), PipeWire audio integration, and automatic thinking/code block filtering.
 - [x] **NOOA IPython Kernel Harness:** Single-tool Python kernel execution engine (`/py`) with NVIDIA NOOA bounded previews (`preview()`), model-callable `memory`/`graph` APIs, in-kernel `delegate()` sub-agents, AST safety gates, and stateful context token conservation.
 - [x] **DeepSeek Session Audit & IPC:** Real-time JSONL event logging (`.agent/session.jsonl`), JSON-RPC 2.0 sub-agent socket IPC, and YAML skill profile frontmatter headers.
+- [x] **Self-Healing Tool Parser:** Unsloth-inspired resilient JSON argument healer auto-balancing brackets, stripping leaked XML tokens, and repairing unescaped newlines for small local models.
 - [ ] **React Agent WebApp (T3 Fork):** Local-first React control surface & desktop WebApp powered by a lightweight WebSocket-to-IPC socket bridge—featuring interactive Monaco side-by-side git diffs, Reasonix collapsible thinking accordions, and visual sub-agent task trees.
 - [ ] **Context Stress Testing:** Continuous context-window pressure tests across quantized local engines.
 - [ ] **Automated File Containment Validation:** Zero-trust security verification on traversal boundaries.
