@@ -1,3 +1,14 @@
+# Privacy-First Architecture
+
+Built to be lightweight, auditable by a single developer, and private by design.
+
+* **Automatic Masking:** API keys, tokens, and network IPs are sanitized before reaching model context (`ai-status`, `mysys.md`).
+* **Zero-Trust Gates:** Out-of-bounds file access and shell execution require explicit interactive confirmation.
+* **Isolated Secrets:** Credentials exist solely in `~/.config/local-ai/.env` and are never logged or exported.
+* **Zero Telemetry:** Pure local orchestration with zero tracking daemons or background data collection.
+
+---
+
 # System Architecture
 
 ```console
@@ -63,7 +74,7 @@
 ⚠️ **Important Privacy Warning**
 
 * **Cloud-Based Checks:** By default, this tool sends prompt queries to the public LanguageTool Cloud API to check spelling and grammar.
-* **Sensitive Data:** To keep your data private, press **`/spell`** on a prompt to disable, or run a local LanguageTool server (ports `8010` or `8081`) to process everything offline.
+* **Sensitive Data:** To keep your data private, type **`/spell or /sp`** on a prompt to disable, or run a local LanguageTool server (ports `8010` or `8081`) to process everything offline.
 * **Scope:** This utility runs exclusively inside the `ai <conversational>` CLI tool. It does not monitor or access any other applications on your system.
 
 ---

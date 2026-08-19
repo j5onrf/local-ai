@@ -39,6 +39,4 @@ User-extensible directory for custom standalone scripts, feature extensions, and
 ## Capabilities
 
 * **Zero Core Edits:** Add or remove tools anytime without touching core agent modules.
-* **Auto-Indexed:** `index-map` automatically indexes functions, imports, and docstrings from all scripts in this directory.
 * **Dual Execution:** Callable directly from shell shortcuts or injected into AI context turns.
-
