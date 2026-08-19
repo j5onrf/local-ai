@@ -19,7 +19,7 @@ LANG_RULES = {
 }
 COMPILED_LANG_RULES = {l: {k: re.compile(v) for k, v in r.items()} for l, r in LANG_RULES.items()}
 
-DEFAULT_IGNORED = frozenset({'.git', '__pycache__', 'logs', '.auto-f', 'node_modules', 'venv', '.venv', 'SSD_BACKUPS', '.cargo', '.rustup', '.cache', '.npm', '.local', '.mozilla', 'target', '.agent', '.idea', '.vscode'})
+DEFAULT_IGNORED = frozenset({'.git', '__pycache__', 'logs', '.auto-f', 'node_modules', 'venv', '.venv', 'SSD_BACKUPS', '.cargo', '.rustup', '.cache', '.npm', '.local', '.mozilla', 'target', '.agent', '.idea', '.vscode', 'projects'})
 
 RE_MD_TITLE = re.compile(r'^#\s+(.*)', re.M)
 RE_MD_FRONTMATTER = re.compile(r'^---\s*\n(.*?)\n---\s*\n', re.DOTALL)

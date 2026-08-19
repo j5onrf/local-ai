@@ -1,26 +1,31 @@
-# Ignore the API usage JSON file
-skills/system/mysys.md
-server.pem
-.auto-f
-ai-history
-tools/agentic/fusion/logs
-.openrouter_cache_v2.json
-.active_cd*
-.request_log
-.agent
+# Secrets & Credentials
 .env
-.state.json
-tools/email/.email
-.active_sessions
-projects/database/home.db
-.active_sessions
 .email
+tools/email/.email
+server.pem
 
-# Ignore Python cache directories and bytecode
+# System Hardware
+skills/system/mysys.md
+
+# Ephemeral State, Caches & Logs
+.state.json
+.spend_ledger.json
+.openrouter_cache_v2.json
+.request_log
+.voice_pending.txt
+.active_cd*
+.active_sessions/
+.auto-f
+.cache/
+ai-history
+tools/agentic/fusion/logs/
+.agent/
+
+# Databases & SQLite WAL
+projects/database/*.db*
+*.db-wal
+*.db-shm
+
+# Python Bytecode
 __pycache__/
 *.pyc
-.spend_ledger.json
-
-# Runtime Caches
-.cache/
-

@@ -88,7 +88,7 @@ class GraphSDK:
     """Model-Callable Harness API for Codebase Index Graph."""
     def __init__(self, workspace: str):
         self.workspace = workspace
-        self.mod_path = os.path.join(CFG_DIR, "tools", "map", "index-map")
+        self.mod_path = os.path.join(CFG_DIR, "tools", "index-map", "index-map")
 
     def snippet(self, symbol: str) -> str:
         """Extract precise source code snippet for a symbol."""

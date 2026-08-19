@@ -6,16 +6,16 @@ Generate cohesive, project-matched graphics (banners, logos, assets) on your fir
 
 ### The 4-Step Formula
 
-1. **Ingest & Describe:** Run the tool in your repository and type your design intent. (It automatically reads your `README.md` and codebase structures).
+1. **Ingest & Describe:** Run the prompt tool in your repository (it auto-ingests `README.md` and codebase structure):
 
-```text
+```console
 ~ ❯ prompt writer image
-[01/02] ❯ [prompt writer image] ~/.config/local-ai/tools/ai-prompt-writer-image | cat
+[01/02] ❯ [prompt writer image] ~/.config/local-ai/tools/subsec/prompt/ai-prompt-writer-image | cat
 :: ↵ run  Esc: 
 ```
-2. **Refine & Copy:** Tweak details in the console, then type **`/c`** to copy only the clean, compiled prompt.
-3. **Anchor the Style:** Open your `Text to Image` generator and upload your **style reference image** (to define colors, lighting, and medium).
-4. **Generate:** Paste (`Ctrl+V`) your compiled prompt and hit run.
+2. **Refine & Copy:** Adjust details in console, then type `/c` to copy the compiled prompt to clipboard.
+3. **Anchor Style:** Upload your **style reference image** in your image generator (sets colors, lighting, medium).
+4. **Generate:** Paste (`Ctrl+V`) the compiled prompt and generate.
 
 ---
 

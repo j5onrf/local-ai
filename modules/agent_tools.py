@@ -51,7 +51,7 @@ def _is_outside_workspace(workspace: str, full_path: str) -> bool:
 
 def run_graph_cmd(cmd_name: str, arg: str, workspace: str) -> str:
     try:
-        mod_path = os.path.join(CFG_DIR, "tools", "map", "index-map")
+        mod_path = os.path.join(CFG_DIR, "tools", "index-map", "index-map")
         cmd_args = [sys.executable, mod_path, cmd_name] + ([arg] if arg else [])
         res = subprocess.run(cmd_args, cwd=workspace, capture_output=True, text=True, timeout=12)
         out = (res.stdout or res.stderr or "").strip()

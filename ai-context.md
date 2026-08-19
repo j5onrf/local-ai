@@ -37,7 +37,7 @@ ai init ~/.config/local-ai/projects/session-test-3 ---> session test 3, projects
 
 ```properties
 # --- Index Map ---
-[TOOL] ~/.config/local-ai/tools/map/index-map --cat ---> index map, imap
+[TOOL] ~/.config/local-ai/tools/index-map/index-map --cat ---> index map, imap
 ```
 
 ## 3. Voice & TTS

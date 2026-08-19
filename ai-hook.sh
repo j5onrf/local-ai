@@ -42,7 +42,7 @@ ai() {
         db="$path/.agent/index-map-memory-$name.db"; [[ -f "$db" ]] || db="$path/index-map-memory-$name.db"
 
         if [[ ! -f "$map" || ! -f "$db" || "$path" -nt "$map" ]] || [[ -n "$(find "$path" -mindepth 1 -not -path '*/.git/*' -not -path '*/.agent/*' -not -name '*.md' -newer "$map" -print -quit 2>/dev/null)" ]]; then
-            "$_AI_PY" "$_AI_DIR/tools/map/index-map" --agent "$path" || { rm -f "$_AI_DIR/.active_cd.$$"; return 1; }
+            "$_AI_PY" "$_AI_DIR/tools/index-map/index-map" --agent "$path" || { rm -f "$_AI_DIR/.active_cd.$$"; return 1; }
             map="$path/.agent/index-map-$name.txt"; [[ -f "$map" ]] || map="$path/index-map-$name.txt"
         fi
         [[ -f "$map" ]] && AI_ACTIVE_SKILL="${skills[*]}" AI_WORKSPACE_PATH="$path" "$_AI_PY" "$_AI_DIR/ai-agent.py" --talk-chat "$(<"$map")"

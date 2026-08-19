@@ -306,7 +306,7 @@ def run_interactive_chat(args: List[str]) -> None:
 
                 if query in ("/sync", "/re"):
                     sys.stdout.write("\033[2m[sys] Syncing codespace map...\033[0m\r"); sys.stdout.flush()
-                    subprocess.run([sys.executable, f"{CFG_DIR}/tools/map/index-map", "--agent", workspace_path])
+                    subprocess.run([sys.executable, f"{CFG_DIR}/tools/index-map/index-map", "--agent", workspace_path])
                     agent_dir = os.path.join(workspace_path, ".agent")
                     txt_path = next((p for p in (os.path.join(agent_dir, f"index-map-{os.path.basename(workspace_path)}.txt"), os.path.join(workspace_path, f"index-map-{os.path.basename(workspace_path)}.txt")) if os.path.exists(p)), None)
                     if txt_path:

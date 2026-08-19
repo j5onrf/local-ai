@@ -1,10 +1,10 @@
-# CODEBASE INDEX MAP | Generated: 2026-08-18 16:02 | Workspace: local-ai | Path: ~/.config/local-ai
+# CODEBASE INDEX MAP | Generated: 2026-08-19 10:18 | Workspace: local-ai | Path: ~/.config/local-ai
 # Active symbols and structural connections mapped in the local index.
 # -----------------------------------------------------------------------------------------
 # Codebase Modules & Active Architecture:
 #   ├── .email                   - --- Global fallback connection details ---
 #   ├── .env                     - ~/.config/local-ai/.env
-#   ├── .gitignore               - Ignore the API usage JSON file
+#   ├── .gitignore               - Secrets & Credentials
 #   ├── .openrouter_cache_v2.json - {
 #   ├── .request_log
 #   ├── .spend_ledger.json       - {
@@ -13,13 +13,13 @@
 #   ├── LICENSE                  - MODIFIED MIT LICENSE (NON-COMMERCIAL / NO BUSINESS USE)
 #   ├── README.md                - <div align="center">
 #   ├── SECURITY.md              - Security Policy
-#   ├── ai-agent.py              - Local-Ai Agent [j5onrf] [v0.9.8.55]
+#   ├── ai-agent.py              - Local-Ai Agent [j5onrf] [v0.9.8.59]
 #   ├── ai-context.md            - Local-AI Config
 #   ├── ai-hook.sh               - Production Local-AI Shell Hook v0.9.8.5
 #   ├── logo.png
 #   ├── logo.svg                 - <svg xmlns="http://www.w3.org/2000/svg" viewBox="121 101 270 310">
 #   ├── server.pem               - -----BEGIN PRIVATE KEY-----
-#   ├── modules/Readme.md        - System Architecture
+#   ├── modules/Readme.md        - Privacy-First Architecture
 #   ├── modules/agent_cloud.py   - Dynamic Cloud Cascade Engine - Top-down .env provider API priority.
 #   ├── modules/agent_context.py - Context Search & Indexing Engine - Jaccard intent matching.
 #   ├── modules/agent_core.py    - Core Module - Handles streaming SSE, tool gates, and Rich rendering
@@ -40,7 +40,7 @@
 #   ├── modules/model-select.py  - Fully Dynamic TUI Model Selector driven by OpenRouter Rankings
 #   └── modules/speed_test.py    - Precise token generation & TPS speed test statistics tracker
 # -----------------------------------------------------------------------------------------
-[file:.gitignore] sum:Ignore the API usage JSON file
+[file:.gitignore] sum:Secrets & Credentials
 [markdown:CONTRIBUTING.md] title:Contributing to Local-AI Agent
 [file:LICENSE] sum:MODIFIED MIT LICENSE (NON-COMMERCIAL / NO BUSINESS USE)
 [markdown:README.md] title:1. Install system dependencies | links:Readme.md,ai-context.md
@@ -50,7 +50,7 @@
 [shell:ai-hook.sh] sum:Production Local-AI Shell Hook v0.9.8.5
 [image/png:logo.png] dim:1376x768 | size:1.0MB
 [svg:logo.svg] sum:<svg xmlns="http://www.w3.org/2000/svg" viewBox="121 101 270 310">
-[markdown:modules/Readme.md] title:System Architecture
+[markdown:modules/Readme.md] title:Privacy-First Architecture
 [python:modules/agent_cloud.py] imp:os,re,typing | fn:get_active_configs
 [python:modules/agent_context.py] imp:os,re,sys,typing | fn:tokenize,load_context_entries,jaccard_search,clean_tool_prefix
 [python:modules/agent_core.py] imp:agent_cloud,agent_ipython,agent_tools,agent_ui,agent_usage,ast,difflib,json,os,re,requests,rich,shutil,speed_test,subprocess,sys,time,typing,urllib | cls:RichStreamer | fn:get_state,save_state,workspace_safe_name,run_mod,background_tpm_update,_clear_lines,__init__,_stop_spinner,start,update,stop,_log_turn_usage,_process_stream_chunk,_calc_turn_tokens,_confirm_gate,_print_tool_output,_run_edit_tool,agentic_turn,_is_local_server_alive,stream_response,get_accurate_token_count,show_memory_status,prune_history
@@ -69,26 +69,7 @@
 [python:modules/chat] imp:agent_ui,json,os,re,sys,urllib
 [python:modules/model-select.py] imp:asyncio,atexit,json,os,re,select,shutil,subprocess,sys,termios,tty,typing,urllib | fn:cleanup_terminal,classify_openrouter_models,load_env_vars,get_active_key_set,update_env,set_key_commented_state,toggle_env_api_keys,load_cached_lists,save_cached_lists,async_fetch_openrouter_models,_fetch,async_fetch_hf_spaces,_fetch,async_get_key,_read,draw_main_menu,run_selector,get_opts,async_main
 [python:modules/speed_test.py] imp:os,sys,time,typing | fn:start,count_token,end
-[markdown:projects/Readme.md] title:Local-AI Agent Workspace & Session Manual
-[python:projects/session-test-2/physics_engine.py] imp:math | cls:PhysicsEngine | fn:__init__,add_object,calculate_kinetic_energy,calculate_potential_energy,calculate_drag_force,compute_trajectory
-[agent:projects/session-test-2/python.agent] sum:Filler code for python agent
-[python:projects/session-test-2/solution.py]
-[python:projects/session-test-2/string_utils.py] fn:reverse_words,count_vowels
-[python:projects/session-test-2/test_calc.py] fn:add,multiply
-[python:projects/session-test-2/test_string_utils.py] imp:string_utils,unittest | cls:TestStringUtils | fn:test_reverse_words_basic,test_reverse_words_single_and_empty,test_reverse_words_type_error,test_count_vowels_basic,test_count_vowels_none_and_empty,test_count_vowels_type_error
-[python:projects/session-test-2/tui_test.py] fn:hello
-[shell:projects/session-test/Test Script.sh] sum:Define the input array of numbers
-[python:projects/session-test/average.py] fn:calculate_average
-[json:projects/session-test/broken_format.json] keys:name,value,status
-[python:projects/session-test/broken_math.py]
-[python:projects/session-test/broken_syntax.py] fn:calculate_sum
-[python:projects/session-test/calculator.py] fn:add,subtract,multiply,divide
-[txt:projects/session-test/error_capture.txt] sum:Traceback (most recent call last):
-[python:projects/session-test/physics.py] fn:calculate_velocity,calculate_acceleration,calculate_acceleration
-[python:projects/session-test/physics_engine.py] imp:math | cls:PhysicsEngine | fn:__init__,add_object,calculate_kinetic_energy,calculate_potential_energy,calculate_drag_force,compute_trajectory
-[txt:projects/session-test/sandbox_test.txt] sum:Secure edit loop verification successful.
-[python:projects/session-test/simulation.py] imp:physics | fn:run_test
-[python:projects/session-test/test_calculator.py] imp:calculator,unittest | cls:TestCalculator | fn:test_add,test_subtract,test_multiply,test_divide,test_divide_by_zero,test_divide_negative_by_zero
+[markdown:plugins/Readme.md] title:Custom Plugins & Tools: `plugins/`
 [markdown:setup/Readme.md] title:Local Server Configuration (Reasoning & Tool Models)
 [shell:setup/lfm2.sh] sum:Configuration
 [python:setup/model-select-local.py] imp:asyncio,os,re,select,shutil,subprocess,sys,termios,tty | fn:async_set_cpu_chill,async_set_cpu_balanced,get_current_running_model,async_stop_all_engines,launch_local_server,async_get_key,_read,draw_menu,async_main
@@ -171,14 +152,12 @@
 [markdown:tools/email/Readme.md] title:Email TUI Monitor: `email-agent`
 [python:tools/email/email-agent] imp:agent_ui,concurrent,email,imaplib,os,re,sys | fn:load_email_config,clean_header,highlight_tags,fetch_single_account,fetch_emails,run_interactive_tui,main
 [python:tools/generate-profile] imp:glob,os,re,socket,subprocess,sys | fn:run
+[markdown:tools/index-map/Readme.md] title:Codebase Mapping & Relational Knowledge Graph: `index-map`
+[python:tools/index-map/index-map] imp:ast,fnmatch,json,os,re,sqlite3,sqlite_vec,struct,sys,time,urllib,warnings | cls:PythonGraphVisitor | fn:load_gitignore_patterns,should_ignore,is_binary,get_file_summary,is_map_up_to_date,__init__,visit_Import,visit_ImportFrom,visit_ClassDef,visit_FunctionDef,visit_AsyncFunctionDef,visit_any_func,visit_Call,parse_non_python_file,analyze_markdown_file,analyze_image_file,analyze_json_file,analyze_qml_file,analyze_shell_file,analyze_generic_file,get_embedding,serialize_vec,init_db,find_db_path,insert_node,_commit_structures_to_db,resolve_and_insert_edges,compile_ascii_tree,compile_flat_shorthand,run_indexing,show_architecture,trace_symbol,get_blast_radius,extract_snippet,run_custom_query,search_symbols,main
 [python:tools/loop/ralph.py] imp:agent_core,argparse,os,sys,time,typing | fn:is_task_complete,log_turn_to_file,run_loop,main
-[markdown:tools/map/Readme.md] title:Codebase Mapping & Relational Knowledge Graph: `index-map`
-[python:tools/map/index-map] imp:ast,fnmatch,json,os,re,sqlite3,sqlite_vec,struct,sys,time,urllib,warnings | cls:PythonGraphVisitor | fn:load_gitignore_patterns,should_ignore,is_binary,get_file_summary,is_map_up_to_date,__init__,visit_Import,visit_ImportFrom,visit_ClassDef,visit_FunctionDef,visit_AsyncFunctionDef,visit_any_func,visit_Call,parse_non_python_file,analyze_markdown_file,analyze_image_file,analyze_json_file,analyze_qml_file,analyze_shell_file,analyze_generic_file,get_embedding,serialize_vec,init_db,find_db_path,insert_node,_commit_structures_to_db,resolve_and_insert_edges,compile_ascii_tree,compile_flat_shorthand,run_indexing,show_architecture,trace_symbol,get_blast_radius,extract_snippet,run_custom_query,search_symbols,main
 [python:tools/subsec/ai-summary/llmsum.py] imp:json,os,re,select,shutil,subprocess,sys,termios,time,tty,urllib | fn:get_key,flush_input_buffer,get_input_with_back_button,check_server_status,print_header,print_robot_header,clean_markdown,run_menu,call_llm,render_and_read_summary,main
 [markdown:tools/subsec/ai-summary/readme.md] title:llmsum.py
 [shell:tools/subsec/apps/t3code.sh] sum:==============================================================================
-[python:tools/subsec/basepage-tui/archived/basepage.py] imp:html,json,os,random,re,shutil,subprocess,sys,termios,time,tty,urllib,webbrowser | fn:get_working_redlib_instance,map_to_redlib,open_in_browser,fully_unescape,get_key,get_text_input,highlight_matches,count_keyword_matches,print_header,fetch_feed_instant,render_page,main
-[python:tools/subsec/basepage-tui/archived/basetracker.py] imp:datetime,json,os,sys,termios,tty,urllib | fn:get_key,print_header,parse_iso_time,fetch_hf_data,render_target_view,main
 [python:tools/subsec/basepage-tui/basepage.py] imp:html,json,os,random,re,shutil,subprocess,sys,termios,time,tty,urllib,webbrowser | fn:get_working_redlib_instance,map_to_redlib,open_in_browser,fully_unescape,get_key,get_text_input,highlight_matches,count_keyword_matches,print_header,draw_metadata_table,fetch_feed_instant,render_page,main
 [python:tools/subsec/basepage-tui/basetracker.py] imp:datetime,json,os,shutil,sys,termios,tty,urllib | fn:get_key,print_header,parse_iso_time,fetch_hf_data,render_target_view,main
 [markdown:tools/subsec/basepage-tui/readme.md] title:basepage.py
