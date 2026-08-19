@@ -1,10 +1,10 @@
-# Privacy-First Architecture
+# Privacy-First
 
 Built to be lightweight, auditable by a single developer, and private by design.
 
 * **Automatic Masking:** API keys, tokens, and network IPs are sanitized before reaching model context (`ai-status`, `mysys.md`).
 * **Zero-Trust Gates:** Out-of-bounds file access and shell execution require explicit interactive confirmation.
-* **Isolated Secrets:** Credentials exist solely in `~/.config/local-ai/.env` and are never logged or exported.
+* **Isolated Secrets:** Credentials exist solely in `~/.config/py-agent/.env` and are never logged or exported.
 * **Zero Telemetry:** Pure local orchestration with zero tracking daemons or background data collection.
 
 ---
@@ -12,7 +12,7 @@ Built to be lightweight, auditable by a single developer, and private by design.
 # System Architecture
 
 ```console
-                        LOCAL-AI RUNTIME ARCHITECTURE
+                        PY AGENT RUNTIME ARCHITECTURE
                       ┌─────────────────────────────────┐
                       │    ai-hook.sh (Shell Hook)      │
                       └────────────────┬────────────────┘
@@ -107,7 +107,7 @@ Built to be lightweight, auditable by a single developer, and private by design.
 - **Connect:** Open `https://[PC-IP]:9999` on tablet or phone.
 - **Speak:** Hold button to talk; speech auto-types directly into your terminal prompt.
 
-### Setup (`~/.config/local-ai/.env`)
+### Setup (`~/.config/py-agent/.env`)
 
 ```env
 GEM_VOICE="AIzaSyYourGeminiKeyHere"

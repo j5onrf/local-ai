@@ -4,7 +4,7 @@
 import os, json, time
 from typing import Optional, Dict, Any
 
-LEDGER_PATH: str = os.path.expanduser("~/.config/local-ai/.spend_ledger.json")
+LEDGER_PATH: str = os.path.expanduser("~/.config/py-agent/.spend_ledger.json")
 
 # Model pricing per 1M tokens (input / output)
 PRICING_MAP: Dict[str, Dict[str, float]] = {

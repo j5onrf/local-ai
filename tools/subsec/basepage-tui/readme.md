@@ -29,9 +29,9 @@ Designed to run completely sandboxed in your alternate screen buffer to keep you
 Clone this repository or download the script directly:
 
 ```bash
-mkdir -p ~/.config/local-ai/tools/subsec/basepage-tui/
-wget -O ~/.config/local-ai/tools/subsec/basepage-tui/basepage.py [https://raw.githubusercontent.com/yourusername/basepage/main/basepage.py](https://raw.githubusercontent.com/yourusername/basepage/main/basepage.py)
-chmod +x ~/.config/local-ai/tools/subsec/basepage-tui/basepage.py
+mkdir -p ~/.config/py-agent/tools/subsec/basepage-tui/
+wget -O ~/.config/py-agent/tools/subsec/basepage-tui/basepage.py [https://raw.githubusercontent.com/yourusername/basepage/main/basepage.py](https://raw.githubusercontent.com/yourusername/basepage/main/basepage.py)
+chmod +x ~/.config/py-agent/tools/subsec/basepage-tui/basepage.py
 
 ```
 
@@ -40,7 +40,7 @@ chmod +x ~/.config/local-ai/tools/subsec/basepage-tui/basepage.py
 Run the script to launch the dashboard:
 
 ```bash
-python3 ~/.config/local-ai/tools/subsec/basepage-tui/basepage.py
+python3 ~/.config/py-agent/tools/subsec/basepage-tui/basepage.py
 
 ```
 

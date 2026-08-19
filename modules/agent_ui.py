@@ -132,14 +132,14 @@ def draw_session_box(
     table.add_row("database:", mem_status if is_agent else "stateless")
 
     STYLES = {
-        1: (">_ Local-AI Agent", ROUNDED, "green", "bold bright_green"),
+        1: (">_ Py Agent", ROUNDED, "green", "bold bright_green"),
         2: ("\u25c6 Local-AI Agent", DOUBLE, "bright_blue", "bold bright_blue"),
         3: ("\u25c6 Local-AI Agent", HEAVY, "bright_cyan", "bold bright_white"),
-        4: ("Local-AI Agent", HORIZONTALS, "dim white", "bold cyan"),
+        4: ("Py Agent", HORIZONTALS, "dim white", "bold cyan"),
     }
 
     if box_style == 5:
-        title_str = f"  >_ Local-AI Agent [sub-agent #{sub_id}]" if sub_id else "  >_ Local-AI Agent"
+        title_str = f"  >_ Py Agent [sub-agent #{sub_id}]" if sub_id else "  >_ Py Agent"
         panel = Panel(
             Group(Text(title_str, style="bold bright_green"), Text(""), table),
             border_style="green", box=ROUNDED, expand=False, subtitle="[dim]Ctrl+C to exit[/dim]", subtitle_align="right"
@@ -192,7 +192,7 @@ def run_interactive_selection(
             current_cmd = clean_tool_prefix_fn(current_cmd)
             is_danger = current_cmd.startswith("DANGER_FLAGGED:")
             cmd_to_show = current_cmd.replace("DANGER_FLAGGED:", "")
-            display_cmd = cmd_to_show.replace(" >/dev/null 2>&1", "").replace(os.path.expanduser("~"), "~").replace("/.config/local-ai/projects/", "/")
+            display_cmd = cmd_to_show.replace(" >/dev/null 2>&1", "").replace(os.path.expanduser("~"), "~").replace("/.config/py-agent/projects/", "/")
 
             idx_str = f"{current_idx + 1:02d}/{num_opts:02d}"
             prompt = (

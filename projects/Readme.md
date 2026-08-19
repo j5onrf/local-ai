@@ -1,4 +1,4 @@
-# Local-AI Agent Workspace & Session Manual
+# Py Agent Workspace & Session Manual
 
 High-speed local developer agent, episodic memory, SQLite checkpoints, NOOA-enhanced IPython kernel harness, and codebase index graph.
 
@@ -13,9 +13,9 @@ High-speed local developer agent, episodic memory, SQLite checkpoints, NOOA-enha
 Enable Autonomous YOLO mode? [y/N]: y
 ✓ Profile set to: Pi Py-Pro (Autonomous YOLO)
 
-╭─  >_ Local-AI Agent  ────────────────────────────────────╮
+╭─  >_ Py Agent  ──────────────────────────────────────────╮
 │     model:  gemini-3.5-flash-lite                        │
-│ directory:  ~/.config/local-ai/projects/session-test-2   │
+│ directory:  ~/.config/py-agent/projects/session-test-2   │
 │     skill:  pi/py-pro                                    │
 │  database:  active (1 facts, 1 turns)                    │
 ╰───────────────────────────────────────── Ctrl+C to exit ─╯
@@ -31,12 +31,12 @@ Agent: Workspace loaded. Awaiting instructions.
 
 ## UI Box Themes
 
-Switch CLI box styles using `/box [1-5]` (or type `/box` to cycle). Selection persists in `~/.config/local-ai/.state.json`.
+Switch CLI box styles using `/box [1-5]` (or type `/box` to cycle). Selection persists in `~/.config/py-agent/.state.json`.
 
 #### Style #1: Codex Rounded (Default)
 ```console
-╭─  >_ Local-AI Agent  ─────────╮
-│     model:  gemini-3.5-flash  │
+╭─  >_ Py Agent  ───────────────╮
+│     model:  gemini-3.7-flash  │
 │ directory:  ~                 │
 │     skill:  chat              │
 │  database:  stateless         │
@@ -46,7 +46,7 @@ Switch CLI box styles using `/box [1-5]` (or type `/box` to cycle). Selection pe
 #### Style #2: Double Border
 ```console
 ╔═  ◆ Local-AI Agent  ══════════╗
-║     model:  gemini-3.5-flash  ║
+║     model:  gemini-3.7-flash  ║
 ║ directory:  ~                 ║
 ║     skill:  default           ║
 ║  database:  stateless         ║
@@ -56,7 +56,7 @@ Switch CLI box styles using `/box [1-5]` (or type `/box` to cycle). Selection pe
 #### Style #3: Heavy Square
 ```console
 ┏━  ◆ Local-AI Agent  ━━━━━━━━━━┓
-┃     model:  gemini-3.5-flash  ┃
+┃     model:  gemini-3.7-flash  ┃
 ┃ directory:  ~                 ┃
 ┃     skill:  default           ┃
 ┃  database:  stateless         ┃
@@ -65,8 +65,8 @@ Switch CLI box styles using `/box [1-5]` (or type `/box` to cycle). Selection pe
 
 #### Style #4: Minimalist Line
 ```console
- ─  Local-AI Agent  ──────────── 
-      model:  gemini-3.5-flash   
+ ─  Py Agent  ──────────────────
+      model:  gemini-3.7-flash   
   directory:  ~                  
       skill:  default            
    database:  stateless          
@@ -76,9 +76,9 @@ Switch CLI box styles using `/box [1-5]` (or type `/box` to cycle). Selection pe
 #### Style #5: Classic In-Panel Codex
 ```console
 ╭───────────────────────────────╮
-│  >_ Local-AI Agent            │
+│  >_ Py Agent                  │
 │                               │
-│     model:  gemini-3.5-flash  │
+│     model:  gemini-3.7-flash  │
 │ directory:  ~                 │
 │     skill:  default           │
 │  database:  stateless         │
@@ -93,9 +93,9 @@ All auto-created agent metadata files are strictly isolated inside `project/.age
 
 | Path | Purpose |
 | :--- | :--- |
-| `~/.config/local-ai/projects/database/*.db` | Global SQLite turn history and fact memory database. |
-| `~/.config/local-ai/.active_sessions/` | Sub-agent PID lockfiles for process tracking. |
-| `~/.config/local-ai/.spend_ledger.json` | Global cloud API token usage and daily spend ledger. |
+| `~/.config/py-agent/projects/database/*.db` | Global SQLite turn history and fact memory database. |
+| `~/.config/py-agent/.active_sessions/` | Sub-agent PID lockfiles for process tracking. |
+| `~/.config/py-agent/.spend_ledger.json` | Global cloud API token usage and daily spend ledger. |
 | `~/<workspace>/.agent/config.json` | Default workspace agent profile and YOLO settings. |
 | `~/<workspace>/.agent/session.jsonl` | Structured JSONL turn audit log (timestamp, model, tokens, messages). |
 | `~/<workspace>/.agent/tpm.md` | Human-editable Markdown fact memory store. |
@@ -140,7 +140,7 @@ Running `ai init <path>` sets the default workspace agent profile:
 
 * **Reset Workspace Profile:** Type `/reset` in chat (or delete `.agent/config.json`). This purges workspace settings so `ai init` prompts for a new profile selection on next launch.
 * **Skill Frontmatter Overrides:** Add `---` YAML headers to skill `.md` files to set `reasoning_budget`, `yolo`, or `description` automatically on load.
-* **Customize Skills:** Modify or create profile `.md` files in `~/.config/local-ai/skills/profiles/`.
+* **Customize Skills:** Modify or create profile `.md` files in `~/.config/py-agent/skills/profiles/`.
 
 ---
 
@@ -225,7 +225,7 @@ Self-directed iterative loop that runs tools, verifies results, and self-correct
 - **Dual Completion Detection:** Checks both assistant text responses **and** tool execution logs (`exec_python`, `run_command`, etc.) for completion markers (`TASK COMPLETE`).
 - **Stagnation Recovery:** Automatically detects duplicate turns and injects course-correction prompts.
 - **Audit Logging:** Logs turn-by-turn goal progress into `.agent/task_log.md`.
-- **Engine Script:** `~/.config/local-ai/tools/loop/ralph.py` (Supports flags `-n` / `--turns`, `-f` / `--file`, `--no-log`).
+- **Engine Script:** `~/.config/py-agent/tools/loop/ralph.py` (Supports flags `-n` / `--turns`, `-f` / `--file`, `--no-log`).
 
 <details>
 <summary><b>💡 Quick Use Cases & Tips (Click to Expand)</b></summary>

@@ -3,7 +3,7 @@
 
 import sys, os, shutil, tempfile, json, subprocess, importlib, py_compile
 
-CFG_DIR = os.path.expanduser("~/.config/local-ai")
+CFG_DIR = os.path.expanduser("~/.config/py-agent")
 sys.path.insert(0, os.path.join(CFG_DIR, "modules"))
 sys.path.insert(0, CFG_DIR)
 
@@ -16,7 +16,7 @@ def print_result(name: str, passed: bool, detail: str = ""):
         print(f"  {RED}✖ FAIL{RESET} : {name:<46} {RED}{detail}{RESET}")
 
 print(f"\n{CYAN}======================================================================{RESET}")
-print(f"{CYAN}           LOCAL-AI ALL-IN-ONE DIAGNOSTIC & SANITY SUITE              {RESET}")
+print(f"{CYAN}           PY AGENT ALL-IN-ONE DIAGNOSTIC & SANITY SUITE              {RESET}")
 print(f"{CYAN}======================================================================{RESET}\n")
 
 all_passed = True
@@ -178,7 +178,7 @@ finally:
 
 print(f"\n{CYAN}======================================================================{RESET}")
 if all_passed:
-    print(f"{GREEN}     ✔ ALL 8 PASSES SUCCESSFUL — LOCAL-AI STACK IS 100% OPERATIONAL     {RESET}")
+    print(f"{GREEN}     ✔ ALL 8 PASSES SUCCESSFUL — PY AGENT STACK IS 100% OPERATIONAL     {RESET}")
 else:
     print(f"{RED}     ✖ SOME TESTS FAILED — CHECK DETAILS ABOVE                         {RESET}")
 print(f"{CYAN}======================================================================{RESET}\n")

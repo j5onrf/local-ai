@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Production Local-AI Shell Hook v0.9.8.5
 
-[[ $- == *i* && -f "$HOME/.config/local-ai/ai-agent.py" ]] || return
-_AI_DIR="$HOME/.config/local-ai"
+[[ $- == *i* && -f "$HOME/.config/py-agent/ai-agent.py" ]] || return
+_AI_DIR="$HOME/.config/py-agent"
 _AI_PY=$(command -v python3 || command -v python)
 
 _ai_teleport() {

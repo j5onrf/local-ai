@@ -5,7 +5,7 @@ import asyncio, json, os, re, select, shutil, subprocess, sys, termios, tty, ate
 import urllib.request as urlreq
 from typing import Set
 
-ENV_PATH, CACHE_PATH = os.path.expanduser("~/.config/local-ai/.env"), os.path.expanduser("~/.config/local-ai/.openrouter_cache_v2.json")
+ENV_PATH, CACHE_PATH = os.path.expanduser("~/.config/py-agent/.env"), os.path.expanduser("~/.config/py-agent/.openrouter_cache_v2.json")
 
 ORIGINAL_TERMIOS = termios.tcgetattr(sys.stdin.fileno()) if sys.stdin.isatty() else None
 

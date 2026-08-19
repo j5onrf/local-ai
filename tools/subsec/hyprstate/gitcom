@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Hyprland Workspace State Manager -- GitCom
-# Path: ~/.config/local-ai/tools/subsec/hyprstate/gitcom
+# Path: ~/.config/py-agent/tools/subsec/hyprstate/gitcom
 
 set -euo pipefail
 
 TARGET_WS=5
-TARGET_DIR="$HOME/.config/local-ai"
+TARGET_DIR="$HOME/.config/py-agent"
 
 manage_app() {
     local target_ws="$1"
@@ -26,8 +26,8 @@ manage_app() {
 manage_app "${TARGET_WS}" "lazygit" "kitty --class lazygit --directory '${TARGET_DIR}' lazygit"
 sleep 0.2
 
-# --- 2. Local-AI Terminal (Right on WS 5) ---
+# --- 2. Py Agent Terminal (Right on WS 5) ---
 INNER_CMD='cd "'"$TARGET_DIR"'"; if read -e -p "${PS1@P}" -i "ai-commit"; then history -s "$REPLY"; history -a; eval "$REPLY"; fi; exec bash'
-manage_app "${TARGET_WS}" "local-ai-terminal" "kitty --class local-ai-terminal --directory '${TARGET_DIR}' --title '~/.config/local-ai' bash -i -c '${INNER_CMD}'"
+manage_app "${TARGET_WS}" "py-agent-terminal" "kitty --class py-agent-terminal --directory '${TARGET_DIR}' --title '~/.config/py-agent' bash -i -c '${INNER_CMD}'"
 
 echo "Workspace reset complete: State --GitCom (Workspace 5)"

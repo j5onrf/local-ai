@@ -5,7 +5,7 @@ import sys, os, json, sqlite3, time, re, glob
 from contextlib import closing
 from typing import List, Optional
 
-CFG_DIR: str = os.path.expanduser("~/.config/local-ai")
+CFG_DIR: str = os.path.expanduser("~/.config/py-agent")
 SESSIONS_DIR: str = os.path.join(CFG_DIR, "projects", "database")
 os.makedirs(SESSIONS_DIR, exist_ok=True)
 
@@ -112,7 +112,7 @@ def print_session_box(workspace: str) -> None:
     box_w = 46
 
     lines = [
-        f" >_ Local-AI Agent  [sub-agent #{agent_num}]" if agent_num > 0 else " >_ Local-AI Agent", "",
+        f" >_ Py Agent  [sub-agent #{agent_num}]" if agent_num > 0 else " >_ Py Agent", "",
         f" model:     {model}", f" directory: {disp_str}", f" skill:     {skill}", f" database:  active ({tpm_count} facts, {turns} turns)"
     ]
 

@@ -264,7 +264,7 @@ def run_skill_selector(workspace: str, raw_cmd: str, dept_skills_dir: str, stop_
 
 
 if __name__ == "__main__":
-    CFG_DIR = os.path.expanduser("~/.config/local-ai")
+    CFG_DIR = os.path.expanduser("~/.config/py-agent")
     stop_words = getattr(context, "STOP_WORDS", {"is", "what", "it", "do", "any", "i", "have", "the", "a", "an", "on", "to", "for", "me", "you", "my", "your", "we", "us", "are", "about", "in", "how"})
     if len(sys.argv) < 3: sys.argv.extend(["", ""])
     run_skill_selector(sys.argv[1], sys.argv[2], os.path.join(CFG_DIR, "skills", "on-demand"), stop_words)

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Local-Ai Agent [j5onrf] [v0.9.8.60]"""
+"""Py Agent [j5onrf] [v0.9.8.61]"""
 
 import json, os, re, shutil, sqlite3, subprocess, sys, threading, time
 from typing import List, Optional, Tuple
 from contextlib import closing
 
-CFG_DIR: str = os.path.expanduser("~/.config/local-ai")
+CFG_DIR: str = os.path.expanduser("~/.config/py-agent")
 CONTEXT_FILE: str = os.path.join(CFG_DIR, "ai-context.md")
 SKILLS_DIR: str = os.path.join(CFG_DIR, "skills")
 SESSIONS_DIR: str = os.path.join(CFG_DIR, "projects", "database")

@@ -4,7 +4,7 @@
 import os, re
 from typing import List, Dict, Any, Tuple
 
-ENV_PATH: str = os.path.expanduser("~/.config/local-ai/.env")
+ENV_PATH: str = os.path.expanduser("~/.config/py-agent/.env")
 RE_ENV_API_KEY: re.Pattern = re.compile(r"^([A-Z0-9_]+_API_KEY|[A-Z0-9_]+_KEY)\s*=\s*\"?([^\"]*)\"?$")
 
 FALLBACK_MODELS = {

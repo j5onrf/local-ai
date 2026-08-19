@@ -48,8 +48,8 @@ Terminal Keyword: llmsum
 This TUI is designed to integrate seamlessly with your **Local-Ai Agent**. By registering `llmsum.py` in your semantic mapping index, you can launch the summary engine on-demand simply by typing the `llmsum` keyword:
 
 ```text
-# Add this line to your ~/.config/local-ai/ai-context.txt
-~/.config/local-ai/tools/subsec/ai-summary/llmsum.py ---> llmsum, ytsum, summary
+# Add this line to your ~/.config/py-agent/ai-context.txt
+~/.config/py-agent/tools/subsec/ai-summary/llmsum.py ---> llmsum, ytsum, summary
 ```
 
 Once mapped, typing `llmsum` in any standard terminal window will instantly trigger the suggestion menu, allowing you to run your clipboard summary TUI with a single keypress.

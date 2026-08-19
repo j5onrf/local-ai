@@ -8,7 +8,7 @@ User-extensible directory for custom standalone scripts, feature extensions, and
 
 1. **Create an Executable Script:** Place your `.py` or `.sh` script in this folder and make it executable:
    ```bash
-   chmod +x ~/.config/local-ai/plugins/my-plugin
+   chmod +x ~/.config/py-agent/plugins/my-plugin
    ```
 
 2. **Include a Shebang:** Ensure the first line defines the interpreter so `index-map` indexes AST symbols:
@@ -17,10 +17,10 @@ User-extensible directory for custom standalone scripts, feature extensions, and
    """Summary of plugin capability."""
    ```
 
-3. **Map Trigger in `ai-context.md`:** Add a line to `~/.config/local-ai/ai-context.md` for shortcut routing:
+3. **Map Trigger in `ai-context.md`:** Add a line to `~/.config/py-agent/ai-context.md` for shortcut routing:
    ```properties
    # --- My Custom Plugin ---
-   [TOOL] ~/.config/local-ai/plugins/my-plugin --cat ---> my plugin, run feature
+   [TOOL] ~/.config/py-agent/plugins/my-plugin --cat ---> my plugin, run feature
    ```
 
 ---

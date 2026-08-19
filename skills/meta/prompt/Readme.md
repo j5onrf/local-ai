@@ -10,7 +10,7 @@ Generate cohesive, project-matched graphics (banners, logos, assets) on your fir
 
 ```console
 ~ ❯ prompt writer image
-[01/02] ❯ [prompt writer image] ~/.config/local-ai/tools/subsec/prompt/ai-prompt-writer-image | cat
+[01/02] ❯ [prompt writer image] ~/.config/py-agent/tools/subsec/prompt/ai-prompt-writer-image | cat
 :: ↵ run  Esc: 
 ```
 2. **Refine & Copy:** Adjust details in console, then type `/c` to copy the compiled prompt to clipboard.

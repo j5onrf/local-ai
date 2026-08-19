@@ -6,7 +6,7 @@ import sys, os, json, re, urllib.request as urlreq
 try: import agent_ui as ui
 except ImportError: ui = None
 
-CFG_DIR = os.path.expanduser("~/.config/local-ai")
+CFG_DIR = os.path.expanduser("~/.config/py-agent")
 RE_QUESTION_SPLIT = re.compile(r'(?<=\?)\s+')
 
 try:

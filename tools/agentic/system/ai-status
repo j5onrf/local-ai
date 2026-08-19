@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ai-status - Diagnostics for Local-AI Agent Stack v1.5.0 [j5onrf]
+# ai-status - Diagnostics for Py Agent Stack v1.5.0 [j5onrf]
 # Path: ~/.config/local-ai/tools/agentic/system/ai-status
 
 set -euo pipefail

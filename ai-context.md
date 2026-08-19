@@ -17,36 +17,36 @@
 
 ```properties
 # --- Stack Diagnostic Suite ---
-[TOOL] ~/.config/local-ai/tools/test-agent --cat --s ---> agent test
+[TOOL] ~/.config/py-agent/tools/test-agent --cat --s ---> agent test
 # --- Cloud Model Select TUI ---
-~/.config/local-ai/modules/model-select.py ---> model select, cloud model
+~/.config/py-agent/modules/model-select.py ---> model select, cloud model
 # --- AI Status Model Route ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/ai-status ---> aistatus, aistat, ais
+[TOOL] ~/.config/py-agent/tools/agentic/system/ai-status ---> aistatus, aistat, ais
 # --- Blueprint ---
-[TOOL] ~/.config/local-ai/tools/blueprint ---> plugins, cheatsheet, bp, cs, blueprint
+[TOOL] ~/.config/py-agent/tools/blueprint ---> plugins, cheatsheet, bp, cs, blueprint
 ```
 
 ## 1. Workspaces
 
 ```properties
 # --- Workspaces ---
-ai init ~/.config/local-ai/projects/session-test ---> session test, projects session
-ai init ~/.config/local-ai/projects/session-test-2 ---> session test 2, projects session
-ai init ~/.config/local-ai/projects/session-test-3 ---> session test 3, projects session
+ai init ~/.config/py-agent/projects/session-test ---> session test, projects session
+ai init ~/.config/py-agent/projects/session-test-2 ---> session test 2, projects session
+ai init ~/.config/py-agent/projects/session-test-3 ---> session test 3, projects session
 ```
 
 ## 2. Codebase Map
 
 ```properties
 # --- Index Map ---
-[TOOL] ~/.config/local-ai/tools/index-map/index-map --cat ---> index map, imap
+[TOOL] ~/.config/py-agent/tools/index-map/index-map --cat ---> index map, imap
 ```
 
 ## 3. Voice & TTS
 
 ```properties
 # --- Voice to Text ---
-~/.config/local-ai/modules/agent_voice.py ---> voice, voice query, voice to text, v2t
+~/.config/py-agent/modules/agent_voice.py ---> voice, voice query, voice to text, v2t
 # --- Text to Speech (TTS) ---
 pkill -9 -f "pw-play|koko" ---> stop speech, kill tts
 ```
@@ -55,8 +55,8 @@ pkill -9 -f "pw-play|koko" ---> stop speech, kill tts
 
 ```properties
 # --- Web Reader ---
-[TOOL] ~/.config/local-ai/tools/agentic/web/web-reader web $1 ---> web reader, webr
-[TOOL] ~/.config/local-ai/tools/agentic/web/web-reader youtube $1 ---> web reader yt, webr
+[TOOL] ~/.config/py-agent/tools/agentic/web/web-reader web $1 ---> web reader, webr
+[TOOL] ~/.config/py-agent/tools/agentic/web/web-reader youtube $1 ---> web reader yt, webr
 # --- File Reader ---
 [TOOL] cat $1 ---> view file, read file, show file, vf
 # --- Memories ---
@@ -71,43 +71,43 @@ pkill -9 -f "pw-play|koko" ---> stop speech, kill tts
 
 ```properties
 # --- System Profile ---
-[TOOL] cat ~/.config/local-ai/skills/system/mysys.md ---> mysys
-[TOOL] ~/.config/local-ai/tools/generate-profile ---> generate profile, genp
+[TOOL] cat ~/.config/py-agent/skills/system/mysys.md ---> mysys
+[TOOL] ~/.config/py-agent/tools/generate-profile ---> generate profile, genp
 
 # --- System Health ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/system-health ---> system health, sysh
+[TOOL] ~/.config/py-agent/tools/agentic/system/system-health ---> system health, sysh
 # --- Log Checker ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/log-checker ---> log checker, ailog
+[TOOL] ~/.config/py-agent/tools/agentic/system/log-checker ---> log checker, ailog
 # --- AUR Audit ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/aur-audit ---> aur audit, audit package
+[TOOL] ~/.config/py-agent/tools/agentic/system/aur-audit ---> aur audit, audit package
 # --- Security Audit ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/security-audit ---> security audit, secaud, system audit
+[TOOL] ~/.config/py-agent/tools/agentic/system/security-audit ---> security audit, secaud, system audit
 # --- System Optimizer ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/system-optimizer ---> system optimizer, sysop
+[TOOL] ~/.config/py-agent/tools/agentic/system/system-optimizer ---> system optimizer, sysop
 # --- Update Inspector ---
-[TOOL] ~/.config/local-ai/tools/agentic/system/update-inspector ---> update inspector
+[TOOL] ~/.config/py-agent/tools/agentic/system/update-inspector ---> update inspector
 ```
 
 ## 6. TUI Apps
 
 ```properties
 # --- T3 Code WebApp ---
-~/.config/local-ai/tools/subsec/apps/t3code.sh ---> agent ui
+~/.config/py-agent/tools/subsec/apps/t3code.sh ---> agent ui
 # --- Email TUI ---
-~/.config/local-ai/tools/email/email-agent ---> email agent
+~/.config/py-agent/tools/email/email-agent ---> email agent
 # --- Hyprland State ---
-~/.config/local-ai/tools/subsec/hyprstate/work ---> hyprstate work, hyprwork
-~/.config/local-ai/tools/subsec/hyprstate/gitcom ---> hyprstate gitcom, gitcom
+~/.config/py-agent/tools/subsec/hyprstate/work ---> hyprstate work, hyprwork
+~/.config/py-agent/tools/subsec/hyprstate/gitcom ---> hyprstate gitcom, gitcom
 # --- Custom TUI Applications ---
-~/.config/local-ai/tools/subsec/basepage-tui/basepage.py ---> basepage, basep
-~/.config/local-ai/tools/subsec/basepage-tui/basetracker.py ---> basetracker, baset
+~/.config/py-agent/tools/subsec/basepage-tui/basepage.py ---> basepage, basep
+~/.config/py-agent/tools/subsec/basepage-tui/basetracker.py ---> basetracker, baset
 ```
 
 ## 7. Tools & Utilities
 
 ```properties
 # --- AI Commit ---
-~/.config/local-ai/tools/agentic/system/ai-commit ---> ai-commit, gc, git commit
+~/.config/py-agent/tools/agentic/system/ai-commit ---> ai-commit, gc, git commit
 # --- Weather ---
 [TOOL] curl -s "wttr.in/?format=3" --cat ---> weather simple, get weather
 [TOOL] curl -s wttr.in --cat ---> weather full, get weather

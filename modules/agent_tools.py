@@ -7,7 +7,7 @@ from typing import List, Dict, Any, Optional, Callable
 from rich.console import Console
 from rich.syntax import Syntax
 
-CFG_DIR: str = os.path.expanduser("~/.config/local-ai")
+CFG_DIR: str = os.path.expanduser("~/.config/py-agent")
 _console_err = Console(stderr=True)
 BINARY_EXTENSIONS = frozenset({
     ".db", ".sqlite", ".sqlite3", ".bin", ".pyc", ".so", ".dll", ".exe",

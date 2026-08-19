@@ -16,7 +16,7 @@ A standalone, local-first email monitoring utility. Integrates an interactive se
 During the secure mailbox handshake and query cycle:
 ```console
 ~ ❯ email
-[01/01] ❯ [email agent] ~/.config/local-ai/tools/email/email-agent | mdcat
+[01/01] ❯ [email agent] ~/.config/py-agent/tools/email/email-agent | mdcat
 :: ↵ run  Esc: 
 ⠋ Connecting to mailboxes... 
 ```
@@ -39,7 +39,7 @@ Once connected, your filtered inbox is rendered with matched tags highlighted:
 
 ### Local Configuration: `.email`
 
-Store your credentials in the same directory under `~/.config/local-ai/tools/email/.email`:
+Store your credentials in the same directory under `~/.config/py-agent/tools/email/.email`:
 
 ```bash
 # --- Global Fallbacks ---

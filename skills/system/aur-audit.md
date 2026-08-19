@@ -4,7 +4,7 @@ This skill instructs the AI Agent to perform highly rigorous, zero-trust securit
 
 ## INTENT MAPPINGS
 * Intents: audit package before install, check PKGBUILD safety, inspect AUR package, audit package source code.
-* Command Action: [TOOL] ~/.config/local-ai/tools/agentic/aur-audit <package_name>
+* Command Action: [TOOL] ~/.config/py-agent/tools/agentic/aur-audit <package_name>
 
 ## CRITICAL AUDIT VECTORS
 

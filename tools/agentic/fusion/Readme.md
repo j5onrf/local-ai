@@ -34,7 +34,7 @@ A compound Mixture-of-Agents (MoA) pipeline designed to maximize free-tier API e
 
 **Files & Directories:**
 ```text
-~/.config/local-ai/tools/agentic/fusion/
+~/.config/py-agent/tools/agentic/fusion/
 ├── f_research (executable)
 ├── README.md
 └── logs/

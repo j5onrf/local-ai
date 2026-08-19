@@ -4,7 +4,7 @@
 import ast, contextlib, difflib, io, json, os, sys, subprocess, traceback
 from typing import Dict, Any, List, Optional, Tuple, Callable
 
-CFG_DIR = os.path.expanduser("~/.config/local-ai")
+CFG_DIR = os.path.expanduser("~/.config/py-agent")
 
 try:
     import agent_core as core

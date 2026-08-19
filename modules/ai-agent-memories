@@ -5,7 +5,7 @@ import sys, os, json, sqlite3, time, re
 from contextlib import closing
 from typing import List
 
-CFG_DIR: str = os.path.expanduser("~/.config/local-ai")
+CFG_DIR: str = os.path.expanduser("~/.config/py-agent")
 SESSIONS_DIR: str = os.path.join(CFG_DIR, "projects", "database")
 
 sys.path.append(os.path.join(CFG_DIR, "modules"))

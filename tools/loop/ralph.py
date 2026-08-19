@@ -8,13 +8,13 @@ stagnation recovery, and execution logging.
 import os, sys, time, argparse
 from typing import List, Dict, Any, Optional
 
-CFG_DIR = os.path.expanduser("~/.config/local-ai")
+CFG_DIR = os.path.expanduser("~/.config/py-agent")
 sys.path.append(os.path.join(CFG_DIR, "modules"))
 
 try:
     import agent_core as core
 except ImportError:
-    sys.stderr.write("[error] Core module (agent_core.py) not found in ~/.config/local-ai/modules\n")
+    sys.stderr.write("[error] Core module (agent_core.py) not found in ~/.config/py-agent/modules\n")
     sys.exit(1)
 
 COMPLETION_KEYWORDS = frozenset({

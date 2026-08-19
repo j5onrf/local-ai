@@ -5,7 +5,7 @@ import base64, http.server, json, os, re, socket, ssl, subprocess, sys, threadin
 from typing import Tuple
 
 PORT = 9999
-CFG_DIR = os.path.expanduser("~/.config/local-ai")
+CFG_DIR = os.path.expanduser("~/.config/py-agent")
 PENDING_FILE = os.path.join(CFG_DIR, ".voice_pending.txt")
 
 RE_CLEAN_TRANSCRIPTION: re.Pattern = re.compile(r'[^a-zA-Z0-9\s?.,!\'-]')
@@ -154,7 +154,7 @@ def transcribe_gemini(audio_data: bytes, mime_type: str = "audio/webm") -> str:
     gkey = os.environ.get("GEM_VOICE") or os.environ.get("GEMINI_API_KEY")
     model = os.environ.get("GEM_MODEL") or os.environ.get("GEMINI_MODEL", "gemini-3.7-flash")
     if not gkey:
-        sys.stderr.write("[error] GEM_VOICE key is not set in ~/.config/local-ai/.env\n")
+        sys.stderr.write("[error] GEM_VOICE key is not set in ~/.config/py-agent/.env\n")
         sys.stderr.flush()
         return ""
 

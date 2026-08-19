@@ -16,7 +16,7 @@ import agent_ui as ui
 import agent_cloud
 import agent_tools as tools
 
-CFG_DIR: str = os.path.expanduser("~/.config/local-ai")
+CFG_DIR: str = os.path.expanduser("~/.config/py-agent")
 STATE_FILE: str = os.path.join(CFG_DIR, ".state.json")
 
 _console, _console_err, _session = Console(), Console(stderr=True), requests.Session()
@@ -326,7 +326,7 @@ class RichStreamer:
 def _log_turn_usage(model: str, in_tok: int, out_tok: int, cost: float, show_stats: bool, ctx_used: Optional[int] = None, user_msg: str = "", assistant_msg: str = "") -> None:
     try:
         ws = os.environ.get("AI_WORKSPACE_PATH")
-        # Only log session.jsonl inside explicit project workspaces (never in ~/.config/local-ai or home)
+        # Only log session.jsonl inside explicit project workspaces (never in ~/.config/py-agent or home)
         if ws and os.path.isdir(ws) and os.path.realpath(ws) not in (os.path.realpath(os.path.expanduser("~")), os.path.realpath(CFG_DIR)):
             agent_dir = os.path.join(ws, ".agent")
             os.makedirs(agent_dir, exist_ok=True)

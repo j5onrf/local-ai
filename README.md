@@ -1,14 +1,14 @@
 <div align="center">
-  <img alt="Local-AI Agent" src="logo.svg" height="130" />
+  <img alt="Py Agent" src="logo.svg" height="130" />
 </div>
 
-<h1 align="center">Local-AI Agent <img src="https://shieldcn.dev/badge/version-v0.9.8.60.svg?variant=secondary" alt="Version"><a href="https://github.com/j5onrf/local-ai"> </h1>
+<h1 align="center">py-agent <img src="https://shieldcn.dev/badge/version-v0.9.8.61.svg?variant=secondary" alt="Version"><a href="https://github.com/j5onrf/py-agent"> </h1>
 
 <p align="center">
-  <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/github/last-commit/j5onrf/local-ai.svg?color=emerald&variant=secondary" alt="Last Commit"></a>
-  <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/badge/Python.svg?variant=branded&brand=python" alt="Language"></a>
-  <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/badge/C%2B%2B.svg?variant=branded&brand=cplusplus"></a>
-  <a href="https://github.com/j5onrf/local-ai/blob/main/LICENSE"><img src="https://shieldcn.dev/badge/license-MIT-green.svg" alt="License"></a>
+  <a href="https://github.com/j5onrf/py-agent"><img src="https://shieldcn.dev/github/last-commit/j5onrf/py-agent.svg?color=emerald&variant=secondary" alt="Last Commit"></a>
+  <a href="https://github.com/j5onrf/py-agent"><img src="https://shieldcn.dev/badge/Python.svg?variant=branded&brand=python" alt="Language"></a>
+  <a href="https://github.com/j5onrf/py-agent"><img src="https://shieldcn.dev/badge/C%2B%2B.svg?variant=branded&brand=cplusplus"></a>
+  <a href="https://github.com/j5onrf/py-agent/blob/main/LICENSE"><img src="https://shieldcn.dev/badge/license-MIT-green.svg" alt="License"></a>
   <a href="https://shieldcn.dev/badge/status-beta-blue.svg"><img src="https://shieldcn.dev/badge/status-beta-blue.svg" alt="Status"></a>
 </p>
 <p align="center">
@@ -91,7 +91,7 @@ Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`)
 │   >_ Local-AI Agent [sub-agent #1]                     │
 │                                                        │
 │     model:  Qwen3.6-35B-A3B.gguf                       │
-│ directory:  ~/.config/local-ai/projects/session-test   │
+│ directory:  ~/.config/py-agent/projects/session-test   │
 │     skill:  hermes/pro                                 │
 │  database:  active (0 facts, 2 turns)                  │
 ╰─────────────────────────────────────── Ctrl+C to exit ─╯
@@ -123,18 +123,18 @@ sudo pacman -S python-rich python-requests
 yay -S python-sqlite-vec && sudo pacman -S python-textual python-uvloop
 
 # 3. Clone repository
-git clone https://github.com/j5onrf/local-ai.git ~/.config/local-ai
+git clone https://github.com/j5onrf/py-agent.git ~/.config/py-agent
 
 # 4. Register shell environment hook
-echo '[ -f "$HOME/.config/local-ai/ai-hook.sh" ] && \
-source "$HOME/.config/local-ai/ai-hook.sh"' >> ~/.bashrc
+echo '[ -f "$HOME/.config/py-agent/ai-hook.sh" ] && \
+source "$HOME/.config/py-agent/ai-hook.sh"' >> ~/.bashrc
 source ~/.bashrc
 
 # 5. Create your configuration file
-nano ~/.config/local-ai/.env
+nano ~/.config/py-agent/.env
 ```
 
-#### Configuration Example (`~/.config/local-ai/.env`):
+#### Configuration Example (`~/.config/py-agent/.env`):
 
 <kbd>
 

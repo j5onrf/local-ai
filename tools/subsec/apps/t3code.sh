@@ -7,12 +7,12 @@ PORT=3773
 DEFAULT_URL="http://localhost:${PORT}"
 LOG_FILE="/tmp/t3code.log"
 BROWSER=$(command -v brave-origin || command -v brave || command -v chromium || command -v google-chrome)
-PROFILE_DIR="$HOME/.config/local-ai/.cache/t3-webapp-profile"
+PROFILE_DIR="$HOME/.config/py-agent/.cache/t3-webapp-profile"
 
 # 1. Load central .env
-if [[ -f "$HOME/.config/local-ai/.env" ]]; then
+if [[ -f "$HOME/.config/py-agent/.env" ]]; then
     set -a
-    source "$HOME/.config/local-ai/.env"
+    source "$HOME/.config/py-agent/.env"
     set +a
 fi
 

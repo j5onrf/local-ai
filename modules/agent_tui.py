@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Production Minimal Textual TUI for Local-AI Agent Engine"""
+"""Production Minimal Textual TUI for Py Agent Engine"""
 
 import base64, json, os, re, sqlite3, subprocess, sys, threading, time, urllib.request as urlreq
 from contextlib import closing
@@ -22,7 +22,7 @@ from textual.containers import Horizontal, Vertical
 from textual.theme import Theme
 from textual.widgets import Footer, Input, Static
 
-CFG_DIR = os.path.expanduser("~/.config/local-ai")
+CFG_DIR = os.path.expanduser("~/.config/py-agent")
 sys.path.append(os.path.join(CFG_DIR, "modules"))
 
 import agent_cloud, agent_core as core, agent_skills as skills, agent_ui as ui, agent_tui_async as tui_async, agent_voice as voice, agent_tts as tts, agent_ipython as ipython
@@ -446,7 +446,7 @@ class LocalAITUI(App):
                 t.add_column("Key", style=cmd_style, justify="left"); t.add_column("Action", style="default")
                 for k, a in [("Tab", "Plan / Build Mode"), ("Ctrl+B", "Toggle Sidebar Panel"), ("Ctrl+T", "Cycle Themes"), ("Ctrl+O", "Copy Latest Response"), ("▲ Show", "Toggle Bottom Shortcut Bar"), ("/help", "View All Commands")]:
                     t.add_row(k, a)
-                self.query_one("#welcome-banner", Static).update(Panel(t, title=" ◆ Local-AI Agent ", title_align="left", border_style=self.border_accent, box=ROUNDED, expand=False))
+                self.query_one("#welcome-banner", Static).update(Panel(t, title=" ◆ Py Agent ", title_align="left", border_style=self.border_accent, box=ROUNDED, expand=False))
         except Exception: pass
 
     def compose(self) -> ComposeResult:
