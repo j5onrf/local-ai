@@ -132,14 +132,14 @@ def draw_session_box(
     table.add_row("database:", mem_status if is_agent else "stateless")
 
     STYLES = {
-        1: (">_ Py Agent", ROUNDED, "green", "bold bright_green"),
-        2: ("\u25c6 Local-AI Agent", DOUBLE, "bright_blue", "bold bright_blue"),
-        3: ("\u25c6 Local-AI Agent", HEAVY, "bright_cyan", "bold bright_white"),
+        1: ("\u223f Py Agent", ROUNDED, "green", "bold bright_green"),
+        2: ("\u223f Py Agent", DOUBLE, "bright_blue", "bold bright_blue"),
+        3: ("\u223f Py Agent", HEAVY, "bright_cyan", "bold bright_white"),
         4: ("Py Agent", HORIZONTALS, "dim white", "bold cyan"),
     }
 
     if box_style == 5:
-        title_str = f"  >_ Py Agent [sub-agent #{sub_id}]" if sub_id else "  >_ Py Agent"
+        title_str = f"  \u223f Py Agent [sub-agent #{sub_id}]" if sub_id else "  \u223f Py Agent"
         panel = Panel(
             Group(Text(title_str, style="bold bright_green"), Text(""), table),
             border_style="green", box=ROUNDED, expand=False, subtitle="[dim]Ctrl+C to exit[/dim]", subtitle_align="right"

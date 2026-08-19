@@ -13,7 +13,7 @@ High-speed local developer agent, episodic memory, SQLite checkpoints, NOOA-enha
 Enable Autonomous YOLO mode? [y/N]: y
 ✓ Profile set to: Pi Py-Pro (Autonomous YOLO)
 
-╭─  >_ Py Agent  ──────────────────────────────────────────╮
+╭─  ∿ Py Agent  ───────────────────────────────────────────╮
 │     model:  gemini-3.5-flash-lite                        │
 │ directory:  ~/.config/py-agent/projects/session-test-2   │
 │     skill:  pi/py-pro                                    │
@@ -35,7 +35,7 @@ Switch CLI box styles using `/box [1-5]` (or type `/box` to cycle). Selection pe
 
 #### Style #1: Codex Rounded (Default)
 ```console
-╭─  >_ Py Agent  ───────────────╮
+╭─  ∿ Py Agent  ────────────────╮
 │     model:  gemini-3.7-flash  │
 │ directory:  ~                 │
 │     skill:  chat              │
@@ -45,7 +45,7 @@ Switch CLI box styles using `/box [1-5]` (or type `/box` to cycle). Selection pe
 
 #### Style #2: Double Border
 ```console
-╔═  ◆ Local-AI Agent  ══════════╗
+╔═  ∿ Py Agent  ════════════════╗
 ║     model:  gemini-3.7-flash  ║
 ║ directory:  ~                 ║
 ║     skill:  default           ║
@@ -55,7 +55,7 @@ Switch CLI box styles using `/box [1-5]` (or type `/box` to cycle). Selection pe
 
 #### Style #3: Heavy Square
 ```console
-┏━  ◆ Local-AI Agent  ━━━━━━━━━━┓
+┏━  ∿ Py Agent  ━━━━━━━━━━━━━━━━┓
 ┃     model:  gemini-3.7-flash  ┃
 ┃ directory:  ~                 ┃
 ┃     skill:  default           ┃
@@ -76,7 +76,7 @@ Switch CLI box styles using `/box [1-5]` (or type `/box` to cycle). Selection pe
 #### Style #5: Classic In-Panel Codex
 ```console
 ╭───────────────────────────────╮
-│  >_ Py Agent                  │
+│  ∿ Py Agent                   │
 │                               │
 │     model:  gemini-3.7-flash  │
 │ directory:  ~                 │
@@ -304,7 +304,7 @@ The codebase intelligence engine features **dual-mode output routing**:
 
 ## 11. Sub-Agents & Concurrency
 
-The Local-AI framework provides **dual-mode sub-agent execution**:
+The Py Agent framework provides **dual-mode sub-agent execution**:
 
 ### 1. In-Kernel Programmatic Sub-Agents (`delegate("goal")`)
 * **Natural Language Invocation:** Ask *"Delegate a sub-agent to test..."* or *"Run a sub-agent worker to audit file X"*.
@@ -315,7 +315,7 @@ The Local-AI framework provides **dual-mode sub-agent execution**:
 * **Process Badges:** Assigns sequence IDs (`[sub-agent #1]`, `[sub-agent #2]`) when launching `ai init` in parallel terminals.
 * **Self-Healing Registry:** Auto-purges stale PID lockfiles (`.active_sessions/`) on exit or crash.
 * **SQLite Lock Protection:** `PRAGMA busy_timeout = 30000` + `WAL` mode eliminates multi-agent database locks.
-* **Unix Socket IPC:** Async socket hub (`/tmp/local-ai-<workspace>.sock`) parses JSON-RPC 2.0 status messages for live TUI notifications.
+* **Unix Socket IPC:** Async socket hub (`/tmp/py-agent-<workspace>.sock`) parses JSON-RPC 2.0 status messages for live TUI notifications.
 
 <details>
 <summary><b>💡 Quick Use Cases & Tips (Click to Expand)</b></summary>

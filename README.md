@@ -70,34 +70,13 @@ Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`)
     
 ```console
 ~ ❯ ai
-╭─  >_ Local-AI Agent  ─────────────╮
+╭─  ∿ Py Agent  ────────────────────╮
 │     model:  Qwen3.6-35B-A3B.gguf  │
 │ directory:  ~                     │
 │     skill:  chat                  │
 │  database:  stateless             │
 ╰────────────────── Ctrl+C to exit ─╯
  Startup context: 103 tokens
-❯ 
-```
-
-#### 2. Workspace & Sub-Agent (`ai init <path>`)
-
-```console
-~ ❯ sess
-[01/03] ❯ [session test] ai init ~/session-test --init
-:: ↵ run  Esc: 
-✔ Mapping complete! [session-test index-map & SQLite graph database updated]
-╭────────────────────────────────────────────────────────╮
-│   >_ Local-AI Agent [sub-agent #1]                     │
-│                                                        │
-│     model:  Qwen3.6-35B-A3B.gguf                       │
-│ directory:  ~/.config/py-agent/projects/session-test   │
-│     skill:  hermes/pro                                 │
-│  database:  active (0 facts, 2 turns)                  │
-╰─────────────────────────────────────── Ctrl+C to exit ─╯
- Startup context: 195 tokens
-
-Agent: Workspace loaded. Awaiting instructions.
 ❯ 
 ```
 
