@@ -23,7 +23,7 @@ Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`)
 
 🟢 **Active:** Dedicated `Huggingface` endpoints: ([`Qwen/Qwen3.8-27B`](https://huggingface.co/spaces/victor/Qwen3.8-27B-free-endpoint), [`DeepSeek-V4-Flash`](https://huggingface.co/spaces/victor/DeepSeek-V4-Flash-0731-free-endpoint)).
 
-- **Direct Shell Jaccard (`<plugin>`):** Sub-millisecond fuzzy intent routing for shell shortcuts, diagnostic tools, and custom plugins mapped in [`ai-context.md`](ai-context.md).
+- **Direct Shell Jaccard (`<plugins>`):** Sub-millisecond fuzzy intent routing for shell shortcuts, diagnostic tools, and custom plugins mapped in [`ai-context.md`](ai-context.md).
 - **Single-Turn Query (`ai <query>`):** Instant response piped straight back to your active shell prompt.
 - **Multi-Turn Chat (`ai`):** Persistent interactive terminal session with memory context.
 - **Workspace Agent (`ai init <path>`):** Full codebase graph indexing, path-healing file editing, and sub-agent concurrency.
