@@ -2,7 +2,7 @@
   <img alt="Local-AI Agent" src="logo.svg" height="130" />
 </div>
 
-<h1 align="center">Local-AI Agent <img src="https://shieldcn.dev/badge/version-v0.9.8.58.svg?variant=secondary" alt="Version"><a href="https://github.com/j5onrf/local-ai"> </h1>
+<h1 align="center">Local-AI Agent <img src="https://shieldcn.dev/badge/version-v0.9.8.59.svg?variant=secondary" alt="Version"><a href="https://github.com/j5onrf/local-ai"> </h1>
 
 <p align="center">
   <a href="https://github.com/j5onrf/local-ai"><img src="https://shieldcn.dev/github/last-commit/j5onrf/local-ai.svg?color=emerald&variant=secondary" alt="Last Commit"></a>
@@ -23,7 +23,7 @@ Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`)
 
 🟢 **Active:** Dedicated `Huggingface` endpoints: ([`Qwen/Qwen3.8-27B`](https://huggingface.co/spaces/victor/Qwen3.8-27B-free-endpoint), [`DeepSeek-V4-Flash`](https://huggingface.co/spaces/victor/DeepSeek-V4-Flash-0731-free-endpoint)).
 
-- **Direct Shell Jaccard (`<plugin>`):** Sub-millisecond keyword intent routing to custom plugins and tools via [`ai-context.md`](ai-context.md).
+- **Direct Shell Jaccard (``<plugin>`):** Sub-millisecond fuzzy intent routing for shell shortcuts, diagnostic tools, and custom plugins mapped in [`ai-context.md`](ai-context.md).
 - **Single-Turn Query (`ai <query>`):** Instant response piped straight back to your active shell prompt.
 - **Multi-Turn Chat (`ai`):** Persistent interactive terminal session with memory context.
 - **Workspace Agent (`ai init <path>`):** Full codebase graph indexing, path-healing file editing, and sub-agent concurrency.
