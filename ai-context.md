@@ -32,6 +32,9 @@
 # --- PyCode App & WebUI ---
 ~/.config/py-agent/plugins/pycode/launch.sh ---> pycode
 ~/.config/py-agent/plugins/pycode/launch.sh web ---> pycode web
+
+# --- PyCode Setup & Build ---
+~/.config/py-agent/plugins/pycode/setup.sh ---> install-pycode, pycode-setup
 ```
 
 ## 2. Workspaces
