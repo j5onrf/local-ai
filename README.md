@@ -1,8 +1,8 @@
 <div align="center">
-  <img alt="Py Agent" src="logo.svg" height="130" />
+  <img alt="py-agent" src="logo.svg" height="130" />
 </div>
 
-<h1 align="center">py-agent <img src="https://shieldcn.dev/badge/version-v0.9.8.61.svg?variant=secondary" alt="Version"><a href="https://github.com/j5onrf/py-agent"> </h1>
+<h1 align="center">py-agent <img src="https://shieldcn.dev/badge/version-v0.9.8.61.svg?variant=secondary" alt="Version"><a href="https://github.com/j5onrf/py-agent"></a></h1>
 
 <p align="center">
   <a href="https://github.com/j5onrf/py-agent"><img src="https://shieldcn.dev/github/last-commit/j5onrf/py-agent.svg?color=emerald&variant=secondary" alt="Last Commit"></a>
@@ -11,13 +11,14 @@
   <a href="https://github.com/j5onrf/py-agent/blob/main/LICENSE"><img src="https://shieldcn.dev/badge/license-MIT-green.svg" alt="License"></a>
   <a href="https://shieldcn.dev/badge/status-beta-blue.svg"><img src="https://shieldcn.dev/badge/status-beta-blue.svg" alt="Status"></a>
 </p>
+
 <p align="center">
   <code>gpt</code> &nbsp; <code>claude</code> &nbsp; <code>grok</code> &nbsp; <code>gemini</code> &nbsp; <code>openrouter</code> &nbsp; <code>hf</code> &nbsp; <code>gguf</code>
 </p>
 
 ---
 
-## Overview & Execution Modes
+<h2 align="center">Overview & Execution Modes</h2>
 
 Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`) controlling a C++ backend `llama-server`. Built for extreme efficiency on quantized local models (`LFM2.5-8B-A1B`, `Qwen-3.5-2B`, `Qwen3.6-35B-A3B`, `Qwen3.8-27B`) and cloud providers.
 
@@ -30,7 +31,7 @@ Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`)
 
 ---
 
-## Key Systems & Integrations
+<h2 align="center">Key Systems & Integrations</h2>
 
 | Feature System | Foundation & Architectural Roots | Interface Command / Link |
 | :--- | :--- | :--- |
@@ -46,7 +47,7 @@ Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`)
 
 ---
 
-## Core Capabilities
+<h2 align="center">Core Capabilities</h2>
 
 | Core Module | Capability | Description |
 | :--- | :--- | :--- |
@@ -62,9 +63,9 @@ Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`)
 
 ---
 
-## CLI Launch Interface
+<h2 align="center">CLI Launch Interface</h2>
 
-> Customize box themes with `/box [1-5]`. For detailed multi-agent workflows, read the [**Workspace Manual**](https://github.com/j5onrf/local-ai/blob/main/projects/Readme.md).
+> Customize box themes with `/box [1-5]`. For detailed multi-agent workflows, read the [**Workspace Manual**](projects/Readme.md).
 
 #### 1. Interactive Multi-Turn Chat (`ai`)
     
@@ -82,17 +83,17 @@ Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`)
 
 ---
 
-## Interactive Textual TUI
+<h2 align="center">Interactive Textual TUI</h2>
 
 <div align="center">
   <kbd>
-    <img width="800" alt="20260731_113218b" src="https://github.com/user-attachments/assets/c1469fa4-a3ad-4379-93dd-44daff8668f4" />
+    <img width="800" alt="Py Agent Textual TUI Interface" src="https://github.com/user-attachments/assets/c1469fa4-a3ad-4379-93dd-44daff8668f4" />
   </kbd>
 </div>
 
 ---
 
-## Setup & Installation
+<h2 align="center">Setup & Installation</h2>
 
 ```bash
 # 1. Install system dependencies
@@ -104,9 +105,8 @@ yay -S python-sqlite-vec && sudo pacman -S python-textual python-uvloop
 # 3. Clone repository
 git clone https://github.com/j5onrf/py-agent.git ~/.config/py-agent
 
-# 4. Register shell environment hook
-echo '[ -f "$HOME/.config/py-agent/ai-hook.sh" ] && \
-source "$HOME/.config/py-agent/ai-hook.sh"' >> ~/.bashrc
+# 4. Register shell environment hook (~/.bashrc or ~/.zshrc)
+echo '[ -f "$HOME/.config/py-agent/ai-hook.sh" ] && source "$HOME/.config/py-agent/ai-hook.sh"' >> ~/.bashrc
 source ~/.bashrc
 
 # 5. Create your configuration file
@@ -114,7 +114,6 @@ nano ~/.config/py-agent/.env
 ```
 
 #### Configuration Example (`~/.config/py-agent/.env`):
-
 
 ```env
 # Configure manually or run: model select
@@ -140,7 +139,7 @@ AI_MAX_TOKENS="8192"
 
 ---
 
-## Roadmap to v1.0.0
+<h2 align="center">Roadmap to v1.0.0</h2>
 
 - [x] **Core Engine Optimization:** Production pass on streaming, token counting, and sub-agent concurrency.
 - [x] **Thinking UI Controls:** Real-time thinking TPS metrics and `/t show|hide` panel toggles.
@@ -157,9 +156,11 @@ AI_MAX_TOKENS="8192"
 - [ ] **Context Stress Testing:** Continuous context-window pressure tests across quantized local engines.
 - [ ] **Automated File Containment Validation:** Zero-trust security verification on traversal boundaries.
 - [ ] **v1.0.0 Production Release Tag!**
+
 ---
 
-## Credits
+<h2 align="center">Credits</h2>
 
-*   **License**: Licensed under the permissive [MODIFIED MIT LICENSE](LICENSE).
-*   **Community:** Contributions are always welcome!
+* **License**: Licensed under the permissive [MODIFIED MIT LICENSE](LICENSE).
+* **Community:** Contributions are always welcome!
+
