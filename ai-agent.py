@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Py Agent [j5onrf] [v0.9.8.61]"""
+"""Py Agent [j5onrf] [v0.9.8.71]"""
 
 import json, os, re, shutil, sqlite3, subprocess, sys, threading, time
 from typing import List, Optional, Tuple
@@ -240,10 +240,26 @@ def run_interactive_chat(args: List[str]) -> None:
                     except Exception as e: ui._console.print(f"[red][sys] Failed TUI: {e}[/red]\n")
                     continue
 
-                if query in ("/spell", "/sp"):
-                    spell_active = not spell_active
-                    core.save_state("spell_active", spell_active)
-                    ui._console.print(f"[green][sys] Spellchecker {'enabled' if spell_active else 'disabled'}.[/green]\n")
+                if query.startswith(("/pycode", "/pyc")):
+                    parts = query.split()
+                    is_web = len(parts) > 1 and parts[1].lower() in ("web", "--web", "browser")
+                    mode_label = "Browser WebUI" if is_web else "Desktop App"
+                    ui._console.print(f"[dim yellow][sys] Suspending CLI. Launching PyCode {mode_label}...[/dim yellow]")
+                    gui_bin = os.path.join(CFG_DIR, "plugins", "pycode", "launch.sh")
+                    if os.path.exists(gui_bin):
+                        try:
+                            active_skill_env = os.environ.get("AI_ACTIVE_SKILL", clean_name or "default")
+                            gui_env = {**os.environ, "AI_IS_AGENT": "1" if is_agent else "0", "AI_WORKSPACE_PATH": workspace_path, "AI_ACTIVE_SKILL": active_skill_env}
+                            args = ["/bin/bash", gui_bin, "web"] if is_web else ["/bin/bash", gui_bin]
+                            subprocess.run(args, env=gui_env)
+                            st = core.get_state()
+                            reasoning_active, reasoning_budget = st.get("reasoning_active", False), st.get("reasoning_budget", 500)
+                            os.environ["AI_SHOW_THINKING"] = "1" if st.get("show_thinking", True) else "0"
+                            ui._console.print(f"[green][sys] Resumed CLI session from PyCode.[/green]\n")
+                        except Exception as e:
+                            ui._console.print(f"[red][sys] Failed PyCode: {e}[/red]\n")
+                    else:
+                        ui._console.print(f"[red][sys] Launcher script not found: {gui_bin}[/red]\n")
                     continue
 
                 parts = query.split()

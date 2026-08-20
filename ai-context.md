@@ -22,11 +22,19 @@
 ~/.config/py-agent/modules/model-select.py ---> model select, cloud model
 # --- AI Status Model Route ---
 [TOOL] ~/.config/py-agent/tools/agentic/system/ai-status ---> aistatus, aistat, ais
-# --- Blueprint ---
+# --- Plugins Cheatsheet ---
 [TOOL] ~/.config/py-agent/tools/blueprint ---> plugins, cheatsheet, bp, cs, blueprint
 ```
 
-## 1. Workspaces
+## 1. Plugins
+
+```properties
+# --- PyCode App & WebUI ---
+~/.config/py-agent/plugins/pycode/launch.sh ---> pycode
+~/.config/py-agent/plugins/pycode/launch.sh web ---> pycode web
+```
+
+## 2. Workspaces
 
 ```properties
 # --- Workspaces ---
@@ -35,14 +43,14 @@ ai init ~/.config/py-agent/projects/session-test-2 ---> session test 2, projects
 ai init ~/.config/py-agent/projects/session-test-3 ---> session test 3, projects session
 ```
 
-## 2. Codebase Map
+## 3. Codebase Map
 
 ```properties
 # --- Index Map ---
 [TOOL] ~/.config/py-agent/tools/index-map/index-map --cat ---> index map, imap
 ```
 
-## 3. Voice & TTS
+## 4. Voice & TTS
 
 ```properties
 # --- Voice to Text ---
@@ -51,7 +59,7 @@ ai init ~/.config/py-agent/projects/session-test-3 ---> session test 3, projects
 pkill -9 -f "pw-play|koko" ---> stop speech, kill tts
 ```
 
-## 4. Web & Files
+## 5. Web & Files
 
 ```properties
 # --- Web Reader ---
@@ -67,7 +75,7 @@ pkill -9 -f "pw-play|koko" ---> stop speech, kill tts
 [TOOL] read -p "Search Page: " query && view history.md | grep --color=always -A 15 -B 2 -i "$query" ---> search page, hs
 ```
 
-## 5. System & Health
+## 6. System & Health
 
 ```properties
 # --- System Profile ---
@@ -88,11 +96,9 @@ pkill -9 -f "pw-play|koko" ---> stop speech, kill tts
 [TOOL] ~/.config/py-agent/tools/agentic/system/update-inspector ---> update inspector
 ```
 
-## 6. TUI Apps
+## 7. TUI Apps
 
 ```properties
-# --- T3 Code WebApp ---
-~/.config/py-agent/tools/subsec/apps/t3code.sh ---> agent ui
 # --- Email TUI ---
 ~/.config/py-agent/tools/email/email-agent ---> email agent
 # --- Hyprland State ---
@@ -103,7 +109,7 @@ pkill -9 -f "pw-play|koko" ---> stop speech, kill tts
 ~/.config/py-agent/tools/subsec/basepage-tui/basetracker.py ---> basetracker, baset
 ```
 
-## 7. Tools & Utilities
+## 8. Tools & Utilities
 
 ```properties
 # --- AI Commit ---

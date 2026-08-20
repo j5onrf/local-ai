@@ -1,4 +1,4 @@
-# CODEBASE INDEX MAP | Generated: 2026-08-19 10:18 | Workspace: local-ai | Path: ~/.config/local-ai
+# CODEBASE INDEX MAP | Generated: 2026-08-19 22:33 | Workspace: py-agent | Path: ~/.config/py-agent
 # Active symbols and structural connections mapped in the local index.
 # -----------------------------------------------------------------------------------------
 # Codebase Modules & Active Architecture:
@@ -13,13 +13,12 @@
 #   ├── LICENSE                  - MODIFIED MIT LICENSE (NON-COMMERCIAL / NO BUSINESS USE)
 #   ├── README.md                - <div align="center">
 #   ├── SECURITY.md              - Security Policy
-#   ├── ai-agent.py              - Local-Ai Agent [j5onrf] [v0.9.8.59]
-#   ├── ai-context.md            - Local-AI Config
+#   ├── ai-agent.py              - Py Agent [j5onrf] [v0.9.8.61]
+#   ├── ai-context.md            - Py-Agent Plugins
 #   ├── ai-hook.sh               - Production Local-AI Shell Hook v0.9.8.5
-#   ├── logo.png
 #   ├── logo.svg                 - <svg xmlns="http://www.w3.org/2000/svg" viewBox="121 101 270 310">
 #   ├── server.pem               - -----BEGIN PRIVATE KEY-----
-#   ├── modules/Readme.md        - Privacy-First Architecture
+#   ├── modules/Readme.md        - Privacy-First
 #   ├── modules/agent_cloud.py   - Dynamic Cloud Cascade Engine - Top-down .env provider API priority.
 #   ├── modules/agent_context.py - Context Search & Indexing Engine - Jaccard intent matching.
 #   ├── modules/agent_core.py    - Core Module - Handles streaming SSE, tool gates, and Rich rendering
@@ -28,7 +27,7 @@
 #   ├── modules/agent_spell.py   - Offline/Online Spellchecker Module - LanguageTool API & phonetic edit-distance.
 #   ├── modules/agent_tools.py   - Native Tool Engine - Handles file editing, commands, & graph intelligence
 #   ├── modules/agent_tts.py     - Local-AI Kokoro Text-to-Speech (Text Out Loud) Module
-#   ├── modules/agent_tui.py     - Production Minimal Textual TUI for Local-AI Agent Engine
+#   ├── modules/agent_tui.py     - Production Minimal Textual TUI for Py Agent Engine
 #   ├── modules/agent_tui_async.py - Asynchronous uvloop background services for Local-AI Agent TUI
 #   ├── modules/agent_ui.py      - UI Module - Spinners, session boxes, and interactive menus
 #   ├── modules/agent_usage.py   - Token Usage & Spend Ledger Manager
@@ -46,14 +45,13 @@
 [markdown:README.md] title:1. Install system dependencies | links:Readme.md,ai-context.md
 [markdown:SECURITY.md] title:Security Policy
 [python:ai-agent.py] imp:agent_context,agent_core,agent_ipython,agent_skills,agent_spell,agent_tts,agent_ui,agent_voice,contextlib,json,os,re,readline,shutil,sqlite3,subprocess,sys,threading,time,typing | fn:load_env_file,workspace_db_counts,ensure_clean_agent_dir,sync_md_to_sqlite,clean_exit,run_interactive_chat,run_direct_query,run_matching_search,main
-[markdown:ai-context.md] title:Local-AI Config
+[markdown:ai-context.md] title:Py-Agent Plugins
 [shell:ai-hook.sh] sum:Production Local-AI Shell Hook v0.9.8.5
-[image/png:logo.png] dim:1376x768 | size:1.0MB
 [svg:logo.svg] sum:<svg xmlns="http://www.w3.org/2000/svg" viewBox="121 101 270 310">
-[markdown:modules/Readme.md] title:Privacy-First Architecture
+[markdown:modules/Readme.md] title:Privacy-First
 [python:modules/agent_cloud.py] imp:os,re,typing | fn:get_active_configs
 [python:modules/agent_context.py] imp:os,re,sys,typing | fn:tokenize,load_context_entries,jaccard_search,clean_tool_prefix
-[python:modules/agent_core.py] imp:agent_cloud,agent_ipython,agent_tools,agent_ui,agent_usage,ast,difflib,json,os,re,requests,rich,shutil,speed_test,subprocess,sys,time,typing,urllib | cls:RichStreamer | fn:get_state,save_state,workspace_safe_name,run_mod,background_tpm_update,_clear_lines,__init__,_stop_spinner,start,update,stop,_log_turn_usage,_process_stream_chunk,_calc_turn_tokens,_confirm_gate,_print_tool_output,_run_edit_tool,agentic_turn,_is_local_server_alive,stream_response,get_accurate_token_count,show_memory_status,prune_history
+[python:modules/agent_core.py] imp:agent_cloud,agent_ipython,agent_tools,agent_ui,agent_usage,ast,difflib,json,os,re,requests,rich,shutil,speed_test,subprocess,sys,time,typing,urllib | cls:RichStreamer | fn:_heal_tool_args,get_state,save_state,workspace_safe_name,run_mod,background_tpm_update,_clear_lines,__init__,_stop_spinner,start,update,stop,_log_turn_usage,_process_stream_chunk,_calc_turn_tokens,_confirm_gate,_print_tool_output,_run_edit_tool,agentic_turn,_is_local_server_alive,stream_response,get_accurate_token_count,show_memory_status,prune_history
 [python:modules/agent_ipython.py] imp:IPython,agent_core,ast,contextlib,difflib,io,json,os,rich,subprocess,sys,traceback,typing | cls:MemorySDK,GraphSDK | fn:is_ipython_enabled,toggle_ipython_mode,bounded_repr,__init__,search,get_facts,add_fact,__init__,snippet,trace,blast_radius,search,architecture,delegate,_init_kernel_sdk,_is_outside,_check_boundary,safe_open,safe_listdir,_read_file,_write_file,_list_dir,_run_command,_delegate,inspect_ast_safety,run_cell,get_active_tools
 [python:modules/agent_skills.py] imp:agent_context,agent_core,agent_ui,json,os,re,shutil,subprocess,sys,typing | fn:ensure_mysys_exists,find_skill_file,load_skill_content,_exec_tool_cmd,run_local_tool,run_interactive_tool,get_system_context,load_skill_blueprints,run_skill_selector
 [python:modules/agent_spell.py] imp:difflib,json,os,re,shutil,sys,typing,urllib | fn:load_system_dictionary,edits1,correct_word,_match_case,_transform_words,apply_static_overrides,check_query_spelling_offline,highlight_diff,_get_prio,check_query_spelling
@@ -137,7 +135,7 @@
 [markdown:tools/agentic/identity/readme.md] title:Identity Layer (`agentic/identity/`)
 [python:tools/agentic/identity/workout/routine] imp:os,sys | fn:main
 [file:tools/agentic/system/ai-commit] sum:ai-commit - Automate Git Commits with AI Context
-[file:tools/agentic/system/ai-status] sum:ai-status - Diagnostics for Local-AI Agent Stack v1.5.0 [j5onrf]
+[file:tools/agentic/system/ai-status] sum:ai-status - Diagnostics for Py Agent Stack v1.5.0 [j5onrf]
 [file:tools/agentic/system/aur-audit] sum:aur-audit - Interactive Zero-Trust AUR Package Auditor v1.1.6
 [file:tools/agentic/system/log-checker] sum:AI Log Triage & Diagnostics v2.0.0 (Zero-Config / One-And-Done)
 [markdown:tools/agentic/system/readme.md] title:Ai-Commit
@@ -148,7 +146,7 @@
 [markdown:tools/agentic/web/Readme.md] title:Firecrawl Scraper API Configurations
 [python:tools/agentic/web/firecrawl] imp:os,re,requests,sys
 [python:tools/agentic/web/web-reader] imp:glob,os,re,shutil,subprocess,sys,tempfile,urllib | fn:scrape_webpage,extract_youtube_subtitles,main
-[python:tools/blueprint] imp:os,re,sys,typing
+[python:tools/blueprint] imp:os,re,sys
 [markdown:tools/email/Readme.md] title:Email TUI Monitor: `email-agent`
 [python:tools/email/email-agent] imp:agent_ui,concurrent,email,imaplib,os,re,sys | fn:load_email_config,clean_header,highlight_tags,fetch_single_account,fetch_emails,run_interactive_tui,main
 [python:tools/generate-profile] imp:glob,os,re,socket,subprocess,sys | fn:run
