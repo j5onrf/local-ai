@@ -106,7 +106,8 @@ yay -S python-sqlite-vec && sudo pacman -S python-textual python-uvloop
 git clone https://github.com/j5onrf/py-agent.git ~/.config/py-agent
 
 # 4. Register shell environment hook (~/.bashrc or ~/.zshrc)
-echo '[ -f "$HOME/.config/py-agent/ai-hook.sh" ] && source "$HOME/.config/py-agent/ai-hook.sh"' >> ~/.bashrc
+echo '[ -f "$HOME/.config/py-agent/ai-hook.sh" ] && \
+source "$HOME/.config/py-agent/ai-hook.sh"' >> ~/.bashrc
 source ~/.bashrc
 
 # 5. Create your configuration file
