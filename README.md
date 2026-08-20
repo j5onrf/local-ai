@@ -115,7 +115,6 @@ nano ~/.config/py-agent/.env
 
 #### Configuration Example (`~/.config/py-agent/.env`):
 
-<kbd>
 
 ```env
 # Configure manually or run: model select
@@ -138,7 +137,6 @@ XAI_MODEL="grok-4.6"
 
 AI_MAX_TOKENS="8192"
 ```
-</kbd>
 
 ---
 
