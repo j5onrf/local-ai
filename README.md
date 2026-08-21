@@ -2,7 +2,7 @@
   <img alt="py-agent" src="logo.svg" height="130" />
 </div>
 
-<h1 align="center">Py Agent <img src="https://shieldcn.dev/badge/version-v0.9.8.79.svg?variant=secondary" alt="Version"><a href="https://github.com/j5onrf/py-agent"></a></h1>
+<h1 align="center">Py Agent <img src="https://shieldcn.dev/badge/version-v0.9.8.81.svg?variant=secondary" alt="Version"><a href="https://github.com/j5onrf/py-agent"></a></h1>
 
 <p align="center">
   <a href="https://github.com/j5onrf/py-agent"><img src="https://shieldcn.dev/github/last-commit/j5onrf/py-agent.svg?color=emerald&variant=secondary" alt="Last Commit"></a>
@@ -82,6 +82,16 @@ Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`)
  Startup context: 103 tokens
 ❯ 
 ```
+
+---
+
+<h2 align="center">Desktop APP</h2>
+
+<div align="center">
+  <kbd>
+    <img width="800" alt="PyCode GUI Desktop APP" src="https://github.com/user-attachments/assets/55bfcdb6-148e-4b0b-bc93-f8383c4a1ff6" />
+  </kbd>
+</div>
 
 ---
 
@@ -170,3 +180,4 @@ AI_MAX_TOKENS="8192"
 
 * **License**: Licensed under the permissive [MODIFIED MIT LICENSE](LICENSE).
 * **Community:** Contributions are always welcome!
+
