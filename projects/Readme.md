@@ -93,7 +93,6 @@ All auto-created agent metadata files are strictly isolated inside `project/.age
 
 | Path | Purpose |
 | :--- | :--- |
-| `~/.config/py-agent/plugins/pycode/` | [PyCode](https://github.com/j5onrf/pycode) ACP bridge (`bridge.py`), launcher (`launch.sh`), and installer (`setup.sh`). |
 | `~/.config/py-agent/projects/database/*.db` | Global SQLite turn history and fact memory database. |
 | `~/.config/py-agent/.active_sessions/` | Sub-agent PID lockfiles for process tracking. |
 | `~/.config/py-agent/.spend_ledger.json` | Global cloud API token usage and daily spend ledger. |
