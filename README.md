@@ -85,7 +85,7 @@ Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`)
 
 ---
 
-<h2 align="center">Interfaces</h2>
+<h2 align="center">Plugin Interfaces</h2>
 
 <div align="center">
   <table>
@@ -112,7 +112,6 @@ Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`)
         <b>Web Assistant (<a href="https://github.com/CopilotKit/OpenBot">PyBot</a>)</b><br>
         <code>/pybot</code> <i>(Coming Soon)</i><br><br>
         <kbd>
-          <img src="https://via.placeholder.com/600x380/0d1117/38bdf8?text=PyBot+Web+Assistant+%5B+Coming+Soon+%5D" alt="PyBot Preview" width="100%" />
         </kbd>
       </td>
     </tr>
