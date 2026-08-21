@@ -176,7 +176,7 @@ AI_MAX_TOKENS="8192"
 
 ---
 
-<h2 align="center">Credits</h2>
+<h2 align="center">License</h2>
 
 * **License**: Licensed under the permissive [MODIFIED MIT LICENSE](LICENSE).
 * **Community:** Contributions are always welcome!
