@@ -85,7 +85,7 @@ Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`)
 
 ---
 
-<h2 align="center">Desktop APP</h2>
+<h2 align="center">Desktop GUI</h2>
 
 <div align="center">
   <kbd>
