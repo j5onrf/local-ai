@@ -85,22 +85,40 @@ Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`)
 
 ---
 
-<h2 align="center">Desktop GUI</h2>
+<h2 align="center">Interfaces</h2>
 
 <div align="center">
-  <kbd>
-    <img width="800" alt="PyCode GUI Desktop APP" src="https://github.com/user-attachments/assets/904e215e-4edd-43eb-84d5-525e5ed2f24f" />
-  </kbd>
-</div>
-
----
-
-<h2 align="center">Textual TUI</h2>
-
-<div align="center">
-  <kbd>
-    <img width="800" alt="Py Agent Textual TUI Interface" src="https://github.com/user-attachments/assets/1cfcd26a-c7f9-482d-9624-24193ce7b5c2" />
-  </kbd>
+  <table>
+    <tr>
+      <td align="center" width="33%" valign="top">
+        <b>Desktop GUI (<a href="https://github.com/j5onrf/pycode">PyCode</a>)</b><br>
+        <code>/pyc</code> · <code>/pyc web</code><br><br>
+        <a href="https://github.com/user-attachments/assets/904e215e-4edd-43eb-84d5-525e5ed2f24f" target="_blank">
+          <kbd>
+            <img src="https://github.com/user-attachments/assets/904e215e-4edd-43eb-84d5-525e5ed2f24f" alt="PyCode Desktop App" width="100%" />
+          </kbd>
+        </a>
+      </td>
+      <td align="center" width="33%" valign="top">
+        <b>Textual TUI</b><br>
+        <code>/tui</code><br><br>
+        <a href="https://github.com/user-attachments/assets/1cfcd26a-c7f9-482d-9624-24193ce7b5c2" target="_blank">
+          <kbd>
+            <img src="https://github.com/user-attachments/assets/1cfcd26a-c7f9-482d-9624-24193ce7b5c2" alt="Py Agent Textual TUI" width="100%" />
+          </kbd>
+        </a>
+      </td>
+      <td align="center" width="33%" valign="top">
+        <b>Web Assistant (PyBot)</b><br>
+        <code>/pybot</code> <i>(Coming Soon)</i><br><br>
+        <a href="https://github.com/CopilotKit/OpenBot" target="_blank">
+          <kbd>
+            <img src="" alt="PyBot Assistant Plugin" width="100%" />
+          </kbd>
+        </a>
+      </td>
+    </tr>
+  </table>
 </div>
 
 ---
