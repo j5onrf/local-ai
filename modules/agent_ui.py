@@ -249,13 +249,30 @@ def show_help() -> None:
     cmd_table.add_column("Description", style="white")
 
     cmds = [
-        ("/h", "Help menu"), ("/v \\[auto], /voice", "Voice to text"), ("/tts", "Text out loud"), ("/box \\[1-5]", "Box style preset"), ("/t \\[N|show|hide]", "Set reasoning budget or show/hide"),
-        ("/g, /yolo", "Toggle confirmation gates (YOLO / autonomous mode)"), ("/m", "Toggle database memory"),
-        ("/md", "Toggle markdown"), ("/stats", "Generation speed stats"), ("/tok", "Context token usage"),
-        ("/sync", "Sync index"), ("/clear, /c", "Soft clear active chat history"), ("/reset, /purge", "Hard reset (.agent & database purge)"),
-        ("/sp", "Toggle spellchecker"), ("/s <query>", "Skills"), ("/tui", "Textual UI"), ("-save <tag>", "Save session checkpoint"),
-        ("-load", "Load or clone checkpoint"), ("/f, /tk, /b, /a", "Follow-up, Thinking, Brainstorm, or All"),
-        ("view file <path>", "Load file into context"), ("exit, quit, q", "Exit")
+        ("/h", "Help menu"),
+        ("/pyc, /pyc web", "Desktop GUI or WebUI"),
+        ("/tui", "Textual UI"),
+        ("/v \\[auto], /voice", "Voice to text"),
+        ("/tts", "Text out loud"),
+        ("/py \\[code_or_cmd]", "Toggle or execute via IPython"),
+        ("/box \\[1-5]", "Box style preset"),
+        ("/task \\[goal]", "Autonomous task loop"),
+        ("/t \\[N|show|hide]", "Set reasoning budget or show/hide"),
+        ("/g, /yolo", "Toggle confirmation gates (YOLO / autonomous mode)"),
+        ("/m", "Toggle database memory"),
+        ("/md", "Toggle markdown"),
+        ("/stats", "Generation speed stats"),
+        ("/tok", "Context token usage"),
+        ("/sync", "Sync index"),
+        ("/clear, /c", "Soft clear active chat history"),
+        ("/reset, /purge", "Hard reset (.agent & database purge)"),
+        ("/sp", "Toggle spellchecker"),
+        ("/s <query>, /s off", "Skills"),
+        ("-save <tag>", "Save session checkpoint"),
+        ("-load", "Load or clone checkpoint"),
+        ("/f, /tk, /b, /a", "Follow-up, Thinking, Brainstorm, or All"),
+        ("file <path>", "Load file into context"),
+        ("exit, quit, q", "Exit")
     ]
     for cmd, desc in cmds: cmd_table.add_row(cmd, f"[dim]-[/dim] {desc}")
 
