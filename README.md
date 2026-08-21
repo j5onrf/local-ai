@@ -144,7 +144,8 @@ Configure providers automatically via the interactive selector or copy the templ
 model select
 
 # Option B: Manual Configuration
-cp ~/.config/py-agent/.env.example ~/.config/py-agent/.env 2>/dev/null || nano ~/.config/py-agent/.env
+cp ~/.config/py-agent/.env.example ~/.config/py-agent/.env
+nano ~/.config/py-agent/.env
 ```
 
 <details>
