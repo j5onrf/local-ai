@@ -99,7 +99,7 @@ Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`)
 
 <div align="center">
   <kbd>
-    <img width="800" alt="Py Agent Textual TUI Interface" src="https://github.com/user-attachments/assets/a0a7a090-aa06-4464-b00b-bf089530f40e" />
+    <img width="800" alt="Py Agent Textual TUI Interface" src="https://github.com/user-attachments/assets/1cfcd26a-c7f9-482d-9624-24193ce7b5c2" />
   </kbd>
 </div>
 
