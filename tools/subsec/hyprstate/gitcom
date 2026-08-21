@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-TARGET_WS=5
+TARGET_WS=6
 TARGET_DIR="$HOME/.config/py-agent"
 
 manage_app() {

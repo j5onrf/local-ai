@@ -163,15 +163,17 @@ def handle_acp_prompt(req_id: Any, session_id: str, prompt_items: List[Dict[str,
         tool_calls_map = {}
         round_text = ""
 
+        url, headers, base_body, timeout = configs[0]
+        is_local = "localhost" in url or "127.0.0.1" in url or base_body.get("model") == "local-model"
+
         body = {
             "messages": messages,
             "stream": True,
-            **think_kwargs
+            **(think_kwargs if is_local else {})
         }
         if is_agent:
             body["tools"] = tools.EDIT_TOOLS
 
-        url, headers, base_body, timeout = configs[0]
         body = {**base_body, **body}
 
         try:

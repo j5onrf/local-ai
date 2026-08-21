@@ -554,7 +554,9 @@ def stream_response(messages: List[Dict[str, Any]], prefix: str = "AI: ", cfg_di
             configs = [("http://localhost:8080/v1/chat/completions", {}, {"messages": messages, "stream": True, **think_kwargs}, 180)]
 
         url, headers, body, timeout = configs[0]
-        body = {**body, **think_kwargs}
+        # Only inject llama-server thinking parameters for local endpoints
+        if "localhost" in url or "127.0.0.1" in url or body.get("model") == "local-model":
+            body = {**body, **think_kwargs}
 
         ans = agentic_turn(messages, url, headers, body, timeout, spinner, show_stats, is_agent=is_agent)
         if spinner: spinner.stop("Done")
