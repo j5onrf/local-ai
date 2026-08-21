@@ -18,7 +18,7 @@
 ```properties
 # --- Stack Diagnostic Suite ---
 [TOOL] ~/.config/py-agent/tools/test-agent --cat --s ---> agent test
-# --- Cloud Model Select TUI ---
+# --- Model Selector & .env Provider Configurator ---
 ~/.config/py-agent/modules/model-select.py ---> model select, cloud model
 # --- AI Status Model Route ---
 [TOOL] ~/.config/py-agent/tools/agentic/system/ai-status ---> aistatus, aistat, ais
