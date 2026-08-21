@@ -95,7 +95,7 @@ Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`)
 
 ---
 
-<h2 align="center">Interactive Textual TUI</h2>
+<h2 align="center">Textual TUI</h2>
 
 <div align="center">
   <kbd>
