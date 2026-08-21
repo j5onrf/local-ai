@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Py Agent [j5onrf] [v0.9.8.71]"""
+"""Py Agent [j5onrf] [v0.9.8.82]"""
 
 import json, os, re, shutil, sqlite3, subprocess, sys, threading, time
 from typing import List, Optional, Tuple
