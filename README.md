@@ -120,34 +120,40 @@ Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`)
 
 <h2 align="center">Setup & Installation</h2>
 
+### 1. Core Engine & Shell Integration
+
 ```bash
-# 1. Install system dependencies
+# 1. Install system dependencies & clone
 sudo pacman -S python-rich python-requests
-
-# 2. (Optional Extensions) Ultra-fast /tui and vector search
-yay -S python-sqlite-vec && sudo pacman -S python-textual python-uvloop
-
-# 3. Clone repository
 git clone https://github.com/j5onrf/py-agent.git ~/.config/py-agent
 
-# 4. Register shell environment hook (~/.bashrc or ~/.zshrc)
+# 2. Register shell hook (bash / zsh)
 echo '[ -f "$HOME/.config/py-agent/ai-hook.sh" ] && \
 source "$HOME/.config/py-agent/ai-hook.sh"' >> ~/.bashrc
 source ~/.bashrc
-
-# 5. (Optional) Install PyCode Native Electron Desktop GUI
-~/.config/py-agent/plugins/pycode/setup.sh
-
-# 6. Create your configuration file
-nano ~/.config/py-agent/.env
 ```
 
-#### Configuration Example (`~/.config/py-agent/.env`):
+---
+
+### 2. Configure Providers (`.env`)
+
+Configure providers automatically via the interactive selector or copy the template:
+
+```bash
+# Option A: Interactive TUI Selector
+model select
+
+# Option B: Manual Configuration
+cp ~/.config/py-agent/.env.example ~/.config/py-agent/.env 2>/dev/null || nano ~/.config/py-agent/.env
+```
+
+<details>
+<summary><b>📋 View Example <code>~/.config/py-agent/.env</code> (Click to Expand)</b></summary>
 
 ```env
-# Configure manually or run: model select
-# Top-Down (First Active Key is Used)
+# Top-Down Priority (First Active Key is Used)
 
+# Cloud Providers
 GEMINI_API_KEY="AIzaSyYourGeminiKey"
 GEMINI_MODEL="gemini-3.5-flash-lite"
 
@@ -163,8 +169,21 @@ CLAUDE_MODEL="claude-opus-5"
 XAI_API_KEY="xai-your-grok-key"
 XAI_MODEL="grok-4.6"
 
+# Context Limit
 AI_MAX_TOKENS="8192"
 ```
+
+</details>
+
+---
+
+### 3. Optional Client Surfaces
+
+| Surface | Installation Command | Requirement |
+| :--- | :--- | :--- |
+| **Desktop GUI (<a href="https://github.com/j5onrf/pycode">PyCode</a>)** | `~/.config/py-agent/plugins/pycode/setup.sh` | Node.js 20+, pnpm |
+| **Textual TUI Speedups** | `sudo pacman -S python-textual python-uvloop && yay -S python-sqlite-vec` | uvloop & sqlite-vec |
+
 
 ---
 
