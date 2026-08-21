@@ -85,7 +85,7 @@ Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`)
 
 ---
 
-<h2 align="center">Plugins</h2>
+<h2 align="center">Plugins & Modules</h2>
 
 <div align="center">
   <table>
