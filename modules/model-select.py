@@ -59,7 +59,37 @@ def classify_openrouter_models(raw_data):
     return free_c, paid_c or OR_PAID_DEFAULTS, gemini_c or GEMINI_CURATED, claude_c or CLAUDE_CURATED, openai_c or OPENAI_CURATED, grok_c or GROK_CURATED
 
 
+def ensure_env_exists():
+    """Auto-creates ~/.config/py-agent/.env from .env.example or built-in template on startup."""
+    if not os.path.exists(ENV_PATH):
+        example_path = os.path.join(os.path.dirname(ENV_PATH), ".env.example")
+        if os.path.exists(example_path):
+            try:
+                shutil.copyfile(example_path, ENV_PATH)
+                return
+            except OSError: pass
+        try:
+            os.makedirs(os.path.dirname(ENV_PATH), exist_ok=True)
+            with open(ENV_PATH, "w", encoding="utf-8") as f:
+                f.write(
+                    "# Top-Down Priority (First Active Key is Used)\n\n"
+                    "# GEMINI_API_KEY=\"AIzaSyYourGeminiKey\"\n"
+                    "GEMINI_MODEL=\"gemini-3.7-flash\"\n\n"
+                    "# OPENROUTER_API_KEY=\"sk-or-v1-YourOpenRouterKey\"\n"
+                    "OPENROUTER_MODEL=\"openrouter/free\"\n\n"
+                    "# OPENAI_API_KEY=\"your-openai-key\"\n"
+                    "OPENAI_MODEL=\"gpt-5.5\"\n\n"
+                    "# CLAUDE_API_KEY=\"your-claude-key\"\n"
+                    "CLAUDE_MODEL=\"claude-fable-5\"\n\n"
+                    "# XAI_API_KEY=\"xai-your-grok-key\"\n"
+                    "XAI_MODEL=\"grok-4.6\"\n\n"
+                    "AI_MAX_TOKENS=\"8192\"\n"
+                )
+        except OSError: pass
+
+
 def load_env_vars():
+    ensure_env_exists()
     v = {
         "GEMINI_API_KEY": "", "OPENROUTER_API_KEY": "", "CLAUDE_API_KEY": "",
         "OPENAI_API_KEY": "", "XAI_API_KEY": "", "CUSTOM_API_KEY": "",
