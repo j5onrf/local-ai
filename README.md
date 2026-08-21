@@ -120,7 +120,7 @@ Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`)
 
 <h2 align="center">Setup & Installation</h2>
 
-### 1. Quickstart
+### 1. Install py-agent
 
 ```bash
 # 1. Install system dependencies & clone
