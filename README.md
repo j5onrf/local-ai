@@ -111,8 +111,6 @@ Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`)
       <td align="center" width="33%" valign="top">
         <b>Web Assistant (<a href="https://github.com/CopilotKit/OpenBot">PyBot</a>)</b><br>
         <code>/pybot</code> <i>(Coming Soon)</i><br><br>
-        <kbd>
-        </kbd>
       </td>
     </tr>
   </table>
@@ -195,4 +193,5 @@ AI_MAX_TOKENS="8192"
 
 * **License**: Licensed under the permissive [MODIFIED MIT LICENSE](LICENSE).
 * **Community:** Contributions are always welcome!
+
 
