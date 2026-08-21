@@ -89,7 +89,7 @@ Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`)
 
 <div align="center">
   <kbd>
-    <img width="800" alt="PyCode GUI Desktop APP" src="https://github.com/user-attachments/assets/55bfcdb6-148e-4b0b-bc93-f8383c4a1ff6" />
+    <img width="800" alt="PyCode GUI Desktop APP" src="https://github.com/user-attachments/assets/904e215e-4edd-43eb-84d5-525e5ed2f24f" />
   </kbd>
 </div>
 
