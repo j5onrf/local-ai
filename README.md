@@ -91,11 +91,11 @@ Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`)
   <table>
     <tr>
       <td align="center" width="33%" valign="top">
-        <b>Desktop GUI (<a href="https://github.com/j5onrf/pycode">PyCode</a>)</b><br>
+        <b>React Desktop IDE (<a href="https://github.com/j5onrf/pycode">PyCode</a>)</b><br>
         <code>/pyc</code> · <code>/pyc web</code><br><br>
-        <a href="https://github.com/user-attachments/assets/904e215e-4edd-43eb-84d5-525e5ed2f24f" target="_blank">
+        <a href="https://github.com/user-attachments/assets/08a1358b-fca1-4fb4-b43e-2b96aaed6e42" target="_blank">
           <kbd>
-            <img src="https://github.com/user-attachments/assets/904e215e-4edd-43eb-84d5-525e5ed2f24f" alt="PyCode Desktop App" width="100%" />
+            <img src="https://github.com/user-attachments/assets/08a1358b-fca1-4fb4-b43e-2b96aaed6e42" alt="PyCode Desktop App" width="100%" />
           </kbd>
         </a>
       </td>
@@ -213,5 +213,6 @@ AI_MAX_TOKENS="8192"
 
 * **License**: Licensed under the permissive [MODIFIED MIT LICENSE](LICENSE).
 * **Community:** Contributions are always welcome!
+
 
 
