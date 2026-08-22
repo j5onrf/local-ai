@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
-# AI Update Inspector v0.8.7 [j5onrf] [07-01-26]
+# AI Update Inspector - Universal Arch Linux Edition [j5onrf]
 
 set -euo pipefail
 
+CFG_DIR="${HOME}/.config/py-agent"
 spinner_chars=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
 SPINNER_PID=""
 
 start_spinner() {
-    echo -ne "\033[?25l" >&2  # Hide cursor
+    echo -ne "\033[?25l" >&2
     (
         local i=0
         while true; do
@@ -24,17 +25,7 @@ stop_spinner() {
         wait "$SPINNER_PID" 2>/dev/null || true
         SPINNER_PID=""
     fi
-    echo -ne "\r\033[2K\r\033[?25h" >&2  # Restore cursor
-}
-
-# DRY Helper: Process raw package outputs into count and wrapped comma-separated list
-parse_packages() {
-    local raw="$1"
-    [[ -z "$raw" ]] && echo "0|*None*" && return
-    local count; count=$(echo "$raw" | wc -l)
-    # Warning-free single-pass awk: uses octal \140 to print backticks cleanly
-    local pkgs; pkgs=$(echo "$raw" | awk '{printf "%s\140%s\140", (NR==1?"":", "), $1} END {print ""}')
-    echo "$count|$pkgs"
+    echo -ne "\r\033[2K\r\033[?25h" >&2
 }
 
 trap stop_spinner EXIT
@@ -42,77 +33,81 @@ trap stop_spinner EXIT
 # 1. Start loading spinner
 start_spinner
 
-# 2. Gather Native Repository Updates
-cachyos_count="0"
-cachyos_packages="*None*"
-arch_count="0"
-arch_packages="*None*"
-repo_error=""
+all_updates=""
+repo_summary=""
 
+# 2. Gather Official / Native Repository Updates
 if command -v checkupdates >/dev/null 2>&1; then
     raw_repo=$(checkupdates 2>/dev/null || true)
-    
     if [ -n "$raw_repo" ]; then
-        # Extract package names and query sync database to split CachyOS from Arch Extra/Core
+        all_updates="$raw_repo"
         pkg_names=$(echo "$raw_repo" | awk '{print $1}')
         
-        # Symmetrical seen-filter: only registers the first (prioritized) repository for each package
+        # Dynamically detect and group packages by their origin repository (core, extra, multilib, cachyos, endeavouros, etc.)
         repo_info=$(pacman -Si $pkg_names 2>/dev/null | awk '/^Repository/ {repo=$3} /^Name/ {name=$3; if (!seen[name]) { print repo"|"name; seen[name]=1 } }')
         
-        cachyos_raw=$(echo "$repo_info" | grep "cachyos" | cut -d'|' -f2 || true)
-        arch_raw=$(echo "$repo_info" | grep -v "cachyos" | cut -d'|' -f2 || true)
-        
-        IFS='|' read -r cachyos_count cachyos_packages <<< "$(parse_packages "$cachyos_raw")"
-        IFS='|' read -r arch_count arch_packages <<< "$(parse_packages "$arch_raw")"
+        # Build dynamic counts per repository
+        repos=$(echo "$repo_info" | cut -d'|' -f1 | sort -u)
+        for r in $repos; do
+            count=$(echo "$repo_info" | grep "^${r}|" | wc -l)
+            pkgs=$(echo "$repo_info" | grep "^${r}|" | cut -d'|' -f2 | awk '{printf "%s\140%s\140", (NR==1?"":", "), $1} END {print ""}')
+            repo_summary+=$"* **Repository \`$r\`**: \`$count\` packages\n  - Packages: $pkgs\n\n"
+        done
+    else
+        repo_summary="* **Native Repositories**: \`0\` updates (System up to date)\n\n"
     fi
 else
-    repo_error="*Error: checkupdates utility missing*"
+    repo_summary="* **Native Repositories**: *checkupdates utility missing (install pacman-contrib)*\n\n"
 fi
 
-# 3. Gather AUR Updates (Unified 1-line helper check)
+# 3. Gather AUR Updates (Auto-detect paru / yay)
 aur_helper=$(command -v paru >/dev/null && echo "paru" || { command -v yay >/dev/null && echo "yay"; } || echo "")
-aur_count="0"
-aur_packages="*None*"
-aur_error=""
+aur_summary=""
 
 if [ -n "$aur_helper" ]; then
     raw_aur=$($aur_helper -Qua 2>/dev/null || true)
-    IFS='|' read -r aur_count aur_packages <<< "$(parse_packages "$raw_aur")"
+    if [ -n "$raw_aur" ]; then
+        all_updates+=$'\n'"$raw_aur"
+        aur_count=$(echo "$raw_aur" | wc -l)
+        aur_pkgs=$(echo "$raw_aur" | awk '{printf "%s\140%s\140", (NR==1?"":", "), $1} END {print ""}')
+        aur_summary="* **AUR ($aur_helper)**: \`$aur_count\` packages\n  - Packages: $aur_pkgs\n"
+    else
+        aur_summary="* **AUR ($aur_helper)**: \`0\` updates\n"
+    fi
 else
-    aur_error="*None (No AUR helper detected)*"
+    aur_summary="* **AUR**: *No AUR helper (yay/paru) detected*\n"
 fi
 
-# 4. Stop loading spinner
+# 4. Filter Universal Spotlight Applications across all categories
+# Matches browsers, editors, core system kernels, graphics drivers, desktop environments, and major tools
+SPOTLIGHT_REGEX="^(brave|firefox|chromium|zen-browser|librewolf|vivaldi|google-chrome|tor-browser|zed|neovim|code|vscodium|emacs|helix|yt-dlp|linux|linux-lts|linux-zen|linux-cachyos|nvidia|mesa|pipewire|wireplumber|hyprland|waybar|sway|plasma|gnome|cosmic|systemd|glibc|archlinux-keyring|python|rust|nodejs|docker|ollama|llama)"
+spotlight_raw=""
+if [ -n "$all_updates" ]; then
+    spotlight_raw=$(echo "$all_updates" | grep -iE "$SPOTLIGHT_REGEX" || true)
+fi
+
+# 5. Stop loading spinner
 stop_spinner
 
-# 5. Output AI Instructions and Raw Metrics to stdout
-SKILL_FILE="$HOME/.config/local-ai/skills/system/update-inspector.md"
+# 6. Output Directives & Structured Data
+SKILL_FILE="$CFG_DIR/skills/system/update-inspector.md"
 if [ -f "$SKILL_FILE" ]; then
     cat "$SKILL_FILE"
     echo ""
 fi
 
-# Dynamically hide CachyOS section if there are no CachyOS packages active
-if [ "$cachyos_count" -gt 0 ]; then
-    echo "## CACHYOS REPOSITORY UPDATES"
-    echo "* **Pending CachyOS**: \`$cachyos_count\`"
-    echo "* **Packages**: $cachyos_packages"
+if [ -n "$spotlight_raw" ]; then
+    echo "### KEY / SPOTLIGHT APPLICATION UPDATES"
+    while IFS= read -r line; do
+        [[ -z "$line" ]] && continue
+        pkg=$(echo "$line" | awk '{print $1}')
+        old_v=$(echo "$line" | awk '{print $2}')
+        new_v=$(echo "$line" | awk '{print $4}')
+        echo "* **\`$pkg\`**: \`$old_v\` ──► \`$new_v\`"
+    done <<< "$spotlight_raw"
     echo ""
 fi
 
-echo "## STANDARD ARCH REPOSITORY UPDATES"
-if [ -n "$repo_error" ]; then
-    echo "* **Pending Arch**: $repo_error"
-else
-    echo "* **Pending Arch**: \`$arch_count\`"
-    echo "* **Packages**: $arch_packages"
-fi
-
-echo ""
-echo "## AUR REPOSITORY UPDATES"
-if [ -n "$aur_error" ]; then
-    echo "* **Pending AUR**: $aur_error"
-else
-    echo "* **Pending AUR**: \`$aur_count\`"
-    echo "* **Packages**: $aur_packages"
-fi
+echo "### REPOSITORY BREAKDOWN"
+echo -e "$repo_summary"
+echo -e "$aur_summary"

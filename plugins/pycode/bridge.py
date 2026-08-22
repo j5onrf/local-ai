@@ -131,7 +131,7 @@ def handle_acp_prompt(req_id: Any, session_id: str, prompt_items: List[Dict[str,
     if is_yolo:
         os.environ["AI_CONFIRM_GATES"] = "0"
 
-    # Mirror agent_tui.py: Read direct state from .state.json
+    # Read state directly from .state.json
     st = core.get_state()
     reasoning_active = st.get("reasoning_active", False)
     reasoning_budget = st.get("reasoning_budget", 500) if reasoning_active else 0
@@ -202,14 +202,15 @@ def handle_acp_prompt(req_id: Any, session_id: str, prompt_items: List[Dict[str,
                     text_chunk = delta.get("content") or ""
                     thinking_chunk = delta.get("reasoning_content") or delta.get("thinking") or delta.get("reasoning") or ""
 
-                    # 1. Server sent dedicated reasoning chunk
+                    # 1. Dedicated reasoning token arrived
                     if thinking_chunk:
                         if show_thinking:
                             if not in_think_block:
                                 in_think_block = True
-                                send_acp_chunk(session_id, "> *Thinking...*\n> ")
+                                send_acp_chunk(session_id, "> *Thinking...* ")
                             send_acp_chunk(session_id, thinking_chunk.replace("\n", "\n> "))
-                    # 2. Server sent regular content
+
+                    # 2. Content chunk arrived
                     elif text_chunk:
                         if in_think_block and "</think>" not in text_chunk:
                             if show_thinking:
@@ -220,7 +221,7 @@ def handle_acp_prompt(req_id: Any, session_id: str, prompt_items: List[Dict[str,
                             in_think_block = True
                             text_chunk = text_chunk.replace("<think>", "")
                             if show_thinking:
-                                send_acp_chunk(session_id, "> *Thinking...*\n> ")
+                                send_acp_chunk(session_id, "> *Thinking...* ")
 
                         if "</think>" in text_chunk:
                             parts = text_chunk.split("</think>", 1)
@@ -238,7 +239,7 @@ def handle_acp_prompt(req_id: Any, session_id: str, prompt_items: List[Dict[str,
                             else:
                                 accumulated_ans += text_chunk
                                 round_text += text_chunk
-                                send_acp_chunk(session_id, text_chunk)
+                                send_acp_chunk(session_id, text_chunk, is_thought=False)
 
                     if is_agent:
                         for tc in delta.get("tool_calls", []):

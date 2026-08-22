@@ -2,7 +2,7 @@
   <img alt="py-agent" src="logo.svg" height="130" />
 </div>
 
-<h1 align="center">Py Agent <img src="https://shieldcn.dev/badge/version-v0.9.8.82.svg?variant=secondary" alt="Version"><a href="https://github.com/j5onrf/py-agent"></a></h1>
+<h1 align="center">Py Agent <img src="https://shieldcn.dev/badge/version-v0.9.8.83.svg?variant=secondary" alt="Version"><a href="https://github.com/j5onrf/py-agent"></a></h1>
 
 <p align="center">
   <a href="https://github.com/j5onrf/py-agent"><img src="https://shieldcn.dev/github/last-commit/j5onrf/py-agent.svg?color=emerald&variant=secondary" alt="Last Commit"></a>
@@ -28,7 +28,7 @@ Lightweight Python orchestration (`rich` + `requests` + `sqlite-vec` + `uvloop`)
 - **Single-Turn Query (`ai <query>`):** Instant response piped straight back to your active shell prompt.
 - **Multi-Turn Chat (`ai`):** Persistent interactive terminal session with memory context.
 - **Workspace Agent (`ai init <path>`):** Full codebase graph indexing, path-healing file editing, and sub-agent concurrency.
-- **Native GUI IDE (`/pyc`):** Fast Electron and browser IDE surface powered by [PyCode](https://github.com/j5onrf/pycode).
+- **Native GUI IDE (`/pyc`):** Cross-platform React desktop & browser development workspace powered by [PyCode](https://github.com/j5onrf/pycode).
 
 ---
 
@@ -201,7 +201,7 @@ AI_MAX_TOKENS="8192"
 - [x] **NOOA IPython Kernel Harness:** Single-tool Python kernel execution engine (`/py`) with NVIDIA NOOA bounded previews (`preview()`), model-callable `memory`/`graph` APIs, in-kernel `delegate()` sub-agents, AST safety gates, and stateful context token conservation.
 - [x] **DeepSeek Session Audit & IPC:** Real-time JSONL event logging (`.agent/session.jsonl`), JSON-RPC 2.0 sub-agent socket IPC, and YAML skill profile frontmatter headers.
 - [x] **Self-Healing Tool Parser:** Unsloth-inspired resilient JSON argument healer auto-balancing brackets, stripping leaked XML tokens, and repairing unescaped newlines for small local models.
-- [x] **[PyCode](https://github.com/j5onrf/pycode) Native Desktop GUI (T3 Fork):** Local-first Electron IDE and WebUI connected via ACP (Agent Client Protocol) stdio JSON-RPC bridge (`/pyc`, `/pyc web`)—featuring real-time token/thought streaming, custom vector branding, and automatic workspace AST indexing.
+- [x] **[PyCode](https://github.com/j5onrf/pycode) Cross-Platform GUI (T3 Fork):** Local-first React desktop and WebUI workspace connected via ACP (Agent Client Protocol) stdio JSON-RPC bridge (`/pyc`, `/pyc web`)—featuring real-time token/thought streaming, custom vector branding, theme-reactive ambient aurora glow toggle, and automatic workspace AST indexing.
 - [ ] **PyBot Integration ([OpenBot](https://github.com/CopilotKit/OpenBot) Plugin):** Embedded web assistant & customizable agent widget plugin to bring `py-agent` intelligence to browser overlays and multi-surface chat bots.
 - [ ] **Context Stress Testing:** Continuous context-window pressure tests across quantized local engines.
 - [ ] **Automated File Containment Validation:** Zero-trust security verification on traversal boundaries.
