@@ -182,9 +182,9 @@ Running `ai init <path>` sets the default workspace agent profile:
 
 ## 4. PyCode Desktop GUI (`/pyc`)
 
-Native Electron IDE and WebUI for `py-agent`, powered by a customized fork of [`pingdotgg/t3code`](https://github.com/pingdotgg/t3code). Repo: **[j5onrf/pycode](https://github.com/j5onrf/pycode)**.
+Cross-platform React desktop and WebUI workspace for `py-agent`, powered by a customized fork of [`pingdotgg/t3code`](https://github.com/pingdotgg/t3code). Repo: **[j5onrf/pycode](https://github.com/j5onrf/pycode)**.
 
-* **How It Works:** Connects via Agent Client Protocol (ACP) over stdio JSON-RPC 2.0. Streams thoughts and tokens live, formats reasoning into quote blocks (`> *Thinking...*`), and auto-syncs workspace AST maps (`index-map`) and TPM memories (`.agent/tpm.md`).
+* **How It Works:** Connects via Agent Client Protocol (ACP) over stdio JSON-RPC 2.0. Streams thoughts and tokens live, formats reasoning into quote blocks (`> *Thinking...*`), features an optional theme-reactive Gemini ambient aurora glow toggle, and auto-syncs workspace AST maps (`index-map`) and TPM memories (`.agent/tpm.md`).
 * **CLI Suspension:** Typing `/pyc` suspends the terminal session and cleanly resumes upon closing the window.
 
 ### Installation
@@ -196,7 +196,7 @@ Native Electron IDE and WebUI for `py-agent`, powered by a customized fork of [`
 ### Launch Modes
 | Mode | Command | Description |
 | :--- | :--- | :--- |
-| **Desktop App** | `/pyc` (or `pycode`) | Native Electron GUI on Wayland/X11 |
+| **Desktop App** | `/pyc` (or `pycode`) | Cross-platform React Desktop IDE on Wayland/X11 |
 | **Web Browser** | `/pyc web` (or `pycode web`) | Browser WebUI on `http://localhost:3773` |
 
 ---
